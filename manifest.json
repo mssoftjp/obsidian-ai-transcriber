@@ -1,11 +1,11 @@
 {
-  "id": "obsidian-ai-transcriber",
+  "id": "ai-transcriber",
   "name": "AI Transcriber",
   "version": "0.9.0",
   "minAppVersion": "1.7.0",
   "description": "AI-powered speech-to-text transcription using OpenAI GPT-4o and Whisper APIs",
   "author": "Musashino Software",
-  "authorUrl": "https://github.com/mssoftjp",
+  "authorUrl": "https://github.com/mssoftjp/obsidian-ai-transcriber",
   "fundingUrl": "https://buymeacoffee.com/mssoft",
   "isDesktopOnly": true
 }
