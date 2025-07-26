@@ -1,0 +1,615 @@
+import { ItemView, WorkspaceLeaf, TFile, Notice, Modal, App } from 'obsidian';
+import { ProgressTracker, TranscriptionTask } from './ProgressTracker';
+import { t } from '../i18n';
+import { LoadingAnimation } from '../core/utils/LoadingAnimation';
+
+export const VIEW_TYPE_TRANSCRIPTION = 'ai-transcriber-view';
+
+export class TranscriptionView extends ItemView {
+	private progressTracker: ProgressTracker;
+	private plugin: any; // Avoid circular dependency
+	private progressContainer: HTMLElement;
+	private historyContainer: HTMLElement;
+	private controlsContainer: HTMLElement;
+	private updateInterval: number | null = null;
+	private unsubscribeProgress: (() => void) | null = null;
+	private loadingAnimation: LoadingAnimation;
+
+	// Progress display elements (persist across updates)
+	private fileInfoEl: HTMLElement | null = null;
+	private statusEl: HTMLElement | null = null;
+	private timeEl: HTMLElement | null = null;
+	private cancelBtnEl: HTMLButtonElement | null = null;
+	private noTaskEl: HTMLElement | null = null;
+
+	constructor(leaf: WorkspaceLeaf, plugin: any, progressTracker: ProgressTracker) {
+		super(leaf);
+		this.plugin = plugin;
+		this.progressTracker = progressTracker;
+		this.loadingAnimation = new LoadingAnimation();
+	}
+
+	getViewType() {
+		return VIEW_TYPE_TRANSCRIPTION;
+	}
+
+	getDisplayText() {
+		return t('ribbon.tooltip');
+	}
+
+	getIcon() {
+		return 'file-audio';
+	}
+
+	async onOpen() {
+		const { contentEl } = this;
+		contentEl.empty();
+		contentEl.addClass('ai-transcriber-view');
+
+		// Add a title
+		contentEl.createEl('h2', { text: t('ribbon.tooltip') });
+
+		// Create main sections
+		this.buildProgressSection();
+		this.buildHistorySection();
+		this.buildControlSection();
+
+		// Subscribe to progress updates
+		this.unsubscribeProgress = this.progressTracker.addListener(this.handleProgressUpdate.bind(this));
+
+		// Start update interval
+		this.updateInterval = window.setInterval(() => {
+			this.updateView();
+		}, 1000);
+
+		// Initial update - force history display
+		this.updateView();
+		// Ensure history is displayed even if data is still loading
+		this.updateHistoryDisplay();
+	}
+
+	async onClose() {
+		// Clear update interval
+		if (this.updateInterval !== null) {
+			window.clearInterval(this.updateInterval);
+			this.updateInterval = null;
+		}
+
+		// Unsubscribe from progress updates
+		if (this.unsubscribeProgress !== null) {
+			this.unsubscribeProgress();
+			this.unsubscribeProgress = null;
+		}
+
+		// Clean up animation
+		this.loadingAnimation.destroy();
+
+		// Clear DOM element references to prevent memory leaks
+		this.fileInfoEl = null;
+		this.statusEl = null;
+		this.timeEl = null;
+		this.cancelBtnEl = null;
+		this.noTaskEl = null;
+	}
+
+	private buildProgressSection() {
+		const section = this.contentEl.createDiv({ cls: 'transcription-progress-section' });
+		section.createEl('h3', { text: t('common.progressStatus') });
+		this.progressContainer = section.createDiv({ cls: 'progress-container' });
+
+		// Create persistent elements
+		this.noTaskEl = this.progressContainer.createEl('p', {
+			text: t('common.noActiveTask'),
+			cls: 'no-task-message'
+		});
+
+		// File info
+		this.fileInfoEl = this.progressContainer.createDiv({ cls: 'task-file-info' });
+		this.fileInfoEl.style.display = 'none';
+
+		// Status
+		this.statusEl = this.progressContainer.createDiv({ cls: 'task-status' });
+		this.statusEl.style.display = 'none';
+
+		// Time
+		this.timeEl = this.progressContainer.createDiv({ cls: 'task-time' });
+		this.timeEl.style.display = 'none';
+
+		// Cancel button
+		this.cancelBtnEl = this.progressContainer.createEl('button', {
+			text: t('common.cancel'),
+			cls: 'mod-warning cancel-task-button'
+		});
+		this.cancelBtnEl.style.display = 'none';
+		this.cancelBtnEl.addEventListener('click', () => {
+			this.handleCancel();
+		});
+	}
+
+	private buildHistorySection() {
+		const section = this.contentEl.createDiv({ cls: 'transcription-history-section' });
+		section.createEl('h3', { text: t('common.history') });
+		this.historyContainer = section.createDiv({ cls: 'history-container' });
+	}
+
+	private buildControlSection() {
+		const section = this.contentEl.createDiv({ cls: 'transcription-controls-section' });
+		this.controlsContainer = section.createDiv({ cls: 'controls-container' });
+
+		// Clear history button only
+		const clearBtn = this.controlsContainer.createEl('button', {
+			text: t('common.delete'),
+			cls: 'mod-secondary'
+		});
+		clearBtn.addEventListener('click', () => {
+			this.handleClearHistory();
+		});
+	}
+
+	private handleProgressUpdate() {
+		const currentTask = this.progressTracker.getCurrentTask();
+		// タスクが完了または失敗した場合は履歴も更新
+		if (currentTask && ['completed', 'error', 'partial', 'cancelled'].includes(currentTask.status)) {
+			this.updateView();
+			// 履歴を確実に更新
+			setTimeout(() => this.updateHistoryDisplay(), 100);
+		} else {
+			this.updateView();
+		}
+	}
+
+	private updateView() {
+		this.updateProgressDisplay();
+		// 履歴表示は頻繁に更新する必要がないため、処理中でない場合のみ更新
+		const currentTask = this.progressTracker.getCurrentTask();
+		if (!currentTask || currentTask.status !== 'processing') {
+			this.updateHistoryDisplay();
+		}
+		this.updateControlsDisplay();
+	}
+
+	private updateProgressDisplay() {
+		const currentTask = this.progressTracker.getCurrentTask();
+
+		if (!currentTask) {
+			// Show no task message
+			if (this.noTaskEl) {
+				this.noTaskEl.style.display = '';
+			}
+			if (this.fileInfoEl) {
+				this.fileInfoEl.style.display = 'none';
+			}
+			if (this.statusEl) {
+				this.statusEl.style.display = 'none';
+			}
+			if (this.timeEl) {
+				this.timeEl.style.display = 'none';
+			}
+			if (this.cancelBtnEl) {
+				this.cancelBtnEl.style.display = 'none';
+			}
+			return;
+		}
+
+		// Hide no task message
+		if (this.noTaskEl) {
+			this.noTaskEl.style.display = 'none';
+		}
+
+		// Update file info
+		if (this.fileInfoEl) {
+			this.fileInfoEl.style.display = '';
+			this.fileInfoEl.empty();
+			const fileName = currentTask.inputFileName || '';
+			this.fileInfoEl.createEl('div', {
+				text: `${t('modal.transcription.fileInfo')}: ${fileName}`,
+				cls: 'file-name'
+			});
+		}
+
+		// Get percentage for logging only
+		// const percentage = this.progressTracker.getProgressPercentage();
+
+		// Update status with loading animation
+		if (this.statusEl) {
+			this.statusEl.style.display = '';
+			if (currentTask.status === 'processing') {
+				// Use specific "文字起こし中" for consistency with status bar
+				const statusText = `${t('modal.transcription.transcribing')}${this.loadingAnimation.getLoadingDots()}`;
+				this.statusEl.setText(statusText);
+
+				// Start animation if not running
+				if (!this.loadingAnimation.isRunning()) {
+					this.loadingAnimation.start(() => {
+						if (this.statusEl && currentTask.status === 'processing') {
+							const updatedText = `${t('modal.transcription.transcribing')}${this.loadingAnimation.getLoadingDots()}`;
+							this.statusEl.setText(updatedText);
+						}
+					}, 1000);
+				}
+			} else {
+				// Stop animation for non-processing states
+				this.loadingAnimation.stop();
+				const statusText = `${t('common.' + currentTask.status)}`;
+				this.statusEl.setText(statusText);
+			}
+		}
+
+		// Update time elapsed
+		if (this.timeEl && currentTask.startTime) {
+			this.timeEl.style.display = '';
+			const elapsed = Date.now() - currentTask.startTime;
+			this.timeEl.setText(`${t('common.elapsedTime')}: ${this.formatDuration(elapsed)}`);
+		} else if (this.timeEl) {
+			this.timeEl.style.display = 'none';
+		}
+
+		// Show/hide cancel button
+		if (this.cancelBtnEl) {
+			this.cancelBtnEl.style.display = currentTask.status === 'processing' ? '' : 'none';
+		}
+	}
+
+	private updateHistoryDisplay() {
+		const history = this.progressTracker.getHistory();
+
+		this.historyContainer.empty();
+
+		if (history.length === 0) {
+			this.historyContainer.createEl('p', {
+				text: t('common.noHistory'),
+				cls: 'no-history-message'
+			});
+			return;
+		}
+
+		// Display recent history - already in newest-first order from ProgressTracker
+		const maxItems = 50;
+		const recentHistory = history.slice(0, maxItems); // Just take first N items
+		const historyList = this.historyContainer.createEl('div', { cls: 'history-list' });
+
+		for (const task of recentHistory) {
+			const item = historyList.createDiv({ cls: 'history-item' });
+
+			// 1行目: 文字起こし後のファイル名とタイムスタンプ
+			const header = item.createDiv({ cls: 'history-item-header' });
+			const statusEmoji = this.getStatusEmoji(task.status);
+			const displayName = task.outputFileName || '';
+			header.createSpan({ text: `${statusEmoji} ${displayName}` });
+
+			// Time
+			if (task.endTime) {
+				const timeSpan = header.createSpan({ cls: 'history-item-time' });
+				timeSpan.setText(this.formatTime(task.endTime));
+			}
+
+			// 2行目: 音声ソースファイル名
+			const sourceInfo = item.createDiv({ cls: 'history-item-source' });
+			const sourceFileName = task.inputFileName || '';
+			if (sourceFileName) {
+				sourceInfo.createSpan({
+					text: sourceFileName,
+					cls: 'source-file-info'
+				});
+			}
+
+			// 3行目: プレビューまたはステータス情報
+			const details = item.createDiv({ cls: 'history-item-details' });
+
+			if (task.preview) {
+				details.createSpan({
+					text: task.preview,
+					cls: 'transcription-preview'
+				});
+			} else if (task.status === 'partial') {
+				const percentage = Math.round((task.completedChunks / task.totalChunks) * 100);
+				details.createSpan({
+					text: `${percentage}% ${t('common.completed')}`,
+					cls: 'partial-info'
+				});
+			} else if (task.transcriptionTimestamp) {
+				details.createSpan({
+					text: task.transcriptionTimestamp,
+					cls: 'transcription-timestamp'
+				});
+			}
+
+			// Make all completed items clickable
+			if (task.status === 'completed' || task.outputFilePath) {
+				item.addEventListener('click', () => {
+					this.showTranscriptionResult(task);
+				});
+				item.addClass('clickable');
+			}
+		}
+	}
+
+	private updateControlsDisplay() {
+		// No need to update controls since cancel button is now in the progress section
+	}
+
+	private getStatusEmoji(_status: string): string {
+		// No emojis - return empty string
+		return '';
+	}
+
+	private formatDuration(ms: number): string {
+		const seconds = Math.floor(ms / 1000);
+		const minutes = Math.floor(seconds / 60);
+		const remainingSeconds = seconds % 60;
+
+		if (minutes > 0) {
+			return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+		} else {
+			return `${seconds}s`;
+		}
+	}
+
+
+	private formatTime(timestamp: number): string {
+		const date = new Date(timestamp);
+
+		// Format: YYYY-MM-DD HH:MM
+		const year = date.getFullYear();
+		const month = String(date.getMonth() + 1).padStart(2, '0');
+		const day = String(date.getDate()).padStart(2, '0');
+		const hours = String(date.getHours()).padStart(2, '0');
+		const minutes = String(date.getMinutes()).padStart(2, '0');
+
+		return `${year}-${month}-${day} ${hours}:${minutes}`;
+	}
+
+	private async handleCancel() {
+		const currentTask = this.progressTracker.getCurrentTask();
+		if (!currentTask || currentTask.status !== 'processing') {
+			return;
+		}
+
+		// Cancel through the plugin's transcriber
+		if (this.plugin.transcriber && typeof this.plugin.transcriber.cancelTranscription === 'function') {
+			await this.plugin.transcriber.cancelTranscription();
+			new Notice(t('notices.transcriptionCancelled'));
+		} else {
+			new Notice(t('errors.general'));
+		}
+	}
+
+	private async handleClearHistory() {
+		this.progressTracker.clearHistory();
+		// 即座にUIを更新
+		this.updateHistoryDisplay();
+		// 少し待ってから成功メッセージを表示
+		await new Promise(resolve => setTimeout(resolve, 100));
+		new Notice(t('common.historyCleared'));
+	}
+
+	private async showTranscriptionResult(task: TranscriptionTask) {
+		// If output file path is stored, open the existing file
+		if (task.outputFilePath) {
+			const file = this.app.vault.getAbstractFileByPath(task.outputFilePath);
+			if (file instanceof TFile) {
+				await this.app.workspace.openLinkText(file.path, '', true);
+			} else {
+				// ファイルが見つからない場合、検索を提案
+				this.handleMissingFile(task);
+			}
+			return;
+		}
+
+		// 旧形式の履歴（outputFilePathがない）の場合
+		if (task.transcriptionTimestamp) {
+			// タイムスタンプのみで検索を提案
+			this.handleMissingFile(task);
+		}
+	}
+
+	/**
+	 * Handle missing transcription file
+	 */
+	private async handleMissingFile(task: TranscriptionTask) {
+		const searchQuery = task.transcriptionTimestamp ||
+			new Date(task.endTime || task.startTime).toLocaleString('ja-JP');
+
+		new Notice(t('errors.fileNotFound'));
+
+		// 検索モーダルを開くか確認
+		const modal = new ConfirmModal(
+			this.app,
+			t('common.fileNotFound'),
+			t('common.searchForFile', { timestamp: searchQuery }),
+			t('common.search'),
+			async () => {
+				// タイムスタンプで文字起こしファイルを検索
+				const files = this.app.vault.getFiles();
+				const matchingFiles = files.filter(file =>
+					file.extension === 'md' &&
+					this.app.metadataCache.getFileCache(file)?.frontmatter?.['transcription_timestamp']?.includes(searchQuery)
+				);
+
+				if (matchingFiles.length > 0) {
+					// ファイル選択モーダルを表示
+					this.showFileSelectionModal(task, matchingFiles);
+				} else {
+					// 見つからない場合は全文検索を開く
+					const searchPlugin = (this.app as any).internalPlugins.getPluginById('global-search');
+					if (searchPlugin && searchPlugin.enabled) {
+						searchPlugin.instance.openGlobalSearch(`"${searchQuery}"`);
+					}
+					new Notice(t('common.manualSearchRequired'));
+				}
+			}
+		);
+		modal.open();
+	}
+
+	/**
+	 * Show file selection modal and update history
+	 */
+	private async showFileSelectionModal(task: TranscriptionTask, matchingFiles: TFile[]) {
+		const modal = new FileSelectionModal(
+			this.app,
+			matchingFiles,
+			async (selectedFile: TFile) => {
+				// 更新するタスクのコピーを作成
+				const updatedTask = { ...task };
+
+				// 文字起こしファイルのパスを更新
+				updatedTask.outputFilePath = selectedFile.path;
+				updatedTask.outputFileName = selectedFile.name;
+
+				// フロントマターから元の音声ファイル情報を取得
+				const frontmatter = this.app.metadataCache.getFileCache(selectedFile)?.frontmatter;
+				if (frontmatter?.source_file) {
+					// 元の音声ファイルも検索
+					const audioFile = this.app.vault.getAbstractFileByPath(frontmatter.source_file);
+					if (audioFile instanceof TFile) {
+						updatedTask.inputFilePath = audioFile.path;
+						updatedTask.inputFileName = audioFile.name;
+					} else {
+						// 音声ファイルが見つからない場合、ファイル名で検索
+						const searchFileName = task.inputFileName || '';
+						const audioFiles = this.app.vault.getFiles().filter(f =>
+							f.name === searchFileName && this.isAudioFile(f.extension)
+						);
+						if (audioFiles.length === 1) {
+							updatedTask.inputFilePath = audioFiles[0].path;
+							updatedTask.inputFileName = audioFiles[0].name;
+						} else if (audioFiles.length > 1) {
+							// 複数見つかった場合は選択モーダルを表示
+							new Notice(t('common.multipleAudioFilesFound'));
+						}
+					}
+				}
+
+				// 履歴を更新
+				await this.updateTaskInHistory(updatedTask);
+
+				// ファイルを開く
+				await this.app.workspace.openLinkText(selectedFile.path, '', true);
+			}
+		);
+		modal.open();
+	}
+
+	/**
+	 * Update task in history
+	 */
+	private async updateTaskInHistory(updatedTask: TranscriptionTask) {
+		const history = this.progressTracker.getHistory();
+		const taskIndex = history.findIndex(t => t.id === updatedTask.id);
+
+		if (taskIndex !== -1) {
+			// ProgressTrackerの履歴を直接更新（updateHistoryItemが全ての情報を更新する）
+			await (this.progressTracker as any).updateHistoryItem(taskIndex, updatedTask);
+
+			// UIを更新
+			this.updateHistoryDisplay();
+		}
+	}
+
+	/**
+	 * Check if file extension is audio
+	 */
+	private isAudioFile(extension: string): boolean {
+		const audioExtensions = ['mp3', 'wav', 'm4a', 'ogg', 'flac', 'aac', 'wma', 'opus', 'webm'];
+		return audioExtensions.includes(extension.toLowerCase());
+	}
+}
+
+/**
+ * Simple confirmation modal
+ */
+class ConfirmModal extends Modal {
+	constructor(
+		app: App,
+		private title: string,
+		private message: string,
+		private confirmText: string,
+		private onConfirm: () => void
+	) {
+		super(app);
+	}
+
+	onOpen() {
+		const { contentEl } = this;
+
+		contentEl.createEl('h2', { text: this.title });
+		contentEl.createEl('p', { text: this.message });
+
+		const buttonContainer = contentEl.createDiv({ cls: 'modal-button-container' });
+
+		buttonContainer.createEl('button', {
+			text: t('common.cancel'),
+			cls: 'mod-secondary'
+		}).addEventListener('click', () => this.close());
+
+		buttonContainer.createEl('button', {
+			text: this.confirmText,
+			cls: 'mod-cta'
+		}).addEventListener('click', () => {
+			this.onConfirm();
+			this.close();
+		});
+	}
+
+	onClose() {
+		const { contentEl } = this;
+		contentEl.empty();
+	}
+}
+
+/**
+ * File selection modal
+ */
+class FileSelectionModal extends Modal {
+	constructor(
+		app: App,
+		private files: TFile[],
+		private onSelect: (file: TFile) => void
+	) {
+		super(app);
+	}
+
+	onOpen() {
+		const { contentEl } = this;
+
+		contentEl.createEl('h2', { text: t('common.selectFile') });
+		contentEl.createEl('p', { text: t('common.multipleFilesFound') });
+
+		const fileList = contentEl.createDiv({ cls: 'file-selection-list' });
+
+		this.files.forEach(file => {
+			const item = fileList.createDiv({ cls: 'file-selection-item' });
+
+			// ファイル名
+			item.createEl('div', {
+				text: file.name,
+				cls: 'file-selection-name'
+			});
+
+			// パス
+			item.createEl('div', {
+				text: file.path,
+				cls: 'file-selection-path'
+			});
+
+			// クリックで選択
+			item.addEventListener('click', () => {
+				this.onSelect(file);
+				this.close();
+			});
+		});
+
+		// キャンセルボタン
+		const buttonContainer = contentEl.createDiv({ cls: 'modal-button-container' });
+		buttonContainer.createEl('button', {
+			text: t('common.cancel'),
+			cls: 'mod-secondary'
+		}).addEventListener('click', () => this.close());
+	}
+
+	onClose() {
+		const { contentEl } = this;
+		contentEl.empty();
+	}
+}

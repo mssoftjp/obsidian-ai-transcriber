@@ -1,0 +1,47 @@
+{
+  "name": "obsidian-ai-transcriber",
+  "version": "0.9.0",
+  "description": "Local speech-to-text transcription for Obsidian using Whisper.cpp",
+  "main": "main.js",
+  "scripts": {
+    "build": "tsc -noEmit -skipLibCheck && node esbuild-api.config.mjs production",
+    "build:release": "npm run check && node -e \"const fs=require('fs');const path=require('path');const manifest=JSON.parse(fs.readFileSync('./manifest.json','utf8'));const dir='build/'+manifest.version;['manifest.json','styles.css'].forEach(f=>fs.existsSync(f)&&fs.copyFileSync(f,path.join(dir,f)));const wasmSrc='node_modules/@echogarden/fvad-wasm/fvad.wasm';if(fs.existsSync(wasmSrc)){fs.copyFileSync(wasmSrc,path.join(dir,'fvad.wasm'));console.log('Copied fvad.wasm');}console.log('Release files created in',dir)\"",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "lint": "eslint src/**/*.ts",
+    "lint:fix": "eslint src/**/*.ts --fix",
+    "check": "npm run lint && npm run build"
+  },
+  "keywords": [
+    "obsidian",
+    "plugin",
+    "whisper",
+    "transcription",
+    "speech-to-text",
+    "japanese"
+  ],
+  "author": "Musashino Software",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  },
+  "devDependencies": {
+    "@types/jest": "^30.0.0",
+    "@types/node": "^16.11.6",
+    "@typescript-eslint/eslint-plugin": "5.29.0",
+    "@typescript-eslint/parser": "5.29.0",
+    "builtin-modules": "3.3.0",
+    "esbuild": "0.17.3",
+    "eslint": "^8.57.0",
+    "jest": "^30.0.2",
+    "obsidian": "latest",
+    "ts-jest": "^29.4.0",
+    "tslib": "2.4.0",
+    "typescript": "4.7.4"
+  },
+  "dependencies": {
+    "@echogarden/fvad-wasm": "^0.2.0",
+    "@noble/hashes": "^1.8.0"
+  }
+}

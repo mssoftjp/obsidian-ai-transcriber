@@ -1,0 +1,282 @@
+/**
+ * Base API client with common functionality
+ * Handles authentication, error handling, and retry logic
+ */
+
+import { Logger } from '../../utils/Logger';
+
+export interface ApiConfig {
+	baseUrl: string;
+	apiKey: string;
+	maxRetries?: number;
+	retryDelay?: number;
+	timeout?: number;
+}
+
+export interface ApiError {
+	status: number;
+	message: string;
+	code?: string;
+	details?: any;
+}
+
+export abstract class ApiClient {
+	protected config: ApiConfig;
+	private readonly defaultMaxRetries = 3;
+	private readonly defaultRetryDelay = 1000; // 1 second
+	private readonly defaultTimeout = 90000; // 90 seconds
+	protected logger = Logger.getLogger('ApiClient');
+
+	constructor(config: ApiConfig) {
+		this.config = {
+			maxRetries: this.defaultMaxRetries,
+			retryDelay: this.defaultRetryDelay,
+			timeout: this.defaultTimeout,
+			...config
+		};
+		
+		this.logger.debug('ApiClient initialized', { 
+			baseUrl: config.baseUrl,
+			timeout: this.config.timeout
+		});
+	}
+
+	/**
+	 * Make an authenticated POST request
+	 */
+	protected async post<T>(
+		endpoint: string,
+		data: FormData | Record<string, any>,
+		options: RequestInit = {},
+		signal?: AbortSignal
+	): Promise<T> {
+		const url = `${this.config.baseUrl}${endpoint}`;
+		
+		const headers: Record<string, string> = {
+			'Authorization': `Bearer ${this.config.apiKey}`
+		};
+		
+
+		// Add custom headers if provided
+		if (options.headers) {
+			Object.assign(headers, options.headers);
+		}
+
+		// Don't set Content-Type for FormData (browser will set it with boundary)
+		if (!(data instanceof FormData)) {
+			headers['Content-Type'] = 'application/json';
+		}
+
+		const requestOptions: RequestInit = {
+			method: 'POST',
+			headers,
+			body: data instanceof FormData ? data : JSON.stringify(data),
+			signal,
+			...options
+		};
+
+		return this.executeWithRetry<T>(url, requestOptions);
+	}
+
+	/**
+	 * Make an authenticated GET request
+	 */
+	protected async get<T>(
+		endpoint: string,
+		params?: Record<string, string>,
+		signal?: AbortSignal
+	): Promise<T> {
+		const url = new URL(`${this.config.baseUrl}${endpoint}`);
+		
+		if (params) {
+			Object.entries(params).forEach(([key, value]) => {
+				url.searchParams.append(key, value);
+			});
+		}
+
+		const requestOptions: RequestInit = {
+			method: 'GET',
+			headers: {
+				'Authorization': `Bearer ${this.config.apiKey}`
+			},
+			signal
+		};
+
+		return this.executeWithRetry<T>(url.toString(), requestOptions);
+	}
+
+	/**
+	 * Execute request with retry logic
+	 */
+	private async executeWithRetry<T>(
+		url: string,
+		options: RequestInit,
+		retryCount = 0
+	): Promise<T> {
+		// Store cleanup functions
+		let timeoutId: NodeJS.Timeout | null = null;
+		let userAbortHandler: (() => void) | null = null;
+		let timeoutAbortHandler: (() => void) | null = null;
+		let mergedController: AbortController | null = null;
+		let timeoutController: AbortController | null = null;
+
+		try {
+			// Create timeout controller
+			timeoutController = new AbortController();
+			timeoutId = setTimeout(() => timeoutController.abort(), this.config.timeout!);
+
+			// Merge abort signals - both timeout and user cancellation
+			let signal: AbortSignal;
+			if (options.signal) {
+				// If user provided a signal, we need to listen to both
+				const userSignal = options.signal;
+				
+				// Create a new controller that will abort when either signal aborts
+				mergedController = new AbortController();
+				
+				// Listen to user cancellation
+				userAbortHandler = () => {
+					mergedController.abort();
+					if (timeoutId) {
+						clearTimeout(timeoutId);
+						timeoutId = null;
+					}
+				};
+				userSignal.addEventListener('abort', userAbortHandler);
+				
+				// Listen to timeout
+				timeoutAbortHandler = () => {
+					mergedController.abort();
+				};
+				timeoutController.signal.addEventListener('abort', timeoutAbortHandler);
+				
+				signal = mergedController.signal;
+			} else {
+				// No user signal, just use timeout
+				signal = timeoutController.signal;
+			}
+
+			
+			const response = await fetch(url, { ...options, signal });
+			
+
+			if (!response.ok) {
+				const error = await this.parseError(response);
+				
+				// Check if retryable
+				if (this.isRetryable(response.status) && retryCount < this.config.maxRetries!) {
+					await this.delay(this.config.retryDelay! * Math.pow(2, retryCount)); // Exponential backoff
+					return this.executeWithRetry<T>(url, options, retryCount + 1);
+				}
+
+				throw this.createApiError(error);
+			}
+
+			// Parse response based on content type
+			const contentType = response.headers.get('content-type');
+			
+			let responseData: T;
+			if (contentType?.includes('application/json')) {
+				responseData = await response.json() as T;
+			} else {
+				const textData = await response.text();
+				responseData = textData as unknown as T;
+			}
+			
+			return responseData;
+
+		} catch (error) {
+			// Handle network errors
+			if (error instanceof Error) {
+				if (error.name === 'AbortError') {
+					// Check which signal caused the abort
+					if (options.signal?.aborted) {
+						throw new Error('Request cancelled by user');
+					} else {
+						// It was a timeout
+						const timeoutSeconds = Math.round(this.config.timeout! / 1000);
+						this.logger.error('Request timed out', { 
+							timeout: `${this.config.timeout}ms`,
+							url: url.substring(0, 100) // URLの最初の100文字のみログに記録
+						});
+						this.logger.warn('This may happen with large audio chunks. Consider using smaller time ranges.');
+						throw new Error(`APIリクエストがタイムアウトしました (${timeoutSeconds}秒)。大きな音声ファイルの場合は、時間範囲を短くしてお試しください。`);
+					}
+				}
+				throw error;
+			}
+			throw new Error('Unknown error occurred');
+		} finally {
+			// Clean up resources
+			if (timeoutId) {
+				clearTimeout(timeoutId);
+			}
+
+			// Remove event listeners if they were added
+			if (options.signal && userAbortHandler) {
+				options.signal.removeEventListener('abort', userAbortHandler);
+			}
+			if (timeoutController && timeoutAbortHandler) {
+				timeoutController.signal.removeEventListener('abort', timeoutAbortHandler);
+			}
+
+			// Clear references to allow garbage collection
+			userAbortHandler = null;
+			timeoutAbortHandler = null;
+			mergedController = null;
+			timeoutController = null;
+		}
+	}
+
+	/**
+	 * Parse error response
+	 */
+	private async parseError(response: Response): Promise<ApiError> {
+		try {
+			const data = await response.json();
+			return {
+				status: response.status,
+				message: data.error?.message || data.message || response.statusText,
+				code: data.error?.code || data.code,
+				details: data.error || data
+			};
+		} catch (e) {
+			return {
+				status: response.status,
+				message: response.statusText || `HTTP ${response.status} error`
+			};
+		}
+	}
+
+	/**
+	 * Check if error is retryable
+	 */
+	private isRetryable(status: number): boolean {
+		// Retry on server errors and rate limiting
+		return status >= 500 || status === 429 || status === 408;
+	}
+
+	/**
+	 * Create formatted API error
+	 */
+	private createApiError(error: ApiError): Error {
+		const message = `API Error ${error.status}: ${error.message}`;
+		const apiError = new Error(message);
+		(apiError as any).status = error.status;
+		(apiError as any).code = error.code;
+		(apiError as any).details = error.details;
+		return apiError;
+	}
+
+	/**
+	 * Delay helper for retries
+	 */
+	private delay(ms: number): Promise<void> {
+		return new Promise(resolve => setTimeout(resolve, ms));
+	}
+
+	/**
+	 * Test API connection
+	 */
+	abstract testConnection(): Promise<boolean>;
+}

@@ -1,0 +1,192 @@
+/**
+ * Whisper-specific transcription strategy
+ * Implements parallel processing with timestamp-based merging
+ */
+
+import { TranscriptionStrategy } from '../../core/transcription/TranscriptionStrategy';
+import { TranscriptionService } from '../../core/transcription/TranscriptionService';
+import { TranscriptionMerger } from '../../core/transcription/TranscriptionMerger';
+import { AudioChunk } from '../../core/audio/AudioTypes';
+import { TranscriptionResult, TranscriptionOptions } from '../../core/transcription/TranscriptionTypes';
+import { getModelConfig } from '../../config/ModelProcessingConfig';
+import { Logger } from '../../utils/Logger';
+
+export class WhisperTranscriptionStrategy extends TranscriptionStrategy {
+	readonly strategyName = 'Whisper Parallel Processing';
+	readonly processingMode = 'parallel' as const;
+	readonly maxConcurrency = 2; // Process 2 chunks in parallel
+
+	private merger: TranscriptionMerger;
+	private rateLimitDelay: number;
+
+	constructor(
+		transcriptionService: TranscriptionService,
+		onProgress?: (progress: any) => void
+	) {
+		super(transcriptionService, onProgress);
+		// Pass model name to merger for model-specific merge config
+		this.merger = new TranscriptionMerger(transcriptionService.modelId);
+		this.logger = Logger.getLogger('WhisperTranscriptionStrategy');
+		
+		// Get rate limit delay from config based on model
+		const config = getModelConfig(transcriptionService.modelId);
+		this.rateLimitDelay = config.rateLimitDelayMs;
+	}
+
+	/**
+	 * Process chunks in parallel batches
+	 */
+	async processChunks(
+		chunks: AudioChunk[],
+		options: TranscriptionOptions
+	): Promise<TranscriptionResult[]> {
+		const results: TranscriptionResult[] = [];
+		const startTime = Date.now();
+
+		// Process in batches to respect rate limits
+		for (let i = 0; i < chunks.length; i += this.maxConcurrency) {
+			try {
+				// Check for cancellation
+				this.checkAborted();
+
+				const batch = chunks.slice(i, i + this.maxConcurrency);
+				const batchNumber = Math.floor(i / this.maxConcurrency) + 1;
+				const totalBatches = Math.ceil(chunks.length / this.maxConcurrency);
+
+				// Report batch progress
+				this.reportProgress({
+					currentChunk: i + 1, // Use 1-based indexing to match GPT4o strategy
+					totalChunks: chunks.length,
+					percentage: (i / chunks.length) * 90, // Reserve 10% for merging
+					operation: `Processing batch ${batchNumber}/${totalBatches} (${batch.length} chunks)`,
+					estimatedTimeRemaining: this.calculateTimeRemaining(i, chunks.length, startTime),
+					cancellable: true
+				});
+
+				// Process batch in parallel
+				const batchPromises = batch.map((chunk) => {
+					return this.processSingleChunk(chunk, options);
+				});
+
+				const batchResults = await Promise.all(batchPromises);
+				results.push(...batchResults);
+
+				// Apply rate limiting between batches
+				if (i + this.maxConcurrency < chunks.length) {
+					await this.delay(this.rateLimitDelay);
+				}
+			} catch (error) {
+				// If cancelled or aborted, return current results
+				if (error instanceof Error && (error.message.includes('cancelled') || error.message.includes('aborted'))) {
+					break; // Exit the loop but keep the results we have
+				}
+				// For other errors, log and continue with next batch
+				this.logger.error(`Failed to process batch starting at chunk ${i + 1}:`, error);
+				// Add failed results for this batch
+				const batch = chunks.slice(i, i + this.maxConcurrency);
+				batch.forEach((chunk, idx) => {
+					results.push({
+						id: chunk.id,
+						text: `[Chunk ${i + idx + 1} failed: ${error instanceof Error ? error.message : 'Unknown error'}]`,
+						startTime: chunk.startTime,
+						endTime: chunk.endTime,
+						success: false,
+						error: error instanceof Error ? error.message : 'Unknown error'
+					});
+				});
+			}
+		}
+
+		return results;
+	}
+
+
+	/**
+	 * Merge results using timestamp-based algorithm
+	 */
+	async mergeResults(results: TranscriptionResult[]): Promise<string> {
+		const { valid, failed } = this.filterResults(results);
+
+		if (valid.length === 0 && failed.length === 0) {
+			return '';
+		}
+
+		// Log statistics
+		if (failed.length > 0) {
+		} else {
+		}
+
+		// If no valid results but we have failed results, return error information
+		if (valid.length === 0) {
+			const errorInfo = failed.map(f => `Chunk ${f.id}: ${f.error || 'Unknown error'}`).join('\n');
+			return `[部分的な文字起こし結果]\n\n文字起こしに失敗しました:\n${errorInfo}`;
+		}
+
+		// Use timestamp-based merging if available
+		const hasTimestamps = valid.some(r => r.segments && r.segments.length > 0);
+		
+		let mergedText: string;
+		if (hasTimestamps) {
+			mergedText = await this.merger.mergeWithTimestamps(results, {
+				includeFailures: true,
+				useTimestamps: true
+			});
+		} else {
+			// Get model-specific merge config
+			const modelConfig = getModelConfig(this.transcriptionService.modelId);
+			const mergeConfig = modelConfig.merging || {};
+			
+			mergedText = await this.merger.mergeWithOverlapRemoval(results, {
+				removeOverlaps: true,
+				minMatchLength: mergeConfig.minMatchLength || 20,
+				separator: '\n\n',
+				includeFailures: true
+			});
+		}
+		
+		// If we have partial results, prepend a notice
+		if (failed.length > 0) {
+			const failedChunks = failed.map(f => f.id).join(', ');
+			return `[部分的な文字起こし結果]\n一部のチャンク（${failedChunks}）で文字起こしに失敗しました。\n\n${mergedText}`;
+		}
+		
+		return mergedText;
+	}
+
+	/**
+	 * Get optimal settings for Whisper
+	 */
+	getOptimalSettings(): {
+		chunkDuration: number;
+		overlapDuration: number;
+		responseFormat: string;
+	} {
+		// Get chunk duration from model configuration instead of hardcoding
+		const modelConfig = getModelConfig('whisper-1');
+		
+		return {
+			chunkDuration: modelConfig.chunkDurationSeconds,
+			overlapDuration: modelConfig.vadChunking.overlapDurationSeconds,
+			responseFormat: 'verbose_json' // For timestamps
+		};
+	}
+
+	/**
+	 * Estimate processing time for Whisper
+	 */
+	estimateProcessingTime(chunks: AudioChunk[]): number {
+		// Whisper typically processes at ~10-20x realtime speed
+		const totalDuration = chunks.reduce((sum, chunk) => 
+			sum + (chunk.endTime - chunk.startTime), 0
+		);
+		
+		const processingSpeed = 15; // 15x realtime (conservative estimate)
+		const baseTime = totalDuration / processingSpeed;
+		
+		// Add overhead for batching and rate limiting
+		const batches = Math.ceil(chunks.length / this.maxConcurrency);
+		const rateLimitOverhead = (batches - 1) * (this.rateLimitDelay / 1000);
+		
+		return baseTime + rateLimitOverhead;
+	}
+}

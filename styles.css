@@ -1,0 +1,1714 @@
+/* AI Transcriber Plugin Styles */
+
+/* ====================================
+   TABLE OF CONTENTS
+   ====================================
+   1. Custom CSS Variables
+   2. Base Styles & Animations
+   3. Common Components
+      3.1 Buttons
+      3.2 Progress Bars
+      3.3 Form Elements
+      3.4 Tables
+   4. Layout Components
+      4.1 Status Bar
+      4.2 Transcription View
+      4.3 Settings Tab
+   5. Modal Styles
+      5.1 Modal Base & Common
+      5.2 AI Transcriber Modal
+      5.3 Audio File Selection Modal
+      5.4 Dictionary Management Modal
+      5.5 Post Processing Modal
+   6. Utility Classes
+   ==================================== */
+
+/* ====================================
+   1. Custom CSS Variables
+   ==================================== */
+:root {
+	/* Plugin Specific Spacing */
+	--ait-spacing-xs: 2px;
+	--ait-spacing-sm: 4px;
+	--ait-spacing-md: 8px;
+	--ait-spacing-lg: 12px;
+	--ait-spacing-xl: 16px;
+	--ait-spacing-2xl: 20px;
+	--ait-spacing-3xl: 24px;
+	--ait-spacing-4xl: 32px;
+	--ait-spacing-5xl: 40px;
+
+	/* Border Radius */
+	--ait-radius-xs: 2px;
+	--ait-radius-sm: 4px;
+	--ait-radius-md: 6px;
+	--ait-radius-lg: 8px;
+	--ait-radius-xl: 12px;
+
+	/* Transitions */
+	--ait-transition-fast: 0.2s ease;
+	--ait-transition-normal: 0.3s ease;
+	--ait-animation-spin: 1s linear infinite;
+
+	/* Component Dimensions */
+	--ait-modal-max-width: 900px;
+	--ait-modal-max-height: 80vh;
+	--ait-progress-height: 8px;
+	--ait-status-bar-progress-width: 50px;
+	--ait-status-bar-progress-height: 4px;
+
+	/* Font Weights */
+	--ait-font-weight-medium: 500;
+	--ait-font-weight-semibold: 600;
+	--ait-font-weight-bold: 700;
+
+	/* Component Specific Dimensions */
+	--ait-input-height-small: 40px;
+	--ait-table-width-small: 50px;
+	--ait-table-width-medium: 80px;
+	--ait-table-width-large: 120px;
+	--ait-table-width-xlarge: 200px;
+	--ait-file-list-height: 400px;
+	--ait-preview-max-height: 150px;
+	--ait-textarea-min-height: 150px;
+	--ait-textarea-large-height: 200px;
+	--ait-modal-width-large: 800px;
+	--ait-modal-width-xlarge: 900px;
+}
+
+/* ====================================
+   2. Base Styles & Animations
+   ==================================== */
+@keyframes rotate {
+	from {
+		transform: rotate(0deg);
+	}
+	to {
+		transform: rotate(360deg);
+	}
+}
+
+/* ====================================
+   3. Common Components
+   ==================================== */
+
+/* ====================================
+   3.1 Buttons (Common Pattern)
+   ==================================== */
+/* Base button styles applied to multiple components */
+.transcription-buttons button,
+.api-transcription-actions button,
+.modal-button-container button,
+.ai-transcription-task-actions button {
+	padding: var(--ait-spacing-md) var(--ait-spacing-xl);
+	border-radius: var(--ait-radius-sm);
+	font-weight: var(--ait-font-weight-medium);
+	cursor: pointer;
+	transition: background-color var(--ait-transition-fast);
+}
+
+/* Primary button (CTA) */
+button.mod-cta {
+	background-color: var(--interactive-accent);
+	color: var(--text-on-accent);
+	border: none;
+}
+
+button.mod-cta:hover:not(:disabled) {
+	background-color: var(--interactive-accent-hover);
+}
+
+button.mod-cta:disabled {
+	background-color: var(--background-modifier-border);
+	color: var(--text-muted);
+	cursor: not-allowed;
+}
+
+/* ====================================
+   3.2 Progress Bars (Common Pattern)
+   ==================================== */
+/* Base progress bar container */
+.progress-bar,
+.ai-transcription-progress-bar,
+.api-transcription-progress-bar,
+.progress-wrapper .progress-bar,
+.copy-progress-container .progress-bar {
+	width: 100%;
+	height: var(--ait-progress-height);
+	background-color: var(--background-modifier-border);
+	border-radius: var(--ait-radius-sm);
+	overflow: hidden;
+}
+
+/* Progress fill */
+.progress-fill,
+.ai-transcription-progress-fill,
+.api-transcription-progress-fill,
+.progress-wrapper .progress-fill,
+.copy-progress-container .progress-fill {
+	height: 100%;
+	background-color: var(--interactive-accent);
+	transition: width var(--ait-transition-normal);
+}
+
+/* ====================================
+   4. Layout Components
+   ==================================== */
+
+/* ====================================
+   4.1 Status Bar
+   ==================================== */
+.ai-transcriber-status {
+	display: inline-flex;
+	align-items: center;
+	cursor: pointer;
+	transition: opacity var(--ait-transition-fast);
+}
+
+.ai-transcriber-status:hover {
+	opacity: 0.8;
+}
+
+.ai-transcriber-status .status-bar-icon {
+	margin-right: var(--ait-spacing-sm);
+	display: inline-flex;
+	align-items: center;
+}
+
+.ai-transcriber-status .status-bar-icon.rotating {
+	animation: rotate var(--ait-animation-spin);
+}
+
+.ai-transcriber-status .status-bar-text {
+	font-size: var(--font-ui-smaller);
+}
+
+.ai-transcriber-status .status-bar-progress {
+	display: inline-block;
+	width: var(--ait-status-bar-progress-width);
+	height: var(--ait-status-bar-progress-height);
+	background-color: var(--background-modifier-border);
+	border-radius: var(--ait-radius-xs);
+	margin-left: var(--ait-spacing-md);
+	overflow: hidden;
+}
+
+.ai-transcriber-status .status-bar-progress-bar {
+	display: block;
+	height: 100%;
+	background-color: var(--interactive-accent);
+	transition: width var(--ait-transition-normal);
+}
+
+/* ====================================
+   4.2 Transcription View
+   ==================================== */
+.ai-transcription-view {
+	padding: 0;
+	overflow: hidden;
+	display: flex;
+	flex-direction: column;
+	height: 100%;
+}
+
+.ai-transcription-view-header {
+	padding: var(--ait-spacing-xl);
+	border-bottom: 1px solid var(--background-modifier-border);
+	background-color: var(--background-secondary);
+}
+
+.ai-transcription-view-header h4 {
+	margin: 0;
+	font-size: var(--font-ui-large);
+	font-weight: var(--ait-font-weight-semibold);
+}
+
+.ai-transcription-view-content {
+	flex: 1;
+	overflow-y: auto;
+	padding: var(--ait-spacing-xl);
+}
+
+.ai-transcription-no-tasks {
+	text-align: center;
+	color: var(--text-muted);
+	padding: var(--ait-spacing-4xl);
+	font-size: var(--font-ui-medium);
+}
+
+.ai-transcription-task-list {
+	list-style: none;
+	padding: 0;
+	margin: 0;
+}
+
+.ai-transcription-task-item {
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--ait-radius-lg);
+	padding: var(--ait-spacing-xl);
+	margin-bottom: var(--ait-spacing-lg);
+	background-color: var(--background-primary);
+	transition: background-color var(--ait-transition-fast);
+}
+
+.ai-transcription-task-item:hover {
+	background-color: var(--background-secondary);
+}
+
+.ai-transcription-task-item.processing {
+	border-color: var(--interactive-accent);
+	background-color: var(--background-primary-alt);
+}
+
+.ai-transcription-task-item.completed {
+	border-color: var(--interactive-success);
+}
+
+.ai-transcription-task-item.failed {
+	border-color: var(--text-error);
+}
+
+.ai-transcription-task-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: flex-start;
+	margin-bottom: var(--ait-spacing-md);
+}
+
+.ai-transcription-task-title {
+	font-weight: var(--ait-font-weight-semibold);
+	word-break: break-word;
+	flex: 1;
+	margin-right: var(--ait-spacing-lg);
+	color: var(--text-normal);
+}
+
+.ai-transcription-task-status {
+	display: flex;
+	align-items: center;
+	gap: var(--ait-spacing-md);
+	font-size: var(--font-ui-smaller);
+}
+
+.ai-transcription-task-status-icon {
+	display: inline-flex;
+	align-items: center;
+}
+
+.ai-transcription-task-status-icon.rotating {
+	animation: rotate 1s linear infinite;
+}
+
+.ai-transcription-task-status-badge {
+	padding: var(--ait-spacing-xs) var(--ait-spacing-md);
+	border-radius: var(--ait-radius-xl);
+	font-weight: var(--ait-font-weight-medium);
+}
+
+.ai-transcription-task-status-badge.processing {
+	background-color: var(--interactive-accent);
+	color: var(--text-on-accent);
+}
+
+.ai-transcription-task-status-badge.completed {
+	background-color: var(--interactive-success);
+	color: var(--text-on-accent);
+}
+
+.ai-transcription-task-status-badge.failed {
+	background-color: var(--text-error);
+	color: var(--text-on-accent);
+}
+
+.ai-transcription-task-details {
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
+	margin-bottom: var(--ait-spacing-md);
+}
+
+.ai-transcription-task-progress {
+	margin-top: var(--ait-spacing-md);
+}
+
+/* Progress bar styles are defined in Common Components section 3.2 */
+
+.ai-transcription-task-result {
+	margin-top: var(--ait-spacing-lg);
+	padding-top: var(--ait-spacing-lg);
+	border-top: 1px solid var(--background-modifier-border);
+}
+
+.ai-transcription-task-result-preview {
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
+	max-height: 100px;
+	overflow: hidden;
+	position: relative;
+}
+
+.ai-transcription-task-result-preview.expanded {
+	max-height: none;
+}
+
+.ai-transcription-task-result-preview-fade {
+	position: absolute;
+	bottom: 0;
+	left: 0;
+	right: 0;
+	height: 30px;
+	background: linear-gradient(transparent, var(--background-primary));
+}
+
+.ai-transcription-task-result-preview.expanded .ai-transcription-task-result-preview-fade {
+	display: none;
+}
+
+.ai-transcription-task-actions {
+	display: flex;
+	gap: var(--ait-spacing-md);
+	margin-top: var(--ait-spacing-md);
+}
+
+.ai-transcription-task-actions button {
+	padding: var(--ait-spacing-sm) var(--ait-spacing-lg);
+	font-size: var(--font-ui-smaller);
+	border: 1px solid var(--background-modifier-border);
+	background-color: var(--background-primary);
+	border-radius: var(--ait-radius-sm);
+	cursor: pointer;
+	transition: background-color var(--ait-transition-fast);
+}
+
+.ai-transcription-task-actions button:hover {
+	background-color: var(--background-secondary);
+}
+
+.ai-transcription-task-actions button.primary {
+	background-color: var(--interactive-accent);
+	color: var(--text-on-accent);
+	border-color: var(--interactive-accent);
+}
+
+.ai-transcription-task-actions button.primary:hover {
+	background-color: var(--interactive-accent-hover);
+}
+
+/* ====================================
+   4.3 Settings Tab
+   ==================================== */
+.ai-transcriber-settings .setting-item-heading {
+	padding-top: var(--ait-spacing-3xl);
+	padding-bottom: var(--ait-spacing-md);
+	border-bottom: 1px solid var(--background-modifier-border);
+	margin-bottom: var(--ait-spacing-xl);
+}
+
+.ai-transcriber-settings .setting-item-heading:first-child {
+	padding-top: 0;
+}
+
+.ai-transcriber-settings .setting-item-description {
+	line-height: 1.4;
+}
+
+.ai-transcriber-settings .model-comparison {
+	margin-top: var(--ait-spacing-lg);
+	padding: var(--ait-spacing-lg);
+	background-color: var(--background-secondary);
+	border-radius: var(--ait-radius-md);
+	font-size: var(--font-ui-smaller);
+}
+
+.ai-transcriber-settings .model-comparison ul {
+	margin: var(--ait-spacing-md) 0;
+	padding-left: var(--ait-spacing-2xl);
+}
+
+.ai-transcriber-settings .model-comparison li {
+	margin: var(--ait-spacing-sm) 0;
+}
+
+/* ====================================
+   5. Modal Styles
+   ==================================== */
+
+/* ====================================
+   5.1 Modal Base & Common
+   ==================================== */
+.api-transcription-modal {
+	max-width: var(--ait-modal-max-width);
+	max-height: var(--ait-modal-max-height);
+}
+
+/* Modal Content Structure */
+.transcription-provider-info {
+	margin-bottom: var(--ait-spacing-xl);
+	padding: var(--ait-spacing-lg);
+	background-color: var(--background-secondary);
+	border-radius: var(--ait-radius-md);
+}
+
+.provider-row {
+	display: flex;
+	align-items: center;
+	gap: var(--ait-spacing-lg);
+}
+
+.provider-label {
+	font-weight: var(--ait-font-weight-medium);
+	color: var(--text-normal);
+}
+
+.model-select {
+	flex: 1;
+	padding: 6px 12px;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--ait-radius-sm);
+	background: var(--background-primary);
+	color: var(--text-normal);
+	font-size: var(--font-ui-small);
+	height: 32px;
+}
+
+.transcription-file-info {
+	margin-bottom: var(--ait-spacing-2xl);
+	padding: var(--ait-spacing-xl);
+	background-color: var(--background-secondary);
+	border-radius: var(--ait-radius-lg);
+}
+
+.file-info-row {
+	margin-bottom: var(--ait-spacing-md);
+}
+
+.file-info-row:last-child {
+	margin-bottom: 0;
+}
+
+.file-name {
+	font-weight: var(--ait-font-weight-semibold);
+	color: var(--text-normal);
+}
+
+.file-details {
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
+}
+
+.cost-row {
+	padding-top: var(--ait-spacing-md);
+	border-top: 1px solid var(--background-modifier-border);
+}
+
+.cost-info {
+	display: flex;
+	align-items: center;
+	gap: var(--ait-spacing-md);
+}
+
+.file-size-warning {
+	margin-top: var(--ait-spacing-md);
+	padding: 8px 12px;
+	background-color: var(--background-modifier-warning);
+	color: var(--text-warning);
+	border-radius: var(--ait-radius-sm);
+	font-size: var(--font-ui-smaller);
+}
+
+.transcription-time-range {
+	margin-bottom: var(--ait-spacing-2xl);
+}
+
+.time-range-loading {
+	text-align: center;
+	padding: var(--ait-spacing-5xl);
+	color: var(--text-muted);
+}
+
+.time-range-controls {
+	display: flex;
+	gap: 24px;
+	align-items: center;
+	margin-top: 12px;
+}
+
+.time-input-group {
+	display: flex;
+	align-items: center;
+	gap: var(--ait-spacing-md);
+}
+
+.time-input-group label {
+	font-weight: var(--ait-font-weight-medium);
+	white-space: nowrap;
+}
+
+.time-inputs {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+}
+
+.time-inputs input {
+	width: var(--ait-input-height-small);
+	padding: 4px;
+	text-align: center;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--ait-radius-sm);
+	background: var(--background-primary);
+	color: var(--text-normal);
+}
+
+.time-separator {
+	color: var(--text-muted);
+	font-weight: var(--ait-font-weight-medium);
+}
+
+.transcription-progress {
+	margin-bottom: var(--ait-spacing-2xl);
+}
+
+.transcription-progress p {
+	margin-bottom: var(--ait-spacing-md);
+	color: var(--text-muted);
+	font-size: var(--font-ui-smaller);
+}
+
+/* Progress bar styles are defined in Common Components section 3.2 */
+
+.transcription-buttons {
+	display: flex;
+	gap: var(--ait-spacing-lg);
+	justify-content: flex-end;
+}
+
+/* Button base styles are defined in Common Components section 3.1 */
+
+/* mod-cta button styles are defined in Common Components section 3.1 */
+
+.transcription-buttons button.mod-warning {
+	background-color: var(--background-modifier-warning);
+	color: var(--text-warning);
+	border: 1px solid var(--text-warning);
+}
+
+.transcription-buttons button.mod-warning:hover {
+	background-color: var(--text-warning);
+	color: var(--text-on-accent);
+}
+
+.transcription-buttons button:not(.mod-cta):not(.mod-warning) {
+	background-color: var(--background-primary);
+	border: 1px solid var(--background-modifier-border);
+}
+
+.transcription-buttons button:not(.mod-cta):not(.mod-warning):hover {
+	background-color: var(--background-secondary);
+}
+
+.api-transcription-modal .modal-content {
+	padding: 0;
+	display: flex;
+	flex-direction: column;
+	height: 100%;
+}
+
+.api-transcription-modal-header {
+	padding: var(--ait-spacing-2xl);
+	border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.api-transcription-modal-body {
+	flex: 1;
+	overflow-y: auto;
+	padding: var(--ait-spacing-2xl);
+}
+
+.api-transcription-modal-footer {
+	padding: 16px 20px;
+	border-top: 1px solid var(--background-modifier-border);
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+}
+
+.api-transcription-file-info {
+	margin-bottom: var(--ait-spacing-2xl);
+	padding: var(--ait-spacing-xl);
+	background-color: var(--background-secondary);
+	border-radius: var(--ait-radius-lg);
+}
+
+.api-transcription-file-info h4 {
+	margin: 0 0 12px 0;
+	font-size: var(--font-ui-medium);
+	font-weight: var(--ait-font-weight-semibold);
+}
+
+.api-transcription-file-details {
+	display: flex;
+	gap: 20px;
+	font-size: var(--font-ui-small);
+}
+
+.api-transcription-file-detail {
+	display: flex;
+	align-items: center;
+	gap: var(--ait-spacing-md);
+}
+
+.api-transcription-file-detail-label {
+	color: var(--text-muted);
+}
+
+.api-transcription-file-detail-value {
+	font-weight: var(--ait-font-weight-medium);
+}
+
+.api-transcription-settings {
+	margin-bottom: var(--ait-spacing-2xl);
+}
+
+.api-transcription-setting-item {
+	margin-bottom: var(--ait-spacing-xl);
+}
+
+.api-transcription-setting-item label {
+	display: block;
+	margin-bottom: 6px;
+	font-weight: var(--ait-font-weight-medium);
+}
+
+.api-transcription-status {
+	display: flex;
+	align-items: center;
+	gap: var(--ait-spacing-md);
+}
+
+.api-transcription-status-icon {
+	display: inline-flex;
+	align-items: center;
+}
+
+.api-transcription-status-icon.rotating {
+	animation: rotate 1s linear infinite;
+}
+
+.api-transcription-status-text {
+	font-size: var(--font-ui-small);
+	color: var(--text-muted);
+}
+
+.api-transcription-progress {
+	margin-top: 12px;
+}
+
+/* Progress bar styles are defined in Common Components section 3.2 */
+
+.api-transcription-actions {
+	display: flex;
+	gap: var(--ait-spacing-lg);
+}
+
+/* Button styles are defined in Common Components section 3.1 */
+
+.api-transcription-actions button:not(.mod-cta) {
+	background-color: var(--background-primary);
+	border: 1px solid var(--background-modifier-border);
+}
+
+.api-transcription-actions button:not(.mod-cta):hover {
+	background-color: var(--background-secondary);
+}
+
+/* Cost Estimate Styles */
+.api-transcription-cost-estimate {
+	margin: var(--ait-spacing-xl) 0;
+	padding: var(--ait-spacing-xl);
+	background-color: var(--background-secondary-alt);
+	border-radius: var(--ait-radius-lg);
+	border: 1px solid var(--background-modifier-border);
+}
+
+.api-transcription-cost-estimate h4 {
+	margin: 0 0 8px 0;
+	font-size: var(--font-ui-medium);
+	font-weight: var(--ait-font-weight-semibold);
+	display: flex;
+	align-items: center;
+	gap: var(--ait-spacing-md);
+}
+
+.api-transcription-cost-value {
+	font-size: var(--font-ui-large);
+	font-weight: var(--ait-font-weight-bold);
+	color: var(--interactive-accent);
+	margin: 8px 0;
+}
+
+.api-transcription-cost-details {
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
+	margin-top: var(--ait-spacing-md);
+}
+
+.api-transcription-cost-note {
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
+	font-style: italic;
+	margin-top: var(--ait-spacing-md);
+}
+
+/* Audio Range Selection Styles */
+.audio-range-section {
+	margin: 20px 0;
+	padding: var(--ait-spacing-xl);
+	background-color: var(--background-secondary);
+	border-radius: var(--ait-radius-lg);
+}
+
+.audio-range-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-bottom: var(--ait-spacing-lg);
+}
+
+.audio-range-toggle {
+	display: flex;
+	align-items: center;
+	gap: var(--ait-spacing-md);
+}
+
+.audio-range-toggle label {
+	margin: 0;
+	font-weight: normal;
+	cursor: pointer;
+}
+
+.audio-range-inputs {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: var(--ait-spacing-xl);
+	margin-top: 12px;
+}
+
+.audio-range-input-group {
+	display: flex;
+	flex-direction: column;
+	gap: var(--ait-spacing-md);
+}
+
+.audio-range-input-group label {
+	font-size: var(--font-ui-smaller);
+	font-weight: var(--ait-font-weight-medium);
+	color: var(--text-muted);
+}
+
+.audio-range-input-group input {
+	padding: 6px 10px;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--ait-radius-sm);
+	background: var(--background-primary);
+	color: var(--text-normal);
+}
+
+.audio-range-input-group input:focus {
+	border-color: var(--interactive-accent);
+	outline: none;
+}
+
+.audio-range-input-group input:disabled {
+	background-color: var(--background-modifier-border);
+	color: var(--text-muted);
+}
+
+.audio-range-info {
+	margin-top: 12px;
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
+	display: flex;
+	align-items: center;
+	gap: var(--ait-spacing-md);
+}
+
+/* Meta Info Button Styles */
+.meta-info-button {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--ait-spacing-md);
+	padding: 6px 12px;
+	background-color: var(--background-secondary);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--ait-radius-sm);
+	cursor: pointer;
+	transition: all var(--ait-transition-fast);
+	font-size: var(--font-ui-small);
+	color: var(--text-normal);
+}
+
+.meta-info-button:hover {
+	background-color: var(--background-secondary-alt);
+	border-color: var(--interactive-accent);
+}
+
+.meta-info-button.filled {
+	background-color: var(--interactive-accent);
+	color: var(--text-on-accent);
+	border-color: var(--interactive-accent);
+}
+
+.meta-info-button.filled:hover {
+	background-color: var(--interactive-accent-hover);
+}
+
+/* Post-processing Modal Styles */
+.post-processing-modal {
+	max-width: 800px;
+}
+
+.post-processing-modal .modal-content {
+	padding: 0;
+	display: flex;
+	flex-direction: column;
+	max-height: var(--ait-modal-max-height);
+}
+
+/* Transcription Meta Modal Styles */
+.transcription-meta-modal {
+	padding: var(--ait-spacing-2xl);
+}
+
+.transcription-meta-modal h2 {
+	margin-bottom: var(--ait-spacing-xl);
+}
+
+.transcription-meta-modal .setting-item-description {
+	margin-bottom: var(--ait-spacing-2xl);
+	color: var(--text-muted);
+}
+
+.meta-input-section {
+	margin-bottom: var(--ait-spacing-2xl);
+}
+
+.meta-input-section h3 {
+	margin-bottom: var(--ait-spacing-lg);
+	font-size: var(--font-ui-medium);
+}
+
+.meta-input-container {
+	margin-bottom: var(--ait-spacing-xl);
+}
+
+.meta-input-description {
+	margin-bottom: var(--ait-spacing-md);
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
+}
+
+.meta-input-textarea {
+	width: 100%;
+	min-height: var(--ait-textarea-large-height);
+	padding: var(--ait-spacing-lg);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--ait-radius-md);
+	background: var(--background-primary);
+	color: var(--text-normal);
+	resize: vertical;
+	font-family: inherit;
+	font-size: var(--font-ui-small);
+}
+
+.post-processing-modal-header {
+	padding: var(--ait-spacing-2xl);
+	border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.post-processing-modal-header h2 {
+	margin: 0 0 8px 0;
+}
+
+.post-processing-modal-header p {
+	margin: 0;
+	color: var(--text-muted);
+	font-size: var(--font-ui-small);
+}
+
+.post-processing-modal-body {
+	flex: 1;
+	overflow-y: auto;
+	padding: var(--ait-spacing-2xl);
+}
+
+.post-processing-preview {
+	margin-bottom: var(--ait-spacing-2xl);
+}
+
+.post-processing-preview h3 {
+	margin: 0 0 12px 0;
+	font-size: var(--font-ui-medium);
+}
+
+.post-processing-preview-content {
+	padding: var(--ait-spacing-lg);
+	background-color: var(--background-secondary);
+	border-radius: var(--ait-radius-md);
+	max-height: var(--ait-preview-max-height);
+	overflow-y: auto;
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
+	white-space: pre-wrap;
+}
+
+.post-processing-input {
+	margin-bottom: var(--ait-spacing-2xl);
+}
+
+.post-processing-input h3 {
+	margin: 0 0 12px 0;
+	font-size: var(--font-ui-medium);
+}
+
+.post-processing-input textarea {
+	width: 100%;
+	min-height: var(--ait-textarea-min-height);
+	padding: var(--ait-spacing-lg);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--ait-radius-md);
+	background: var(--background-primary);
+	color: var(--text-normal);
+	resize: vertical;
+	font-family: inherit;
+	font-size: var(--font-ui-small);
+}
+
+.post-processing-input textarea:focus {
+	border-color: var(--interactive-accent);
+	outline: none;
+}
+
+.post-processing-input-description {
+	margin-top: var(--ait-spacing-md);
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
+}
+
+.post-processing-options {
+	margin-bottom: var(--ait-spacing-2xl);
+	padding: var(--ait-spacing-xl);
+	background-color: var(--background-secondary);
+	border-radius: var(--ait-radius-lg);
+}
+
+.post-processing-options h3 {
+	margin: 0 0 12px 0;
+	font-size: var(--font-ui-medium);
+}
+
+.post-processing-option {
+	display: flex;
+	align-items: center;
+	gap: var(--ait-spacing-md);
+	margin-bottom: var(--ait-spacing-md);
+}
+
+.post-processing-option:last-child {
+	margin-bottom: 0;
+}
+
+.post-processing-option label {
+	flex: 1;
+	cursor: pointer;
+}
+
+.post-processing-modal-footer {
+	padding: 16px 20px;
+	border-top: 1px solid var(--background-modifier-border);
+	display: flex;
+	justify-content: flex-end;
+	gap: var(--ait-spacing-lg);
+}
+
+.post-processing-modal-footer button {
+	padding: 8px 16px;
+	border-radius: var(--ait-radius-sm);
+	font-weight: var(--ait-font-weight-medium);
+	cursor: pointer;
+	transition: background-color var(--ait-transition-fast);
+}
+
+.post-processing-modal-footer button.mod-cta {
+	background-color: var(--interactive-accent);
+	color: var(--text-on-accent);
+	border: none;
+}
+
+.post-processing-modal-footer button.mod-cta:hover {
+	background-color: var(--interactive-accent-hover);
+}
+
+.post-processing-modal-footer button.mod-cta:disabled {
+	background-color: var(--background-modifier-border);
+	color: var(--text-muted);
+	cursor: not-allowed;
+}
+
+.post-processing-modal-footer button:not(.mod-cta) {
+	background-color: var(--background-primary);
+	border: 1px solid var(--background-modifier-border);
+}
+
+.post-processing-modal-footer button:not(.mod-cta):hover {
+	background-color: var(--background-secondary);
+}
+
+/* Dictionary Settings Styles */
+.dictionary-table-container {
+	margin: var(--ait-spacing-xl) 0;
+}
+
+.dictionary-table {
+	width: 100%;
+	border-collapse: collapse;
+	margin-bottom: var(--ait-spacing-lg);
+}
+
+.dictionary-table th {
+	text-align: left;
+	padding: 8px;
+	border-bottom: 2px solid var(--background-modifier-border);
+	font-weight: var(--ait-font-weight-semibold);
+}
+
+.dictionary-table td {
+	padding: 4px 8px;
+	border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.dictionary-table td input {
+	width: 100%;
+	padding: 4px 8px;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--ait-radius-sm);
+	background: var(--background-primary);
+	color: var(--text-normal);
+}
+
+.dictionary-table td select,
+.dictionary-table td .dropdown {
+	width: 100%;
+	padding: 4px 8px;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--ait-radius-sm);
+	background: var(--background-primary);
+	color: var(--text-normal);
+}
+
+.dictionary-table td:nth-child(3),
+.dictionary-table td:nth-child(4) {
+	width: var(--ait-table-width-large);
+}
+
+.dictionary-table td:nth-child(5) {
+	width: var(--ait-table-width-xlarge);
+}
+
+.dictionary-table td input:focus {
+	border-color: var(--interactive-accent);
+	outline: none;
+}
+
+.dictionary-table .action-column {
+	width: var(--ait-table-width-small);
+	text-align: center;
+}
+
+.dictionary-delete-button {
+	background: none;
+	border: none;
+	color: var(--text-error);
+	font-size: 20px;
+	line-height: 1;
+	cursor: pointer;
+	padding: 4px 8px;
+	border-radius: var(--ait-radius-sm);
+	transition: background-color var(--ait-transition-fast);
+}
+
+.dictionary-delete-button:hover {
+	background-color: var(--background-modifier-error);
+}
+
+.dictionary-add-button {
+	margin-top: var(--ait-spacing-md);
+	padding: 6px 12px;
+	background-color: var(--interactive-accent);
+	color: var(--text-on-accent);
+	border: none;
+	border-radius: var(--ait-radius-sm);
+	cursor: pointer;
+	font-weight: var(--ait-font-weight-medium);
+	transition: background-color var(--ait-transition-fast);
+}
+
+.dictionary-add-button:hover {
+	background-color: var(--interactive-accent-hover);
+}
+
+/* Dictionary section headers */
+.dictionary-section-header {
+	display: flex;
+	align-items: baseline;
+	gap: var(--ait-spacing-sm);
+	margin-bottom: var(--ait-spacing-lg);
+}
+
+.dictionary-section-header h3 {
+	margin: 0;
+	display: inline-block;
+}
+
+.dictionary-limit-info {
+	color: var(--text-muted);
+	font-size: var(--font-smaller);
+	font-weight: normal;
+}
+
+/* Processing Options Section */
+.processing-options-section {
+	margin: var(--ait-spacing-xl) 0;
+	padding: var(--ait-spacing-xl);
+	background-color: var(--background-secondary);
+	border-radius: var(--ait-radius-lg);
+}
+
+.setting-item-separator {
+	height: 1px;
+	background-color: var(--background-modifier-border);
+	margin: 8px 0;
+}
+
+.processing-options-section h3 {
+	margin: 0 0 12px 0;
+	font-size: var(--font-ui-medium);
+	font-weight: var(--ait-font-weight-semibold);
+}
+
+.processing-options-section .setting-item {
+	margin-bottom: var(--ait-spacing-lg);
+}
+
+.processing-options-section .setting-item:last-child {
+	margin-bottom: 0;
+}
+
+.processing-options-section .setting-item-control {
+	display: flex;
+	align-items: center;
+	gap: var(--ait-spacing-md);
+}
+
+.processing-options-section input[type="checkbox"].toggle {
+	margin: 0;
+}
+
+.processing-options-section .folder-input-container {
+	display: flex;
+	gap: var(--ait-spacing-md);
+	align-items: center;
+}
+
+.processing-options-section .folder-input-container input {
+	flex: 1;
+	padding: 4px 8px;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--ait-radius-sm);
+	background: var(--background-primary);
+	color: var(--text-normal);
+}
+
+.processing-options-section .folder-input-container button {
+	padding: 4px 12px;
+	font-size: var(--font-ui-smaller);
+}
+
+/* Dictionary Tab Bar Container */
+.dictionary-tab-bar {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-bottom: var(--ait-spacing-3xl);
+	border-bottom: 1px solid var(--background-modifier-border);
+}
+
+/* Dictionary Language Tabs Styles - Obsidian Style */
+.dictionary-language-tabs {
+	display: flex;
+	gap: 0;
+}
+
+.dictionary-tab {
+	padding: 8px 16px;
+	background: none;
+	border: none;
+	border-bottom: 2px solid transparent;
+	cursor: pointer;
+	font-weight: var(--ait-font-weight-medium);
+	transition: all var(--ait-transition-fast);
+	color: var(--text-muted);
+	position: relative;
+}
+
+.dictionary-tab:hover {
+	color: var(--text-normal);
+}
+
+.dictionary-tab.active {
+	color: var(--interactive-accent);
+	border-bottom-color: var(--interactive-accent);
+}
+
+.dictionary-tab.active:hover {
+	color: var(--interactive-accent-hover);
+}
+
+/* Dictionary Management Modal Styles */
+.dictionary-management-modal {
+	max-width: var(--ait-modal-width-xlarge);
+	max-height: var(--ait-modal-max-height);
+}
+
+.dictionary-management-modal .modal-content {
+	padding: var(--ait-spacing-2xl);
+	overflow-y: auto;
+}
+
+.dictionary-management-modal h2 {
+	margin-bottom: var(--ait-spacing-xl);
+}
+
+.dictionary-import-export {
+	display: flex;
+	gap: var(--ait-spacing-sm);
+	padding-bottom: 2px;
+}
+
+.dictionary-export-button,
+.dictionary-import-button {
+	padding: 4px 8px;
+	background: none;
+	border: none;
+	color: var(--text-muted);
+	font-size: 16px;
+	cursor: pointer;
+	border-radius: var(--ait-radius-sm);
+	transition: color var(--ait-transition-fast), background-color var(--ait-transition-fast);
+}
+
+.dictionary-export-button:hover,
+.dictionary-import-button:hover {
+	color: var(--text-normal);
+	background-color: var(--background-modifier-hover);
+}
+
+.dictionary-content {
+	margin-bottom: var(--ait-spacing-2xl);
+}
+
+.dictionary-section {
+	margin-bottom: var(--ait-spacing-3xl);
+}
+
+.dictionary-section h3 {
+	margin-bottom: var(--ait-spacing-lg);
+	font-size: var(--font-ui-medium);
+	font-weight: var(--ait-font-weight-semibold);
+}
+
+/* Transcription View Panel Styles */
+/* Progress Section */
+.transcription-progress-section {
+	margin-bottom: var(--ait-spacing-3xl);
+	padding-bottom: 20px;
+	border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.progress-container .no-task-message,
+.history-container .no-history-message {
+	color: var(--text-muted);
+	font-style: italic;
+	padding: 16px 0;
+}
+
+.task-file-info {
+	margin-bottom: var(--ait-spacing-lg);
+}
+
+.task-file-info .file-name {
+	font-weight: var(--ait-font-weight-semibold);
+	color: var(--text-normal);
+}
+
+.progress-wrapper {
+	margin-bottom: var(--ait-spacing-lg);
+}
+
+.progress-wrapper .progress-bar {
+	width: 100%;
+	height: 8px;
+	background-color: var(--background-modifier-border);
+	border-radius: var(--ait-radius-sm);
+	overflow: hidden;
+}
+
+.progress-wrapper .progress-fill {
+	height: 100%;
+	background-color: var(--interactive-accent);
+	transition: width var(--ait-transition-normal);
+}
+
+.progress-wrapper .progress-text {
+	margin-top: 4px;
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
+}
+
+.task-status {
+	margin: 8px 0;
+	font-size: var(--font-ui-small);
+}
+
+.task-time {
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
+}
+
+.task-error {
+	margin-top: 12px;
+	padding: 8px;
+	background-color: var(--background-modifier-error);
+	color: var(--text-error);
+	border-radius: var(--ait-radius-sm);
+	font-size: var(--font-ui-smaller);
+}
+
+.cancel-task-button {
+	margin-top: 12px;
+}
+
+/* History Section */
+.transcription-history-section {
+	margin-bottom: var(--ait-spacing-3xl);
+}
+
+.history-list {
+	display: flex;
+	flex-direction: column;
+	gap: var(--ait-spacing-md);
+}
+
+.history-item {
+	padding: var(--ait-spacing-lg);
+	background-color: var(--background-secondary);
+	border-radius: var(--ait-radius-md);
+	border: 1px solid var(--background-modifier-border);
+}
+
+.history-item.clickable {
+	cursor: pointer;
+}
+
+.history-item.clickable:hover {
+	background-color: var(--background-secondary-alt);
+	border-color: var(--interactive-accent);
+}
+
+.history-item-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: flex-start;
+	margin-bottom: 4px;
+	gap: var(--ait-spacing-lg);
+}
+
+.history-item-header > span:first-child {
+	flex: 1;
+	word-break: break-word;
+}
+
+.history-item-time {
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
+	white-space: nowrap;
+	flex-shrink: 0;
+}
+
+.history-item-source {
+	margin: 4px 0;
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
+}
+
+.source-file-info {
+	display: inline-block;
+}
+
+.history-item-details {
+	display: flex;
+	gap: var(--ait-spacing-lg);
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
+}
+
+.partial-info {
+	color: var(--text-warning);
+}
+
+.transcription-preview {
+	color: var(--text-muted);
+	font-style: italic;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	max-width: 300px;
+}
+
+/* Controls Section */
+.transcription-controls-section {
+	padding-top: 20px;
+}
+
+.controls-container {
+	display: flex;
+	justify-content: space-between;
+	gap: var(--ait-spacing-md);
+}
+
+/* Audio File Selection Modal Styles */
+.audio-file-selection-controls {
+	display: flex;
+	gap: var(--ait-spacing-xl);
+	margin-bottom: var(--ait-spacing-xl);
+	align-items: center;
+}
+
+.search-input-container {
+	flex: 1;
+}
+
+.search-input-container .audio-file-search {
+	width: 100%;
+	padding: 6px 12px;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--ait-radius-sm);
+	background: var(--background-primary);
+	color: var(--text-normal);
+}
+
+.search-input-container .audio-file-search:focus {
+	border-color: var(--interactive-accent);
+	outline: none;
+}
+
+.sort-container {
+	min-width: 200px;
+}
+
+.sort-container .setting-item-control {
+	display: flex;
+	gap: var(--ait-spacing-md);
+	align-items: center;
+}
+
+.sort-container .setting-item-control button {
+	min-width: 32px;
+	padding: 4px 8px;
+	font-weight: bold;
+}
+
+.audio-file-list-container {
+	height: var(--ait-file-list-height);
+	overflow-y: auto;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--ait-radius-sm);
+	margin-bottom: var(--ait-spacing-xl);
+}
+
+.no-files-message {
+	text-align: center;
+	padding: var(--ait-spacing-5xl);
+	color: var(--text-muted);
+}
+
+.audio-file-table {
+	width: 100%;
+	border-collapse: collapse;
+}
+
+.audio-file-table th {
+	text-align: left;
+	padding: 8px 12px;
+	background-color: var(--background-secondary);
+	border-bottom: 1px solid var(--background-modifier-border);
+	font-weight: var(--ait-font-weight-semibold);
+	position: sticky;
+	top: 0;
+	z-index: 1;
+}
+
+.audio-file-table td {
+	padding: 8px 12px;
+	border-bottom: 1px solid var(--background-modifier-border-hover);
+}
+
+.audio-file-table tr {
+	cursor: pointer;
+	transition: background-color var(--ait-transition-fast);
+}
+
+.audio-file-table tr:hover {
+	background-color: var(--background-modifier-hover);
+}
+
+.audio-file-table tr.selected {
+	background-color: var(--interactive-accent);
+}
+
+.audio-file-table tr.selected td {
+	color: var(--text-on-accent);
+}
+
+/* File Copy Progress */
+.copy-progress-container {
+	padding: var(--ait-spacing-5xl);
+	text-align: center;
+}
+
+.copy-progress-container h3 {
+	margin-bottom: var(--ait-spacing-2xl);
+	color: var(--text-normal);
+}
+
+.copy-progress-container .progress-bar {
+	width: 100%;
+	height: 8px;
+	background-color: var(--background-modifier-border);
+	border-radius: var(--ait-radius-sm);
+	overflow: hidden;
+	margin-bottom: var(--ait-spacing-lg);
+}
+
+.copy-progress-container .progress-fill {
+	height: 100%;
+	background-color: var(--interactive-accent);
+	transition: width var(--ait-transition-normal);
+	width: 0%;
+}
+
+.copy-progress-container .progress-text {
+	font-size: var(--font-ui-small);
+	color: var(--text-muted);
+}
+
+/* External file notice styles */
+.external-file-notice {
+	margin: var(--ait-spacing-xl) 0;
+	padding: var(--ait-spacing-lg);
+	background-color: var(--background-secondary);
+	border-radius: var(--ait-radius-sm);
+	border: 1px solid var(--background-modifier-border);
+}
+
+.external-file-notice-text {
+	margin: 0;
+	font-size: 0.9em;
+	color: var(--text-muted);
+	line-height: 1.4;
+}
+
+.audio-file-table .file-path {
+	color: var(--text-muted);
+}
+
+/* ====================================
+   Buy Me a Coffee Banner
+   ==================================== */
+.bmc-spacer {
+	height: var(--ait-spacing-5xl);
+}
+
+.bmc-support-section {
+	margin-top: var(--ait-spacing-5xl);
+	text-align: center;
+}
+
+.bmc-support-message {
+	margin-bottom: var(--ait-spacing-2xl);
+	font-size: var(--font-ui-small);
+	color: var(--text-muted);
+	line-height: 1.5;
+}
+
+.bmc-banner {
+	display: inline-block;
+	transition: transform 0.3s ease, opacity 0.3s ease;
+}
+
+.bmc-banner:hover {
+	transform: translateY(-2px);
+	opacity: 0.9;
+}
+
+.bmc-banner img {
+	display: block;
+	border-radius: 8px;
+}
+
+/* ====================================
+   5.1.1 Modal Button Container (Common)
+   ==================================== */
+.modal-button-container {
+	display: flex;
+	gap: var(--ait-spacing-md);
+	justify-content: flex-end;
+	padding-top: var(--ait-spacing-xl);
+	border-top: 1px solid var(--background-modifier-border);
+}
+
+.modal-button-container button {
+	padding: var(--ait-spacing-md) var(--ait-spacing-xl);
+	border-radius: var(--ait-radius-sm);
+	cursor: pointer;
+	min-width: 80px;
+	transition: background-color var(--ait-transition-fast);
+}
+
+.modal-button-container button.mod-cta {
+	background-color: var(--interactive-accent);
+	color: var(--text-on-accent);
+	border: none;
+}
+
+.modal-button-container button.mod-cta:hover:not(:disabled) {
+	background-color: var(--interactive-accent-hover);
+}
+
+.modal-button-container button.mod-cta:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
+}
+
+.modal-button-container button.mod-cta.mod-primary {
+	order: 2;
+}
+
+.modal-button-container button:not(.mod-cta) {
+	background-color: var(--background-primary);
+	border: 1px solid var(--background-modifier-border);
+	color: var(--text-normal);
+}
+
+.modal-button-container button:not(.mod-cta):hover {
+	background-color: var(--background-secondary);
+}

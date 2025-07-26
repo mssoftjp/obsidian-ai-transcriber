@@ -1,0 +1,98 @@
+# Dependencies
+node_modules/
+npm-debug.log*
+
+# Build outputs
+# main.js is now generated in build/ directory
+main.js.map
+
+# Environment files
+.env
+.env.local
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Binaries and models (too large for git)
+binaries/
+models/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Logs
+logs/
+*.log
+
+# Build directory
+build/
+
+# Test coverage reports
+coverage/
+
+# AI tools configuration
+# Claude
+CLAUDE.md
+claude.md
+CLAUDE.local.md
+claude.local.md
+.claude
+.claude/
+
+# GitHub Copilot
+.copilot
+.github/copilot*
+copilot-instructions.md
+
+# Google Gemini/Bard
+.gemini
+gemini.config.*
+.bard
+
+# OpenAI/ChatGPT
+.openai
+.chatgpt
+chatgpt.md
+
+# Cursor
+.cursor
+.cursorignore
+.cursorrules
+
+# Codeium
+.codeium
+codeium.config.*
+
+# Amazon CodeWhisperer
+.codewhisperer
+
+# Tabnine
+.tabnine
+
+# Kite
+.kite
+
+# Other AI assistants
+.ai
+.ai-config
+.aiconfig
+ai-instructions.md
+AI-INSTRUCTIONS.md
+AGENTS.md
+agents.md
+.kiro
+.windsurf
