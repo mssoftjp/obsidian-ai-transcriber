@@ -4,16 +4,14 @@ A powerful speech-to-text transcription plugin for Obsidian that uses OpenAI's G
 
 ## Features
 
-- **Live Recording**: Record audio directly within Obsidian
 - **File Transcription**: Transcribe existing audio files (MP3, WAV, WebM, M4A, etc.)
-- **AI-Powered**: Uses OpenAI's state-of-the-art models (GPT-4o and Whisper)
+- **AI-Powered**: Uses OpenAI's models (GPT-4o and Whisper)
 - **Post-Processing**: Optional transcript enhancement for better readability
 - **Multi-Language**: Supports multiple languages with automatic detection
-- **Customizable**: Flexible settings for different use cases
 
 ## Requirements
 
-- Obsidian v0.15.0 or higher
+- Obsidian v17.0 or higher
 - OpenAI API account with API key
 - Internet connection for API calls
 
@@ -60,13 +58,6 @@ A powerful speech-to-text transcription plugin for Obsidian that uses OpenAI's G
 
 ### Recording Audio
 
-1. Click the icon in the ribbon (left sidebar)
-2. Or use the command palette: "AI Transcriber: Start recording"
-3. Click "Start Recording" in the modal
-4. Speak clearly into your microphone
-5. Click "Stop Recording" when finished
-6. The transcription will be processed and saved to your vault
-
 ### Transcribing Audio Files
 
 1. Use the command palette: "AI Transcriber: Transcribe audio file"
@@ -82,13 +73,8 @@ A powerful speech-to-text transcription plugin for Obsidian that uses OpenAI's G
 - **Model Selection**: Choose between GPT-4o Transcribe, GPT-4o Mini Transcribe, and Whisper
 - **Language**: Auto-detect or specify a language
 
-### Audio Settings
-- **Sample Rate**: Audio quality setting (16000Hz recommended)
-- **Audio Format**: WebM (recommended for compatibility)
-
 ### Output Settings
 - **Save Location**: Folder for transcribed notes
-- **File Naming**: Customize how transcription files are named
 - **Post-Processing**: Enable/disable transcript enhancement
 
 ### Dictionary Settings
@@ -187,16 +173,14 @@ OpenAIのGPT-4oとWhisper APIを使用したObsidian用の強力な音声認識�
 
 ## 機能
 
-- **ライブ録音**: Obsidian内で直接音声を録音
 - **ファイル文字起こし**: 既存の音声ファイル（MP3、WAV、WebM、M4Aなど）を文字起こし
-- **AI駆動**: OpenAIの最先端モデル（GPT-4oとWhisper）を使用
+- **AI駆動**: OpenAIのモデル（GPT-4oとWhisper）を使用
 - **後処理**: 読みやすさを向上させるオプションのtranscript強化機能
 - **多言語対応**: 自動検出による複数言語のサポート
-- **カスタマイズ可能**: さまざまな用途に対応する柔軟な設定
 
 ## 必要条件
 
-- Obsidian v0.15.0以上
+- Obsidian v17.0以上
 - API キーを持つOpenAI APIアカウント
 - API呼び出し用のインターネット接続
 
@@ -241,15 +225,6 @@ OpenAIのGPT-4oとWhisper APIを使用したObsidian用の強力な音声認識�
 
 ## 使用方法
 
-### 音声の録音
-
-1. リボン（左サイドバー）のアイコンをクリック
-2. またはコマンドパレット: 「AI Transcriber: 録音を開始」を使用
-3. モーダルで「録音開始」をクリック
-4. マイクに向かってはっきりと話す
-5. 終了したら「録音停止」をクリック
-6. 文字起こしが処理され、vaultに保存されます
-
 ### 音声ファイルの文字起こし
 
 1. コマンドパレット: 「AI Transcriber: 音声ファイルを文字起こし」を使用
@@ -265,13 +240,8 @@ OpenAIのGPT-4oとWhisper APIを使用したObsidian用の強力な音声認識�
 - **モデル選択**: GPT-4o Transcribe、GPT-4o Mini Transcribe、Whisperから選択
 - **言語**: 自動検出または言語を指定
 
-### 音声設定
-- **サンプルレート**: 音質設定（16000Hz推奨）
-- **音声形式**: WebM（互換性のため推奨）
-
 ### 出力設定
 - **保存場所**: 文字起こしノートのフォルダ
-- **ファイル名**: 文字起こしファイルの命名方法をカスタマイズ
 - **後処理**: transcript強化の有効/無効
 
 ### 辞書設定
@@ -341,7 +311,7 @@ OpenAIのGPT-4oとWhisper APIを使用したObsidian用の強力な音声認識�
 このプラグインには独自のライセンスを持つサードパーティソフトウェアが含まれています。詳細は[THIRD-PARTY-LICENSES.md](THIRD-PARTY-LICENSES.md)をご覧ください。
 
 主なサードパーティコンポーネント：
-- **WebRTC VAD (@echogarden/fvad-wasm)**: BSD-3-Clauseライセンス - 音声区間検出に使用
+- **WebRTC VAD (@echogarden/fvad-wasm)**: - 音声区間検出に使用
 
 ## 謝辞
 
