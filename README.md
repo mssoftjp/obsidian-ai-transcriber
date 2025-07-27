@@ -42,7 +42,7 @@ A powerful speech-to-text transcription plugin for Obsidian that uses OpenAI's G
 4. Create a new API key
 5. Copy the key (you won't be able to see it again!)
 
-**Important**: OpenAI API is a paid service. You will be charged based on usage. Please check [OpenAI's pricing page](https://openai.com/pricing) for current rates.
+**Important**: OpenAI API is a paid service. You will be charged based on usage. Please check [OpenAI's pricing page](https://openai.com/api/pricing) for current rates.
 
 ### Configuring the Plugin
 
@@ -211,7 +211,7 @@ OpenAIのGPT-4oとWhisper APIを使用したObsidian用の強力な音声認識�
 4. 新しいAPIキーを作成
 5. キーをコピー（再度表示されません！）
 
-**重要**: OpenAI APIは有料サービスです。使用量に基づいて課金されます。現在の料金は[OpenAIの価格ページ](https://openai.com/pricing)をご確認ください。
+**重要**: OpenAI APIは有料サービスです。使用量に基づいて課金されます。現在の料金は[OpenAIの価格ページ](https://openai.com/api/pricing)をご確認ください。
 
 ### プラグインの設定
 
