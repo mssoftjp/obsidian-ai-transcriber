@@ -401,7 +401,7 @@ export default class AITranscriberPlugin extends Plugin {
 	private async loadUserDictionary(): Promise<void> {
 		this.logger.debug('Loading user dictionary...');
 		try {
-			const dictionaryPath = '.obsidian/plugins/obsidian-ai-transcriber/user-dictionary.json';
+			const dictionaryPath = `${this.app.vault.configDir}/plugins/obsidian-ai-transcriber/user-dictionary.json`;
 			
 			// Check if dictionary file exists
 			if (await this.app.vault.adapter.exists(dictionaryPath)) {
@@ -472,7 +472,7 @@ export default class AITranscriberPlugin extends Plugin {
 	private async saveUserDictionary(): Promise<void> {
 		this.logger.debug('Saving user dictionary...');
 		try {
-			const dictionaryPath = '.obsidian/plugins/obsidian-ai-transcriber/user-dictionary.json';
+			const dictionaryPath = `${this.app.vault.configDir}/plugins/obsidian-ai-transcriber/user-dictionary.json`;
 			
 			// Save only userDictionaries (new format)
 			if (this.settings.userDictionaries) {
