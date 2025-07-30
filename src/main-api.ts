@@ -134,9 +134,6 @@ export default class AITranscriberPlugin extends Plugin {
 	async onunload() {
 		this.logger.info('Unloading AI Transcriber plugin...');
 		
-		// Clean up views
-		this.app.workspace.detachLeavesOfType(VIEW_TYPE_TRANSCRIPTION);
-
 		// Clean up status bar
 		if (this.statusBarManager) {
 			this.statusBarManager.destroy();
