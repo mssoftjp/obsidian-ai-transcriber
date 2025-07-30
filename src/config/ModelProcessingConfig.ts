@@ -181,7 +181,7 @@ export const DEFAULT_TRANSCRIPTION_CONFIG: TranscriptionConfig = {
 				overlapDurationSeconds: 5, // 5 seconds overlap between chunks
 				chunkDurationVariance: 5, // ±5 seconds (20-30s range)
 				minSilenceForSplit: 0.5, // 500ms of silence
-				forceSpiltAfterExtra: 3, // 3 seconds extra before forced split
+				forceSplitAfterExtra: 3, // 3 seconds extra before forced split
 				minChunkSize: 0.1, // 100ms minimum chunk size to avoid API errors
 				optimizeBoundaries: true // Enable boundary optimization for natural breaks
 			},
