@@ -127,22 +127,25 @@ export abstract class ApiClient {
 				
 				// Build multipart/form-data manually
 				const formData = options.body as FormData;
-				// @ts-ignore - FormData iterator exists at runtime
-				for (const [key, value] of formData) {
-					chunks.push(encoder.encode(`--${boundary}\r\n`));
-					
-					if (value instanceof File) {
-						// Handle file fields
-						chunks.push(encoder.encode(`Content-Disposition: form-data; name="${key}"; filename="${value.name}"\r\n`));
-						chunks.push(encoder.encode(`Content-Type: ${value.type || 'application/octet-stream'}\r\n\r\n`));
-						chunks.push(new Uint8Array(await value.arrayBuffer()));
-						chunks.push(encoder.encode('\r\n'));
-					} else {
-						// Handle text fields
-						chunks.push(encoder.encode(`Content-Disposition: form-data; name="${key}"\r\n\r\n`));
-						chunks.push(encoder.encode(String(value)));
-						chunks.push(encoder.encode('\r\n'));
+				if (typeof FormData.prototype.entries === 'function') {
+					for (const [key, value] of formData.entries()) {
+						chunks.push(encoder.encode(`--${boundary}\r\n`));
+						
+						if (value instanceof File) {
+							// Handle file fields
+							chunks.push(encoder.encode(`Content-Disposition: form-data; name="${key}"; filename="${value.name}"\r\n`));
+							chunks.push(encoder.encode(`Content-Type: ${value.type || 'application/octet-stream'}\r\n\r\n`));
+							chunks.push(new Uint8Array(await value.arrayBuffer()));
+							chunks.push(encoder.encode('\r\n'));
+						} else {
+							// Handle text fields
+							chunks.push(encoder.encode(`Content-Disposition: form-data; name="${key}"\r\n\r\n`));
+							chunks.push(encoder.encode(String(value)));
+							chunks.push(encoder.encode('\r\n'));
+						}
 					}
+				} else {
+					throw new Error('FormData.entries is not supported in this environment.');
 				}
 				
 				// Add final boundary
