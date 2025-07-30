@@ -1276,19 +1276,19 @@ button.mod-cta:disabled {
 /* Dictionary Management Modal Styles */
 /* Override CSS variables to match settings modal size */
 .modal.dictionary-management-modal {
-	--dialog-width: 80vw !important;
-	--dialog-max-width: 900px !important;
-	--dialog-height: 70vh !important;
-	--dialog-max-height: 700px !important;
+	--dialog-width: 80vw;
+	--dialog-max-width: 900px;
+	--dialog-height: 70vh;
+	--dialog-max-height: 700px;
 }
 
 /* Target the modal background wrapper */
 .modal-bg:has(.modal.dictionary-management-modal) {
 	.modal-container {
-		width: 80vw !important;
-		max-width: 900px !important;
-		height: 70vh !important;
-		max-height: 700px !important;
+		width: 80vw;
+		max-width: 900px;
+		height: 70vh;
+		max-height: 700px;
 	}
 }
 
