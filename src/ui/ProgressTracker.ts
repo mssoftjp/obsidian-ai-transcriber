@@ -1,4 +1,4 @@
-import { TFile } from 'obsidian';
+import { TFile, Plugin } from 'obsidian';
 import { UI_CONSTANTS } from '../config/constants';
 import { Logger } from '../utils/Logger';
 import { PathUtils } from '../utils/PathUtils';
@@ -30,20 +30,8 @@ export interface TranscriptionHistory {
 
 export type ProgressListener = (task: TranscriptionTask | null) => void;
 
-// Define minimal interface for plugin to avoid any type
-interface DataPlugin {
-	loadData?: () => Promise<unknown>;
-	app: {
-		vault: {
-			configDir: string;
-			adapter: {
-				exists: (path: string) => Promise<boolean>;
-				read: (path: string) => Promise<string>;
-				write: (path: string, data: string) => Promise<void>;
-			};
-		};
-	};
-}
+// Use Plugin type directly instead of empty interface
+type DataPlugin = Plugin;
 
 interface ProgressData {
 	history: TranscriptionTask[];
@@ -55,7 +43,6 @@ export class ProgressTracker {
 	private listeners: ProgressListener[] = [];
 	private readonly maxHistoryItems = UI_CONSTANTS.MAX_HISTORY_ITEMS; // Fixed at 50
 	private plugin: DataPlugin | undefined; // Reference to plugin for data persistence
-	private unifiedPercentage = 0; // 統一された進捗パーセンテージ
 	private logger: Logger;
 
 	constructor(plugin?: DataPlugin) {
@@ -117,7 +104,6 @@ export class ProgressTracker {
 		this.currentTask.completedChunks = completedChunks;
 		if (unifiedPercentage !== undefined) {
 			this.currentTask.unifiedPercentage = unifiedPercentage;
-			this.unifiedPercentage = unifiedPercentage;
 		}
 		this.notifyListeners();
 	}
@@ -403,7 +389,7 @@ export class ProgressTracker {
 	}
 
 	private generateTaskId(): string {
-		return `task-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+		return `task-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
 	}
 
 	/**
@@ -448,6 +434,15 @@ export class ProgressTracker {
 			const progressData: ProgressData = {
 				history: this.history
 			};
+
+			// プラグインディレクトリの確認と作成
+			const pluginDir = historyPath.substring(0, historyPath.lastIndexOf('/'));
+			if (!await this.plugin.app.vault.adapter.exists(pluginDir)) {
+				// プラグインディレクトリが存在しない場合は、履歴を保存しない
+				// (プラグインが正しくインストールされていない可能性がある)
+				this.logger.warn('Plugin directory does not exist, skipping history save', { pluginDir });
+				return;
+			}
 
 			await this.plugin.app.vault.adapter.write(
 				historyPath,

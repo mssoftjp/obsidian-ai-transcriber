@@ -140,8 +140,9 @@ export abstract class ApiClient {
 				// Build multipart/form-data manually
 				const formData = options.body as FormData;
 				// Use a type guard to ensure type safety
-				if ('entries' in formData && typeof formData.entries === 'function') {
-					for (const [key, value] of formData.entries()) {
+				const formDataAny = formData as any;
+				if ('entries' in formDataAny && typeof formDataAny.entries === 'function') {
+					for (const [key, value] of formDataAny.entries()) {
 						chunks.push(encoder.encode(`--${boundary}\r\n`));
 						
 						if (value instanceof File) {
