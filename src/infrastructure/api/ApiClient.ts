@@ -3,7 +3,7 @@
  * Handles authentication, error handling, and retry logic
  */
 
-import { requestUrl } from 'obsidian';
+import { requestUrl, RequestUrlResponse } from 'obsidian';
 import { Logger } from '../../utils/Logger';
 
 export class ApiError extends Error {
@@ -139,7 +139,8 @@ export abstract class ApiClient {
 				
 				// Build multipart/form-data manually
 				const formData = options.body as FormData;
-				if (typeof FormData.prototype.entries === 'function') {
+				// Use a type guard to ensure type safety
+				if ('entries' in formData && typeof formData.entries === 'function') {
 					for (const [key, value] of formData.entries()) {
 						chunks.push(encoder.encode(`--${boundary}\r\n`));
 						
@@ -243,7 +244,7 @@ export abstract class ApiClient {
 	/**
 	 * Parse error response
 	 */
-	private async parseError(response: Response): Promise<ApiErrorData> {
+	private async parseError(response: RequestUrlResponse): Promise<ApiErrorData> {
 		try {
 			const data = response.json;
 			return {
