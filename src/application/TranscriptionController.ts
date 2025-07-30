@@ -37,7 +37,6 @@ import { VADPreprocessor } from '../vad/VadPreprocessor';
 import { ProgressTracker } from '../ui/ProgressTracker';
 import { SimpleProgressCalculator } from '../core/utils/SimpleProgressCalculator';
 import { Logger } from '../utils/Logger';
-import { PathUtils } from '../utils/PathUtils';
 
 export class TranscriptionController {
 	private app: App;
@@ -291,7 +290,7 @@ export class TranscriptionController {
 			this.app,
 			chunkingConfig,
 			vadConfig,
-			PathUtils.getCurrentPluginId()
+			'obsidian-ai-transcriber'
 		);
 
 		// Create pipeline

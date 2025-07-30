@@ -1,7 +1,6 @@
 import { TFile } from 'obsidian';
 import { UI_CONSTANTS } from '../config/constants';
 import { Logger } from '../utils/Logger';
-import { PathUtils } from '../utils/PathUtils';
 
 export interface TranscriptionTask {
 	id: string;
@@ -423,7 +422,7 @@ export class ProgressTracker {
 
 		try {
 			// 履歴データ専用ファイルから読み込み
-			const historyPath = PathUtils.getHistoryFilePath(this.plugin.app);
+			const historyPath = `${this.plugin.app.vault.configDir}/plugins/obsidian-ai-transcriber/transcription-history.json`;
 			if (await this.plugin.app.vault.adapter.exists(historyPath)) {
 				const historyData = await this.plugin.app.vault.adapter.read(historyPath);
 				const progressData = JSON.parse(historyData) as ProgressData;
@@ -444,7 +443,7 @@ export class ProgressTracker {
 
 		try {
 			// 履歴データ専用ファイルに保存
-			const historyPath = PathUtils.getHistoryFilePath(this.plugin.app);
+			const historyPath = `${this.plugin.app.vault.configDir}/plugins/obsidian-ai-transcriber/transcription-history.json`;
 			const progressData: ProgressData = {
 				history: this.history
 			};

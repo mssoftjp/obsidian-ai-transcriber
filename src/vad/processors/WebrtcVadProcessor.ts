@@ -2,7 +2,6 @@ import { App, FileSystemAdapter } from 'obsidian';
 import { VADProcessor, VADResult, VADConfig, VADError, SpeechSegment } from '../VadTypes';
 import { AUDIO_CONSTANTS } from '../../config/constants';
 import { Logger } from '../../utils/Logger';
-import { PathUtils } from '../../utils/PathUtils';
 import { FvadModule } from '../../types/global';
 
 /**
@@ -15,7 +14,7 @@ export class WebRTCVADProcessor implements VADProcessor {
   protected available = false;
   protected bufferPtr: number | null = null;
   protected frameSize = AUDIO_CONSTANTS.VAD_FRAME_SIZE; // 30ms @ 16kHz (WebRTC VAD technical requirement)
-  protected pluginId = PathUtils.getCurrentPluginId(); // Default plugin ID from manifest
+  protected pluginId = 'obsidian-ai-transcriber'; // デフォルトのプラグインID
   protected logger = Logger.getLogger('WebRTCVADProcessor');
   
   constructor(
@@ -128,21 +127,19 @@ export class WebRTCVADProcessor implements VADProcessor {
     }
     
     // WASMファイルのパスを構築
-    // 複数の場所を順番に確認
-    const wasmPaths = PathUtils.getWasmFilePaths(this.app, 'fvad.wasm', this.pluginId);
-    let wasmPath: string | null = null;
+    // まずプラグインフォルダ内のnode_modulesを確認
+    let wasmPath = `${this.app.vault.configDir}/plugins/${this.pluginId}/node_modules/@echogarden/fvad-wasm/fvad.wasm`;
     
     try {
-      // ファイルの存在確認（優先順位順）
-      for (const path of wasmPaths) {
-        if (await adapter.exists(path)) {
-          wasmPath = path;
-          break;
+      // ファイルの存在確認
+      const exists = await adapter.exists(wasmPath);
+      if (!exists) {
+        // 別の場所を試す（ビルド時にコピーされている可能性）
+        wasmPath = `${this.app.vault.configDir}/plugins/${this.pluginId}/fvad.wasm`;
+        const existsInRoot = await adapter.exists(wasmPath);
+        if (!existsInRoot) {
+          throw new Error(`WASM file not found at ${wasmPath}`);
         }
-      }
-      
-      if (!wasmPath) {
-        throw new Error(`WASM file not found in any of the expected locations: ${wasmPaths.join(', ')}`);
       }
       
       // バイナリとして読み込む
