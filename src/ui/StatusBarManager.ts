@@ -139,7 +139,7 @@ export class StatusBarManager {
 		// Progress bar
 		const progressContainer = this.statusBarItem!.createSpan({ cls: 'status-bar-progress' });
 		const progressBar = progressContainer.createSpan({ cls: 'status-bar-progress-bar' });
-		progressBar.setAttribute('style', `width: ${percentage}%`);
+		progressBar.style.setProperty('--progress-width', `${percentage}%`);
 
 		const fileName = task.inputFileName || '';
 		this.statusBarItem!.setAttribute('aria-label', `${t('statusBar.processing')} ${fileName}: ${percentage}%`);

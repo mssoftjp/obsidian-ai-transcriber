@@ -149,6 +149,7 @@ button.mod-cta:disabled {
 	height: 100%;
 	background-color: var(--interactive-accent);
 	transition: width var(--ait-transition-normal);
+	width: var(--progress-width, 0%);
 }
 
 /* ====================================
@@ -198,6 +199,7 @@ button.mod-cta:disabled {
 	height: 100%;
 	background-color: var(--interactive-accent);
 	transition: width var(--ait-transition-normal);
+	width: var(--progress-width, 0%);
 }
 
 /* ====================================
