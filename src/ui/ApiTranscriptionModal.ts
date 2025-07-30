@@ -144,7 +144,6 @@ export class APITranscriptionModal extends Modal {
 				// Fallback: try to get plugin instance with proper typing
 				const obsidianApp = this.app as ObsidianApp;
 				const plugin = obsidianApp.plugins?.plugins?.[PathUtils.getCurrentPluginId()] as ObsidianPlugin | undefined;
-
 				if (plugin?.saveSettings && typeof plugin.saveSettings === 'function') {
 					await plugin.saveSettings();
 				} else {
