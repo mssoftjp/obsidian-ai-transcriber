@@ -135,11 +135,11 @@ export function buildWhisperRequest(
 	// Timestamp granularities (only valid with verbose_json)
 	const responseFormat = params.response_format || config.defaults.response_format;
 	if (params.timestamp_granularities && responseFormat === 'verbose_json') {
+		// Use provided timestamp granularities
 		result.timestamp_granularities = params.timestamp_granularities;
-	} else if (!params.timestamp_granularities && responseFormat === 'verbose_json') {
-		// Default to segment timestamps if not specified
-		result.timestamp_granularities = ['segment'];
 	}
+	// Note: We don't set default timestamp_granularities here anymore
+	// The caller (WhisperTranscriptionService) should explicitly set this based on the model
 	
 	return result;
 }

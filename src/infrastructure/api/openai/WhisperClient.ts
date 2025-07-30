@@ -80,9 +80,9 @@ export class WhisperClient extends ApiClient {
 		Object.entries(requestParams).forEach(([key, value]) => {
 			if (value !== undefined) {
 				if (key === 'timestamp_granularities' && Array.isArray(value)) {
-					// OpenAI expects each array element as a separate form field with the same key
+					// OpenAI expects each array element as a separate form field with brackets
 					value.forEach(item => {
-						formData.append(key, item.toString());
+						formData.append('timestamp_granularities[]', item.toString());
 					});
 				} else if (Array.isArray(value)) {
 					// For other arrays, use JSON string format
@@ -95,7 +95,15 @@ export class WhisperClient extends ApiClient {
 
 		try {
 			const startTime = performance.now();
-			this.logger.trace('Sending request to Whisper API', { chunkId: chunk.id });
+			this.logger.trace('Sending request to Whisper API', { 
+				chunkId: chunk.id,
+				requestParams: {
+					model: requestParams.model,
+					response_format: requestParams.response_format,
+					timestamp_granularities: requestParams.timestamp_granularities,
+					language: requestParams.language
+				}
+			});
 			
 			const response = await this.post<WhisperResponse | string>(
 				'/audio/transcriptions',
@@ -104,6 +112,16 @@ export class WhisperClient extends ApiClient {
 				options.signal
 			);
 			
+			this.logger.debug('Whisper API response type', {
+				chunkId: chunk.id,
+				responseType: typeof response,
+				hasSegments: typeof response === 'object' && 'segments' in response,
+				segmentsCount: typeof response === 'object' && response.segments?.length,
+				// Log first few segments for debugging
+				sampleSegments: typeof response === 'object' && response.segments 
+					? response.segments.slice(0, 2).map(s => ({ start: s.start, end: s.end, textLength: s.text.length }))
+					: null
+			});
 
 			const result = this.parseResponse(response, chunk);
 			
@@ -111,7 +129,9 @@ export class WhisperClient extends ApiClient {
 			this.logger.debug('Whisper transcription completed', {
 				chunkId: chunk.id,
 				elapsedTime: `${elapsedTime.toFixed(2)}ms`,
-				textLength: result.text.length
+				textLength: result.text.length,
+				hasSegments: !!result.segments,
+				segmentsCount: result.segments?.length
 			});
 			
 			return result;
@@ -182,7 +202,7 @@ export class WhisperClient extends ApiClient {
 	 */
 	async testConnection(): Promise<boolean> {
 		try {
-			const response = await this.get('/models');
+			await this.get('/models');
 			return true;
 		} catch (error) {
 			this.logger.error('Whisper API connection test failed', error);

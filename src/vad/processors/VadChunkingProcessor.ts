@@ -30,7 +30,7 @@ export class VADChunkingProcessor extends WebRTCVADProcessor {
 	private preferredChunkDuration: number;
 	private overlapDuration: number;
 	private minSilenceForSplit: number;
-	private forceSpiltAfterExtra: number;
+	private forceSplitAfterExtra: number;
 	private minChunkSize: number;
 	
 	constructor(
@@ -63,7 +63,7 @@ export class VADChunkingProcessor extends WebRTCVADProcessor {
 		
 		// Set VAD chunking parameters
 		this.minSilenceForSplit = vadChunkingConfig.minSilenceForSplit;
-		this.forceSpiltAfterExtra = vadChunkingConfig.forceSpiltAfterExtra;
+		this.forceSplitAfterExtra = vadChunkingConfig.forceSplitAfterExtra;
 		this.minChunkSize = vadChunkingConfig.minChunkSize;
 		
 		// Log configuration for debugging
@@ -286,7 +286,7 @@ export class VADChunkingProcessor extends WebRTCVADProcessor {
 		}
 		
 		// If we're way past preferred duration and found any silence, split
-		if (currentDuration >= this.preferredChunkDuration + this.forceSpiltAfterExtra && 
+		if (currentDuration >= this.preferredChunkDuration + this.forceSplitAfterExtra && 
 		    consecutiveSilenceTime > this.minSilenceForSplit / 5 && // 20% of minSilenceForSplit
 		    !isCurrentFrameSpeech) {
 			return true;

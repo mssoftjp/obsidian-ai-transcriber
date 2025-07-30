@@ -46,7 +46,7 @@ export interface ModelConfig {
 		/** Minimum silence duration for chunk split in seconds */
 		minSilenceForSplit: number;
 		/** Extra time after preferred duration to force split on short silence */
-		forceSpiltAfterExtra: number;
+		forceSplitAfterExtra: number;
 		/** Minimum chunk size in seconds (to avoid too small chunks) */
 		minChunkSize: number;
 		/** Enable boundary optimization for natural speech breaks */
@@ -145,7 +145,7 @@ export const DEFAULT_TRANSCRIPTION_CONFIG: TranscriptionConfig = {
 				overlapDurationSeconds: 5, // 5 seconds overlap between chunks
 				chunkDurationVariance: 5, // ±5 seconds (20-30s range)
 				minSilenceForSplit: 0.5, // 500ms of silence
-				forceSpiltAfterExtra: 3, // 3 seconds extra before forced split
+				forceSplitAfterExtra: 3, // 3 seconds extra before forced split
 				minChunkSize: 0.1, // 100ms minimum chunk size to avoid API errors
 				optimizeBoundaries: true // Enable boundary optimization for natural breaks
 			},
@@ -219,7 +219,7 @@ export const DEFAULT_TRANSCRIPTION_CONFIG: TranscriptionConfig = {
 				overlapDurationSeconds: 30, // 30 seconds overlap between chunks
 				chunkDurationVariance: 60, // ±60 seconds (240-360s range)
 				minSilenceForSplit: 1.0, // 1 second of silence (longer for natural breaks)
-				forceSpiltAfterExtra: 30, // 30 seconds extra before forced split
+				forceSplitAfterExtra: 30, // 30 seconds extra before forced split
 				minChunkSize: 0.1, // 100ms minimum chunk size to avoid API errors
 				optimizeBoundaries: true // Enable boundary optimization for natural breaks
 			},
@@ -265,7 +265,7 @@ export const DEFAULT_TRANSCRIPTION_CONFIG: TranscriptionConfig = {
 				overlapDurationSeconds: 30, // 30 seconds overlap between chunks
 				chunkDurationVariance: 60, // ±60 seconds (180-300s range)
 				minSilenceForSplit: 0.8, // 800ms of silence
-				forceSpiltAfterExtra: 20, // 20 seconds extra before forced split
+				forceSplitAfterExtra: 20, // 20 seconds extra before forced split
 				minChunkSize: 0.1, // 100ms minimum chunk size to avoid API errors
 				optimizeBoundaries: true // Enable boundary optimization for natural breaks
 			},

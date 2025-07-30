@@ -138,7 +138,9 @@ export class WhisperTranscriptionService extends TranscriptionService {
 		// Whisper-specific model options
 		const whisperOptions: ModelSpecificOptions = {
 			whisper: {
-				responseFormat: includeTimestamps ? 'verbose_json' : 'text',
+				// Always use verbose_json to get all available data including timestamps
+				// The model differentiation is in whether we request timestampGranularities
+				responseFormat: modelOptions?.whisper?.responseFormat || 'verbose_json',
 				...(includeTimestamps && { timestampGranularities: ['segment'] }),
 				...modelOptions?.whisper
 			}

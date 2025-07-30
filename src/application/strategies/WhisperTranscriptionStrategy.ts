@@ -127,10 +127,19 @@ export class WhisperTranscriptionStrategy extends TranscriptionStrategy {
 		
 		let mergedText: string;
 		if (hasTimestamps) {
-			mergedText = await this.merger.mergeWithTimestamps(results, {
-				includeFailures: true,
-				useTimestamps: true
-			});
+			// Use formatted merge for whisper-1-ts model to include timestamps in output
+			const isTimestampModel = this.transcriptionService.modelId === 'whisper-1-ts';
+			if (isTimestampModel) {
+				mergedText = await this.merger.mergeWithTimestampsFormatted(results, {
+					includeFailures: true,
+					useTimestamps: true
+				});
+			} else {
+				mergedText = await this.merger.mergeWithTimestamps(results, {
+					includeFailures: true,
+					useTimestamps: true
+				});
+			}
 		} else {
 			// Get model-specific merge config
 			const modelConfig = getModelConfig(this.transcriptionService.modelId);
