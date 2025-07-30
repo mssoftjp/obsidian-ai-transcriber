@@ -138,8 +138,8 @@ export class WebRTCVADProcessor implements VADProcessor {
         `${pluginsDir}/${this.pluginId}/node_modules/@echogarden/fvad-wasm/fvad.wasm`,
         `${pluginsDir}/${this.pluginId}/fvad.wasm`,
         // フォルダ名がリポジトリ名の場合も試す
-        `${pluginsDir}/obsidian-ai-transcriber/node_modules/@echogarden/fvad-wasm/fvad.wasm`,
-        `${pluginsDir}/obsidian-ai-transcriber/fvad.wasm`
+        `${pluginsDir}/${this.pluginId}/node_modules/@echogarden/fvad-wasm/fvad.wasm`,
+        `${pluginsDir}/${this.pluginId}/fvad.wasm`
       ];
       
       // ファイルの存在確認（優先順位順）
