@@ -100,9 +100,19 @@ export class Vault {
 		return file;
 	}
 
+	private shouldThrowOnDelete: boolean = true;
+
+	setDeleteBehavior(shouldThrow: boolean): void {
+		this.shouldThrowOnDelete = shouldThrow;
+	}
+
 	async delete(file: TFile | TFolder, force?: boolean): Promise<void> {
-		// This is the old method that should not be used
-		throw new Error('app.vault.delete should not be used - use app.fileManager.trashFile instead');
+		if (this.shouldThrowOnDelete) {
+			// This is the old method that should not be used
+			throw new Error('app.vault.delete should not be used - use app.fileManager.trashFile instead');
+		}
+		// Simulate deletion for testing purposes
+		this.files.delete(file.path);
 	}
 }
 
