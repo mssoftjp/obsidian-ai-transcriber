@@ -1,5 +1,4 @@
 // Mock for Obsidian API
-// Mock for Obsidian API
 export abstract class TAbstractFile {
 	vault?: any;
 	path: string;
