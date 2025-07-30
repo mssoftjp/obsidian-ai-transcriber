@@ -29,14 +29,13 @@ export class DictionaryManagementModal extends Modal {
 	onOpen() {
 		const { contentEl } = this;
 		contentEl.empty();
-		contentEl.addClass('dictionary-management-modal');
 
-		// Set modal size
+		// Apply dictionary-management-modal class for CSS-based sizing
+		// Do NOT apply mod-settings as it's reserved for Obsidian's settings modal
 		this.modalEl.addClass('dictionary-management-modal');
-		this.modalEl.style.width = '80%';
-		this.modalEl.style.maxWidth = '900px';
-		this.modalEl.style.height = '70vh';
-		this.modalEl.style.maxHeight = '700px';
+
+		// Remove any inline styles - let CSS handle the sizing
+		// The CSS already has the proper sizing rules
 
 		// Header
 		contentEl.createEl('h2', { text: t('settings.dictionary.title') });

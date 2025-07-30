@@ -38,6 +38,7 @@ export class APITranscriptionModal extends Modal {
 	private processInBackground = false;
 	private waveformSelector: AudioWaveformSelector | null = null;
 	private wakeLock: any = null;
+	private normalCancelBtn: HTMLButtonElement | null = null;
 	private cancelBtn: HTMLButtonElement | null = null;
 	private transcribeBtn: HTMLButtonElement | null = null;
 	private metaInfoBtn: HTMLButtonElement | null = null;
@@ -180,7 +181,7 @@ export class APITranscriptionModal extends Modal {
 		// Time range selection with pre-allocated space
 		this.timeRangeEl = contentEl.createEl('div', { cls: 'transcription-time-range' });
 		// Pre-allocate space to prevent layout shift
-		this.timeRangeEl.style.minHeight = '280px';
+		this.timeRangeEl.classList.add('ait-min-height-280');
 		// Add loading indicator
 		const loadingEl = this.timeRangeEl.createEl('div', {
 			cls: 'time-range-loading',
@@ -198,18 +199,20 @@ export class APITranscriptionModal extends Modal {
 		const buttonContainer = contentEl.createEl('div', { cls: 'transcription-buttons' });
 
 		// キャンセルボタン（左側）
-		const cancelBtn = buttonContainer.createEl('button', {
+		this.normalCancelBtn = buttonContainer.createEl('button', {
 			text: t('modal.button.cancel')
 		});
-		cancelBtn.onclick = () => this.close();
+		this.normalCancelBtn.onclick = () => this.close();
 
-		// 処理中のキャンセルボタン（非表示で開始）
-		this.cancelBtn = buttonContainer.createEl('button', {
-			text: t('common.cancel'),
-			cls: 'mod-warning',
-			attr: { style: 'display: none;' }
-		});
-		this.cancelBtn.onclick = () => this.cancelTranscription();
+		// 処理中のキャンセルボタン（モバイルのみ、非表示で開始）
+		// デスクトップではバックグラウンド処理のためモーダルがすぐ閉じるので不要
+		if (Platform.isMobile) {
+			this.cancelBtn = buttonContainer.createEl('button', {
+				text: t('common.cancel'),
+				cls: 'mod-warning ait-hidden'
+			});
+			this.cancelBtn.onclick = () => this.cancelTranscription();
+		}
 
 		// 文字起こし開始ボタン（右側）
 		this.transcribeBtn = buttonContainer.createEl('button', {
@@ -319,10 +322,11 @@ export class APITranscriptionModal extends Modal {
 			this.isTranscribing = false;
 			if (this.transcribeBtn) {
 				this.transcribeBtn.disabled = false;
-				this.transcribeBtn.style.display = '';
+				this.transcribeBtn.classList.remove('ait-hidden');
 			}
+			// normalCancelBtn is always visible on desktop
 			if (this.cancelBtn) {
-				this.cancelBtn.style.display = 'none';
+				this.cancelBtn.classList.add('ait-hidden');
 			}
 
 			// Close modal after a short delay
@@ -366,10 +370,11 @@ export class APITranscriptionModal extends Modal {
 		// Update button states
 		if (this.transcribeBtn) {
 			this.transcribeBtn.disabled = true;
-			this.transcribeBtn.style.display = 'none';
+			this.transcribeBtn.classList.add('ait-hidden');
 		}
+		// normalCancelBtn is always visible on desktop
 		if (this.cancelBtn) {
-			this.cancelBtn.style.display = '';
+			this.cancelBtn.classList.remove('ait-hidden');
 		}
 
 		// If background processing is enabled, close modal and continue
@@ -404,10 +409,11 @@ export class APITranscriptionModal extends Modal {
 			// Reset button states
 			if (this.transcribeBtn) {
 				this.transcribeBtn.disabled = false;
-				this.transcribeBtn.style.display = '';
+				this.transcribeBtn.classList.remove('ait-hidden');
 			}
+			// normalCancelBtn is always visible on desktop
 			if (this.cancelBtn) {
-				this.cancelBtn.style.display = 'none';
+				this.cancelBtn.classList.add('ait-hidden');
 			}
 		}
 	}
@@ -1103,9 +1109,9 @@ export class APITranscriptionModal extends Modal {
 					// Update visibility of dependent options
 					if (aiDependentContainer) {
 						if (value) {
-							aiDependentContainer.style.display = '';
+							aiDependentContainer.classList.remove('ait-hidden');
 						} else {
-							aiDependentContainer.style.display = 'none';
+							aiDependentContainer.classList.add('ait-hidden');
 						}
 					}
 					// Update related info button visibility
@@ -1155,7 +1161,7 @@ export class APITranscriptionModal extends Modal {
 
 		// Initialize visibility based on current settings
 		if (!this.settings.postProcessingEnabled) {
-			aiDependentContainer.style.display = 'none';
+			aiDependentContainer.classList.add('ait-hidden');
 		}
 	}
 
@@ -1177,7 +1183,7 @@ export class APITranscriptionModal extends Modal {
 
 		// Set visibility based on post-processing setting
 		if (!this.settings.postProcessingEnabled) {
-			this.metaInfoBtn.style.display = 'none';
+			this.metaInfoBtn.classList.add('ait-hidden');
 		}
 
 		this.metaInfoBtn.addEventListener('click', async () => {
@@ -1207,7 +1213,11 @@ export class APITranscriptionModal extends Modal {
 		}
 
 		// Show/hide based on post-processing setting
-		this.metaInfoBtn.style.display = this.settings.postProcessingEnabled ? '' : 'none';
+		if (this.settings.postProcessingEnabled) {
+			this.metaInfoBtn.classList.remove('ait-hidden');
+		} else {
+			this.metaInfoBtn.classList.add('ait-hidden');
+		}
 	}
 
 
@@ -1499,7 +1509,13 @@ export class APITranscriptionModal extends Modal {
 		const timeInputs = this.timeRangeEl.querySelectorAll('.time-field');
 		timeInputs.forEach(input => {
 			(input as HTMLInputElement).disabled = !this.enableTimeRange;
-			(input as HTMLElement).style.opacity = this.enableTimeRange ? '1' : '0.5';
+			if (this.enableTimeRange) {
+				(input as HTMLElement).classList.remove('ait-opacity-50');
+				(input as HTMLElement).classList.add('ait-opacity-100');
+			} else {
+				(input as HTMLElement).classList.remove('ait-opacity-100');
+				(input as HTMLElement).classList.add('ait-opacity-50');
+			}
 		});
 	}
 
@@ -1615,7 +1631,8 @@ export class APITranscriptionModal extends Modal {
 		try {
 			await this.createTimeRangeControls();
 			loadingEl.remove();
-			this.timeRangeEl.style.minHeight = ''; // Remove min-height after loaded
+			this.timeRangeEl.classList.remove('ait-min-height-280');
+			this.timeRangeEl.classList.add('ait-min-height-auto'); // Remove min-height after loaded
 		} catch (error) {
 			this.logger.warn('Failed to create time range controls', error);
 			loadingEl.setText(t('errors.audioLoad'));

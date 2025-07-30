@@ -1274,14 +1274,50 @@ button.mod-cta:disabled {
 }
 
 /* Dictionary Management Modal Styles */
-.dictionary-management-modal {
-	max-width: var(--ait-modal-width-xlarge);
-	max-height: var(--ait-modal-max-height);
+/* Override CSS variables to match settings modal size */
+.modal.dictionary-management-modal {
+	--dialog-width: 80vw;
+	--dialog-max-width: 900px;
+	--dialog-height: 70vh;
+	--dialog-max-height: 700px;
+}
+
+/* Target the modal background wrapper */
+.modal-bg:has(.modal.dictionary-management-modal) {
+	.modal-container {
+		width: 80vw;
+		max-width: 900px;
+		height: 70vh;
+		max-height: 700px;
+	}
+}
+
+/* Legacy support for browsers without :has() */
+.modal.dictionary-management-modal .modal-container {
+	width: 80vw !important;
+	max-width: 900px !important;
+	height: 70vh !important;
+	max-height: 700px !important;
+}
+
+/* Ensure the modal itself also has the correct size */
+.modal.dictionary-management-modal {
+	width: 100% !important;
+	height: 100% !important;
+}
+
+/* Ensure modal content fills the container */
+.dictionary-management-modal .modal-content {
+	height: 100%;
+	display: flex;
+	flex-direction: column;
 }
 
 .dictionary-management-modal .modal-content {
 	padding: var(--ait-spacing-2xl);
 	overflow-y: auto;
+	max-height: calc(100% - 40px); /* Allow for modal padding */
+	box-sizing: border-box;
 }
 
 .dictionary-management-modal h2 {
@@ -1711,4 +1747,69 @@ button.mod-cta:disabled {
 
 .modal-button-container button:not(.mod-cta):hover {
 	background-color: var(--background-secondary);
+}
+
+/* ====================================
+   6. Utility Classes
+   ==================================== */
+
+/* ====================================
+   6.1 Display & Visibility
+   ==================================== */
+.ait-hidden {
+	display: none !important;
+}
+
+.ait-visible {
+	display: block !important;
+}
+
+.ait-opacity-50 {
+	opacity: 0.5 !important;
+}
+
+.ait-opacity-100 {
+	opacity: 1 !important;
+}
+
+/* ====================================
+   6.2 Layout & Sizing
+   ==================================== */
+.ait-min-height-280 {
+	min-height: 280px !important;
+}
+
+.ait-min-height-auto {
+	min-height: auto !important;
+}
+
+.ait-width-full {
+	width: 100% !important;
+}
+
+.ait-max-width-full {
+	max-width: 100% !important;
+}
+
+/* ====================================
+   6.3 Canvas & Interactive Elements
+   ==================================== */
+.ait-canvas-size {
+	display: block;
+}
+
+.ait-cursor-grab {
+	cursor: grab !important;
+}
+
+.ait-cursor-grabbing {
+	cursor: grabbing !important;
+}
+
+.ait-cursor-ew-resize {
+	cursor: ew-resize !important;
+}
+
+.ait-cursor-default {
+	cursor: default !important;
 }
