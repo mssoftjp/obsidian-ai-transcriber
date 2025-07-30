@@ -12,7 +12,7 @@ export class PathUtils {
 	 * @returns Plugin directory path
 	 */
 	static getPluginDir(app: App, pluginId?: string): string {
-		const id = pluginId || 'ai-transcriber'; // Use manifest ID as default
+		const id = pluginId || PathUtils.getCurrentPluginId(); // Use manifest ID as default
 		return `${app.vault.configDir}/plugins/${id}`;
 	}
 
