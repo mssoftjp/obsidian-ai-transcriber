@@ -5,15 +5,16 @@
 import { moment } from 'obsidian';
 import { TranslationKeys, SupportedLocale } from './locales';
 import { Logger } from '../utils/Logger';
+import { ObsidianApp } from '../types/global';
 
 // Translations will be imported here
-let translations: Record<SupportedLocale, TranslationKeys> = {} as any;
+let translations: Record<SupportedLocale, TranslationKeys> = {} as Record<SupportedLocale, TranslationKeys>;
 
 // Current locale
 let currentLocale: SupportedLocale = 'en';
 
 // App instance for accessing Obsidian settings
-let appInstance: any = null;
+let appInstance: unknown = null;
 
 /**
  * Initialize i18n with translations
@@ -26,11 +27,11 @@ export function initializeTranslations(translationData: Record<SupportedLocale, 
 /**
  * Initialize i18n with app instance and detect locale
  */
-export function initializeI18n(app: any): void {
+export function initializeI18n(app: unknown): void {
 	appInstance = app; // eslint-disable-line @typescript-eslint/no-unused-vars
 
 	// Get Obsidian's language setting
-	const locale = app.vault?.config?.locale ||
+	const locale = (app as ObsidianApp).vault?.config?.locale ||
 		moment.locale() ||
 		navigator.language ||
 		'en';
@@ -65,17 +66,17 @@ export function t(path: string, params?: Record<string, string | number>): strin
 	}
 
 	const keys = path.split('.');
-	let value: any = translations[currentLocale];
+	let value: unknown = translations[currentLocale];
 
 	// Navigate through the translation object
 	for (const key of keys) {
-		value = value?.[key];
+		value = (value as Record<string, unknown>)?.[key];
 		if (value === undefined) {
 			// Try fallback to English
 			if (currentLocale !== 'en' && translations.en) {
 				value = translations.en;
 				for (const k of keys) {
-					value = value?.[k];
+					value = (value as Record<string, unknown>)?.[k];
 					if (value === undefined) {
 						break;
 					}

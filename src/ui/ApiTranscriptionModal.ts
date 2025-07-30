@@ -13,6 +13,7 @@ import { PostProcessingService } from '../application/services/PostProcessingSer
 import { TranscriptionMetaInfo } from '../core/transcription/TranscriptionTypes';
 import { createTranslationMetadata } from '../core/transcription/TranslationUtils';
 import { t } from '../i18n';
+import { ObsidianApp, ObsidianPlugin, NavigatorWakeLock, isNavigatorWithWakeLock, WakeLockSentinel } from '../types/global';
 import { FileTypeUtils } from '../config/constants';
 import { Logger } from '../utils/Logger';
 
@@ -37,7 +38,7 @@ export class APITranscriptionModal extends Modal {
 	private progressTracker: ProgressTracker | null;
 	private processInBackground = false;
 	private waveformSelector: AudioWaveformSelector | null = null;
-	private wakeLock: any = null;
+	private wakeLock: WakeLockSentinel | null = null;
 	private normalCancelBtn: HTMLButtonElement | null = null;
 	private cancelBtn: HTMLButtonElement | null = null;
 	private transcribeBtn: HTMLButtonElement | null = null;
@@ -134,7 +135,7 @@ export class APITranscriptionModal extends Modal {
 			}
 
 			this.settings.model = option.model;
-			await (this.app as any).plugins.plugins['obsidian-ai-transcriber'].saveSettings();
+			await ((this.app as ObsidianApp).plugins?.plugins['obsidian-ai-transcriber'] as ObsidianPlugin)?.saveSettings?.();
 			// Update cost estimate
 			this.displayCostEstimate();
 		});
@@ -340,9 +341,9 @@ export class APITranscriptionModal extends Modal {
 	}
 
 	private async requestWakeLock() {
-		if (Platform.isMobile && (navigator as any).wakeLock?.request) {
+		if (Platform.isMobile && isNavigatorWithWakeLock(navigator) && navigator.wakeLock?.request) {
 			try {
-				this.wakeLock = await (navigator as any).wakeLock.request('screen');
+				this.wakeLock = await navigator.wakeLock.request('screen');
 			} catch (err) {
 				this.logger.warn('Failed to acquire wake lock', err);
 			}
@@ -791,7 +792,7 @@ export class APITranscriptionModal extends Modal {
 		// Format transcription based on settings
 		let formattedTranscription = '';
 		// Use the user's locale or fallback to system default
-		const userLocale = (this.app.vault as any)?.config?.locale || navigator.language || 'en-US';
+		const userLocale = ((this.app as unknown) as ObsidianApp).vault?.config?.locale || navigator.language || 'en-US';
 		const timestamp = new Date().toLocaleString(userLocale);
 		// Use the actual model used if available, otherwise fall back to current settings
 		const providerName = modelUsed ? this.getModelDisplayName(modelUsed) : this.transcriber.getProviderDisplayName();
@@ -1085,7 +1086,7 @@ export class APITranscriptionModal extends Modal {
 						// Update the text input
 						const textComponent = folderSetting.components[0];
 						if (textComponent && 'setValue' in textComponent) {
-							(textComponent as any).setValue(folderPath);
+							(textComponent as unknown as { setValue: (value: string) => void }).setValue(folderPath);
 						}
 					};
 					modal.open();
@@ -1623,7 +1624,7 @@ export class APITranscriptionModal extends Modal {
 	 * Get localized timestamp
 	 */
 	private getLocalTimestamp(): string {
-		const userLocale = (this.app.vault as any)?.config?.locale || navigator.language || 'en-US';
+		const userLocale = ((this.app as unknown) as ObsidianApp).vault?.config?.locale || navigator.language || 'en-US';
 		return new Date().toLocaleString(userLocale);
 	}
 

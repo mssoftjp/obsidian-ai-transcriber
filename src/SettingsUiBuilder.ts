@@ -6,6 +6,7 @@ import { SafeStorageService } from './infrastructure/storage/SafeStorageService'
 import { SecurityUtils } from './infrastructure/storage/SecurityUtils';
 import { t } from './i18n';
 import { Logger } from './utils/Logger';
+import { ElectronRenderer, isElectronWindow } from './types/global';
 
 export class SettingsUIBuilder {
 	private static logger = Logger.getLogger('SettingsUIBuilder');
@@ -233,7 +234,7 @@ export class SettingsUIBuilder {
 			if (Platform.isMobileApp) {
 				return false;
 			}
-			const electron = (window as any).require?.('electron');
+			const electron = isElectronWindow(window) ? window.require?.('electron') : null;
 			// remote.safeStorage を優先的に確認
 			const safeStorage = electron?.remote?.safeStorage || electron?.safeStorage;
 			return safeStorage?.isEncryptionAvailable?.() || false;
