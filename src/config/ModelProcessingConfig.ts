@@ -107,6 +107,7 @@ export interface ModelConfig {
 export interface TranscriptionConfig {
 	models: {
 		whisper: ModelConfig;
+		whisperTs: ModelConfig;
 		gpt4o: ModelConfig;
 		gpt4oMini: ModelConfig;
 	};
@@ -134,6 +135,42 @@ export interface TranscriptionConfig {
 export const DEFAULT_TRANSCRIPTION_CONFIG: TranscriptionConfig = {
 	models: {
 		whisper: {
+			chunkDurationSeconds: 25, // Target: 25 seconds (VAD adjusts within 20-30s)
+			maxFileSizeMB: 25, // OpenAI API file size limit: 25MB
+			maxDurationSeconds: Infinity, // Whisper has no duration limit (only file size limit)
+			maxConcurrentChunks: 2, // Process 2 chunks in parallel
+			rateLimitDelayMs: 3000, // 3 seconds between batches
+			contextWindowSize: 0, // Whisper doesn't use context (uses timestamps instead)
+			vadChunking: {
+				overlapDurationSeconds: 5, // 5 seconds overlap between chunks
+				chunkDurationVariance: 5, // ±5 seconds (20-30s range)
+				minSilenceForSplit: 0.5, // 500ms of silence
+				forceSpiltAfterExtra: 3, // 3 seconds extra before forced split
+				minChunkSize: 0.1, // 100ms minimum chunk size to avoid API errors
+				optimizeBoundaries: true // Enable boundary optimization for natural breaks
+			},
+			merging: {
+				duplicateWindowSeconds: 30, // Time window for duplicate text detection
+				minMatchLength: 20, // Minimum characters to consider as duplicate
+				overlapThreshold: 0.5, // 50% overlap threshold for segment merging
+				estimatedCharsPerSecond: 15, // Estimated characters per second of speech
+				fuzzyMatchSimilarity: 0.85, // 85% similarity threshold for fuzzy matching
+				useNGramScreening: true, // Enable fast N-gram screening
+				nGramSize: 3, // Use trigrams for screening
+				duplicateRemoval: {
+					enabled: true, // Enable post-merge duplicate removal
+					minDuplicateLength: 15, // Lower threshold for Whisper's short chunk duplicates
+					duplicateSimilarityThreshold: 0.75, // Using text normalization for better similarity detection
+					useFuzzyMatching: true // Use fuzzy matching for duplicate detection
+				}
+			},
+			pricing: {
+				costPerMinute: 0.006, // $0.006 per minute for Whisper
+				currency: 'USD'
+			}
+		},
+
+		whisperTs: {
 			chunkDurationSeconds: 25, // Target: 25 seconds (VAD adjusts within 20-30s)
 			maxFileSizeMB: 25, // OpenAI API file size limit: 25MB
 			maxDurationSeconds: Infinity, // Whisper has no duration limit (only file size limit)
@@ -283,7 +320,7 @@ const logger = Logger.getLogger('ModelProcessingConfig');
  */
 export const MODEL_CONFIG_MAP: Record<string, keyof TranscriptionConfig['models']> = {
 	'whisper-1': 'whisper',
-	'whisper-1-ts': 'whisper',
+	'whisper-1-ts': 'whisperTs',
 	'gpt-4o-transcribe': 'gpt4o',
 	'gpt-4o-mini-transcribe': 'gpt4oMini'
 };
@@ -365,6 +402,7 @@ export function getTranscriptionConfig(overrides?: Partial<TranscriptionConfig>)
 	return {
 		models: {
 			whisper: { ...DEFAULT_TRANSCRIPTION_CONFIG.models.whisper, ...overrides.models?.whisper },
+			whisperTs: { ...DEFAULT_TRANSCRIPTION_CONFIG.models.whisperTs, ...overrides.models?.whisperTs },
 			gpt4o: { ...DEFAULT_TRANSCRIPTION_CONFIG.models.gpt4o, ...overrides.models?.gpt4o },
 			gpt4oMini: { ...DEFAULT_TRANSCRIPTION_CONFIG.models.gpt4oMini, ...overrides.models?.gpt4oMini }
 		},

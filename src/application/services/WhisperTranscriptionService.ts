@@ -20,15 +20,31 @@ import { DictionaryCorrector } from '../../core/transcription/DictionaryCorrecto
 import { Logger } from '../../utils/Logger';
 
 export class WhisperTranscriptionService extends TranscriptionService {
-	readonly modelId = 'whisper-1';
+	readonly modelId: string;
 	readonly modelName = 'OpenAI Whisper';
 	
-	readonly capabilities = (() => {
-		// Get config once to avoid duplicate calls
-		const config = getModelConfig('whisper-1');
-		return {
-			supportsTimestamps: true,
-			supportsWordLevel: true,
+	readonly capabilities: {
+		supportsTimestamps: boolean;
+		supportsWordLevel: boolean;
+		supportsLanguageDetection: boolean;
+		supportedLanguages: string[];
+		maxFileSizeMB: number;
+		maxDurationSeconds: number;
+	};
+
+	private client: WhisperClient;
+
+	constructor(apiKey: string, modelId: string = 'whisper-1', dictionaryCorrector?: DictionaryCorrector) {
+		super();
+		
+		this.modelId = modelId;
+		
+		// Initialize capabilities based on model
+		const config = getModelConfig(this.modelId);
+		const includeTimestamps = this.modelId === 'whisper-1-ts';
+		this.capabilities = {
+			supportsTimestamps: includeTimestamps,
+			supportsWordLevel: includeTimestamps,
 			supportsLanguageDetection: true,
 			supportedLanguages: [
 				'af', 'ar', 'hy', 'az', 'be', 'bs', 'bg', 'ca', 'zh', 'hr', 'cs',
@@ -41,12 +57,6 @@ export class WhisperTranscriptionService extends TranscriptionService {
 			maxFileSizeMB: config.maxFileSizeMB,
 			maxDurationSeconds: config.maxDurationSeconds
 		};
-	})();
-
-	private client: WhisperClient;
-
-	constructor(apiKey: string, dictionaryCorrector?: DictionaryCorrector) {
-		super();
 		
 		// Dictionary corrector is now handled at the controller level
 		this.dictionaryCorrector = dictionaryCorrector;
@@ -122,11 +132,14 @@ export class WhisperTranscriptionService extends TranscriptionService {
 			language: options.language
 		});
 		
-		// Whisper-specific model options (always use verbose_json for timestamps)
+		// Determine if timestamps should be included based on model
+		const includeTimestamps = this.modelId === 'whisper-1-ts';
+		
+		// Whisper-specific model options
 		const whisperOptions: ModelSpecificOptions = {
 			whisper: {
-				responseFormat: 'verbose_json',
-				timestampGranularities: ['segment'], // デフォルトでセグメントレベルのタイムスタンプを要求
+				responseFormat: includeTimestamps ? 'verbose_json' : 'text',
+				...(includeTimestamps && { timestampGranularities: ['segment'] }),
 				...modelOptions?.whisper
 			}
 		};

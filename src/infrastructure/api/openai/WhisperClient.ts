@@ -97,7 +97,7 @@ export class WhisperClient extends ApiClient {
 			const startTime = performance.now();
 			this.logger.trace('Sending request to Whisper API', { chunkId: chunk.id });
 			
-			const response = await this.post<WhisperResponse>(
+			const response = await this.post<WhisperResponse | string>(
 				'/audio/transcriptions',
 				formData,
 				{},
@@ -136,7 +136,21 @@ export class WhisperClient extends ApiClient {
 	/**
 	 * Parse Whisper API response
 	 */
-	private parseResponse(response: WhisperResponse, chunk: AudioChunk): TranscriptionResult {
+	private parseResponse(response: WhisperResponse | string, chunk: AudioChunk): TranscriptionResult {
+		// Handle text-only response format
+		if (typeof response === 'string') {
+			return {
+				id: chunk.id,
+				text: response,
+				startTime: chunk.startTime,
+				endTime: chunk.endTime,
+				success: true,
+				segments: undefined, // No segments for text format
+				language: undefined // Language detection not available in text format
+			};
+		}
+
+		// Handle verbose_json response format
 		// Adjust timestamps based on chunk offset
 		const segments = response.segments?.map(segment => ({
 			text: segment.text,
