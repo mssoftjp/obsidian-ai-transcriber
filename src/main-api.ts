@@ -16,6 +16,7 @@ import ja from './i18n/translations/ja';
 import zh from './i18n/translations/zh';
 import ko from './i18n/translations/ko';
 import { Logger, LogLevel } from './utils/Logger';
+import { PathUtils } from './utils/PathUtils';
 import { ObsidianApp } from './types/global';
 
 export default class AITranscriberPlugin extends Plugin {
@@ -405,7 +406,7 @@ export default class AITranscriberPlugin extends Plugin {
 	private async loadUserDictionary(): Promise<void> {
 		this.logger.debug('Loading user dictionary...');
 		try {
-			const dictionaryPath = `${this.app.vault.configDir}/plugins/obsidian-ai-transcriber/user-dictionary.json`;
+			const dictionaryPath = PathUtils.getUserDictionaryPath(this.app);
 			
 			// Check if dictionary file exists
 			if (await this.app.vault.adapter.exists(dictionaryPath)) {
@@ -486,7 +487,7 @@ export default class AITranscriberPlugin extends Plugin {
 	private async saveUserDictionary(): Promise<void> {
 		this.logger.debug('Saving user dictionary...');
 		try {
-			const dictionaryPath = `${this.app.vault.configDir}/plugins/obsidian-ai-transcriber/user-dictionary.json`;
+			const dictionaryPath = PathUtils.getUserDictionaryPath(this.app);
 			
 			// Save only userDictionaries (new format)
 			if (this.settings.userDictionaries) {

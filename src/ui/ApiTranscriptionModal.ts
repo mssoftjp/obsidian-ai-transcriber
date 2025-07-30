@@ -16,6 +16,7 @@ import { t } from '../i18n';
 import { ObsidianApp, ObsidianPlugin, isNavigatorWithWakeLock, WakeLockSentinel } from '../types/global';
 import { FileTypeUtils } from '../config/constants';
 import { Logger } from '../utils/Logger';
+import { PathUtils } from '../utils/PathUtils';
 
 export class APITranscriptionModal extends Modal {
 	private transcriber: APITranscriber;
@@ -142,8 +143,7 @@ export class APITranscriptionModal extends Modal {
 			} else {
 				// Fallback: try to get plugin instance with proper typing
 				const obsidianApp = this.app as ObsidianApp;
-				const plugin = obsidianApp.plugins?.plugins?.['obsidian-ai-transcriber'] as ObsidianPlugin | undefined;
-
+				const plugin = obsidianApp.plugins?.plugins?.[PathUtils.getCurrentPluginId()] as ObsidianPlugin | undefined;
 				if (plugin?.saveSettings && typeof plugin.saveSettings === 'function') {
 					await plugin.saveSettings();
 				} else {
