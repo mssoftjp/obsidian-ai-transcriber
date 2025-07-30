@@ -298,7 +298,7 @@ export class AudioFileSelectionModal extends Modal {
 				try {
 					// 外部ファイルをvault内に一時コピー
 					const result = await this.tempFileManager.copyExternalFile(file, (progress) => {
-						progressFill.setAttribute('style', `width: ${progress}%`);
+						progressFill.style.setProperty('--progress-width', `${progress}%`);
 						progressText.setText(`${Math.round(progress)}%`);
 					});
 
