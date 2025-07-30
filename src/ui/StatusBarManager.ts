@@ -98,9 +98,27 @@ export class StatusBarManager {
 			document.head.appendChild(styleSheet);
 		}
 
-		// Update the CSS rule for this progress bar
+		// Ensure the stylesheet has a CSSStyleSheet object
+		const sheet = styleSheet.sheet as CSSStyleSheet;
+		if (!sheet) {
+			return;
+		}
+
+		// Maintain a map of selectors to rules
+		if (!this.ruleMap) {
+			this.ruleMap = new Map<string, number>();
+		}
+
+		// Check if a rule for this selector already exists
+		if (this.ruleMap.has(selector)) {
+			const index = this.ruleMap.get(selector)!;
+			sheet.deleteRule(index);
+		}
+
+		// Add the new rule and update the map
 		const rule = `${selector} { width: ${percentage}% !important; }`;
-		styleSheet.textContent = rule;
+		const newIndex = sheet.insertRule(rule, sheet.cssRules.length);
+		this.ruleMap.set(selector, newIndex);
 	}
 
 	/**
