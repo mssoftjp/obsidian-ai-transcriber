@@ -139,10 +139,9 @@ export abstract class ApiClient {
 				
 				// Build multipart/form-data manually
 				const formData = options.body as FormData;
-				// Use a type assertion to handle older TypeScript definitions
-				const entriesMethod = (formData as any).entries;
-				if (entriesMethod && typeof entriesMethod === 'function') {
-					for (const [key, value] of (formData as any).entries()) {
+				// Use a type guard to ensure type safety
+				if ('entries' in formData && typeof formData.entries === 'function') {
+					for (const [key, value] of formData.entries()) {
 						chunks.push(encoder.encode(`--${boundary}\r\n`));
 						
 						if (value instanceof File) {
