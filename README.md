@@ -28,7 +28,7 @@ A powerful speech-to-text transcription plugin for Obsidian that uses OpenAI's G
 ### Manual Installation
 
 1. Download the latest release from the [GitHub releases page](https://github.com/mssoftjp/obsidian-ai-transcriber/releases)
-2. Extract the files to your vault's plugins folder: `<vault>/.obsidian/plugins/obsidian-ai-transcriber/`
+2. Extract the files to your vault's plugins folder: `<vault>/.obsidian/plugins/ai-transcriber/`
 3. Reload Obsidian
 4. Enable the plugin in Settings → Community plugins
 
@@ -197,7 +197,7 @@ OpenAIのGPT-4oとWhisper APIを使用したObsidian用の強力な音声認識�
 ### 手動インストール
 
 1. [GitHubリリースページ](https://github.com/mssoftjp/obsidian-ai-transcriber/releases)から最新リリースをダウンロード
-2. ファイルをvaultのプラグインフォルダに展開: `<vault>/.obsidian/plugins/obsidian-ai-transcriber/`
+2. ファイルをvaultのプラグインフォルダに展開: `<vault>/.obsidian/plugins/ai-transcriber/`
 3. Obsidianを再読み込み
 4. 設定 → Community pluginsでプラグインを有効化
 
