@@ -517,13 +517,13 @@ export class TranscriptionView extends ItemView {
 	}
 
 	private isSearchPlugin(plugin: unknown): plugin is { enabled: boolean; instance: { openGlobalSearch: (query: string) => void } } {
-		return typeof plugin === 'object' && 
-		       plugin !== null && 
-		       'enabled' in plugin && 
-		       'instance' in plugin &&
-		       typeof (plugin as Record<string, unknown>).enabled === 'boolean' &&
-		       (plugin as Record<string, unknown>).enabled === true &&
-		       typeof (plugin as Record<string, unknown>).instance === 'object';
+		return typeof plugin === 'object' &&
+			plugin !== null &&
+			'enabled' in plugin &&
+			'instance' in plugin &&
+			typeof (plugin as Record<string, unknown>).enabled === 'boolean' &&
+			(plugin as Record<string, unknown>).enabled === true &&
+			typeof (plugin as Record<string, unknown>).instance === 'object';
 	}
 }
 

@@ -5,6 +5,18 @@
 
 import { Logger } from '../../utils/Logger';
 
+export class ApiError extends Error {
+	constructor(
+		message: string,
+		public status: number,
+		public code?: string,
+		public details?: unknown
+	) {
+		super(message);
+		this.name = 'ApiError';
+	}
+}
+
 export interface ApiConfig {
 	baseUrl: string;
 	apiKey: string;
@@ -13,7 +25,7 @@ export interface ApiConfig {
 	timeout?: number;
 }
 
-export interface ApiError {
+export interface ApiErrorData {
 	status: number;
 	message: string;
 	code?: string;
@@ -231,7 +243,7 @@ export abstract class ApiClient {
 	/**
 	 * Parse error response
 	 */
-	private async parseError(response: Response): Promise<ApiError> {
+	private async parseError(response: Response): Promise<ApiErrorData> {
 		try {
 			const data = await response.json();
 			return {
@@ -259,13 +271,9 @@ export abstract class ApiClient {
 	/**
 	 * Create formatted API error
 	 */
-	private createApiError(error: ApiError): Error {
+	private createApiError(error: ApiErrorData): ApiError {
 		const message = `API Error ${error.status}: ${error.message}`;
-		const apiError = new Error(message);
-		(apiError as any).status = error.status;
-		(apiError as any).code = error.code;
-		(apiError as any).details = error.details;
-		return apiError;
+		return new ApiError(message, error.status, error.code, error.details);
 	}
 
 	/**

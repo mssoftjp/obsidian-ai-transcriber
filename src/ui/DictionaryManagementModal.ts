@@ -599,19 +599,19 @@ export class DictionaryManagementModal extends Modal {
 	}
 
 	private isImportedDataV2(data: unknown): data is { version: string; dictionaries: LanguageDictionaries } {
-		return typeof data === 'object' && 
-		       data !== null && 
-		       'version' in data && 
-		       (data as Record<string, unknown>).version === '2.0' && 
-		       'dictionaries' in data &&
-		       typeof (data as Record<string, unknown>).dictionaries === 'object';
+		return typeof data === 'object' &&
+			data !== null &&
+			'version' in data &&
+			(data as Record<string, unknown>).version === '2.0' &&
+			'dictionaries' in data &&
+			typeof (data as Record<string, unknown>).dictionaries === 'object';
 	}
 
 	private isLegacyDictionaryData(data: unknown): data is { definiteCorrections: DictionaryEntry[]; contextualCorrections?: ContextualCorrection[] } {
-		return typeof data === 'object' && 
-		       data !== null && 
-		       'definiteCorrections' in data &&
-		       Array.isArray((data as Record<string, unknown>).definiteCorrections);
+		return typeof data === 'object' &&
+			data !== null &&
+			'definiteCorrections' in data &&
+			Array.isArray((data as Record<string, unknown>).definiteCorrections);
 	}
 
 	onClose() {

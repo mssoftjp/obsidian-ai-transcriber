@@ -13,7 +13,7 @@ import { PostProcessingService } from '../application/services/PostProcessingSer
 import { TranscriptionMetaInfo } from '../core/transcription/TranscriptionTypes';
 import { createTranslationMetadata } from '../core/transcription/TranslationUtils';
 import { t } from '../i18n';
-import { ObsidianApp, ObsidianPlugin, NavigatorWakeLock, isNavigatorWithWakeLock, WakeLockSentinel } from '../types/global';
+import { ObsidianApp, ObsidianPlugin, isNavigatorWithWakeLock, WakeLockSentinel } from '../types/global';
 import { FileTypeUtils } from '../config/constants';
 import { Logger } from '../utils/Logger';
 
