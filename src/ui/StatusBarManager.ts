@@ -116,7 +116,7 @@ export class StatusBarManager {
 		}
 
 		// Add the new rule and update the map
-		const rule = `${selector} { width: ${percentage}% !important; }`;
+		const rule = `${selector} { width: ${percentage}%; }`;
 		const newIndex = sheet.insertRule(rule, sheet.cssRules.length);
 		this.ruleMap.set(selector, newIndex);
 	}
