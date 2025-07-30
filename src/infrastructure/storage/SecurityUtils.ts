@@ -1,4 +1,4 @@
-import { Notice } from 'obsidian';
+import { Notice, requestUrl } from 'obsidian';
 import { t } from '../../i18n';
 import { Logger } from '../../utils/Logger';
 
@@ -39,22 +39,20 @@ export class SecurityUtils {
 		}
 
 		try {
-			// Create AbortController for timeout
-			const controller = new AbortController();
-			const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+			// Note: requestUrl doesn't support AbortController signals like fetch does
+			// However, it has built-in timeout handling and cross-platform compatibility
 			
-			const response = await fetch('https://api.openai.com/v1/models', {
+			const response = await requestUrl({
+				url: 'https://api.openai.com/v1/models',
 				method: 'GET',
 				headers: {
 					'Authorization': `Bearer ${apiKey.trim()}`,
 					'Content-Type': 'application/json'
 				},
-				signal: controller.signal
+				throw: false // Don't throw on HTTP error status codes, handle manually
 			});
-			
-			clearTimeout(timeoutId);
 
-			if (response.ok) {
+			if (response.status >= 200 && response.status < 300) {
 				return { valid: true };
 			}
 
@@ -76,11 +74,6 @@ export class SecurityUtils {
 			}
 		} catch (error) {
 			Logger.getLogger('SecurityUtils').error('API test failed:', error);
-			
-			// Handle timeout specifically
-			if (error instanceof Error && error.name === 'AbortError') {
-				return { valid: false, error: t('errors.timeout') };
-			}
 			
 			return { valid: false, error: t('errors.networkError') };
 		}
