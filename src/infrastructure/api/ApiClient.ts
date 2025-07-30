@@ -127,12 +127,64 @@ export abstract class ApiClient {
 		retryCount = 0
 	): Promise<T> {
 		try {
+			// Handle different body types for requestUrl
+			let body: string | ArrayBuffer | undefined;
+			const headers = options.headers as Record<string, string> || {};
+			
+			if (options.body instanceof FormData) {
+				// Convert FormData to ArrayBuffer for requestUrl compatibility
+				const boundary = `----ObsidianBoundary${Date.now()}`;
+				const chunks: Uint8Array[] = [];
+				const encoder = new TextEncoder();
+				
+				// Build multipart/form-data manually
+				const formData = options.body as FormData;
+				if (typeof FormData.prototype.entries === 'function') {
+					for (const [key, value] of formData.entries()) {
+						chunks.push(encoder.encode(`--${boundary}\r\n`));
+						
+						if (value instanceof File) {
+							// Handle file fields
+							chunks.push(encoder.encode(`Content-Disposition: form-data; name="${key}"; filename="${value.name}"\r\n`));
+							chunks.push(encoder.encode(`Content-Type: ${value.type || 'application/octet-stream'}\r\n\r\n`));
+							chunks.push(new Uint8Array(await value.arrayBuffer()));
+							chunks.push(encoder.encode('\r\n'));
+						} else {
+							// Handle text fields
+							chunks.push(encoder.encode(`Content-Disposition: form-data; name="${key}"\r\n\r\n`));
+							chunks.push(encoder.encode(String(value)));
+							chunks.push(encoder.encode('\r\n'));
+						}
+					}
+				} else {
+					throw new Error('FormData.entries is not supported in this environment.');
+				}
+				
+				// Add final boundary
+				chunks.push(encoder.encode(`--${boundary}--\r\n`));
+				
+				// Combine all chunks into a single ArrayBuffer
+				const totalLength = chunks.reduce((sum, chunk) => sum + chunk.length, 0);
+				const combined = new Uint8Array(totalLength);
+				let offset = 0;
+				for (const chunk of chunks) {
+					combined.set(chunk, offset);
+					offset += chunk.length;
+				}
+				
+				body = combined.buffer;
+				headers['Content-Type'] = `multipart/form-data; boundary=${boundary}`;
+			} else {
+				// For non-FormData requests
+				body = options.body as string | ArrayBuffer;
+			}
+			
 			// Convert RequestInit options to RequestUrlParam format
 			const requestParams = {
 				url: url,
 				method: options.method || 'GET',
-				headers: options.headers as Record<string, string> || {},
-				body: options.body as string | ArrayBuffer,
+				headers: headers,
+				body: body,
 				throw: false // Handle errors manually for consistent behavior
 			};
 

@@ -135,7 +135,22 @@ export class APITranscriptionModal extends Modal {
 			}
 
 			this.settings.model = option.model;
-			await ((this.app as ObsidianApp).plugins?.plugins['obsidian-ai-transcriber'] as ObsidianPlugin)?.saveSettings?.();
+			
+			// Save settings through the provided callback if available
+			if (this.saveSettings) {
+				await this.saveSettings();
+			} else {
+				// Fallback: try to get plugin instance with proper typing
+				const obsidianApp = this.app as ObsidianApp;
+				const plugin = obsidianApp.plugins?.plugins?.['obsidian-ai-transcriber'] as ObsidianPlugin | undefined;
+				
+				if (plugin?.saveSettings && typeof plugin.saveSettings === 'function') {
+					await plugin.saveSettings();
+				} else {
+					this.logger.warn('Unable to save settings - saveSettings callback or plugin instance not found');
+				}
+			}
+			
 			// Update cost estimate
 			this.displayCostEstimate();
 		});
