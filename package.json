@@ -1,6 +1,6 @@
 {
   "name": "obsidian-ai-transcriber",
-  "version": "0.9.0",
+  "version": "0.9.1",
   "description": "Local speech-to-text transcription for Obsidian using Whisper.cpp",
   "main": "main.js",
   "scripts": {
