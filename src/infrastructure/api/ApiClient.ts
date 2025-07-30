@@ -3,6 +3,7 @@
  * Handles authentication, error handling, and retry logic
  */
 
+import { requestUrl } from 'obsidian';
 import { Logger } from '../../utils/Logger';
 
 export class ApiError extends Error {
@@ -125,54 +126,32 @@ export abstract class ApiClient {
 		options: RequestInit,
 		retryCount = 0
 	): Promise<T> {
-		// Store cleanup functions
-		let timeoutId: NodeJS.Timeout | null = null;
-		let userAbortHandler: (() => void) | null = null;
-		let timeoutAbortHandler: (() => void) | null = null;
-		let mergedController: AbortController | null = null;
-		let timeoutController: AbortController | null = null;
-
 		try {
-			// Create timeout controller
-			timeoutController = new AbortController();
-			timeoutId = setTimeout(() => timeoutController.abort(), this.config.timeout!);
+			// Convert RequestInit options to RequestUrlParam format
+			const requestParams = {
+				url: url,
+				method: options.method || 'GET',
+				headers: options.headers as Record<string, string> || {},
+				body: options.body as string | ArrayBuffer,
+				throw: false // Handle errors manually for consistent behavior
+			};
 
-			// Merge abort signals - both timeout and user cancellation
-			let signal: AbortSignal;
-			if (options.signal) {
-				// If user provided a signal, we need to listen to both
-				const userSignal = options.signal;
-				
-				// Create a new controller that will abort when either signal aborts
-				mergedController = new AbortController();
-				
-				// Listen to user cancellation
-				userAbortHandler = () => {
-					mergedController.abort();
-					if (timeoutId) {
-						clearTimeout(timeoutId);
-						timeoutId = null;
-					}
-				};
-				userSignal.addEventListener('abort', userAbortHandler);
-				
-				// Listen to timeout
-				timeoutAbortHandler = () => {
-					mergedController.abort();
-				};
-				timeoutController.signal.addEventListener('abort', timeoutAbortHandler);
-				
-				signal = mergedController.signal;
-			} else {
-				// No user signal, just use timeout
-				signal = timeoutController.signal;
+			if (requestParams.body && typeof requestParams.body === 'string') {
+				// If body is a string, likely JSON, ensure content type is set
+				if (!requestParams.headers['Content-Type'] && !requestParams.headers['content-type']) {
+					requestParams.headers['Content-Type'] = 'application/json';
+				}
 			}
 
+			// Check for user cancellation before making request
+			if (options.signal?.aborted) {
+				throw new Error('Request cancelled by user');
+			}
 			
-			const response = await fetch(url, { ...options, signal });
+			const response = await requestUrl(requestParams);
 			
 
-			if (!response.ok) {
+			if (response.status < 200 || response.status >= 300) {
 				const error = await this.parseError(response);
 				
 				// Check if retryable
@@ -185,14 +164,13 @@ export abstract class ApiClient {
 			}
 
 			// Parse response based on content type
-			const contentType = response.headers.get('content-type');
+			const contentType = response.headers['content-type'] || response.headers['Content-Type'];
 			
 			let responseData: T;
 			if (contentType?.includes('application/json')) {
-				responseData = await response.json() as T;
+				responseData = response.json as T;
 			} else {
-				const textData = await response.text();
-				responseData = textData as unknown as T;
+				responseData = response.text as unknown as T;
 			}
 			
 			return responseData;
@@ -200,43 +178,13 @@ export abstract class ApiClient {
 		} catch (error) {
 			// Handle network errors
 			if (error instanceof Error) {
-				if (error.name === 'AbortError') {
-					// Check which signal caused the abort
-					if (options.signal?.aborted) {
-						throw new Error('Request cancelled by user');
-					} else {
-						// It was a timeout
-						const timeoutSeconds = Math.round(this.config.timeout! / 1000);
-						this.logger.error('Request timed out', { 
-							timeout: `${this.config.timeout}ms`,
-							url: url.substring(0, 100) // URLの最初の100文字のみログに記録
-						});
-						this.logger.warn('This may happen with large audio chunks. Consider using smaller time ranges.');
-						throw new Error(`APIリクエストがタイムアウトしました (${timeoutSeconds}秒)。大きな音声ファイルの場合は、時間範囲を短くしてお試しください。`);
-					}
+				// Check for user cancellation
+				if (options.signal?.aborted) {
+					throw new Error('Request cancelled by user');
 				}
 				throw error;
 			}
 			throw new Error('Unknown error occurred');
-		} finally {
-			// Clean up resources
-			if (timeoutId) {
-				clearTimeout(timeoutId);
-			}
-
-			// Remove event listeners if they were added
-			if (options.signal && userAbortHandler) {
-				options.signal.removeEventListener('abort', userAbortHandler);
-			}
-			if (timeoutController && timeoutAbortHandler) {
-				timeoutController.signal.removeEventListener('abort', timeoutAbortHandler);
-			}
-
-			// Clear references to allow garbage collection
-			userAbortHandler = null;
-			timeoutAbortHandler = null;
-			mergedController = null;
-			timeoutController = null;
 		}
 	}
 
@@ -245,17 +193,17 @@ export abstract class ApiClient {
 	 */
 	private async parseError(response: Response): Promise<ApiErrorData> {
 		try {
-			const data = await response.json();
+			const data = response.json;
 			return {
 				status: response.status,
-				message: data.error?.message || data.message || response.statusText,
+				message: data.error?.message || data.message || `HTTP ${response.status} error`,
 				code: data.error?.code || data.code,
 				details: data.error || data
 			};
 		} catch (e) {
 			return {
 				status: response.status,
-				message: response.statusText || `HTTP ${response.status} error`
+				message: response.text || `HTTP ${response.status} error`
 			};
 		}
 	}
