@@ -19,9 +19,7 @@ export class AudioWaveformSelector {
 		this.canvas = document.createElement('canvas');
 		this.canvas.width = width;
 		this.canvas.height = height;
-		// Set canvas dimensions via attributes, not styles
-		this.canvas.setAttribute('width', width.toString());
-		this.canvas.setAttribute('height', height.toString());
+		// Set canvas dimensions via properties
 		this.canvas.className = 'audio-waveform-canvas ait-canvas-size ait-width-full ait-max-width-full';
 		container.appendChild(this.canvas);
 
