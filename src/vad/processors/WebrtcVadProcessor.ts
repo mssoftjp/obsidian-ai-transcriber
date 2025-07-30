@@ -128,15 +128,25 @@ export class WebRTCVADProcessor implements VADProcessor {
     }
     
     // WASMファイルのパスを構築
-    // 複数の場所を順番に確認
-    const wasmPaths = PathUtils.getWasmFilePaths(this.app, 'fvad.wasm', this.pluginId);
     let wasmPath: string | null = null;
+    const pluginsDir = `${this.app.vault.configDir}/plugins`;
     
     try {
+      // プラグインディレクトリを動的に検索
+      // まず、manifest.jsonのIDで試す
+      const wasmPaths: string[] = [
+        `${pluginsDir}/${this.pluginId}/node_modules/@echogarden/fvad-wasm/fvad.wasm`,
+        `${pluginsDir}/${this.pluginId}/fvad.wasm`,
+        // フォルダ名がリポジトリ名の場合も試す
+        `${pluginsDir}/${this.pluginId}/node_modules/@echogarden/fvad-wasm/fvad.wasm`,
+        `${pluginsDir}/${this.pluginId}/fvad.wasm`
+      ];
+      
       // ファイルの存在確認（優先順位順）
       for (const path of wasmPaths) {
         if (await adapter.exists(path)) {
           wasmPath = path;
+          this.logger.debug('WASM file found at:', path);
           break;
         }
       }
@@ -318,7 +328,6 @@ export class WebRTCVADProcessor implements VADProcessor {
 
     for (let i = 0; i < segments.length; i++) {
       let segment = { ...segments[i] };
-      let wasMerged = false;
 
       // 次のセグメントとの間隔をチェック
       while (i < segments.length - 1) {
@@ -329,7 +338,6 @@ export class WebRTCVADProcessor implements VADProcessor {
         if (silenceDuration < minSilenceDuration) {
           segment.end = nextSegment.end;
           i++; // 次のセグメントをスキップ
-          wasMerged = true;
         } else {
           break;
         }

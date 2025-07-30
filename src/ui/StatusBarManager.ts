@@ -13,6 +13,7 @@ export class StatusBarManager {
 	private updateInterval: number | null = null;
 	private loadingAnimation: LoadingAnimation;
 	private currentTask: TranscriptionTask | null = null;
+	private ruleMap = new Map<string, number>();
 
 	constructor(app: App, plugin: Plugin, progressTracker: ProgressTracker) {
 		this.app = app;
@@ -104,10 +105,7 @@ export class StatusBarManager {
 			return;
 		}
 
-		// Maintain a map of selectors to rules
-		if (!this.ruleMap) {
-			this.ruleMap = new Map<string, number>();
-		}
+		// ruleMap is already initialized in the class
 
 		// Check if a rule for this selector already exists
 		if (this.ruleMap.has(selector)) {
