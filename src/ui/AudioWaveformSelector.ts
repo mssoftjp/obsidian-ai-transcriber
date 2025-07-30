@@ -19,10 +19,10 @@ export class AudioWaveformSelector {
 		this.canvas = document.createElement('canvas');
 		this.canvas.width = width;
 		this.canvas.height = height;
-		this.canvas.style.width = width + 'px';
-		this.canvas.style.height = height + 'px';
-		this.canvas.style.maxWidth = '100%';
-		this.canvas.className = 'audio-waveform-canvas';
+		// Set canvas dimensions via attributes, not styles
+		this.canvas.setAttribute('width', width.toString());
+		this.canvas.setAttribute('height', height.toString());
+		this.canvas.className = 'audio-waveform-canvas ait-canvas-size ait-width-full ait-max-width-full';
 		container.appendChild(this.canvas);
 
 		this.ctx = this.canvas.getContext('2d')!;
@@ -287,7 +287,8 @@ export class AudioWaveformSelector {
 			this.dragType = 'range';
 		}
 
-		this.canvas.style.cursor = 'grabbing';
+		this.canvas.classList.remove('ait-cursor-default', 'ait-cursor-grab', 'ait-cursor-ew-resize');
+		this.canvas.classList.add('ait-cursor-grabbing');
 	}
 
 	private handleMouseMove(e: MouseEvent) {
@@ -309,11 +310,14 @@ export class AudioWaveformSelector {
 			const handleThreshold = 15; // Match the mousedown threshold
 
 			if (Math.abs(x - startX) < handleThreshold || Math.abs(x - endX) < handleThreshold) {
-				this.canvas.style.cursor = 'ew-resize';
+				this.canvas.classList.remove('ait-cursor-default', 'ait-cursor-grab', 'ait-cursor-grabbing');
+				this.canvas.classList.add('ait-cursor-ew-resize');
 			} else if (x > startX && x < endX) {
-				this.canvas.style.cursor = 'grab';
+				this.canvas.classList.remove('ait-cursor-default', 'ait-cursor-ew-resize', 'ait-cursor-grabbing');
+				this.canvas.classList.add('ait-cursor-grab');
 			} else {
-				this.canvas.style.cursor = 'default';
+				this.canvas.classList.remove('ait-cursor-grab', 'ait-cursor-ew-resize', 'ait-cursor-grabbing');
+				this.canvas.classList.add('ait-cursor-default');
 			}
 		}
 
@@ -344,7 +348,8 @@ export class AudioWaveformSelector {
 	private handleMouseUp() {
 		this.isDragging = false;
 		this.dragType = null;
-		this.canvas.style.cursor = 'default';
+		this.canvas.classList.remove('ait-cursor-grab', 'ait-cursor-ew-resize', 'ait-cursor-grabbing');
+		this.canvas.classList.add('ait-cursor-default');
 	}
 
 	// Touch event handlers

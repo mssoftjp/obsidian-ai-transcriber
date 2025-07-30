@@ -104,23 +104,19 @@ export class TranscriptionView extends ItemView {
 		});
 
 		// File info
-		this.fileInfoEl = this.progressContainer.createDiv({ cls: 'task-file-info' });
-		this.fileInfoEl.style.display = 'none';
+		this.fileInfoEl = this.progressContainer.createDiv({ cls: 'task-file-info ait-hidden' });
 
 		// Status
-		this.statusEl = this.progressContainer.createDiv({ cls: 'task-status' });
-		this.statusEl.style.display = 'none';
+		this.statusEl = this.progressContainer.createDiv({ cls: 'task-status ait-hidden' });
 
 		// Time
-		this.timeEl = this.progressContainer.createDiv({ cls: 'task-time' });
-		this.timeEl.style.display = 'none';
+		this.timeEl = this.progressContainer.createDiv({ cls: 'task-time ait-hidden' });
 
 		// Cancel button
 		this.cancelBtnEl = this.progressContainer.createEl('button', {
 			text: t('common.cancel'),
-			cls: 'mod-warning cancel-task-button'
+			cls: 'mod-warning cancel-task-button ait-hidden'
 		});
-		this.cancelBtnEl.style.display = 'none';
 		this.cancelBtnEl.addEventListener('click', () => {
 			this.handleCancel();
 		});
@@ -174,31 +170,31 @@ export class TranscriptionView extends ItemView {
 		if (!currentTask) {
 			// Show no task message
 			if (this.noTaskEl) {
-				this.noTaskEl.style.display = '';
+				this.noTaskEl.removeClass('ait-hidden');
 			}
 			if (this.fileInfoEl) {
-				this.fileInfoEl.style.display = 'none';
+				this.fileInfoEl.addClass('ait-hidden');
 			}
 			if (this.statusEl) {
-				this.statusEl.style.display = 'none';
+				this.statusEl.addClass('ait-hidden');
 			}
 			if (this.timeEl) {
-				this.timeEl.style.display = 'none';
+				this.timeEl.addClass('ait-hidden');
 			}
 			if (this.cancelBtnEl) {
-				this.cancelBtnEl.style.display = 'none';
+				this.cancelBtnEl.addClass('ait-hidden');
 			}
 			return;
 		}
 
 		// Hide no task message
 		if (this.noTaskEl) {
-			this.noTaskEl.style.display = 'none';
+			this.noTaskEl.addClass('ait-hidden');
 		}
 
 		// Update file info
 		if (this.fileInfoEl) {
-			this.fileInfoEl.style.display = '';
+			this.fileInfoEl.removeClass('ait-hidden');
 			this.fileInfoEl.empty();
 			const fileName = currentTask.inputFileName || '';
 			this.fileInfoEl.createEl('div', {
@@ -212,7 +208,7 @@ export class TranscriptionView extends ItemView {
 
 		// Update status with loading animation
 		if (this.statusEl) {
-			this.statusEl.style.display = '';
+			this.statusEl.removeClass('ait-hidden');
 			if (currentTask.status === 'processing') {
 				// Use specific "文字起こし中" for consistency with status bar
 				const statusText = `${t('modal.transcription.transcribing')}${this.loadingAnimation.getLoadingDots()}`;
@@ -237,16 +233,20 @@ export class TranscriptionView extends ItemView {
 
 		// Update time elapsed
 		if (this.timeEl && currentTask.startTime) {
-			this.timeEl.style.display = '';
+			this.timeEl.removeClass('ait-hidden');
 			const elapsed = Date.now() - currentTask.startTime;
 			this.timeEl.setText(`${t('common.elapsedTime')}: ${this.formatDuration(elapsed)}`);
 		} else if (this.timeEl) {
-			this.timeEl.style.display = 'none';
+			this.timeEl.addClass('ait-hidden');
 		}
 
 		// Show/hide cancel button
 		if (this.cancelBtnEl) {
-			this.cancelBtnEl.style.display = currentTask.status === 'processing' ? '' : 'none';
+			if (currentTask.status === 'processing') {
+				this.cancelBtnEl.removeClass('ait-hidden');
+			} else {
+				this.cancelBtnEl.addClass('ait-hidden');
+			}
 		}
 	}
 

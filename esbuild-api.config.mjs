@@ -1,8 +1,7 @@
 import esbuild from "esbuild";
 import process from "process";
 import builtins from "builtin-modules";
-import { readFileSync } from "fs";
-import { mkdirSync } from "fs";
+import { readFileSync, mkdirSync, copyFileSync, existsSync } from "fs";
 
 const banner =
 `/*
@@ -52,6 +51,23 @@ const context = await esbuild.context({
 
 if (prod) {
 	await context.rebuild();
+	
+	// Copy additional files to build directory
+	console.log('Copying additional files...');
+	['manifest.json', 'styles.css'].forEach(file => {
+		if (existsSync(file)) {
+			copyFileSync(file, `${outputDir}/${file}`);
+			console.log(`  ✓ ${file}`);
+		}
+	});
+	
+	// Copy WASM file if exists
+	const wasmSrc = 'node_modules/@echogarden/fvad-wasm/fvad.wasm';
+	if (existsSync(wasmSrc)) {
+		copyFileSync(wasmSrc, `${outputDir}/fvad.wasm`);
+		console.log('  ✓ fvad.wasm');
+	}
+	
 	process.exit(0);
 } else {
 	await context.watch();

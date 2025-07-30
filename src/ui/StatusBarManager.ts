@@ -96,7 +96,7 @@ export class StatusBarManager {
 			this.setIdleState();
 		} else {
 			// Show status bar when active
-			this.statusBarItem.style.display = '';
+			this.statusBarItem.removeClass('ait-hidden');
 
 			// Active task state
 			switch (task.status) {
@@ -123,7 +123,7 @@ export class StatusBarManager {
 
 	private setIdleState(): void {
 		// Hide status bar when idle
-		this.statusBarItem!.style.display = 'none';
+		this.statusBarItem!.addClass('ait-hidden');
 		this.statusBarItem!.setAttribute('aria-label', t('ribbon.tooltip'));
 		this.statusBarItem!.removeClass('is-processing', 'is-error', 'is-completed');
 	}
@@ -139,7 +139,7 @@ export class StatusBarManager {
 		// Progress bar
 		const progressContainer = this.statusBarItem!.createSpan({ cls: 'status-bar-progress' });
 		const progressBar = progressContainer.createSpan({ cls: 'status-bar-progress-bar' });
-		progressBar.style.width = `${percentage}%`;
+		progressBar.setAttribute('style', `width: ${percentage}%`);
 
 		const fileName = task.inputFileName || '';
 		this.statusBarItem!.setAttribute('aria-label', `${t('statusBar.processing')} ${fileName}: ${percentage}%`);
