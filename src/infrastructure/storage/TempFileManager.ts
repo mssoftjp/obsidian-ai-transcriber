@@ -111,11 +111,18 @@ export class TempFileManager {
 		await this.app.vault.createBinary(tempPath, buffer);
 
 		// TFileオブジェクトを取得
-		const tFile = this.app.vault.getAbstractFileByPath(tempPath) as TFile;
-		if (!tFile) {
+		const abstractFile = this.app.vault.getAbstractFileByPath(tempPath);
+		if (!abstractFile) {
 			this.logger.error('Failed to retrieve file after creation', { tempPath });
 			throw new Error(t('errors.createFileFailed', { error: 'File not found after creation' }));
 		}
+		
+		if (!(abstractFile instanceof TFile)) {
+			this.logger.error('Retrieved item is not a file', { tempPath, type: abstractFile.constructor.name });
+			throw new Error(t('errors.createFileFailed', { error: 'Retrieved item is not a file' }));
+		}
+		
+		const tFile = abstractFile;
 
 		const elapsedTime = performance.now() - startTime;
 		this.logger.info('External file copy completed', {
