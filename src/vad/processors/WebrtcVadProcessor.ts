@@ -127,14 +127,14 @@ export class WebRTCVADProcessor implements VADProcessor {
     
     // WASMファイルのパスを構築
     // まずプラグインフォルダ内のnode_modulesを確認
-    let wasmPath = `.obsidian/plugins/${this.pluginId}/node_modules/@echogarden/fvad-wasm/fvad.wasm`;
+    let wasmPath = `${this.app.vault.configDir}/plugins/${this.pluginId}/node_modules/@echogarden/fvad-wasm/fvad.wasm`;
     
     try {
       // ファイルの存在確認
       const exists = await adapter.exists(wasmPath);
       if (!exists) {
         // 別の場所を試す（ビルド時にコピーされている可能性）
-        wasmPath = `.obsidian/plugins/${this.pluginId}/fvad.wasm`;
+        wasmPath = `${this.app.vault.configDir}/plugins/${this.pluginId}/fvad.wasm`;
         const existsInRoot = await adapter.exists(wasmPath);
         if (!existsInRoot) {
           throw new Error(`WASM file not found at ${wasmPath}`);
