@@ -30,6 +30,21 @@ export interface TranscriptionHistory {
 
 export type ProgressListener = (task: TranscriptionTask | null) => void;
 
+// Define minimal interface for plugin to avoid any type
+interface DataPlugin {
+	loadData?: () => Promise<unknown>;
+	app: {
+		vault: {
+			configDir: string;
+			adapter: {
+				exists: (path: string) => Promise<boolean>;
+				read: (path: string) => Promise<string>;
+				write: (path: string, data: string) => Promise<void>;
+			};
+		};
+	};
+}
+
 interface ProgressData {
 	history: TranscriptionTask[];
 }
@@ -39,11 +54,11 @@ export class ProgressTracker {
 	private history: TranscriptionTask[] = [];
 	private listeners: ProgressListener[] = [];
 	private readonly maxHistoryItems = UI_CONSTANTS.MAX_HISTORY_ITEMS; // Fixed at 50
-	private plugin: any; // Reference to plugin for data persistence
+	private plugin: DataPlugin | undefined; // Reference to plugin for data persistence
 	private unifiedPercentage = 0; // 統一された進捗パーセンテージ
 	private logger: Logger;
 
-	constructor(plugin?: any) {
+	constructor(plugin?: DataPlugin) {
 		this.plugin = plugin;
 		this.logger = Logger.getLogger('ProgressTracker');
 		// Initialize with saved history if available

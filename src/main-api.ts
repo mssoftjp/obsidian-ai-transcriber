@@ -1,6 +1,6 @@
 import { App, Notice, Plugin, TFile, Menu, Platform } from 'obsidian';
 import { APITranscriber } from './ApiTranscriber';
-import { APITranscriptionSettings, DEFAULT_API_SETTINGS, UserDictionary, LanguageDictionaries } from './ApiSettings';
+import { APITranscriptionSettings, DEFAULT_API_SETTINGS, UserDictionary, LanguageDictionaries, DictionaryEntry, ContextualCorrection } from './ApiSettings';
 import { APISettingsTab } from './ApiSettingsTab';
 import { APITranscriptionModal } from './ui/ApiTranscriptionModal';
 import { AudioFileSelectionModal } from './ui/AudioFileSelectionModal';
@@ -438,34 +438,44 @@ export default class AITranscriberPlugin extends Plugin {
 	/**
 	 * Migrate dictionary format from string to string[] for 'from' field
 	 */
-	private migrateDictionaryFormat(dictionary: any): UserDictionary {
+	private migrateDictionaryFormat(dictionary: unknown): UserDictionary {
 		const result: UserDictionary = {
 			definiteCorrections: [],
 			contextualCorrections: []
 		};
 		
-		if (dictionary.definiteCorrections) {
-			result.definiteCorrections = dictionary.definiteCorrections.map((entry: any) => {
-				if (typeof entry.from === 'string') {
-					return {
-						...entry,
-						from: entry.from.split(',').map((s: string) => s.trim()).filter((s: string) => s)
-					};
-				}
-				return entry;
-			});
-		}
-		
-		if (dictionary.contextualCorrections) {
-			result.contextualCorrections = dictionary.contextualCorrections.map((entry: any) => {
-				if (typeof entry.from === 'string') {
-					return {
-						...entry,
-						from: entry.from.split(',').map((s: string) => s.trim()).filter((s: string) => s)
-					};
-				}
-				return entry;
-			});
+		if (dictionary && typeof dictionary === 'object') {
+			const dict = dictionary as Record<string, unknown>;
+			
+			if (Array.isArray(dict.definiteCorrections)) {
+				result.definiteCorrections = dict.definiteCorrections.map((entry: unknown) => {
+					if (entry && typeof entry === 'object') {
+						const typedEntry = entry as Record<string, unknown>;
+						if (typeof typedEntry.from === 'string') {
+							return {
+								...typedEntry,
+								from: typedEntry.from.split(',').map((s: string) => s.trim()).filter((s: string) => s)
+							};
+						}
+					}
+					return entry;
+				}) as DictionaryEntry[];
+			}
+			
+			if (Array.isArray(dict.contextualCorrections)) {
+				result.contextualCorrections = dict.contextualCorrections.map((entry: unknown) => {
+					if (entry && typeof entry === 'object') {
+						const typedEntry = entry as Record<string, unknown>;
+						if (typeof typedEntry.from === 'string') {
+							return {
+								...typedEntry,
+								from: typedEntry.from.split(',').map((s: string) => s.trim()).filter((s: string) => s)
+							};
+						}
+					}
+					return entry;
+				}) as ContextualCorrection[];
+			}
 		}
 		
 		return result;

@@ -276,7 +276,12 @@ export class APITranscriptionModal extends Modal {
 			} else {
 				// Fallback to file size estimate
 				const estimate = await this.transcriber.estimateCost(this.audioFile);
-				actualMinutes = estimate.details.minutes;
+				if (estimate.details && typeof estimate.details === 'object' && 'minutes' in estimate.details) {
+					actualMinutes = (estimate.details as { minutes: number }).minutes;
+				} else {
+					// Ultimate fallback based on cost
+					actualMinutes = estimate.cost / 0.006; // Assume whisper pricing
+				}
 			}
 
 			// Get pricing based on model

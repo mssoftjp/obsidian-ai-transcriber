@@ -211,7 +211,7 @@ export class APITranscriber {
 	 * Get transcriber instance (for compatibility)
 	 * @deprecated Use TranscriptionController directly
 	 */
-	getTranscriber(): any {
+	getTranscriber(): unknown {
 		this.logger.warn('getTranscriber() is deprecated');
 		return this.controller;
 	}
@@ -220,7 +220,7 @@ export class APITranscriber {
 	 * Get chunk processor (for compatibility)
 	 * @deprecated Chunk processing is handled internally
 	 */
-	getChunkProcessor(): any {
+	getChunkProcessor(): unknown {
 		this.logger.warn('getChunkProcessor() is deprecated');
 		return null;
 	}
@@ -242,7 +242,7 @@ export class APITranscriber {
 	/**
 	 * Debug log helper (for compatibility)
 	 */
-	private log(message: string, data?: any): void {
+	private log(message: string, data?: unknown): void {
 		if (this.settings.debugMode) {
 			if (data !== undefined) {
 			} else {
@@ -285,7 +285,7 @@ export class APITranscriber {
 	 * Estimate transcription cost
 	 * Returns both old format (for backward compatibility) and new format
 	 */
-	async estimateCost(audioFile: TFile): Promise<{ cost: number; currency: string; details: any }> {
+	async estimateCost(audioFile: TFile): Promise<{ cost: number; currency: string; details: unknown }> {
 		try {
 			// Get audio duration (rough estimate based on file size)
 			const audioBuffer = await this.app.vault.readBinary(audioFile);
