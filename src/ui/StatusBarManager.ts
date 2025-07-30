@@ -68,6 +68,12 @@ export class StatusBarManager {
 
 		this.loadingAnimation.destroy();
 
+		// Clean up dynamic stylesheet
+		const dynamicStyleSheet = document.querySelector('#ait-dynamic-progress');
+		if (dynamicStyleSheet) {
+			dynamicStyleSheet.remove();
+		}
+
 		if (this.statusBarItem) {
 			this.statusBarItem.remove();
 		}
@@ -78,6 +84,41 @@ export class StatusBarManager {
 	 */
 	setClickHandler(handler: () => void): void {
 		this.clickHandler = handler;
+	}
+
+	/**
+	 * Set progress using CSP-compliant dynamic stylesheet
+	 */
+	private setProgressViaStylesheet(selector: string, percentage: number): void {
+		// Find or create our dynamic stylesheet for progress updates
+		let styleSheet = document.querySelector('#ait-dynamic-progress') as HTMLStyleElement;
+		if (!styleSheet) {
+			styleSheet = document.createElement('style');
+			styleSheet.id = 'ait-dynamic-progress';
+			document.head.appendChild(styleSheet);
+		}
+
+		// Ensure the stylesheet has a CSSStyleSheet object
+		const sheet = styleSheet.sheet as CSSStyleSheet;
+		if (!sheet) {
+			return;
+		}
+
+		// Maintain a map of selectors to rules
+		if (!this.ruleMap) {
+			this.ruleMap = new Map<string, number>();
+		}
+
+		// Check if a rule for this selector already exists
+		if (this.ruleMap.has(selector)) {
+			const index = this.ruleMap.get(selector)!;
+			sheet.deleteRule(index);
+		}
+
+		// Add the new rule and update the map
+		const rule = `${selector} { width: ${percentage}%; }`;
+		const newIndex = sheet.insertRule(rule, sheet.cssRules.length);
+		this.ruleMap.set(selector, newIndex);
 	}
 
 	/**
@@ -138,8 +179,9 @@ export class StatusBarManager {
 
 		// Progress bar
 		const progressContainer = this.statusBarItem!.createSpan({ cls: 'status-bar-progress' });
-		const progressBar = progressContainer.createSpan({ cls: 'status-bar-progress-bar' });
-		progressBar.style.setProperty('--progress-width', `${percentage}%`);
+		progressContainer.createSpan({ cls: 'status-bar-progress-bar' });
+		// Use dynamic stylesheet for CSP compliance
+		this.setProgressViaStylesheet('.ai-transcriber-status .status-bar-progress-bar', percentage);
 
 		const fileName = task.inputFileName || '';
 		this.statusBarItem!.setAttribute('aria-label', `${t('statusBar.processing')} ${fileName}: ${percentage}%`);
