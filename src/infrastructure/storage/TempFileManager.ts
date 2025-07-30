@@ -181,7 +181,7 @@ export class TempFileManager {
 			
 			if (sessionFolder instanceof TFolder) {
 				// セッションフォルダを削除
-				await this.app.vault.delete(sessionFolder, true);
+				await this.app.fileManager.trashFile(sessionFolder);
 				this.logger.debug('Session cleaned up successfully', { sessionId });
 			}
 		} catch (error) {
@@ -200,14 +200,14 @@ export class TempFileManager {
 			if (specificFile) {
 				// 特定のファイルのみ削除
 				if (specificFile.path.startsWith(TempFileManager.TEMP_DIR)) {
-					await this.app.vault.delete(specificFile);
+					await this.app.fileManager.trashFile(specificFile);
 					this.logger.debug('Specific file cleaned up', { file: specificFile.path });
 				}
 			} else {
 				// フォルダごと削除（シンプルな実装）
 				const folder = this.app.vault.getAbstractFileByPath(TempFileManager.TEMP_DIR);
 				if (folder instanceof TFolder) {
-					await this.app.vault.delete(folder, true);
+					await this.app.fileManager.trashFile(folder);
 					this.logger.info('All temporary files cleaned up');
 				}
 			}
