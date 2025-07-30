@@ -54,7 +54,7 @@ export function getPrompt(
 	params?: Record<string, any>
 ): string {
 	// Get the localized prompt
-	const prompt = t(key as any);
+	const prompt = t(key);
 
 	// If no parameters, return as-is
 	if (!params) {

@@ -168,7 +168,7 @@ export class PostProcessingModal extends Modal {
 		this.close();
 		// Call onSubmit with undefined to indicate cancellation
 		// This preserves the existing metaInfo state
-		this.onSubmit(undefined as any);
+		this.onSubmit(null);
 	}
 
 

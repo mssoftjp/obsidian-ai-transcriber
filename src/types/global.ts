@@ -89,6 +89,7 @@ export interface ObsidianApp {
 
 // Module import types
 export interface FvadModule {
+	default(options?: unknown): Promise<unknown>;
 	createInstance(): unknown;
 	// Add other methods as needed
 }

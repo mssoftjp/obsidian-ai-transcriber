@@ -2,6 +2,7 @@ import { App, FileSystemAdapter } from 'obsidian';
 import { VADProcessor, VADResult, VADConfig, VADError, SpeechSegment } from '../VadTypes';
 import { AUDIO_CONSTANTS } from '../../config/constants';
 import { Logger } from '../../utils/Logger';
+import { FvadModule } from '../../types/global';
 
 /**
  * WebRTC VADプロセッサー
@@ -30,7 +31,7 @@ export class WebRTCVADProcessor implements VADProcessor {
     
     try {
       // 1. fvad-wasmモジュールをインポート
-      const fvadModule = await import('@echogarden/fvad-wasm') as any;
+      const fvadModule = await import('@echogarden/fvad-wasm') as unknown as FvadModule;
       
       // 2. WASMファイルを読み込む
       const wasmBuffer = await this.loadWasmFile();
