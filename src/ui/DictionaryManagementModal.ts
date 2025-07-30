@@ -4,15 +4,20 @@ import { t } from '../i18n';
 import { DICTIONARY_CONSTANTS } from '../config/constants';
 import { Logger } from '../utils/Logger';
 
+// Define minimal interface for plugin to avoid any type
+interface SettingsPlugin {
+	saveSettings: () => Promise<void>;
+}
+
 export class DictionaryManagementModal extends Modal {
 	private settings: APITranscriptionSettings;
-	private plugin: any;
+	private plugin: SettingsPlugin;
 	private dictionaryContentEl!: HTMLElement;
 	private currentLanguage: 'ja' | 'en' | 'zh' | 'ko' = 'ja';
 	private tabsContainer!: HTMLElement;
 	private logger = Logger.getLogger('DictionaryManagementModal');
 
-	constructor(app: App, settings: APITranscriptionSettings, plugin: any) {
+	constructor(app: App, settings: APITranscriptionSettings, plugin: SettingsPlugin) {
 		super(app);
 		this.settings = settings;
 		this.plugin = plugin;

@@ -8,13 +8,13 @@ import { Logger } from '../utils/Logger';
 import { ObsidianApp } from '../types/global';
 
 // Translations will be imported here
-let translations: Record<SupportedLocale, TranslationKeys> = {} as Record<SupportedLocale, TranslationKeys>;
+let translations: Partial<Record<SupportedLocale, TranslationKeys>> = {};
 
 // Current locale
 let currentLocale: SupportedLocale = 'en';
 
 // App instance for accessing Obsidian settings
-let appInstance: unknown = null;
+let appInstance: ObsidianApp | null = null;
 
 /**
  * Initialize i18n with translations
@@ -28,10 +28,11 @@ export function initializeTranslations(translationData: Record<SupportedLocale, 
  * Initialize i18n with app instance and detect locale
  */
 export function initializeI18n(app: unknown): void {
-	appInstance = app; // eslint-disable-line @typescript-eslint/no-unused-vars
+	const obsidianApp = app as ObsidianApp;
+	appInstance = obsidianApp; // eslint-disable-line @typescript-eslint/no-unused-vars
 
 	// Get Obsidian's language setting
-	const locale = (app as ObsidianApp).vault?.config?.locale ||
+	const locale = obsidianApp.vault?.config?.locale ||
 		moment.locale() ||
 		navigator.language ||
 		'en';
@@ -53,6 +54,25 @@ export function initializeI18n(app: unknown): void {
 }
 
 /**
+ * Safely navigate through a nested object using a key path
+ * @param obj - The object to navigate
+ * @param keys - Array of keys to traverse
+ * @returns The value at the path or undefined if not found
+ */
+function getNestedValue(obj: unknown, keys: string[]): unknown {
+	let current = obj;
+	for (const key of keys) {
+		if (current && typeof current === 'object' && key in current) {
+			const objMap = current as Record<string, unknown>;
+			current = objMap[key];
+		} else {
+			return undefined;
+		}
+	}
+	return current;
+}
+
+/**
  * Get translation for a given key
  * @param path - Dot-separated path to translation key (e.g., 'settings.title')
  * @param params - Optional parameters for string interpolation
@@ -66,24 +86,11 @@ export function t(path: string, params?: Record<string, string | number>): strin
 	}
 
 	const keys = path.split('.');
-	let value: unknown = translations[currentLocale];
+	let value = getNestedValue(translations[currentLocale], keys);
 
-	// Navigate through the translation object
-	for (const key of keys) {
-		value = (value as Record<string, unknown>)?.[key];
-		if (value === undefined) {
-			// Try fallback to English
-			if (currentLocale !== 'en' && translations.en) {
-				value = translations.en;
-				for (const k of keys) {
-					value = (value as Record<string, unknown>)?.[k];
-					if (value === undefined) {
-						break;
-					}
-				}
-			}
-			break;
-		}
+	// Try fallback to English if not found
+	if (value === undefined && currentLocale !== 'en' && translations.en) {
+		value = getNestedValue(translations.en, keys);
 	}
 
 	// If translation not found, return the key
