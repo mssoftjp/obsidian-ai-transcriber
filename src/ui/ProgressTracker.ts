@@ -53,7 +53,7 @@ export class ProgressTracker {
 	private history: TranscriptionTask[] = [];
 	private listeners: ProgressListener[] = [];
 	private readonly maxHistoryItems = UI_CONSTANTS.MAX_HISTORY_ITEMS; // Fixed at 50
-	private plugin: DataPlugin | null; // Reference to plugin for data persistence
+	private plugin: DataPlugin | undefined; // Reference to plugin for data persistence
 	private unifiedPercentage = 0; // 統一された進捗パーセンテージ
 	private logger: Logger;
 
