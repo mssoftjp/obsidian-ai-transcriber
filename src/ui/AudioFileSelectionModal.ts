@@ -330,7 +330,7 @@ export class AudioFileSelectionModal extends Modal {
 		}
 
 		// Update the CSS rule for this progress bar
-		const rule = `${selector} { width: ${percentage}% !important; }`;
+		const rule = `${selector} { width: ${percentage}%; }`;
 		styleSheet.textContent = rule;
 	}
 
