@@ -389,7 +389,7 @@ export class ProgressTracker {
 	}
 
 	private generateTaskId(): string {
-		return `task-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
+		return `task-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 	}
 
 	/**
