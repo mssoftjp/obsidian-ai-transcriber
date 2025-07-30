@@ -2,6 +2,7 @@ import { ItemView, WorkspaceLeaf, TFile, Notice, Modal, App } from 'obsidian';
 import { ProgressTracker, TranscriptionTask } from './ProgressTracker';
 import { t } from '../i18n';
 import { LoadingAnimation } from '../core/utils/LoadingAnimation';
+import { ObsidianApp } from '../types/global';
 
 export const VIEW_TYPE_TRANSCRIPTION = 'ai-transcriber-view';
 
@@ -431,8 +432,8 @@ export class TranscriptionView extends ItemView {
 					this.showFileSelectionModal(task, matchingFiles);
 				} else {
 					// 見つからない場合は全文検索を開く
-					const searchPlugin = (this.app as any).internalPlugins.getPluginById('global-search');
-					if (searchPlugin && searchPlugin.enabled) {
+					const searchPlugin = ((this.app as unknown) as ObsidianApp).internalPlugins?.getPluginById('global-search');
+					if (this.isSearchPlugin(searchPlugin)) {
 						searchPlugin.instance.openGlobalSearch(`"${searchQuery}"`);
 					}
 					new Notice(t('common.manualSearchRequired'));
@@ -500,7 +501,7 @@ export class TranscriptionView extends ItemView {
 
 		if (taskIndex !== -1) {
 			// ProgressTrackerの履歴を直接更新（updateHistoryItemが全ての情報を更新する）
-			await (this.progressTracker as any).updateHistoryItem(taskIndex, updatedTask);
+			await this.progressTracker.updateHistoryItem(taskIndex, updatedTask);
 
 			// UIを更新
 			this.updateHistoryDisplay();
@@ -513,6 +514,16 @@ export class TranscriptionView extends ItemView {
 	private isAudioFile(extension: string): boolean {
 		const audioExtensions = ['mp3', 'wav', 'm4a', 'ogg', 'flac', 'aac', 'wma', 'opus', 'webm'];
 		return audioExtensions.includes(extension.toLowerCase());
+	}
+
+	private isSearchPlugin(plugin: unknown): plugin is { enabled: boolean; instance: { openGlobalSearch: (query: string) => void } } {
+		return typeof plugin === 'object' &&
+			plugin !== null &&
+			'enabled' in plugin &&
+			'instance' in plugin &&
+			typeof (plugin as Record<string, unknown>).enabled === 'boolean' &&
+			(plugin as Record<string, unknown>).enabled === true &&
+			typeof (plugin as Record<string, unknown>).instance === 'object';
 	}
 }
 

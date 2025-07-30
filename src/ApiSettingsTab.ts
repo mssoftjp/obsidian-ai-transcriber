@@ -7,6 +7,7 @@ import AITranscriberPlugin from './main-api';
 
 export class APISettingsTab extends PluginSettingTab {
 	plugin: AITranscriberPlugin;
+	private updateDictionaryDesc?: () => void;
 	
 	private static readonly SUPPORT_CONFIG = {
 		fundingUrl: 'https://buymeacoffee.com/mssoft',
@@ -33,7 +34,7 @@ export class APISettingsTab extends PluginSettingTab {
 		// Transcription settings - no heading needed
 
 		// Show current Obsidian language if available
-		const obsidianLang = (this.plugin as any).getObsidianLanguage();
+		const obsidianLang = this.plugin.getObsidianLanguage();
 		const languageDesc = obsidianLang && obsidianLang !== 'auto' 
 			? `${t('settings.language.desc')} (${t('settings.language.useObsidianLang')}: ${obsidianLang})`
 			: t('settings.language.desc');
@@ -52,22 +53,18 @@ export class APISettingsTab extends PluginSettingTab {
 					this.plugin.settings.language = value;
 					await this.plugin.saveSettings();
 					// Update dictionary description immediately
-					if ((this as any).updateDictionaryDesc) {
-						(this as any).updateDictionaryDesc();
-					}
+					this.updateDictionaryDesc?.();
 				}))
 			.addExtraButton(button => button
 				.setIcon('reset')
 				.setTooltip(t('settings.language.useObsidianLang'))
 				.onClick(async () => {
-					const obsidianLanguage = (this.plugin as any).getObsidianLanguage();
+					const obsidianLanguage = this.plugin.getObsidianLanguage();
 					if (obsidianLanguage) {
 						this.plugin.settings.language = obsidianLanguage;
 						await this.plugin.saveSettings();
 						// Update dictionary description immediately
-						if ((this as any).updateDictionaryDesc) {
-							(this as any).updateDictionaryDesc();
-						}
+						this.updateDictionaryDesc?.();
 						new Notice(t('notices.languageSet', { language: obsidianLanguage }));
 					}
 				}));
@@ -167,7 +164,7 @@ export class APISettingsTab extends PluginSettingTab {
 		updateDictionaryDesc();
 		
 		// Store the update function for language change
-		(this as any).updateDictionaryDesc = updateDictionaryDesc;
+		this.updateDictionaryDesc = updateDictionaryDesc;
 		
 		// Progress UI settings
 		SettingsUIBuilder.displayProgressUISettings(containerEl, this.plugin.settings, () => this.plugin.saveSettings());

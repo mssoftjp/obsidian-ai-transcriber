@@ -1,5 +1,6 @@
 import { Platform } from 'obsidian';
 import { Logger } from '../../utils/Logger';
+import { ElectronRenderer, ElectronWindow, isElectronWindow } from '../../types/global';
 
 const PREFIX = 'SAFE_V1::';
 const LEGACY_XOR = 'XOR_V1::';
@@ -7,7 +8,7 @@ const LEGACY_PLAIN = 'PLAIN::';
 const FIXED_KEY = 'obsidian-ai-transcriber-2025';
 
 export class SafeStorageService {
-	private static safeStorage: any = null;
+	private static safeStorage: ElectronRenderer['safeStorage'] | null = null;
 	private static logger = Logger.getLogger('SafeStorageService');
 
 	/** safeStorageの遅延初期化 */
@@ -20,7 +21,7 @@ export class SafeStorageService {
 				}
 				
 				// Obsidianのelectron環境からsafeStorageを取得
-				const electron = (window as any).require?.('electron');
+				const electron = isElectronWindow(window) ? window.require?.('electron') : null;
 				
 				this.safeStorage = electron?.remote?.safeStorage || electron?.safeStorage;
 			} catch (e) {

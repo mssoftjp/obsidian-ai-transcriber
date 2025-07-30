@@ -1,5 +1,5 @@
 import { App, Modal, Notice } from 'obsidian';
-import { APITranscriptionSettings, UserDictionary, DictionaryEntry, ContextualCorrection } from '../ApiSettings';
+import { APITranscriptionSettings, UserDictionary, DictionaryEntry, ContextualCorrection, DictionaryCategory, LanguageDictionaries } from '../ApiSettings';
 import { t } from '../i18n';
 import { DICTIONARY_CONSTANTS } from '../config/constants';
 import { Logger } from '../utils/Logger';
@@ -316,7 +316,7 @@ export class DictionaryManagementModal extends Modal {
 			}
 		});
 		categorySelect.addEventListener('change', (e) => {
-			entry.category = (e.target as HTMLSelectElement).value as any;
+			entry.category = (e.target as HTMLSelectElement).value as DictionaryCategory;
 			this.saveSettings();
 		});
 
@@ -392,7 +392,7 @@ export class DictionaryManagementModal extends Modal {
 			}
 		});
 		categorySelect.addEventListener('change', (e) => {
-			entry.category = (e.target as HTMLSelectElement).value as any;
+			entry.category = (e.target as HTMLSelectElement).value as DictionaryCategory;
 			this.saveSettings();
 		});
 
@@ -506,10 +506,10 @@ export class DictionaryManagementModal extends Modal {
 
 			try {
 				const text = await file.text();
-				const imported = JSON.parse(text) as any;
+				const imported = JSON.parse(text) as unknown;
 
 				// Check if it's the new unified format
-				if (imported.version === '2.0' && imported.dictionaries) {
+				if (this.isImportedDataV2(imported)) {
 					// New format - import all dictionaries
 					const shouldReplace = await this.confirmReplace();
 
@@ -535,7 +535,7 @@ export class DictionaryManagementModal extends Modal {
 							}
 						}
 					}
-				} else if (imported.definiteCorrections) {
+				} else if (this.isLegacyDictionaryData(imported)) {
 					// Old single-language format - import to current language
 					const currentDict = this.getCurrentDictionary();
 					const shouldReplace = await this.confirmReplace();
@@ -596,6 +596,22 @@ export class DictionaryManagementModal extends Modal {
 
 			modal.open();
 		});
+	}
+
+	private isImportedDataV2(data: unknown): data is { version: string; dictionaries: LanguageDictionaries } {
+		return typeof data === 'object' &&
+			data !== null &&
+			'version' in data &&
+			(data as Record<string, unknown>).version === '2.0' &&
+			'dictionaries' in data &&
+			typeof (data as Record<string, unknown>).dictionaries === 'object';
+	}
+
+	private isLegacyDictionaryData(data: unknown): data is { definiteCorrections: DictionaryEntry[]; contextualCorrections?: ContextualCorrection[] } {
+		return typeof data === 'object' &&
+			data !== null &&
+			'definiteCorrections' in data &&
+			Array.isArray((data as Record<string, unknown>).definiteCorrections);
 	}
 
 	onClose() {

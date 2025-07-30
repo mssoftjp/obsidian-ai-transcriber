@@ -5,6 +5,10 @@
 
 import { Logger } from '../../utils/Logger';
 
+interface WindowWithWebKit extends Window {
+	webkitAudioContext?: typeof AudioContext;
+}
+
 export interface ResourceConfig {
 	id: string;
 	type: 'audio-context' | 'abort-controller' | 'other';
@@ -48,7 +52,7 @@ export class ResourceManager {
 		}
 
 		// Create new context
-		const context = new (window.AudioContext || (window as any).webkitAudioContext)(config);
+		const context = new (window.AudioContext || (window as WindowWithWebKit).webkitAudioContext)(config);
 		this.audioContexts.set(id, context);
 		
 		// Store metadata

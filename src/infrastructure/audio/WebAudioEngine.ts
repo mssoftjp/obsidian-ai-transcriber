@@ -15,6 +15,10 @@ import { ResourceManager } from '../../core/resources/ResourceManager';
 import { t } from '../../i18n';
 import { Logger } from '../../utils/Logger';
 
+interface WindowWithWebKit extends Window {
+	webkitAudioContext?: typeof AudioContext;
+}
+
 export class WebAudioEngine extends AudioProcessor {
 	private audioContext: AudioContext | null = null;
 	private resourceId: string;
@@ -155,7 +159,7 @@ export class WebAudioEngine extends AudioProcessor {
 			sampleRate: targetSampleRate,
 			duration: processedData.length / targetSampleRate,
 			channels: 1,
-			source: audioBuffer as any // Store original for reference
+			source: audioBuffer as unknown as AudioInput // Store original for reference
 		};
 	}
 
@@ -185,7 +189,7 @@ export class WebAudioEngine extends AudioProcessor {
 	 */
 	static isAvailable(): boolean {
 		return typeof window !== 'undefined' && 
-		       !!(window.AudioContext || (window as any).webkitAudioContext);
+		       !!(window.AudioContext || (window as WindowWithWebKit).webkitAudioContext);
 	}
 
 	/**

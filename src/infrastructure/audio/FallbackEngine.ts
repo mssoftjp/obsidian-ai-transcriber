@@ -159,7 +159,7 @@ export class FallbackEngine extends AudioProcessor {
 			sampleRate: audioBuffer.sampleRate, // Keep original sample rate
 			duration: audioBuffer.duration,
 			channels: 1,
-			source: audioBuffer as any
+			source: audioBuffer as unknown as AudioInput
 		};
 	}
 

@@ -16,6 +16,7 @@ import ja from './i18n/translations/ja';
 import zh from './i18n/translations/zh';
 import ko from './i18n/translations/ko';
 import { Logger, LogLevel } from './utils/Logger';
+import { ObsidianApp } from './types/global';
 
 export default class AITranscriberPlugin extends Plugin {
 	settings: APITranscriptionSettings;
@@ -208,13 +209,19 @@ export default class AITranscriberPlugin extends Plugin {
 		
 	}
 	
+	private isLanguageDictionaries(data: unknown): data is LanguageDictionaries {
+		return typeof data === 'object' && 
+		       data !== null && 
+		       ('ja' in data || 'en' in data || 'zh' in data);
+	}
+
 	/**
 	 * Get Obsidian's language setting and map to our supported languages
 	 */
-	private getObsidianLanguage(): string {
+	getObsidianLanguage(): string {
 		// Get Obsidian's locale setting
-		const locale = (this.app as any).vault?.config?.locale || 
-		               (window as any).moment?.locale() || 
+		const locale = ((this.app as unknown) as ObsidianApp).vault?.config?.locale || 
+		               (window as { moment?: { locale(): string } }).moment?.locale() || 
 		               navigator.language || 
 		               'en';
 		
@@ -328,7 +335,7 @@ export default class AITranscriberPlugin extends Plugin {
 
 		const modal = new APITranscriptionModal(this.app, this.transcriber, file, this.settings, this.progressTracker);
 		// Set save callback
-		(modal as any).saveSettings = () => this.saveSettings();
+		(modal as unknown as { saveSettings: () => Promise<void> }).saveSettings = () => this.saveSettings();
 		modal.open();
 		this.logger.debug('Transcription modal opened');
 	}
@@ -403,10 +410,10 @@ export default class AITranscriberPlugin extends Plugin {
 			// Check if dictionary file exists
 			if (await this.app.vault.adapter.exists(dictionaryPath)) {
 				const dictionaryData = await this.app.vault.adapter.read(dictionaryPath);
-				const parsedData = JSON.parse(dictionaryData) as any;
+				const parsedData = JSON.parse(dictionaryData) as unknown;
 				
 				// Only load if it's in the new format (has language keys)
-				if (parsedData.ja || parsedData.en || parsedData.zh) {
+				if (this.isLanguageDictionaries(parsedData)) {
 					// Apply migration for from: string to from: string[] if needed
 					const languages: ('ja' | 'en' | 'zh')[] = ['ja', 'en', 'zh'];
 					for (const lang of languages) {
@@ -415,7 +422,7 @@ export default class AITranscriberPlugin extends Plugin {
 						}
 					}
 					
-					this.settings.userDictionaries = parsedData as LanguageDictionaries;
+					this.settings.userDictionaries = parsedData;
 					this.logger.debug('Loaded language-specific dictionaries from file');
 				}
 				// Ignore old format completely

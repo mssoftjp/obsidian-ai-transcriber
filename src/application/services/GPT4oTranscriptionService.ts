@@ -169,7 +169,7 @@ export class GPT4oTranscriptionService extends TranscriptionService {
 	async testConnection(apiKey: string): Promise<boolean> {
 		this.logger.debug('Testing GPT-4o API connection', { model: this.modelId });
 		try {
-			const testClient = new GPT4oClient(apiKey, this.modelId as any);
+			const testClient = new GPT4oClient(apiKey, this.modelId);
 			const result = await testClient.testConnection();
 			this.logger.info('GPT-4o connection test completed', { 
 				success: result,

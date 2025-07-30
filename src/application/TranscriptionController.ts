@@ -662,13 +662,13 @@ export class TranscriptionController {
 		if (this.audioPipeline) {
 			try {
 				// AudioPipeline should cleanup its audio processor (WebAudioEngine)
-				const audioProcessor = (this.audioPipeline as any).audioProcessor;
+				const audioProcessor = (this.audioPipeline as unknown as { audioProcessor?: { cleanup?: () => Promise<void> } }).audioProcessor;
 				if (audioProcessor && typeof audioProcessor.cleanup === 'function') {
 					await audioProcessor.cleanup();
 				}
 
 				// Clean up chunking service (VADChunkingService)
-				const chunkingService = (this.audioPipeline as any).chunkingService;
+				const chunkingService = (this.audioPipeline as unknown as { chunkingService?: { cleanup?: () => Promise<void> } }).chunkingService;
 				if (chunkingService && typeof chunkingService.cleanup === 'function') {
 					await chunkingService.cleanup();
 				}
