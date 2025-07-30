@@ -1,6 +1,7 @@
 import { TFile } from 'obsidian';
 import { UI_CONSTANTS } from '../config/constants';
 import { Logger } from '../utils/Logger';
+import { PathUtils } from '../utils/PathUtils';
 
 export interface TranscriptionTask {
 	id: string;
@@ -29,6 +30,21 @@ export interface TranscriptionHistory {
 
 export type ProgressListener = (task: TranscriptionTask | null) => void;
 
+// Define minimal interface for plugin to avoid any type
+interface DataPlugin {
+	loadData?: () => Promise<unknown>;
+	app: {
+		vault: {
+			configDir: string;
+			adapter: {
+				exists: (path: string) => Promise<boolean>;
+				read: (path: string) => Promise<string>;
+				write: (path: string, data: string) => Promise<void>;
+			};
+		};
+	};
+}
+
 interface ProgressData {
 	history: TranscriptionTask[];
 }
@@ -38,11 +54,11 @@ export class ProgressTracker {
 	private history: TranscriptionTask[] = [];
 	private listeners: ProgressListener[] = [];
 	private readonly maxHistoryItems = UI_CONSTANTS.MAX_HISTORY_ITEMS; // Fixed at 50
-	private plugin: any; // Reference to plugin for data persistence
+	private plugin: DataPlugin | undefined; // Reference to plugin for data persistence
 	private unifiedPercentage = 0; // 統一された進捗パーセンテージ
 	private logger: Logger;
 
-	constructor(plugin?: any) {
+	constructor(plugin?: DataPlugin) {
 		this.plugin = plugin;
 		this.logger = Logger.getLogger('ProgressTracker');
 		// Initialize with saved history if available
@@ -407,7 +423,7 @@ export class ProgressTracker {
 
 		try {
 			// 履歴データ専用ファイルから読み込み
-			const historyPath = `${this.plugin.app.vault.configDir}/plugins/obsidian-ai-transcriber/transcription-history.json`;
+			const historyPath = PathUtils.getHistoryFilePath(this.plugin.app);
 			if (await this.plugin.app.vault.adapter.exists(historyPath)) {
 				const historyData = await this.plugin.app.vault.adapter.read(historyPath);
 				const progressData = JSON.parse(historyData) as ProgressData;
@@ -428,7 +444,7 @@ export class ProgressTracker {
 
 		try {
 			// 履歴データ専用ファイルに保存
-			const historyPath = `${this.plugin.app.vault.configDir}/plugins/obsidian-ai-transcriber/transcription-history.json`;
+			const historyPath = PathUtils.getHistoryFilePath(this.plugin.app);
 			const progressData: ProgressData = {
 				history: this.history
 			};

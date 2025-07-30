@@ -1,6 +1,6 @@
 import { App, Notice, Plugin, TFile, Menu, Platform } from 'obsidian';
 import { APITranscriber } from './ApiTranscriber';
-import { APITranscriptionSettings, DEFAULT_API_SETTINGS, UserDictionary, LanguageDictionaries } from './ApiSettings';
+import { APITranscriptionSettings, DEFAULT_API_SETTINGS, UserDictionary, LanguageDictionaries, DictionaryEntry, ContextualCorrection } from './ApiSettings';
 import { APISettingsTab } from './ApiSettingsTab';
 import { APITranscriptionModal } from './ui/ApiTranscriptionModal';
 import { AudioFileSelectionModal } from './ui/AudioFileSelectionModal';
@@ -16,6 +16,7 @@ import ja from './i18n/translations/ja';
 import zh from './i18n/translations/zh';
 import ko from './i18n/translations/ko';
 import { Logger, LogLevel } from './utils/Logger';
+import { PathUtils } from './utils/PathUtils';
 import { ObsidianApp } from './types/global';
 
 export default class AITranscriberPlugin extends Plugin {
@@ -405,7 +406,7 @@ export default class AITranscriberPlugin extends Plugin {
 	private async loadUserDictionary(): Promise<void> {
 		this.logger.debug('Loading user dictionary...');
 		try {
-			const dictionaryPath = `${this.app.vault.configDir}/plugins/obsidian-ai-transcriber/user-dictionary.json`;
+			const dictionaryPath = PathUtils.getUserDictionaryPath(this.app);
 			
 			// Check if dictionary file exists
 			if (await this.app.vault.adapter.exists(dictionaryPath)) {
@@ -437,34 +438,44 @@ export default class AITranscriberPlugin extends Plugin {
 	/**
 	 * Migrate dictionary format from string to string[] for 'from' field
 	 */
-	private migrateDictionaryFormat(dictionary: any): UserDictionary {
+	private migrateDictionaryFormat(dictionary: unknown): UserDictionary {
 		const result: UserDictionary = {
 			definiteCorrections: [],
 			contextualCorrections: []
 		};
 		
-		if (dictionary.definiteCorrections) {
-			result.definiteCorrections = dictionary.definiteCorrections.map((entry: any) => {
-				if (typeof entry.from === 'string') {
-					return {
-						...entry,
-						from: entry.from.split(',').map((s: string) => s.trim()).filter((s: string) => s)
-					};
-				}
-				return entry;
-			});
-		}
-		
-		if (dictionary.contextualCorrections) {
-			result.contextualCorrections = dictionary.contextualCorrections.map((entry: any) => {
-				if (typeof entry.from === 'string') {
-					return {
-						...entry,
-						from: entry.from.split(',').map((s: string) => s.trim()).filter((s: string) => s)
-					};
-				}
-				return entry;
-			});
+		if (dictionary && typeof dictionary === 'object') {
+			const dict = dictionary as Record<string, unknown>;
+			
+			if (Array.isArray(dict.definiteCorrections)) {
+				result.definiteCorrections = dict.definiteCorrections.map((entry: unknown) => {
+					if (entry && typeof entry === 'object') {
+						const typedEntry = entry as Record<string, unknown>;
+						if (typeof typedEntry.from === 'string') {
+							return {
+								...typedEntry,
+								from: typedEntry.from.split(',').map((s: string) => s.trim()).filter((s: string) => s)
+							};
+						}
+					}
+					return entry;
+				}) as DictionaryEntry[];
+			}
+			
+			if (Array.isArray(dict.contextualCorrections)) {
+				result.contextualCorrections = dict.contextualCorrections.map((entry: unknown) => {
+					if (entry && typeof entry === 'object') {
+						const typedEntry = entry as Record<string, unknown>;
+						if (typeof typedEntry.from === 'string') {
+							return {
+								...typedEntry,
+								from: typedEntry.from.split(',').map((s: string) => s.trim()).filter((s: string) => s)
+							};
+						}
+					}
+					return entry;
+				}) as ContextualCorrection[];
+			}
 		}
 		
 		return result;
@@ -476,7 +487,7 @@ export default class AITranscriberPlugin extends Plugin {
 	private async saveUserDictionary(): Promise<void> {
 		this.logger.debug('Saving user dictionary...');
 		try {
-			const dictionaryPath = `${this.app.vault.configDir}/plugins/obsidian-ai-transcriber/user-dictionary.json`;
+			const dictionaryPath = PathUtils.getUserDictionaryPath(this.app);
 			
 			// Save only userDictionaries (new format)
 			if (this.settings.userDictionaries) {

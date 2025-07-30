@@ -6,9 +6,16 @@ import { ObsidianApp } from '../types/global';
 
 export const VIEW_TYPE_TRANSCRIPTION = 'ai-transcriber-view';
 
+// Define minimal interface for plugin to avoid any type
+interface TranscriptionPlugin {
+	transcriber?: {
+		cancelTranscription?: () => Promise<void>;
+	};
+}
+
 export class TranscriptionView extends ItemView {
 	private progressTracker: ProgressTracker;
-	private plugin: any; // Avoid circular dependency
+	private plugin: TranscriptionPlugin;
 	private progressContainer: HTMLElement;
 	private historyContainer: HTMLElement;
 	private controlsContainer: HTMLElement;
@@ -23,7 +30,7 @@ export class TranscriptionView extends ItemView {
 	private cancelBtnEl: HTMLButtonElement | null = null;
 	private noTaskEl: HTMLElement | null = null;
 
-	constructor(leaf: WorkspaceLeaf, plugin: any, progressTracker: ProgressTracker) {
+	constructor(leaf: WorkspaceLeaf, plugin: TranscriptionPlugin, progressTracker: ProgressTracker) {
 		super(leaf);
 		this.plugin = plugin;
 		this.progressTracker = progressTracker;
