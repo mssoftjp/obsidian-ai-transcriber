@@ -68,6 +68,12 @@ export class StatusBarManager {
 
 		this.loadingAnimation.destroy();
 
+		// Clean up dynamic stylesheet
+		const dynamicStyleSheet = document.querySelector('#ait-dynamic-progress');
+		if (dynamicStyleSheet) {
+			dynamicStyleSheet.remove();
+		}
+
 		if (this.statusBarItem) {
 			this.statusBarItem.remove();
 		}
@@ -78,6 +84,23 @@ export class StatusBarManager {
 	 */
 	setClickHandler(handler: () => void): void {
 		this.clickHandler = handler;
+	}
+
+	/**
+	 * Set progress using CSP-compliant dynamic stylesheet
+	 */
+	private setProgressViaStylesheet(selector: string, percentage: number): void {
+		// Find or create our dynamic stylesheet for progress updates
+		let styleSheet = document.querySelector('#ait-dynamic-progress') as HTMLStyleElement;
+		if (!styleSheet) {
+			styleSheet = document.createElement('style');
+			styleSheet.id = 'ait-dynamic-progress';
+			document.head.appendChild(styleSheet);
+		}
+
+		// Update the CSS rule for this progress bar
+		const rule = `${selector} { width: ${percentage}% !important; }`;
+		styleSheet.textContent = rule;
 	}
 
 	/**
@@ -138,8 +161,9 @@ export class StatusBarManager {
 
 		// Progress bar
 		const progressContainer = this.statusBarItem!.createSpan({ cls: 'status-bar-progress' });
-		const progressBar = progressContainer.createSpan({ cls: 'status-bar-progress-bar' });
-		progressBar.style.setProperty('--progress-width', `${percentage}%`);
+		progressContainer.createSpan({ cls: 'status-bar-progress-bar' });
+		// Use dynamic stylesheet for CSP compliance
+		this.setProgressViaStylesheet('.ai-transcriber-status .status-bar-progress-bar', percentage);
 
 		const fileName = task.inputFileName || '';
 		this.statusBarItem!.setAttribute('aria-label', `${t('statusBar.processing')} ${fileName}: ${percentage}%`);
