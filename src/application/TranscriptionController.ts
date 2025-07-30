@@ -362,8 +362,8 @@ export class TranscriptionController {
 		const model = this.settings.model as string; // Cast to string
 
 		if (model.startsWith('whisper-1')) {
-			this.logger.debug('Using Whisper transcription service');
-			service = new WhisperTranscriptionService(apiKey, dictionaryCorrector);
+			this.logger.debug('Using Whisper transcription service', { model });
+			service = new WhisperTranscriptionService(apiKey, model, dictionaryCorrector);
 			strategy = new WhisperTranscriptionStrategy(
 				service,
 				this.createProgressAdapter()
