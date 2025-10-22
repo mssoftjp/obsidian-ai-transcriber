@@ -34,6 +34,7 @@ export class PostProcessingModal extends Modal {
 	onOpen() {
 		const { contentEl } = this;
 		contentEl.empty();
+		this.modalEl.addClass('ai-transcriber-modal');
 
 		// Add modal classes
 		contentEl.addClass('transcription-meta-modal');

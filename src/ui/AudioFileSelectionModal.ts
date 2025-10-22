@@ -28,6 +28,7 @@ export class AudioFileSelectionModal extends Modal {
 	async onOpen() {
 		const { contentEl } = this;
 		contentEl.empty();
+		this.modalEl.addClass('ai-transcriber-modal');
 
 		// Get all audio files in vault
 		this.files = this.app.vault.getFiles()
@@ -114,7 +115,7 @@ export class AudioFileSelectionModal extends Modal {
 		});
 
 		// Buttons
-		const buttonContainer = contentEl.createDiv({ cls: 'modal-button-container' });
+		const buttonContainer = contentEl.createDiv({ cls: 'modal-button-container ai-transcriber-modal-buttons' });
 
 		// External file button
 		const externalButton = buttonContainer.createEl('button', {
@@ -291,15 +292,15 @@ export class AudioFileSelectionModal extends Modal {
 				const progressContainer = this.contentEl.createDiv({ cls: 'copy-progress-container' });
 				progressContainer.createEl('h3', { text: t('modal.audioFileSelection.copying') });
 
-				const progressBar = progressContainer.createDiv({ cls: 'progress-bar' });
-				progressBar.createDiv({ cls: 'progress-fill' });
-				const progressText = progressContainer.createDiv({ cls: 'progress-text' });
+				const progressBar = progressContainer.createDiv({ cls: 'ai-transcriber-progress-bar' });
+				progressBar.createDiv({ cls: 'ai-transcriber-progress-fill' });
+				const progressText = progressContainer.createDiv({ cls: 'ai-transcriber-progress-text' });
 
 				try {
 					// 外部ファイルをvault内に一時コピー
 					const result = await this.tempFileManager.copyExternalFile(file, (progress) => {
 						// Use CSP-compliant approach for progress updates
-						this.setProgressViaStylesheet('.copy-progress-container .progress-fill', progress);
+						this.setProgressViaStylesheet('.copy-progress-container .ai-transcriber-progress-fill', progress);
 						progressText.setText(`${Math.round(progress)}%`);
 					});
 

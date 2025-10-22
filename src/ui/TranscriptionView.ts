@@ -551,10 +551,12 @@ class ConfirmModal extends Modal {
 	onOpen() {
 		const { contentEl } = this;
 
+		this.modalEl.addClass('ai-transcriber-modal');
+
 		contentEl.createEl('h2', { text: this.title });
 		contentEl.createEl('p', { text: this.message });
 
-		const buttonContainer = contentEl.createDiv({ cls: 'modal-button-container' });
+		const buttonContainer = contentEl.createDiv({ cls: 'modal-button-container ai-transcriber-modal-buttons' });
 
 		buttonContainer.createEl('button', {
 			text: t('common.cancel'),
@@ -591,6 +593,8 @@ class FileSelectionModal extends Modal {
 	onOpen() {
 		const { contentEl } = this;
 
+		this.modalEl.addClass('ai-transcriber-modal');
+
 		contentEl.createEl('h2', { text: t('common.selectFile') });
 		contentEl.createEl('p', { text: t('common.multipleFilesFound') });
 
@@ -619,7 +623,7 @@ class FileSelectionModal extends Modal {
 		});
 
 		// キャンセルボタン
-		const buttonContainer = contentEl.createDiv({ cls: 'modal-button-container' });
+		const buttonContainer = contentEl.createDiv({ cls: 'modal-button-container ai-transcriber-modal-buttons' });
 		buttonContainer.createEl('button', {
 			text: t('common.cancel'),
 			cls: 'mod-secondary'

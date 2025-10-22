@@ -38,6 +38,7 @@ export class DictionaryManagementModal extends Modal {
 		// Apply dictionary-management-modal class for CSS-based sizing
 		// Do NOT apply mod-settings as it's reserved for Obsidian's settings modal
 		this.modalEl.addClass('dictionary-management-modal');
+		this.modalEl.addClass('ai-transcriber-modal');
 
 		// Remove any inline styles - let CSS handle the sizing
 		// The CSS already has the proper sizing rules
@@ -93,7 +94,7 @@ export class DictionaryManagementModal extends Modal {
 		this.displayDictionary();
 
 		// Close button
-		const buttonContainer = contentEl.createEl('div', { cls: 'modal-button-container' });
+		const buttonContainer = contentEl.createEl('div', { cls: 'modal-button-container ai-transcriber-modal-buttons' });
 		const closeBtn = buttonContainer.createEl('button', {
 			text: t('common.close')
 		});
@@ -576,11 +577,12 @@ export class DictionaryManagementModal extends Modal {
 	private async confirmReplace(): Promise<boolean> {
 		return new Promise((resolve) => {
 			const modal = new Modal(this.app);
+			modal.modalEl.addClass('ai-transcriber-modal');
 			modal.contentEl.createEl('p', {
 				text: t('settings.dictionary.importConfirm')
 			});
 
-			const buttonContainer = modal.contentEl.createEl('div', { cls: 'modal-button-container' });
+			const buttonContainer = modal.contentEl.createEl('div', { cls: 'modal-button-container ai-transcriber-modal-buttons' });
 
 			const replaceBtn = buttonContainer.createEl('button', {
 				text: t('settings.dictionary.replace'),

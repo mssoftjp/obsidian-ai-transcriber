@@ -96,10 +96,11 @@
    3.1 Buttons (Common Pattern)
    ==================================== */
 /* Base button styles applied to multiple components */
-.transcription-buttons button,
-.api-transcription-actions button,
-.modal-button-container button,
-.ai-transcription-task-actions button {
+.ai-transcriber-modal .transcription-buttons button,
+.ai-transcriber-modal .api-transcription-actions button,
+.ai-transcriber-modal-buttons button,
+.ai-transcriber-modal .ai-transcription-task-actions button,
+.ai-transcriber-view .ai-transcription-task-actions button {
 	padding: var(--ait-spacing-md) var(--ait-spacing-xl);
 	border-radius: var(--ait-radius-sm);
 	font-weight: var(--ait-font-weight-medium);
@@ -108,17 +109,20 @@
 }
 
 /* Primary button (CTA) */
-button.mod-cta {
+.ai-transcriber-modal button.mod-cta,
+.ai-transcriber-view button.mod-cta {
 	background-color: var(--interactive-accent);
 	color: var(--text-on-accent);
 	border: none;
 }
 
-button.mod-cta:hover:not(:disabled) {
+.ai-transcriber-modal button.mod-cta:hover:not(:disabled),
+.ai-transcriber-view button.mod-cta:hover:not(:disabled) {
 	background-color: var(--interactive-accent-hover);
 }
 
-button.mod-cta:disabled {
+.ai-transcriber-modal button.mod-cta:disabled,
+.ai-transcriber-view button.mod-cta:disabled {
 	background-color: var(--background-modifier-border);
 	color: var(--text-muted);
 	cursor: not-allowed;
@@ -128,11 +132,11 @@ button.mod-cta:disabled {
    3.2 Progress Bars (Common Pattern)
    ==================================== */
 /* Base progress bar container */
-.progress-bar,
+.ai-transcriber-progress-bar,
 .ai-transcription-progress-bar,
 .api-transcription-progress-bar,
-.progress-wrapper .progress-bar,
-.copy-progress-container .progress-bar {
+.ai-transcriber-progress-wrapper .ai-transcriber-progress-bar,
+.copy-progress-container .ai-transcriber-progress-bar {
 	width: 100%;
 	height: var(--ait-progress-height);
 	background-color: var(--background-modifier-border);
@@ -141,11 +145,11 @@ button.mod-cta:disabled {
 }
 
 /* Progress fill */
-.progress-fill,
+.ai-transcriber-progress-fill,
 .ai-transcription-progress-fill,
 .api-transcription-progress-fill,
-.progress-wrapper .progress-fill,
-.copy-progress-container .progress-fill {
+.ai-transcriber-progress-wrapper .ai-transcriber-progress-fill,
+.copy-progress-container .ai-transcriber-progress-fill {
 	height: 100%;
 	background-color: var(--interactive-accent);
 	transition: width var(--ait-transition-normal);
@@ -450,13 +454,13 @@ button.mod-cta:disabled {
 	border-radius: var(--ait-radius-md);
 }
 
-.provider-row {
+.ai-transcriber-provider-row {
 	display: flex;
 	align-items: center;
 	gap: var(--ait-spacing-lg);
 }
 
-.provider-label {
+.ai-transcriber-provider-label {
 	font-weight: var(--ait-font-weight-medium);
 	color: var(--text-normal);
 }
@@ -1388,11 +1392,11 @@ button.mod-cta:disabled {
 	color: var(--text-normal);
 }
 
-.progress-wrapper {
+.ai-transcriber-progress-wrapper {
 	margin-bottom: var(--ait-spacing-lg);
 }
 
-.progress-wrapper .progress-bar {
+.ai-transcriber-progress-wrapper .ai-transcriber-progress-bar {
 	width: 100%;
 	height: 8px;
 	background-color: var(--background-modifier-border);
@@ -1400,13 +1404,13 @@ button.mod-cta:disabled {
 	overflow: hidden;
 }
 
-.progress-wrapper .progress-fill {
+.ai-transcriber-progress-wrapper .ai-transcriber-progress-fill {
 	height: 100%;
 	background-color: var(--interactive-accent);
 	transition: width var(--ait-transition-normal);
 }
 
-.progress-wrapper .progress-text {
+.ai-transcriber-progress-wrapper .ai-transcriber-progress-text {
 	margin-top: 4px;
 	font-size: var(--font-ui-smaller);
 	color: var(--text-muted);
@@ -1628,7 +1632,7 @@ button.mod-cta:disabled {
 	color: var(--text-normal);
 }
 
-.copy-progress-container .progress-bar {
+.copy-progress-container .ai-transcriber-progress-bar {
 	width: 100%;
 	height: 8px;
 	background-color: var(--background-modifier-border);
@@ -1637,14 +1641,14 @@ button.mod-cta:disabled {
 	margin-bottom: var(--ait-spacing-lg);
 }
 
-.copy-progress-container .progress-fill {
+.copy-progress-container .ai-transcriber-progress-fill {
 	height: 100%;
 	background-color: var(--interactive-accent);
 	transition: width var(--ait-transition-normal);
 	width: 0%;
 }
 
-.copy-progress-container .progress-text {
+.copy-progress-container .ai-transcriber-progress-text {
 	font-size: var(--font-ui-small);
 	color: var(--text-muted);
 }
@@ -1706,7 +1710,7 @@ button.mod-cta:disabled {
 /* ====================================
    5.1.1 Modal Button Container (Common)
    ==================================== */
-.modal-button-container {
+.ai-transcriber-modal-buttons {
 	display: flex;
 	gap: var(--ait-spacing-md);
 	justify-content: flex-end;
@@ -1714,7 +1718,7 @@ button.mod-cta:disabled {
 	border-top: 1px solid var(--background-modifier-border);
 }
 
-.modal-button-container button {
+.ai-transcriber-modal-buttons button {
 	padding: var(--ait-spacing-md) var(--ait-spacing-xl);
 	border-radius: var(--ait-radius-sm);
 	cursor: pointer;
@@ -1722,32 +1726,32 @@ button.mod-cta:disabled {
 	transition: background-color var(--ait-transition-fast);
 }
 
-.modal-button-container button.mod-cta {
+.ai-transcriber-modal-buttons button.mod-cta {
 	background-color: var(--interactive-accent);
 	color: var(--text-on-accent);
 	border: none;
 }
 
-.modal-button-container button.mod-cta:hover:not(:disabled) {
+.ai-transcriber-modal-buttons button.mod-cta:hover:not(:disabled) {
 	background-color: var(--interactive-accent-hover);
 }
 
-.modal-button-container button.mod-cta:disabled {
+.ai-transcriber-modal-buttons button.mod-cta:disabled {
 	opacity: 0.5;
 	cursor: not-allowed;
 }
 
-.modal-button-container button.mod-cta.mod-primary {
+.ai-transcriber-modal-buttons button.mod-cta.mod-primary {
 	order: 2;
 }
 
-.modal-button-container button:not(.mod-cta) {
+.ai-transcriber-modal-buttons button:not(.mod-cta) {
 	background-color: var(--background-primary);
 	border: 1px solid var(--background-modifier-border);
 	color: var(--text-normal);
 }
 
-.modal-button-container button:not(.mod-cta):hover {
+.ai-transcriber-modal-buttons button:not(.mod-cta):hover {
 	background-color: var(--background-secondary);
 }
 

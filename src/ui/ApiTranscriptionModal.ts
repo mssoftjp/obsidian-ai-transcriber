@@ -73,6 +73,7 @@ export class APITranscriptionModal extends Modal {
 		const { contentEl } = this;
 		contentEl.empty();
 		this.logger.debug('Opening transcription modal');
+		this.modalEl.addClass('ai-transcriber-modal');
 
 		// Initialize progress calculator
 		this.progressCalculator = new SimpleProgressCalculator(this.settings.postProcessingEnabled);
@@ -93,12 +94,12 @@ export class APITranscriptionModal extends Modal {
 
 		// Provider info with model selection
 		const providerInfo = contentEl.createEl('div', { cls: 'transcription-provider-info' });
-		const providerRow = providerInfo.createEl('div', { cls: 'provider-row' });
+		const providerRow = providerInfo.createEl('div', { cls: 'ai-transcriber-provider-row' });
 
 		// Label
 		providerRow.createEl('span', {
 			text: t('modal.transcription.modelLabel') + ': ',
-			cls: 'provider-label'
+			cls: 'ai-transcriber-provider-label'
 		});
 
 		// Model dropdown
