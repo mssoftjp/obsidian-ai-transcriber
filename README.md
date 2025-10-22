@@ -1,4 +1,4 @@
-# AI Transcriber for Obsidian
+# AI Transcriber
 
 A powerful speech-to-text transcription plugin for Obsidian that uses OpenAI's GPT-4o and Whisper APIs.
 
@@ -6,12 +6,12 @@ A powerful speech-to-text transcription plugin for Obsidian that uses OpenAI's G
 
 - **File Transcription**: Transcribe existing audio files (MP3, WAV, WebM, M4A, etc.)
 - **AI-Powered**: Uses OpenAI's models (GPT-4o and Whisper)
-- **Post-Processing**: Optional transcript enhancement for better readability
+- **Post-Processing**: Optional transcript enhancement to improve transcription accuracy
 - **Multi-Language**: Supports multiple languages with automatic detection
 
 ## Requirements
 
-- Obsidian v17.0 or higher
+- Obsidian v1.8.0 or higher
 - OpenAI API account with API key
 - Internet connection for API calls
 
@@ -56,8 +56,6 @@ A powerful speech-to-text transcription plugin for Obsidian that uses OpenAI's G
 
 ## Usage
 
-### Recording Audio
-
 ### Transcribing Audio Files
 
 1. Use the command palette: "AI Transcriber: Transcribe audio file"
@@ -79,7 +77,7 @@ A powerful speech-to-text transcription plugin for Obsidian that uses OpenAI's G
 
 ### Dictionary Settings
 - **Custom Dictionary**: Improve transcription accuracy with personalized corrections
-  - Add commonly mistranscribed words or proper nouns
+  - Register commonly mistranscribed words or proper nouns
   - Support for multiple languages (Japanese, English, Chinese, Korean)
   - Categories: Names, places, technical terms, etc.
   - Context-aware intelligent correction
@@ -110,7 +108,7 @@ This plugin requires an internet connection and communicates with the following 
 - Check if you have sufficient credits in your OpenAI account
 
 **"Recording failed" error**
-- Ensure your browser has microphone permissions
+- Ensure your computer has microphone permissions
 - Try using a different audio format in settings
 
 **Transcription is cut off or incomplete**
@@ -145,7 +143,7 @@ This plugin is licensed under the MIT License. See [LICENSE](LICENSE) for detail
 This plugin includes third-party software with their own licenses. See [THIRD-PARTY-LICENSES.md](THIRD-PARTY-LICENSES.md) for details.
 
 Notable third-party components:
-- **WebRTC VAD (@echogarden/fvad-wasm)**: BSD-3-Clause License - Used for voice activity detection
+- **WebRTC VAD (@echogarden/fvad-wasm)**: Used for voice activity detection
 
 ## Acknowledgments
 
@@ -167,7 +165,7 @@ Notable third-party components:
 
 ---
 
-# Obsidian用AI Transcriber
+# AI Transcriber
 
 OpenAIのGPT-4oとWhisper APIを使用したObsidian用の強力な音声認識テキスト変換プラグインです。
 
@@ -175,12 +173,12 @@ OpenAIのGPT-4oとWhisper APIを使用したObsidian用の強力な音声認識�
 
 - **ファイル文字起こし**: 既存の音声ファイル（MP3、WAV、WebM、M4Aなど）を文字起こし
 - **AI駆動**: OpenAIのモデル（GPT-4oとWhisper）を使用
-- **後処理**: 読みやすさを向上させるオプションのtranscript強化機能
+- **後処理**: 文字起こし精度を向上させるオプションのtranscript強化機能
 - **多言語対応**: 自動検出による複数言語のサポート
 
 ## 必要条件
 
-- Obsidian v17.0以上
+- Obsidian v1.8.0以上
 - API キーを持つOpenAI APIアカウント
 - API呼び出し用のインターネット接続
 
@@ -276,7 +274,7 @@ OpenAIのGPT-4oとWhisper APIを使用したObsidian用の強力な音声認識�
 - OpenAIアカウントに十分なクレジットがあるか確認
 
 **「録音に失敗しました」エラー**
-- ブラウザにマイクの権限があることを確認
+- PCにマイクの権限があることを確認
 - 設定で別の音声形式を試す
 
 **文字起こしが途切れるまたは不完全**
