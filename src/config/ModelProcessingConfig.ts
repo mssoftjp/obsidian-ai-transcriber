@@ -246,7 +246,7 @@ export const DEFAULT_TRANSCRIPTION_CONFIG: TranscriptionConfig = {
 				}
 			},
 			pricing: {
-				costPerMinute: 0.06, // $0.06 per minute for GPT-4o
+				costPerMinute: 0.006, // $0.006 per minute for GPT-4o
 				currency: 'USD'
 			}
 			// Note: GPT-4o primarily uses contextWindowSize for continuity, but merging settings still apply for deduplication
@@ -292,7 +292,7 @@ export const DEFAULT_TRANSCRIPTION_CONFIG: TranscriptionConfig = {
 				}
 			},
 			pricing: {
-				costPerMinute: 0.03, // $0.03 per minute for GPT-4o Mini
+				costPerMinute: 0.003, // $0.003 per minute for GPT-4o Mini
 				currency: 'USD'
 			}
 			// Note: GPT-4o Mini primarily uses contextWindowSize for continuity, but merging settings still apply for deduplication
