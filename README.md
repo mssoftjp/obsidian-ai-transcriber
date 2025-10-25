@@ -11,7 +11,7 @@ A powerful speech-to-text transcription plugin for Obsidian that uses OpenAI's G
 
 ## Requirements
 
-- Obsidian v1.8.0 or higher
+- Obsidian v1.8.0 or higher (Desktop only)
 - OpenAI API account with API key
 - Internet connection for API calls
 
@@ -31,6 +31,8 @@ A powerful speech-to-text transcription plugin for Obsidian that uses OpenAI's G
 2. Extract the files to your vault's plugins folder: `<vault>/.obsidian/plugins/ai-transcriber/`
 3. Reload Obsidian
 4. Enable the plugin in Settings → Community plugins
+
+Note for releases: Community distribution bundles only three files — `main.js`, `manifest.json`, and `styles.css`. The build script also generates a `release/` folder and a zip with exactly these files under `build/<version>/`. Do not include other files (e.g., `fvad.wasm`) in the GitHub release.
 
 ## Setup
 
@@ -178,7 +180,7 @@ OpenAIのGPT-4oとWhisper APIを使用したObsidian用の強力な音声認識�
 
 ## 必要条件
 
-- Obsidian v1.8.0以上
+- Obsidian v1.8.0以上（デスクトップ版のみ）
 - API キーを持つOpenAI APIアカウント
 - API呼び出し用のインターネット接続
 
@@ -198,6 +200,8 @@ OpenAIのGPT-4oとWhisper APIを使用したObsidian用の強力な音声認識�
 2. ファイルをvaultのプラグインフォルダに展開: `<vault>/.obsidian/plugins/ai-transcriber/`
 3. Obsidianを再読み込み
 4. 設定 → Community pluginsでプラグインを有効化
+
+配布に関する注意: コミュニティ配布に含めるファイルは `main.js`, `manifest.json`, `styles.css` の3つのみです。ビルド後、`build/<version>/release/` および `build/<version>/ai-transcriber-<version>.zip` が生成され、上記3ファイルのみが格納されます。`fvad.wasm` などその他のファイルはリリースに含めないでください。
 
 ## セットアップ
 

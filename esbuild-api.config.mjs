@@ -2,6 +2,7 @@ import esbuild from "esbuild";
 import process from "process";
 import builtins from "builtin-modules";
 import { readFileSync, mkdirSync, copyFileSync, existsSync } from "fs";
+import { execSync } from "child_process";
 
 const banner =
 `/*
@@ -66,6 +67,26 @@ if (prod) {
 	if (existsSync(wasmSrc)) {
 		copyFileSync(wasmSrc, `${outputDir}/fvad.wasm`);
 		console.log('  ✓ fvad.wasm');
+	}
+
+	// Prepare release artifacts (Community distribution requires only 3 files)
+	const releaseDir = `${outputDir}/release`;
+	mkdirSync(releaseDir, { recursive: true });
+	['main.js', 'manifest.json', 'styles.css'].forEach(file => {
+		try {
+			copyFileSync(`${outputDir}/${file}`, `${releaseDir}/${file}`);
+			console.log(`  ✓ release/${file}`);
+		} catch (e) {
+			console.warn(`  ! missing ${file} (skipped)`);
+		}
+	});
+
+	// Optionally create zip (if 'zip' command is available)
+	try {
+		execSync(`zip -j -q ${outputDir}/ai-transcriber-${version}.zip ${releaseDir}/*`);
+		console.log(`  ✓ ai-transcriber-${version}.zip (release)`);
+	} catch (_) {
+		console.log('  ! zip command not found; release zip skipped');
 	}
 	
 	process.exit(0);
