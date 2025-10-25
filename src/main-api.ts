@@ -41,9 +41,8 @@ export default class AITranscriberPlugin extends Plugin {
 
 		// Crypto initialization removed - using BetterEncryptionService directly
 
-		// Clean up temporary files from previous sessions
-		// Delay cleanup to ensure vault is fully loaded
-		setTimeout(async () => {
+		// Clean up temporary files from previous sessions once the workspace layout is ready
+		this.app.workspace.onLayoutReady(async () => {
 			try {
 				const tempFileManager = new TempFileManager(this.app);
 				await tempFileManager.cleanup();
@@ -51,7 +50,7 @@ export default class AITranscriberPlugin extends Plugin {
 			} catch (error) {
 				this.logger.error('Failed to clean up temporary files', error);
 			}
-		}, 3000); // 3秒待機してからクリーンアップ
+		});
 
 		// Initialize progress tracking system
 		this.progressTracker = new ProgressTracker(this);
