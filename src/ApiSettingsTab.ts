@@ -4,6 +4,7 @@ import { SettingsUIBuilder } from './SettingsUiBuilder';
 import { FolderSuggestModal } from './ui/FolderSuggestModal';
 import { DictionaryManagementModal } from './ui/DictionaryManagementModal';
 import AITranscriberPlugin from './main-api';
+import { BUY_ME_A_COFFEE_DEFAULT_BUTTON } from './assets/supportImages';
 
 export class APISettingsTab extends PluginSettingTab {
 	plugin: AITranscriberPlugin;
@@ -11,7 +12,7 @@ export class APISettingsTab extends PluginSettingTab {
 	
 	private static readonly SUPPORT_CONFIG = {
 		fundingUrl: 'https://buymeacoffee.com/mssoft',
-		imageUrl: 'https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png',
+		imageSrc: BUY_ME_A_COFFEE_DEFAULT_BUTTON,
 		imageWidth: '217',
 		imageHeight: '60'
 	} as const;
@@ -198,7 +199,7 @@ export class APISettingsTab extends PluginSettingTab {
 			
 			banner.createEl('img', {
 				attr: {
-					src: APISettingsTab.SUPPORT_CONFIG.imageUrl,
+					src: APISettingsTab.SUPPORT_CONFIG.imageSrc,
 					alt: t('support.imageAlt'),
 					width: APISettingsTab.SUPPORT_CONFIG.imageWidth,
 					height: APISettingsTab.SUPPORT_CONFIG.imageHeight
