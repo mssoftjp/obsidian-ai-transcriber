@@ -1,7 +1,7 @@
-import { TFile, Plugin } from 'obsidian';
+import { TFile } from 'obsidian';
 import { UI_CONSTANTS } from '../config/constants';
 import { Logger } from '../utils/Logger';
-import { PathUtils } from '../utils/PathUtils';
+import { PluginStateRepository } from '../infrastructure/storage/PluginStateRepository';
 
 export interface TranscriptionTask {
 	id: string;
@@ -29,38 +29,19 @@ export interface TranscriptionHistory {
 }
 
 export type ProgressListener = (task: TranscriptionTask | null) => void;
-
-// Use Plugin type directly instead of empty interface
-type DataPlugin = Plugin;
-
-interface ProgressData {
-	history: TranscriptionTask[];
-}
-
 export class ProgressTracker {
 	private currentTask: TranscriptionTask | null = null;
 	private history: TranscriptionTask[] = [];
 	private listeners: ProgressListener[] = [];
 	private readonly maxHistoryItems = UI_CONSTANTS.MAX_HISTORY_ITEMS; // Fixed at 50
-	private plugin: DataPlugin | undefined; // Reference to plugin for data persistence
 	private logger: Logger;
+	private stateRepo: PluginStateRepository;
 
-	constructor(plugin?: DataPlugin) {
-		this.plugin = plugin;
+	constructor(stateRepo: PluginStateRepository) {
+		this.stateRepo = stateRepo;
 		this.logger = Logger.getLogger('ProgressTracker');
-		// Initialize with saved history if available
-		this.initializeHistory();
-	}
-
-	private async initializeHistory() {
-		try {
-			await this.loadHistory();
-			// 履歴読み込み完了後、リスナーに通知
-			this.notifyListeners();
-			this.logger.debug('Progress history loaded', { historyCount: this.history.length });
-		} catch (error) {
-			this.logger.error('Failed to load history', error);
-		}
+		this.history = this.stateRepo.getHistory();
+		this.notifyListeners();
 	}
 
 	/**
@@ -401,56 +382,10 @@ export class ProgressTracker {
 		return parts[parts.length - 1] || '';
 	}
 
-	private async loadHistory(): Promise<void> {
-		if (!this.plugin || !this.plugin.loadData) {
-			this.logger.warn('No plugin reference, cannot load history');
-			return;
-		}
-
-		try {
-			// 履歴データ専用ファイルから読み込み
-			const historyPath = PathUtils.getHistoryFilePath(this.plugin.app);
-			if (await this.plugin.app.vault.adapter.exists(historyPath)) {
-				const historyData = await this.plugin.app.vault.adapter.read(historyPath);
-				const progressData = JSON.parse(historyData) as ProgressData;
-				this.history = progressData.history || [];
-
-			}
-		} catch (error) {
-			this.logger.error('Failed to load history', error);
-			this.history = [];
-		}
-	}
-
-	private async saveHistory(): Promise<void> {
-		if (!this.plugin || !this.plugin.app) {
-			this.logger.warn('No plugin reference, cannot save history');
-			return;
-		}
-
-		try {
-			// 履歴データ専用ファイルに保存
-			const historyPath = PathUtils.getHistoryFilePath(this.plugin.app);
-			const progressData: ProgressData = {
-				history: this.history
-			};
-
-			// プラグインディレクトリの確認と作成
-			const pluginDir = historyPath.substring(0, historyPath.lastIndexOf('/'));
-			if (!await this.plugin.app.vault.adapter.exists(pluginDir)) {
-				// プラグインディレクトリが存在しない場合は、履歴を保存しない
-				// (プラグインが正しくインストールされていない可能性がある)
-				this.logger.warn('Plugin directory does not exist, skipping history save', { pluginDir });
-				return;
-			}
-
-			await this.plugin.app.vault.adapter.write(
-				historyPath,
-				JSON.stringify(progressData, null, 2)
-			);
-		} catch (error) {
+	private saveHistory(): void {
+		this.stateRepo.saveHistory(this.history).catch(error => {
 			this.logger.error('Failed to save history', error);
-		}
+		});
 	}
 
 	// setMaxHistoryItems removed - using fixed constant from UI_CONSTANTS
@@ -465,7 +400,7 @@ export class ProgressTracker {
 			delete taskToSave.result;
 
 			this.history[index] = taskToSave;
-			await this.saveHistory();
+			await this.stateRepo.saveHistory(this.history);
 		}
 	}
 }

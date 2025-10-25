@@ -1,6 +1,6 @@
 import { App, Notice, Plugin, TFile, Menu, Platform, moment } from 'obsidian';
 import { APITranscriber } from './ApiTranscriber';
-import { APITranscriptionSettings, DEFAULT_API_SETTINGS, UserDictionary, LanguageDictionaries, DictionaryEntry, ContextualCorrection } from './ApiSettings';
+import { APITranscriptionSettings, DEFAULT_API_SETTINGS } from './ApiSettings';
 import { APISettingsTab } from './ApiSettingsTab';
 import { APITranscriptionModal } from './ui/ApiTranscriptionModal';
 import { AudioFileSelectionModal } from './ui/AudioFileSelectionModal';
@@ -16,13 +16,14 @@ import ja from './i18n/translations/ja';
 import zh from './i18n/translations/zh';
 import ko from './i18n/translations/ko';
 import { Logger, LogLevel } from './utils/Logger';
-import { PathUtils } from './utils/PathUtils';
+import { PluginStateRepository } from './infrastructure/storage/PluginStateRepository';
 
 export default class AITranscriberPlugin extends Plugin {
 	settings: APITranscriptionSettings;
 	transcriber: APITranscriber;
 	progressTracker: ProgressTracker;
 	statusBarManager: StatusBarManager;
+	private stateRepo: PluginStateRepository;
 	private logger = Logger.getLogger('Plugin');
 
 	async onload() {
@@ -53,7 +54,7 @@ export default class AITranscriberPlugin extends Plugin {
 		});
 
 		// Initialize progress tracking system
-		this.progressTracker = new ProgressTracker(this);
+		this.progressTracker = new ProgressTracker(this.stateRepo);
 
 		// Initialize the API transcriber with progress tracker
 		this.transcriber = new APITranscriber(this.app, this.settings, this.progressTracker);
@@ -151,8 +152,12 @@ export default class AITranscriberPlugin extends Plugin {
 	}
 
 	async loadSettings() {
-		const loadedData = await this.loadData();
-		this.settings = Object.assign({}, DEFAULT_API_SETTINGS, loadedData);
+		this.stateRepo = new PluginStateRepository(this);
+		await this.stateRepo.initialize();
+
+		const storedSettings = this.stateRepo.getSettings();
+		this.settings = Object.assign({}, DEFAULT_API_SETTINGS, storedSettings);
+		this.settings.userDictionaries = this.stateRepo.getDictionaries();
 		if (!this.settings.vadMode) {
 			this.settings.vadMode = DEFAULT_API_SETTINGS.vadMode;
 		}
@@ -162,22 +167,19 @@ export default class AITranscriberPlugin extends Plugin {
 		}
 		
 		// Migrate from old XOR encryption to new SafeStorage format
-		if (this.settings.openaiApiKey && this.settings.openaiApiKey.startsWith('XOR_V1::')) {
-			const { SafeStorageService } = await import('./infrastructure/storage/SafeStorageService');
-			const apiKey = SafeStorageService.decryptFromStore(this.settings.openaiApiKey);
-			if (apiKey) {
-				// Re-encrypt with new format
-				this.settings.openaiApiKey = SafeStorageService.encryptForStore(apiKey);
-				await this.saveData(this.settings);
-				new Notice(t('settings.apiKey.migrated'));
+			if (this.settings.openaiApiKey && this.settings.openaiApiKey.startsWith('XOR_V1::')) {
+				const { SafeStorageService } = await import('./infrastructure/storage/SafeStorageService');
+				const apiKey = SafeStorageService.decryptFromStore(this.settings.openaiApiKey);
+				if (apiKey) {
+					// Re-encrypt with new format
+					this.settings.openaiApiKey = SafeStorageService.encryptForStore(apiKey);
+					await this.stateRepo.saveSettings(this.settings);
+					new Notice(t('settings.apiKey.migrated'));
+				}
 			}
-		}
-		
-		// Load user dictionary from separate file
-		await this.loadUserDictionary();
 		
 		// If no language setting exists, use Obsidian's locale
-		if (!loadedData?.language) {
+		if (!storedSettings?.language) {
 			const obsidianLanguage = this.getObsidianLanguage();
 			if (obsidianLanguage && obsidianLanguage !== 'auto') {
 				this.settings.language = obsidianLanguage;
@@ -185,17 +187,6 @@ export default class AITranscriberPlugin extends Plugin {
 			}
 		}
 		
-		// Ensure userDictionaries structure exists with proper initialization
-		if (!this.settings.userDictionaries) {
-			this.settings.userDictionaries = {
-				ja: { definiteCorrections: [], contextualCorrections: [] },
-				en: { definiteCorrections: [], contextualCorrections: [] },
-				zh: { definiteCorrections: [], contextualCorrections: [] },
-				ko: { definiteCorrections: [], contextualCorrections: [] }
-			};
-		}
-		
-		// Ensure each language dictionary is properly initialized
 		const languages: ('ja' | 'en' | 'zh' | 'ko')[] = ['ja', 'en', 'zh', 'ko'];
 		for (const lang of languages) {
 			if (!this.settings.userDictionaries[lang]) {
@@ -209,12 +200,6 @@ export default class AITranscriberPlugin extends Plugin {
 			}
 		}
 		
-	}
-	
-	private isLanguageDictionaries(data: unknown): data is LanguageDictionaries {
-		return typeof data === 'object' && 
-		       data !== null && 
-		       ('ja' in data || 'en' in data || 'zh' in data);
 	}
 
 	/**
@@ -254,15 +239,7 @@ export default class AITranscriberPlugin extends Plugin {
 	async saveSettings() {
 		const startTime = performance.now();
 		this.logger.debug('Saving settings...');
-		
-		// Save user dictionary separately
-		await this.saveUserDictionary();
-		
-		// Create settings copy without userDictionaries (save separately)
-		const settingsToSave = { ...this.settings };
-		delete settingsToSave.userDictionaries;
-		
-		await this.saveData(settingsToSave);
+		await this.stateRepo.saveSettings(this.settings);
 		
 		// Update logger configuration if debugMode changed
 		Logger.getInstance().updateConfig({
@@ -401,117 +378,4 @@ export default class AITranscriberPlugin extends Plugin {
 		}
 	}
 
-
-	/**
-	 * Load user dictionary from separate file
-	 */
-	private async loadUserDictionary(): Promise<void> {
-		this.logger.debug('Loading user dictionary...');
-		try {
-			const dictionaryPath = PathUtils.getUserDictionaryPath(this.app);
-			
-			// Check if dictionary file exists
-			if (await this.app.vault.adapter.exists(dictionaryPath)) {
-				const dictionaryData = await this.app.vault.adapter.read(dictionaryPath);
-				const parsedData = JSON.parse(dictionaryData) as unknown;
-				
-				// Only load if it's in the new format (has language keys)
-				if (this.isLanguageDictionaries(parsedData)) {
-					// Apply migration for from: string to from: string[] if needed
-					const languages: ('ja' | 'en' | 'zh')[] = ['ja', 'en', 'zh'];
-					for (const lang of languages) {
-						if (parsedData[lang]) {
-							parsedData[lang] = this.migrateDictionaryFormat(parsedData[lang]);
-						}
-					}
-					
-					this.settings.userDictionaries = parsedData;
-					this.logger.debug('Loaded language-specific dictionaries from file');
-				}
-				// Ignore old format completely
-			} else {
-				this.logger.debug('User dictionary file not found');
-			}
-		} catch (error) {
-			this.logger.error('Failed to load user dictionary', error);
-		}
-	}
-	
-	/**
-	 * Migrate dictionary format from string to string[] for 'from' field
-	 */
-	private migrateDictionaryFormat(dictionary: unknown): UserDictionary {
-		const result: UserDictionary = {
-			definiteCorrections: [],
-			contextualCorrections: []
-		};
-		
-		if (dictionary && typeof dictionary === 'object') {
-			const dict = dictionary as Record<string, unknown>;
-			
-			if (Array.isArray(dict.definiteCorrections)) {
-				result.definiteCorrections = dict.definiteCorrections.map((entry: unknown) => {
-					if (entry && typeof entry === 'object') {
-						const typedEntry = entry as Record<string, unknown>;
-						if (typeof typedEntry.from === 'string') {
-							return {
-								...typedEntry,
-								from: typedEntry.from.split(',').map((s: string) => s.trim()).filter((s: string) => s)
-							};
-						}
-					}
-					return entry;
-				}) as DictionaryEntry[];
-			}
-			
-			if (Array.isArray(dict.contextualCorrections)) {
-				result.contextualCorrections = dict.contextualCorrections.map((entry: unknown) => {
-					if (entry && typeof entry === 'object') {
-						const typedEntry = entry as Record<string, unknown>;
-						if (typeof typedEntry.from === 'string') {
-							return {
-								...typedEntry,
-								from: typedEntry.from.split(',').map((s: string) => s.trim()).filter((s: string) => s)
-							};
-						}
-					}
-					return entry;
-				}) as ContextualCorrection[];
-			}
-		}
-		
-		return result;
-	}
-
-	/**
-	 * Save user dictionary to separate file
-	 */
-	private async saveUserDictionary(): Promise<void> {
-		this.logger.debug('Saving user dictionary...');
-		try {
-			const dictionaryPath = PathUtils.getUserDictionaryPath(this.app);
-			
-			// Save only userDictionaries (new format)
-			if (this.settings.userDictionaries) {
-				// Format JSON with compact arrays
-				const jsonString = JSON.stringify(this.settings.userDictionaries, null, 2);
-				// Make arrays compact (single line) for better readability
-				const compactJson = jsonString.replace(/\[\s*\n\s*(.+?)\n\s*\]/gs, (match, content) => {
-					// Only compact small arrays (less than 100 chars)
-					if (match.length < 100) {
-						return '[' + content.split(/,\s*\n\s*/).join(', ') + ']';
-					}
-					return match;
-				});
-				
-				await this.app.vault.adapter.write(
-					dictionaryPath,
-					compactJson
-				);
-				this.logger.debug('Saved language-specific dictionaries');
-			}
-		} catch (error) {
-			this.logger.error('Failed to save user dictionary', error);
-		}
-	}
 }
