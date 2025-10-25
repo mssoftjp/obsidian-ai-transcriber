@@ -10,13 +10,9 @@ export class FolderSuggestModal extends FuzzySuggestModal<TFolder> {
 	}
 
 	getItems(): TFolder[] {
-		const folders: TFolder[] = [];
-		this.app.vault.getAllLoadedFiles().forEach(file => {
-			if (file instanceof TFolder) {
-				folders.push(file);
-			}
-		});
-		return folders.sort((a, b) => a.path.localeCompare(b.path));
+		return this.app.vault
+			.getAllFolders()
+			.sort((a, b) => a.path.localeCompare(b.path));
 	}
 
 	getItemText(folder: TFolder): string {
