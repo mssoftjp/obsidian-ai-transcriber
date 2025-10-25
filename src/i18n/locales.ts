@@ -36,6 +36,16 @@ export interface TranslationKeys {
 			gpt4oHigh: string;
 			gpt4oMiniCost: string;
 		};
+		vadMode: {
+			name: string;
+			desc: string;
+			options: {
+				server: string;
+				local: string;
+				disabled: string;
+			};
+			missingWarning: string;
+		};
 		language: {
 			name: string;
 			desc: string;

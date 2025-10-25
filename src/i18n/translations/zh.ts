@@ -38,6 +38,16 @@ const zh: TranslationKeys = {
 			gpt4oHigh: 'GPT-4o Transcribe',
 			gpt4oMiniCost: 'GPT-4o Mini Transcribe'
 		},
+		vadMode: {
+			name: 'VAD 模式',
+			desc: '选择在上传前如何处理静音',
+			options: {
+				server: '服务器端 VAD（默认）',
+				local: '本地 VAD（需要 fvad.wasm）',
+				disabled: '关闭 VAD'
+			},
+			missingWarning: '未找到 fvad.wasm。请从官方仓库下载并放入插件文件夹后再启用本地 VAD。'
+		},
 		language: {
 			name: '语言',
 			desc: '设置转录语言（留空为自动检测）',

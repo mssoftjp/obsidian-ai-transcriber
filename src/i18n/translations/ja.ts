@@ -38,6 +38,16 @@ const ja: TranslationKeys = {
 			gpt4oHigh: 'GPT-4o Transcribe',
 			gpt4oMiniCost: 'GPT-4o Mini Transcribe'
 		},
+		vadMode: {
+			name: 'VADモード',
+			desc: '無音検出をどの方式で行うか選択します',
+			options: {
+				server: 'サーバーVAD（標準）',
+				local: 'ローカルVAD（fvad.wasmが必要）',
+				disabled: 'VADなし'
+			},
+			missingWarning: 'fvad.wasm が見つかりません。公式リポジトリからダウンロードし、プラグインフォルダに配置してからローカルVADを有効にしてください。'
+		},
 		language: {
 			name: '言語',
 			desc: '文字起こしの主要言語',

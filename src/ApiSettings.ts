@@ -1,4 +1,5 @@
 export type TranscriptionModel = 'whisper-1' | 'whisper-1-ts' | 'gpt-4o-transcribe' | 'gpt-4o-mini-transcribe';
+export type VADMode = 'server' | 'local' | 'disabled';
 
 // Dictionary category types
 export type DictionaryCategory = 'noun' | 'person' | 'place' | 'org' | 'proper' | 'technical' | 'spoken' | 'symbol';
@@ -38,6 +39,8 @@ export interface APITranscriptionSettings {
 	// API settings (unified for all models)
 	openaiApiKey: string;
 	model: TranscriptionModel;
+	/** Preferred Voice Activity Detection mode */
+	vadMode: VADMode;
 	
 	// Post-processing settings
 	postProcessingEnabled: boolean; // Enable AI-powered post-processing
@@ -62,6 +65,7 @@ export const DEFAULT_API_SETTINGS: APITranscriptionSettings = {
 	
 	openaiApiKey: '',
 	model: 'gpt-4o-transcribe', // Default to high-accuracy model
+	vadMode: 'server',
 	
 	
 	// Post-processing settings

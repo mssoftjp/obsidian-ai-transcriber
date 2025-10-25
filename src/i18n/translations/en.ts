@@ -38,6 +38,16 @@ const en: TranslationKeys = {
 			gpt4oHigh: 'GPT-4o Transcribe',
 			gpt4oMiniCost: 'GPT-4o Mini Transcribe'
 		},
+		vadMode: {
+			name: 'VAD Mode',
+			desc: 'Select how silence detection is handled before sending audio to OpenAI',
+			options: {
+				server: 'Server-side VAD (default)',
+				local: 'Local WebRTC VAD (requires fvad.wasm)',
+				disabled: 'Disable VAD'
+			},
+			missingWarning: 'fvad.wasm was not found. Download it from the official repository and place it in the plugin folder before enabling local VAD.'
+		},
 		language: {
 			name: 'Language',
 			desc: 'Primary language for transcription',

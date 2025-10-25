@@ -29,7 +29,7 @@ export class APISettingsTab extends PluginSettingTab {
 		// Remove the main title as requested
 
 		// API settings (unified for all models)
-		SettingsUIBuilder.displayAPISettings(containerEl, this.plugin.settings, () => this.plugin.saveSettings());
+		SettingsUIBuilder.displayAPISettings(containerEl, this.plugin.settings, () => this.plugin.saveSettings(), this.app);
 
 		// Transcription settings - no heading needed
 

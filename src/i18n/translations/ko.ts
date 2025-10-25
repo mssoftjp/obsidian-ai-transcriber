@@ -38,6 +38,16 @@ const ko: TranslationKeys = {
 			gpt4oHigh: 'GPT-4o Transcribe',
 			gpt4oMiniCost: 'GPT-4o Mini Transcribe'
 		},
+		vadMode: {
+			name: 'VAD 모드',
+			desc: '무음 처리를 어떤 방식으로 수행할지 선택하세요',
+			options: {
+				server: '서버 VAD (기본)',
+				local: '로컬 VAD (fvad.wasm 필요)',
+				disabled: 'VAD 사용 안 함'
+			},
+			missingWarning: 'fvad.wasm 파일을 찾을 수 없습니다. 공식 저장소에서 다운로드하여 플러그인 폴더에 넣은 후 로컬 VAD를 활성화하세요.'
+		},
 		language: {
 			name: '언어',
 			desc: '전사의 기본 언어',

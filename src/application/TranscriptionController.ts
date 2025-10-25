@@ -4,7 +4,7 @@
  */
 
 import { App, TFile, Notice } from 'obsidian';
-import { APITranscriptionSettings, DictionaryEntry, ContextualCorrection, UserDictionary } from '../ApiSettings';
+import { APITranscriptionSettings, DictionaryEntry, ContextualCorrection, UserDictionary, VADMode } from '../ApiSettings';
 import { t } from '../i18n';
 
 // Core
@@ -229,25 +229,35 @@ export class TranscriptionController {
 			}
 		}
 
-		// Initialize VAD (always enabled)
-		this.logger.debug('Initializing VAD preprocessor...');
-		const vadConfig = getTranscriptionConfig().vad;
-		this.vadPreprocessor = new VADPreprocessor(this.app, {
-			enabled: true,
-			processor: 'auto',
-			sensitivity: vadConfig.sensitivity,
-			minSpeechDuration: vadConfig.minSpeechDuration,
-			maxSilenceDuration: vadConfig.maxSilenceDuration,
-			speechPadding: vadConfig.speechPadding,
-			debug: this.settings.debugMode
-		});
-		await this.vadPreprocessor.initialize();
-		this.serverSideVADFallback = this.vadPreprocessor.getFallbackMode() === 'server_vad';
-		this.logger.debug('VAD preprocessor initialized', {
-			serverSideFallback: this.serverSideVADFallback
-		});
-		if (this.serverSideVADFallback) {
-			this.logger.warn('Local VAD unavailable; server-side VAD will be used for chunking.');
+		const vadMode = this.getVadMode();
+		this.logger.debug('VAD mode selected', { vadMode });
+		if (vadMode === 'local') {
+			const vadConfig = getTranscriptionConfig().vad;
+			this.vadPreprocessor = new VADPreprocessor(this.app, {
+				enabled: true,
+				processor: 'auto',
+				sensitivity: vadConfig.sensitivity,
+				minSpeechDuration: vadConfig.minSpeechDuration,
+				maxSilenceDuration: vadConfig.maxSilenceDuration,
+				speechPadding: vadConfig.speechPadding,
+				debug: this.settings.debugMode
+			});
+			await this.vadPreprocessor.initialize();
+			this.serverSideVADFallback = this.vadPreprocessor.getFallbackMode() === 'server_vad';
+			this.logger.debug('VAD preprocessor initialized', {
+				serverSideFallback: this.serverSideVADFallback
+			});
+			if (this.serverSideVADFallback) {
+				this.logger.warn('Local VAD unavailable; server-side VAD will be used for chunking.');
+			}
+		} else {
+			this.vadPreprocessor = undefined;
+			this.serverSideVADFallback = true;
+			if (vadMode === 'server') {
+				this.logger.info('Server-side VAD mode active. Local fvad.wasm will not be used.');
+			} else {
+				this.logger.info('VAD disabled via settings. Proceeding without silence removal.');
+			}
 		}
 
 		// Initialize audio pipeline
@@ -740,6 +750,10 @@ export class TranscriptionController {
 		// Clear cached instances to force recreation with new settings
 		this.audioPipeline = undefined;
 		this.currentWorkflow = undefined;
+	}
+
+	private getVadMode(): VADMode {
+		return this.settings.vadMode ?? 'server';
 	}
 
 }

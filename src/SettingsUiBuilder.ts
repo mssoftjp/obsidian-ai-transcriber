@@ -1,19 +1,22 @@
-import { Setting, Notice, Platform } from 'obsidian';
-import { APITranscriptionSettings } from './ApiSettings';
+import { Setting, Notice, Platform, App } from 'obsidian';
+import { APITranscriptionSettings, VADMode } from './ApiSettings';
 import { MODEL_OPTIONS, getModelOption } from './config/ModelOptions';
 import { MODEL_NAMES } from './config/constants';
 import { SafeStorageService } from './infrastructure/storage/SafeStorageService';
 import { SecurityUtils } from './infrastructure/storage/SecurityUtils';
 import { t } from './i18n';
 import { Logger } from './utils/Logger';
+import { PathUtils } from './utils/PathUtils';
 import { ElectronRenderer, isElectronWindow } from './types/global';
 
 export class SettingsUIBuilder {
+	private static readonly FVAD_DOWNLOAD_URL = 'https://github.com/echogarden-project/fvad-wasm';
+
 	private static logger = Logger.getLogger('SettingsUIBuilder');
 	/**
 	 * Create API settings section
 	 */
-	static displayAPISettings(containerEl: HTMLElement, settings: APITranscriptionSettings, saveSettings: () => Promise<void>): void {
+	static displayAPISettings(containerEl: HTMLElement, settings: APITranscriptionSettings, saveSettings: () => Promise<void>, app: App): void {
 		// API settings heading removed as requested
 
 		// API Key setting
@@ -160,6 +163,35 @@ export class SettingsUIBuilder {
 		const gpt4oMiniLabel = modelInfoEl.createEl('strong');
 		gpt4oMiniLabel.setText(t('settings.model.gpt4oMini') + ':');
 		modelInfoEl.appendText(' ' + t('settings.model.gpt4oMiniDesc'));
+
+		const initialVadMode = settings.vadMode ?? 'server';
+		new Setting(containerEl)
+			.setName(t('settings.vadMode.name'))
+			.setDesc(t('settings.vadMode.desc'))
+			.addDropdown(dropdown => {
+				dropdown.addOption('server', t('settings.vadMode.options.server'));
+				dropdown.addOption('local', t('settings.vadMode.options.local'));
+				dropdown.addOption('disabled', t('settings.vadMode.options.disabled'));
+				dropdown.setValue(initialVadMode);
+				dropdown.onChange(async (value) => {
+					const mode = value as VADMode;
+					if (mode === 'local') {
+						const hasLocalWasm = await this.checkLocalWasm(app);
+						if (!hasLocalWasm) {
+							new Notice(t('settings.vadMode.missingWarning'), 8000);
+							try {
+								window.open(SettingsUIBuilder.FVAD_DOWNLOAD_URL, '_blank');
+							} catch (error) {
+								this.logger.warn('Failed to open fvad download link', error);
+							}
+							dropdown.setValue(settings.vadMode ?? 'server');
+							return;
+						}
+					}
+					settings.vadMode = mode;
+					await saveSettings();
+				});
+			});
 	}
 
 
@@ -241,5 +273,19 @@ export class SettingsUIBuilder {
 		} catch {
 			return false;
 		}
+	}
+	private static async checkLocalWasm(app: App): Promise<boolean> {
+		const possiblePaths = PathUtils.getWasmFilePaths(app, 'fvad.wasm');
+		for (const path of possiblePaths) {
+			try {
+				const exists = await app.vault.adapter.exists(path);
+				if (exists) {
+					return true;
+				}
+			} catch (error) {
+				this.logger.warn('Error checking fvad.wasm path', { path, error });
+			}
+		}
+		return false;
 	}
 }

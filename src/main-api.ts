@@ -155,6 +155,9 @@ export default class AITranscriberPlugin extends Plugin {
 	async loadSettings() {
 		const loadedData = await this.loadData();
 		this.settings = Object.assign({}, DEFAULT_API_SETTINGS, loadedData);
+		if (!this.settings.vadMode) {
+			this.settings.vadMode = DEFAULT_API_SETTINGS.vadMode;
+		}
 		
 		if (this.logger) {
 			this.logger.debug('Settings loaded', { debugMode: this.settings.debugMode });
