@@ -165,6 +165,7 @@ const zh: TranslationKeys = {
 		noAudioFile: '请选择音频文件',
 		processingFile: '正在处理文件：',
 		vadInitError: 'VAD 初始化失败',
+		vadServerFallback: '未找到本地 VAD 模块，已切换到服务器端 VAD。',
 		vadProcessingError: 'VAD 处理失败',
 		vadUnavailable: 'VAD 不可用，继续处理原始音频',
 		externalFileNotSupported: '外部文件处理功能将在下一阶段实现',

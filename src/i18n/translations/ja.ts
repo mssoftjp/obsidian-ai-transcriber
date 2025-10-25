@@ -165,6 +165,7 @@ const ja: TranslationKeys = {
 		noAudioFile: '音声ファイルが選択されていません',
 		processingFile: 'ファイルを処理中: {fileName}',
 		vadInitError: 'VAD初期化エラー: fvad.wasmファイルが見つかりません。プラグインフォルダに配置してください。',
+		vadServerFallback: 'ローカルのVADモジュールが見つからなかったため、サーバー側のVADに切り替えました。',
 		vadProcessingError: 'VAD処理エラー: {error}',
 		vadUnavailable: 'VADが利用できないため、無音除去なしで処理を続行します。',
 		externalFileNotSupported: '外部ファイルの処理は次のフェーズで実装予定です',

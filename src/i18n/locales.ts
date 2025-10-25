@@ -163,6 +163,7 @@ export interface TranslationKeys {
 		noAudioFile: string;
 		processingFile: string;
 		vadInitError: string;
+		vadServerFallback: string;
 		vadProcessingError: string;
 		vadUnavailable: string;
 		postProcessingComplete: string;

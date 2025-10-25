@@ -11,6 +11,7 @@ import { t } from '../i18n';
 import { AudioPipeline } from '../core/audio/AudioPipeline';
 import { AudioProcessingConfig } from '../core/audio/AudioTypes';
 import { ChunkingConfig } from '../core/chunking/ChunkingTypes';
+import { ChunkingService } from '../core/chunking/ChunkingService';
 import { getModelConfig, getTranscriptionConfig, logAllModelConfigs } from '../config/ModelProcessingConfig';
 import { AUDIO_CONSTANTS } from '../config/constants';
 import { DictionaryCorrector } from '../core/transcription/DictionaryCorrector';
@@ -21,6 +22,7 @@ import { ResourceManager } from '../core/resources/ResourceManager';
 import { WebAudioEngine } from '../infrastructure/audio/WebAudioEngine';
 import { FallbackEngine } from '../infrastructure/audio/FallbackEngine';
 import { VADChunkingService } from '../infrastructure/audio/VADChunkingService';
+import { WebAudioChunkingService } from '../infrastructure/audio/WebAudioChunkingService';
 import { SafeStorageService } from '../infrastructure/storage/SafeStorageService';
 import { SecurityUtils } from '../infrastructure/storage/SecurityUtils';
 
@@ -45,6 +47,7 @@ export class TranscriptionController {
 	private progressTracker?: ProgressTracker;
 	private vadPreprocessor?: VADPreprocessor;
 	private logger = Logger.getLogger('TranscriptionController');
+	private serverSideVADFallback = false;
 
 	// Cached instances
 	private audioPipeline?: AudioPipeline;
@@ -239,7 +242,13 @@ export class TranscriptionController {
 			debug: this.settings.debugMode
 		});
 		await this.vadPreprocessor.initialize();
-		this.logger.debug('VAD preprocessor initialized');
+		this.serverSideVADFallback = this.vadPreprocessor.getFallbackMode() === 'server_vad';
+		this.logger.debug('VAD preprocessor initialized', {
+			serverSideFallback: this.serverSideVADFallback
+		});
+		if (this.serverSideVADFallback) {
+			this.logger.warn('Local VAD unavailable; server-side VAD will be used for chunking.');
+		}
 
 		// Initialize audio pipeline
 		if (!this.audioPipeline) {
@@ -257,7 +266,7 @@ export class TranscriptionController {
 			targetSampleRate: AUDIO_CONSTANTS.SAMPLE_RATE,
 			targetBitDepth: AUDIO_CONSTANTS.BIT_DEPTH,
 			targetChannels: AUDIO_CONSTANTS.CHANNELS,
-			enableVAD: true, // VAD is always enabled
+			enableVAD: !this.serverSideVADFallback,
 			vadConfig: {
 				processor: 'auto',
 				sensitivity: 0.7,
@@ -278,7 +287,7 @@ export class TranscriptionController {
 		// Create VAD-based chunking service
 		const chunkingConfig = this.getChunkingConfig();
 		const vadConfig = {
-			enabled: true,
+			enabled: !this.serverSideVADFallback,
 			processor: 'webrtc' as const,
 			sensitivity: 0.7,
 			minSpeechDuration: 0.3,
@@ -287,12 +296,22 @@ export class TranscriptionController {
 			debug: false
 		};
 
-		const chunkingService = new VADChunkingService(
-			this.app,
-			chunkingConfig,
-			vadConfig,
-			PathUtils.getCurrentPluginId()
-		);
+		let chunkingService: ChunkingService;
+		if (this.serverSideVADFallback) {
+			this.logger.warn('Creating WebAudio chunking service because local VAD is unavailable');
+			const fallbackChunkingService = new WebAudioChunkingService(chunkingConfig);
+			fallbackChunkingService.setPreferredChunkDuration(
+				chunkingConfig.constraints.chunkDurationSeconds
+			);
+			chunkingService = fallbackChunkingService;
+		} else {
+			chunkingService = new VADChunkingService(
+				this.app,
+				chunkingConfig,
+				vadConfig,
+				PathUtils.getCurrentPluginId()
+			);
+		}
 
 		// Create pipeline
 		const pipeline = new AudioPipeline({
@@ -317,6 +336,8 @@ export class TranscriptionController {
 		const isWhisper = model.startsWith('whisper-1');
 
 
+		const serverFallback = this.serverSideVADFallback;
+
 		return {
 			constraints: {
 				maxSizeMB: modelConfig.maxFileSizeMB,
@@ -328,6 +349,7 @@ export class TranscriptionController {
 			},
 			modelName: model, // Pass model name for VAD chunking config
 			processingMode: isWhisper ? 'parallel' : 'sequential',
+			useServerVAD: serverFallback,
 			mergeStrategy: isWhisper ? {
 				type: 'overlap_removal',
 				config: {

@@ -19,14 +19,16 @@ export class VADPreprocessor {
 	private config: VADConfig;
 	private audioConverter: AudioConverter;
 	private logger: Logger;
+	private fallbackMode: 'none' | 'server_vad' = 'none';
+	private initialized = false;
 
 	// メモリキャッシュ（ファイルの重複読み込みを避ける）
 	private audioBufferCache = new Map<string, ArrayBuffer>();
 	private cacheMaxSize = 5; // 最大5ファイルをキャッシュ
 
 	constructor(
-    private app: App,
-    config: Partial<VADConfig> = {}
+		private app: App,
+		config: Partial<VADConfig> = {}
 	) {
 		// model-processing.configからデフォルト設定を取得
 		const defaultConfig = getTranscriptionConfig().vad;
@@ -59,20 +61,41 @@ export class VADPreprocessor {
 		return this.processor;
 	}
 
+	getFallbackMode(): 'none' | 'server_vad' {
+		return this.fallbackMode;
+	}
+	private isServerFallback(): boolean {
+		return this.fallbackMode === 'server_vad';
+	}
+
 	/**
    * VADプリプロセッサーを初期化
    */
 	async initialize(): Promise<void> {
+		if (this.initialized && (this.processor !== null || this.fallbackMode === 'server_vad')) {
+			this.logger.debug('VAD preprocessor already initialized', {
+				fallbackMode: this.fallbackMode
+			});
+			return;
+		}
+
 		this.logger.debug('Initializing VAD preprocessor');
+
+		this.fallbackMode = 'none';
 
 		try {
 			// プロセッサーの選択と初期化
 			this.processor = await this.createProcessor();
+			const fallbackMode = this.fallbackMode;
 
 			if (this.processor) {
 				this.logger.info('VAD processor initialized successfully', {
 					processorType: this.processor.constructor.name
 				});
+			} else if (this.isServerFallback()) {
+				this.logger.warn('Local VAD unavailable. Falling back to server-side VAD.');
+				new Notice(t('notices.vadServerFallback'), 5000);
+				this.config.enabled = false;
 			} else {
 				if (this.config.enabled) {
 					this.logger.error('VAD is enabled but processor is null');
@@ -82,12 +105,16 @@ export class VADPreprocessor {
 			}
 		} catch (error) {
 			this.logger.error('Failed to initialize VAD preprocessor', error);
-			this.processor = null;
+			if (!this.isServerFallback()) {
+				this.processor = null;
 
-			// VADが有効なのに初期化に失敗した場合は、エラーを再スロー
-			if (this.config.enabled) {
-				throw error;
+				// VADが有効なのに初期化に失敗した場合は、エラーを再スロー
+				if (this.config.enabled) {
+					throw error;
+				}
 			}
+		} finally {
+			this.initialized = true;
 		}
 	}
 
@@ -103,7 +130,8 @@ export class VADPreprocessor {
 			fileName: audioFile.name,
 			rangeStart,
 			rangeEnd,
-			enabled: this.config.enabled
+			enabled: this.config.enabled,
+			fallbackMode: this.fallbackMode
 		});
 
 		let audioBuffer: ArrayBuffer;
@@ -112,18 +140,14 @@ export class VADPreprocessor {
 			// キャッシュからファイルを読み込み（重複読み込みを避ける）
 			audioBuffer = await this.getCachedAudioBuffer(audioFile);
 
-			// VADが無効な場合はバイパス
-			if (!this.config.enabled) {
-				this.logger.debug('VAD is disabled, returning original audio');
-				return audioBuffer;
-			}
+			const useServerFallback = this.fallbackMode === 'server_vad';
 
 			// プロセッサーが未初期化の場合、初期化を試みる
-			if (!this.processor) {
+			if (this.config.enabled && !this.processor && !useServerFallback) {
 				await this.initialize();
 
 				// 初期化が失敗した場合は、エラーをスロー
-				if (!this.processor) {
+				if (!this.processor && this.fallbackMode !== 'server_vad') {
 					this.logger.error('Failed to initialize VAD processor');
 					throw new Error(t('notices.vadInitError'));
 				}
@@ -142,9 +166,10 @@ export class VADPreprocessor {
 			});
 
 			// 時間範囲が指定されている場合は、効率的に処理
-			let processedAudioData: Float32Array;
+			let processedAudioData = audioData;
 			let actualRangeStart = 0;
 			let actualRangeEnd = audioData.length / sampleRate;
+			let rangeApplied = false;
 
 			if (rangeStart !== null && rangeStart !== undefined || rangeEnd !== null && rangeEnd !== undefined) {
 				const totalDuration = audioData.length / sampleRate;
@@ -155,49 +180,65 @@ export class VADPreprocessor {
 				const startSample = Math.floor(actualRangeStart * sampleRate);
 				const endSample = Math.min(audioData.length, Math.floor(actualRangeEnd * sampleRate));
 
-
-				// 効率的な範囲抽出（subarray使用でメモリコピーを避ける）
+				// subarrayを使用して効率的に抽出
 				processedAudioData = audioData.subarray(startSample, endSample);
-			} else {
-				processedAudioData = audioData;
+				rangeApplied = endSample - startSample !== audioData.length;
 			}
 
-			// VAD処理
-			this.logger.debug('Starting VAD processing', {
-				audioLength: processedAudioData.length,
-				duration: `${(processedAudioData.length / sampleRate).toFixed(2)}s`
+			// ローカルVADが利用可能な場合はそのまま実行
+			if (this.processor) {
+				this.logger.debug('Starting VAD processing', {
+					audioLength: processedAudioData.length,
+					duration: `${(processedAudioData.length / sampleRate).toFixed(2)}s`
+				});
+
+				const result = await this.processor.processAudio(processedAudioData, sampleRate);
+
+				// 統計情報をログ（範囲情報を含む）
+				this.logStatistics(result, performance.now() - processingStartTime, actualRangeStart, actualRangeEnd);
+
+				// 処理された音声をWAVにエンコード
+				this.logger.debug('Encoding processed audio to WAV');
+				const processedWav = await this.audioConverter.encodeToWAV(
+					result.processedAudio,
+					sampleRate
+				);
+
+				const totalTime = performance.now() - processingStartTime;
+				this.logger.info('VAD processing completed', {
+					originalDuration: `${(audioData.length / sampleRate).toFixed(2)}s`,
+					processedDuration: `${(result.processedAudio.length / sampleRate).toFixed(2)}s`,
+					totalTime: `${totalTime.toFixed(2)}ms`,
+					speechSegments: result.segments.length
+				});
+
+				return processedWav;
+			}
+
+			// ローカルVADが利用できない場合のフォールバック処理
+			this.logger.info('Local VAD unavailable, using fallback audio path', {
+				useServerFallback,
+				rangeApplied
 			});
-			const result = await this.processor.processAudio(processedAudioData, sampleRate);
 
-			// 統計情報をログ（範囲情報を含む）
-			this.logStatistics(result, performance.now() - processingStartTime, actualRangeStart, actualRangeEnd);
+			// 範囲が適用されている場合は結果をWAVにエンコードして返す
+			if (rangeApplied) {
+				this.logger.debug('Encoding trimmed audio to WAV for fallback path');
+				return await this.audioConverter.encodeToWAV(processedAudioData, sampleRate);
+			}
 
-			// 処理された音声をWAVにエンコード
-			this.logger.debug('Encoding processed audio to WAV');
-			const processedWav = await this.audioConverter.encodeToWAV(
-				result.processedAudio,
-				sampleRate
-			);
-
-			const totalTime = performance.now() - processingStartTime;
-			this.logger.info('VAD processing completed', {
-				originalDuration: `${(audioData.length / sampleRate).toFixed(2)}s`,
-				processedDuration: `${(result.processedAudio.length / sampleRate).toFixed(2)}s`,
-				totalTime: `${totalTime.toFixed(2)}ms`,
-				speechSegments: result.segments.length
-			});
-
-			return processedWav;
+			// それ以外の場合は元のバッファを返す
+			return audioBuffer;
 		} catch (error) {
 			this.logger.error('Error processing file with VAD', error);
 
 			// VADが有効化されているのにエラーが発生した場合は、エラーを再スロー
-			if (this.config.enabled) {
+			if (this.config.enabled && this.fallbackMode !== 'server_vad') {
 				throw new Error(t('notices.vadProcessingError', { error: error instanceof Error ? error.message : 'Unknown error' }));
 			}
 
-			// VADが無効の場合のみフォールバック（ここには到達しないはず）
-			return audioBuffer;
+			// フォールバック時は元のバッファを返す
+			return audioBuffer || new ArrayBuffer(0);
 		}
 	}
 
@@ -220,6 +261,8 @@ export class VADPreprocessor {
 			await this.processor.cleanup();
 			this.processor = null;
 		}
+		this.initialized = false;
+		this.fallbackMode = 'none';
 
 		// キャッシュをクリア
 		this.audioBufferCache.clear();
@@ -248,12 +291,14 @@ export class VADPreprocessor {
 
 				// Check if the error is related to missing fvad.wasm
 				if (error instanceof Error && error.message.includes('WASM file not found')) {
-					new Notice(
-						t('notices.vadInitError'),
-						5000
-					);
+					this.fallbackMode = 'server_vad';
+					return null;
 				}
 			}
+		}
+
+		if (this.fallbackMode === 'server_vad') {
+			return null;
 		}
 
 		// WebRTC VADが失敗した場合のエラー処理

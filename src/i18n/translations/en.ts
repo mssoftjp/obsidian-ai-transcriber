@@ -165,6 +165,7 @@ const en: TranslationKeys = {
 		noAudioFile: 'No audio file selected',
 		processingFile: 'Processing file: {fileName}',
 		vadInitError: 'VAD initialization error: fvad.wasm file not found. Please place it in the plugin folder.',
+		vadServerFallback: 'Local VAD module not found. Falling back to server-side VAD.',
 		vadProcessingError: 'VAD processing error: {error}',
 		vadUnavailable: 'VAD is unavailable, proceeding without silence removal.',
 		externalFileNotSupported: 'External file processing will be implemented in the next phase',

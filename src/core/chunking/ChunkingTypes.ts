@@ -77,6 +77,8 @@ export interface ChunkingConfig {
 	constraints: ChunkingConstraints;
 	/** Processing mode */
 	processingMode: ChunkProcessingMode;
+	/** Use server-side VAD to determine chunk boundaries */
+	useServerVAD?: boolean;
 	/** Merge strategy */
 	mergeStrategy: ChunkMergeStrategy;
 	/** Whether to optimize chunk boundaries at natural breaks */

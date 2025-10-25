@@ -294,27 +294,21 @@ export class APITranscriber {
 			// Rough estimate: 1MB ≈ 1 minute for compressed audio
 			const estimatedMinutes = sizeMB * 1.2; // Conservative estimate
 			
-			// Cost per minute based on model
-			let costPerMinute = 0.006; // Whisper default
+			// Cost per minute based on model configuration
 			const model = this.settings.model as string; // Cast to string to avoid type errors
-			
-			// Set cost per minute based on model
-			if (model === 'gpt-4o-transcribe') {
-				costPerMinute = 0.006; // GPT-4o same as Whisper
-			} else if (model === 'gpt-4o-mini-transcribe') {
-				costPerMinute = 0.003; // GPT-4o Mini is half price
-			}
-			
+			const modelConfig = getModelConfig(model);
+			const costPerMinute = modelConfig.pricing.costPerMinute;
+			const currency = modelConfig.pricing.currency;
 			const totalCost = estimatedMinutes * costPerMinute;
 			
 			// Return format that supports both old and new interface
 			return {
 				cost: Math.round(totalCost * 100) / 100,
-				currency: 'USD',
+				currency,
 				details: {
 					// For backward compatibility with modal
 					minutes: estimatedMinutes,
-					costPerMinute: costPerMinute,
+					costPerMinute,
 					// String representation for display
 					toString: () => `~${estimatedMinutes.toFixed(1)} minutes @ $${costPerMinute}/min`
 				}
