@@ -62,12 +62,20 @@ if (prod) {
 		}
 	});
 	
-	// Copy WASM file if exists
-	const wasmSrc = 'node_modules/@echogarden/fvad-wasm/fvad.wasm';
-	if (existsSync(wasmSrc)) {
-		copyFileSync(wasmSrc, `${outputDir}/fvad.wasm`);
-		console.log('  ✓ fvad.wasm');
-	}
+// Optionally copy WASM (only when explicitly requested)
+// Enable by either: `INCLUDE_WASM=true npm run build` or `node esbuild-api.config.mjs production --with-wasm`
+const includeWasm = process.env.INCLUDE_WASM === 'true' || process.argv.includes('--with-wasm');
+if (includeWasm) {
+    const wasmSrc = 'node_modules/@echogarden/fvad-wasm/fvad.wasm';
+    if (existsSync(wasmSrc)) {
+        copyFileSync(wasmSrc, `${outputDir}/fvad.wasm`);
+        console.log('  ✓ fvad.wasm (included by request)');
+    } else {
+        console.log('  ! fvad.wasm not found (requested)');
+    }
+} else {
+    console.log('  • fvad.wasm intentionally not included (default)');
+}
 
 	// Prepare release artifacts (Community distribution requires only 3 files)
 	const releaseDir = `${outputDir}/release`;
