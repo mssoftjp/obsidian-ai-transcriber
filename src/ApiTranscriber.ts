@@ -49,6 +49,7 @@ export class APITranscriber {
 		// Initialize cancellation controller
 		this.abortController = new AbortController();
 		this.isCancelled = false;
+		const partialMarker = this.getPartialResultMarker();
 		
 		// Create task in progress tracker if available
 		if (this.progressTracker) {
@@ -96,7 +97,7 @@ export class APITranscriber {
 			
 		} catch (error) {
 			// Check if this is a partial result error
-			if (error instanceof Error && error.message.includes('[部分的な文字起こし結果]')) {
+			if (error instanceof Error && error.message.includes(partialMarker)) {
 				// Extract the partial result text and return it
 				const partialText = error.message;
 				
@@ -109,7 +110,7 @@ export class APITranscriber {
 			if (this.isCancelled || (error instanceof Error && error.message.includes('cancelled'))) {
 				
 				// If the error is a cancellation but includes partial results, return them
-				if (error instanceof Error && error.message.includes('[部分的な文字起こし結果]')) {
+				if (error instanceof Error && error.message.includes(partialMarker)) {
 					const partialText = error.message;
 					
 					// Mark as partial, not complete
@@ -202,7 +203,10 @@ export class APITranscriber {
 		const fileExtension = audioFile.extension.toLowerCase();
 		
 		if (!supportedExtensions.includes(fileExtension)) {
-			throw new Error(`Unsupported audio format: ${fileExtension}. Supported formats: ${supportedExtensions.join(', ')}`);
+			throw new Error(t('errors.unsupportedAudioFormat', {
+				extension: fileExtension,
+				formats: supportedExtensions.join(', ')
+			}));
 		}
 	}
 
@@ -258,11 +262,13 @@ export class APITranscriber {
 		const model = this.settings.model as string; // Cast to string to avoid type errors
 		switch (model) {
 			case 'whisper-1':
-				return 'OpenAI Whisper';
+				return t('providers.whisper');
+			case 'whisper-1-ts':
+				return t('providers.whisperTs');
 			case 'gpt-4o-transcribe':
-				return 'GPT-4o';
+				return t('providers.gpt4o');
 			case 'gpt-4o-mini-transcribe':
-				return 'GPT-4o Mini';
+				return t('providers.gpt4oMini');
 			default:
 				// Fallback to model name with proper formatting
 				return model.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
@@ -301,17 +307,19 @@ export class APITranscriber {
 			const costPerMinute = modelConfig.pricing.costPerMinute;
 			const currency = modelConfig.pricing.currency;
 			const totalCost = estimatedMinutes * costPerMinute;
+			const rateDisplay = this.formatCostRate(currency, costPerMinute);
 			
 			// Return format that supports both old and new interface
 			return {
 				cost: Math.round(totalCost * 100) / 100,
 				currency,
 				details: {
-					// For backward compatibility with modal
 					minutes: estimatedMinutes,
 					costPerMinute,
-					// String representation for display
-					toString: () => `~${estimatedMinutes.toFixed(1)} minutes @ $${costPerMinute}/min`
+					toString: () => t('modal.transcription.costEstimateSummary', {
+						minutes: estimatedMinutes.toFixed(1),
+						rate: rateDisplay
+					})
 				}
 			};
 		} catch (error) {
@@ -322,7 +330,7 @@ export class APITranscriber {
 				details: {
 					minutes: 0,
 					costPerMinute: 0,
-					toString: () => 'Unable to estimate cost'
+					toString: () => t('errors.costEstimateUnavailable')
 				}
 			};
 		}
@@ -340,5 +348,18 @@ export class APITranscriber {
 	 */
 	setProgressCallback(callback: (current: number, total: number, message: string) => void): void {
 		// This is now handled internally by TranscriptionController
+	}
+
+	private getPartialResultMarker(): string {
+		return t('modal.transcription.partialResult');
+	}
+
+	private formatCostRate(currency: string, amount: number): string {
+		const precision = amount >= 0.01 ? 2 : 3;
+		const formatted = amount.toFixed(precision);
+		if (currency === 'USD') {
+			return `$${formatted}`;
+		}
+		return `${currency} ${formatted}`;
 	}
 }

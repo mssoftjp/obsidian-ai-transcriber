@@ -124,7 +124,7 @@ export class TranscriptionController {
 
 					// ユーザーに通知
 					new Notice(
-						t('notices.vadProcessingError', { error: error instanceof Error ? error.message : 'Unknown error' }),
+						t('notices.vadProcessingError', { error: error instanceof Error ? error.message : t('errors.general') }),
 						5000
 					);
 
@@ -147,7 +147,8 @@ export class TranscriptionController {
 			// Validate
 			const validation = await workflow.validate(audioFile, audioBuffer);
 			if (!validation.valid) {
-				throw new Error(`Validation failed: ${validation.errors.join(', ')}`);
+				const errorDetails = Array.isArray(validation.errors) ? validation.errors.join(', ') : '';
+				throw new Error(t('errors.validationFailed', { details: errorDetails }));
 			}
 
 			// Show warnings if any
@@ -194,8 +195,9 @@ export class TranscriptionController {
 
 		} catch (error) {
 			this.logger.error('Transcription failed', error);
+			const partialMarker = t('modal.transcription.partialResult');
 			// Re-throw the error but with more context
-			if (error instanceof Error && error.message.includes('[部分的な文字起こし結果]')) {
+			if (error instanceof Error && error.message.includes(partialMarker)) {
 				// This is already formatted partial result, pass it through
 				throw error;
 			}
@@ -225,7 +227,7 @@ export class TranscriptionController {
 			const currentTask = this.progressTracker.getCurrentTask();
 			if (currentTask) {
 				const prepProgress = this.progressCalculator.preparationProgress();
-				this.progressTracker.updateProgress(currentTask.id, 0, 'Preparing...', prepProgress);
+				this.progressTracker.updateProgress(currentTask.id, 0, t('modal.transcription.preparingAudio'), prepProgress);
 			}
 		}
 

@@ -52,7 +52,13 @@ const en: TranslationKeys = {
 			name: 'Language',
 			desc: 'Primary language for transcription',
 			autoDetect: 'Auto-detect',
-			useObsidianLang: 'Use Obsidian language'
+			useObsidianLang: 'Use Obsidian language',
+			options: {
+				ja: 'Japanese',
+				en: 'English',
+				zh: 'Chinese',
+				ko: 'Korean'
+			}
 		},
 		outputFormat: {
 			name: 'Output Format',
@@ -159,6 +165,15 @@ const en: TranslationKeys = {
 			clearButton: 'Clear All Keys',
 			clearedNotice: 'API key cleared'
 		}
+	},
+
+	// Provider names
+	providers: {
+		openai: 'OpenAI',
+		whisper: 'OpenAI Whisper',
+		whisperTs: 'OpenAI Whisper (with timestamps)',
+		gpt4o: 'GPT-4o Transcribe',
+		gpt4oMini: 'GPT-4o Mini Transcribe'
 	},
 
 	// Commands
@@ -273,7 +288,15 @@ const en: TranslationKeys = {
 			postProcessingCompleted: 'Post-processing completed',
 			savingResults: 'Saving results',
 			completed: 'Completed',
-			partialResult: '[Partial transcription result]'
+			partialResult: '[Partial transcription result]',
+			partialSummary: '{processed}/{total} chunks processed.',
+			partialCancelled: 'Transcription cancelled. Completed {processed} out of {total} chunks.',
+			partialError: 'Partial transcription due to error: {error}. Completed {processed} out of {total} chunks.',
+			partialNoChunks: 'Transcription was cancelled before any chunks were processed.',
+			partialFailedChunks: 'Some chunks ({chunks}) failed.',
+			chunkFailure: '[Chunk {index} failed: {error}]',
+			chunkFailureSummary: 'Chunk {id}: {error}',
+			costEstimateSummary: '~{minutes} minutes @ {rate}/min'
 		},
 		postProcessing: {
 			titlePre: 'Pre-transcription Related Information',
@@ -314,6 +337,12 @@ const en: TranslationKeys = {
 		mergingFailed: 'Failed to merge transcription chunks',
 		saveFailed: 'Failed to save transcription',
 		createFileFailed: 'Failed to create transcription file: {error}',
+		validationFailed: 'Validation failed: {details}',
+		transcriptionCancelledByUser: 'Transcription cancelled by user',
+		unsupportedAudioFormat: 'Unsupported audio format: {extension}. Supported formats: {formats}',
+		audioValidationFailed: 'Audio validation failed: {error}',
+		noTranscriptionResults: 'No transcription results obtained',
+		costEstimateUnavailable: 'Unable to estimate cost',
 		settingsLoad: 'Failed to load settings',
 		settingsSave: 'Failed to save settings',
 		fileNotFound: 'Transcription file not found',
@@ -421,12 +450,22 @@ const en: TranslationKeys = {
 		multipleAudioFilesFound: 'Multiple audio files found',
 		historyUpdated: 'History updated',
 		selectFile: 'Select File',
-		multipleFilesFound: 'Multiple files found. Please select:'
+		multipleFilesFound: 'Multiple files found. Please select:',
+		fileSize: {
+			zero: '0 Bytes',
+			units: {
+				bytes: 'Bytes',
+				kb: 'KB',
+				mb: 'MB',
+				gb: 'GB'
+			}
+		}
 	},
 	
 	// Support section
 	support: {
-		message: 'If this plugin adds value for you and you would like to help support continued development, please use the buttons below:'
+		message: 'If this plugin adds value for you and you would like to help support continued development, please use the buttons below:',
+		imageAlt: 'Support AI Transcriber via Buy Me a Coffee'
 	}
 
 };

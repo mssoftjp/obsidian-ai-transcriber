@@ -12,6 +12,7 @@ import { SUPPORTED_FORMATS, APP_LIMITS } from '../../config/constants';
 import { ChunkStrategy } from '../../core/chunking/ChunkingTypes';
 import { ResourceManager } from '../../core/resources/ResourceManager';
 import { Logger } from '../../utils/Logger';
+import { t } from '../../i18n';
 
 export interface WorkflowOptions {
 	startTime?: number;
@@ -221,7 +222,7 @@ export class TranscriptionWorkflow {
 	 */
 	private checkAborted(): void {
 		if (this.abortController?.signal.aborted) {
-			throw new Error('Transcription cancelled by user');
+			throw new Error(t('errors.transcriptionCancelledByUser'));
 		}
 	}
 

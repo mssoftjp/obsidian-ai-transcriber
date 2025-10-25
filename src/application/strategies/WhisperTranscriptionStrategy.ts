@@ -10,6 +10,7 @@ import { AudioChunk } from '../../core/audio/AudioTypes';
 import { TranscriptionResult, TranscriptionOptions } from '../../core/transcription/TranscriptionTypes';
 import { getModelConfig } from '../../config/ModelProcessingConfig';
 import { Logger } from '../../utils/Logger';
+import { t } from '../../i18n';
 
 export class WhisperTranscriptionStrategy extends TranscriptionStrategy {
 	readonly strategyName = 'Whisper Parallel Processing';
@@ -84,14 +85,15 @@ export class WhisperTranscriptionStrategy extends TranscriptionStrategy {
 				this.logger.error(`Failed to process batch starting at chunk ${i + 1}:`, error);
 				// Add failed results for this batch
 				const batch = chunks.slice(i, i + this.maxConcurrency);
+				const errorMessage = error instanceof Error ? error.message : t('errors.general');
 				batch.forEach((chunk, idx) => {
 					results.push({
 						id: chunk.id,
-						text: `[Chunk ${i + idx + 1} failed: ${error instanceof Error ? error.message : 'Unknown error'}]`,
+						text: t('modal.transcription.chunkFailure', { index: (i + idx + 1).toString(), error: errorMessage }),
 						startTime: chunk.startTime,
 						endTime: chunk.endTime,
 						success: false,
-						error: error instanceof Error ? error.message : 'Unknown error'
+						error: errorMessage
 					});
 				});
 			}
@@ -118,8 +120,15 @@ export class WhisperTranscriptionStrategy extends TranscriptionStrategy {
 
 		// If no valid results but we have failed results, return error information
 		if (valid.length === 0) {
-			const errorInfo = failed.map(f => `Chunk ${f.id}: ${f.error || 'Unknown error'}`).join('\n');
-			return `[部分的な文字起こし結果]\n\n文字起こしに失敗しました:\n${errorInfo}`;
+			const errorInfo = failed.map(f =>
+				t('modal.transcription.chunkFailureSummary', {
+					id: f.id.toString(),
+					error: f.error || t('errors.general')
+				})
+			).join('\n');
+			const failedChunks = failed.map(f => f.id).join(', ') || failed.length.toString();
+			const notice = t('modal.transcription.partialFailedChunks', { chunks: failedChunks });
+			return `${notice}\n${errorInfo}`;
 		}
 
 		// Use timestamp-based merging if available
@@ -155,8 +164,9 @@ export class WhisperTranscriptionStrategy extends TranscriptionStrategy {
 		
 		// If we have partial results, prepend a notice
 		if (failed.length > 0) {
-			const failedChunks = failed.map(f => f.id).join(', ');
-			return `[部分的な文字起こし結果]\n一部のチャンク（${failedChunks}）で文字起こしに失敗しました。\n\n${mergedText}`;
+			const failedChunks = failed.map(f => f.id).join(', ') || failed.length.toString();
+			const notice = t('modal.transcription.partialFailedChunks', { chunks: failedChunks });
+			return `${notice}\n\n${mergedText}`;
 		}
 		
 		return mergedText;

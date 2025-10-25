@@ -52,7 +52,13 @@ const ko: TranslationKeys = {
 			name: '언어',
 			desc: '전사의 기본 언어',
 			autoDetect: '자동 감지',
-			useObsidianLang: 'Obsidian 언어 사용'
+			useObsidianLang: 'Obsidian 언어 사용',
+			options: {
+				ja: '일본어',
+				en: '영어',
+				zh: '중국어',
+				ko: '한국어'
+			}
 		},
 		outputFormat: {
 			name: '출력 형식',
@@ -159,6 +165,15 @@ const ko: TranslationKeys = {
 			clearButton: '모든 키 삭제',
 			clearedNotice: 'API 키를 삭제했습니다'
 		}
+	},
+
+	// 공급자 이름
+	providers: {
+		openai: 'OpenAI',
+		whisper: 'OpenAI Whisper',
+		whisperTs: 'OpenAI Whisper (타임스탬프 포함)',
+		gpt4o: 'GPT-4o Transcribe',
+		gpt4oMini: 'GPT-4o Mini Transcribe'
 	},
 
 	// Commands
@@ -273,7 +288,15 @@ const ko: TranslationKeys = {
 			postProcessingCompleted: '후처리가 완료되었습니다',
 			savingResults: '결과 저장 중',
 			completed: '완료',
-			partialResult: '[부분 전사 결과]'
+			partialResult: '[부분 전사 결과]',
+			partialSummary: '{processed}/{total}개의 청크를 처리했습니다.',
+			partialCancelled: '전사가 취소되었습니다. {total}개 중 {processed}개 청크가 완료되었습니다.',
+			partialError: '오류로 인해 부분 전사만 완료되었습니다 ({error}). {total}개 중 {processed}개 청크가 완료되었습니다.',
+			partialNoChunks: '전사는 시작 전에 취소되었으며 처리된 청크가 없습니다.',
+			partialFailedChunks: '일부 청크({chunks})에서 실패했습니다.',
+			chunkFailure: '[청크 {index} 실패: {error}]',
+			chunkFailureSummary: '청크 {id}: {error}',
+			costEstimateSummary: '약 {minutes}분 @ {rate}/분'
 		},
 		postProcessing: {
 			titlePre: '전사 전 관련 정보',
@@ -314,6 +337,12 @@ const ko: TranslationKeys = {
 		mergingFailed: '전사 청크 병합 실패',
 		saveFailed: '전사 저장 실패',
 		createFileFailed: '전사 파일 생성 실패: {error}',
+		validationFailed: '검증에 실패했습니다: {details}',
+		transcriptionCancelledByUser: '사용자가 전사를 취소했습니다',
+		unsupportedAudioFormat: '지원되지 않는 오디오 형식입니다: {extension}. 지원 형식: {formats}',
+		audioValidationFailed: '오디오 검증에 실패했습니다: {error}',
+		noTranscriptionResults: '전사 결과를 얻지 못했습니다',
+		costEstimateUnavailable: '비용을 추정할 수 없습니다',
 		settingsLoad: '설정 불러오기 실패',
 		settingsSave: '설정 저장 실패',
 		fileNotFound: '전사 파일을 찾을 수 없습니다',
@@ -421,12 +450,22 @@ const ko: TranslationKeys = {
 		multipleAudioFilesFound: 'Multiple audio files found',
 		historyUpdated: 'History updated',
 		selectFile: 'Select File',
-		multipleFilesFound: 'Multiple files found. Please select:'
+		multipleFilesFound: 'Multiple files found. Please select:',
+		fileSize: {
+			zero: '0 바이트',
+			units: {
+				bytes: '바이트',
+				kb: 'KB',
+				mb: 'MB',
+				gb: 'GB'
+			}
+		}
 	},
 	
 	// Support section
 	support: {
-		message: '이 플러그인이 도움이 되었다면, 지속적인 개발을 위해 지원해 주세요:'
+		message: '이 플러그인이 도움이 되었다면, 지속적인 개발을 위해 지원해 주세요:',
+		imageAlt: 'Buy Me a Coffee로 AI Transcriber 지원'
 	}
 };
 

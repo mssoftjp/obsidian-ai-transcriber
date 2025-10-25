@@ -10,6 +10,7 @@ import { AudioChunk } from '../../core/audio/AudioTypes';
 import { TranscriptionResult, TranscriptionOptions } from '../../core/transcription/TranscriptionTypes';
 import { getModelConfig } from '../../config/ModelProcessingConfig';
 import { Logger } from '../../utils/Logger';
+import { t } from '../../i18n';
 
 export class GPT4oTranscriptionStrategy extends TranscriptionStrategy {
 	readonly strategyName = 'GPT-4o Sequential Processing';
@@ -97,13 +98,14 @@ export class GPT4oTranscriptionStrategy extends TranscriptionStrategy {
 				}
 				// For other errors, log and continue with next chunk
 				this.logger.error(`Failed to process chunk ${i + 1}:`, error);
+				const errorMessage = error instanceof Error ? error.message : t('errors.general');
 				results.push({
 					id: chunks[i].id,
-					text: `[Chunk ${i + 1} failed: ${error instanceof Error ? error.message : 'Unknown error'}]`,
+					text: t('modal.transcription.chunkFailure', { index: (i + 1).toString(), error: errorMessage }),
 					startTime: chunks[i].startTime,
 					endTime: chunks[i].endTime,
 					success: false,
-					error: error instanceof Error ? error.message : 'Unknown error'
+					error: errorMessage
 				});
 			}
 		}
@@ -162,8 +164,15 @@ export class GPT4oTranscriptionStrategy extends TranscriptionStrategy {
 
 		// If no valid results but we have failed results, return error information
 		if (valid.length === 0) {
-			const errorInfo = failed.map(f => `Chunk ${f.id}: ${f.error || 'Unknown error'}`).join('\n');
-			return `[部分的な文字起こし結果]\n\n文字起こしに失敗しました:\n${errorInfo}`;
+			const failureSummary = failed.map(f =>
+				t('modal.transcription.chunkFailureSummary', {
+					id: f.id.toString(),
+					error: f.error || t('errors.general')
+				})
+			).join('\n');
+			const failedChunksLabel = failed.map(f => f.id).join(', ') || failed.length.toString();
+			const notice = t('modal.transcription.partialFailedChunks', { chunks: failedChunksLabel });
+			return `${notice}\n${failureSummary}`;
 		}
 
 		// Use overlap removal to handle chunk boundary duplicates (30s overlap)
@@ -183,8 +192,9 @@ export class GPT4oTranscriptionStrategy extends TranscriptionStrategy {
 		
 		// If we have partial results, prepend a notice
 		if (failed.length > 0) {
-			const failedChunks = failed.map(f => f.id).join(', ');
-			return `[部分的な文字起こし結果]\n一部のチャンク（${failedChunks}）で文字起こしに失敗しました。\n\n${mergedText}`;
+			const failedChunks = failed.map(f => f.id).join(', ') || failed.length.toString();
+			const notice = t('modal.transcription.partialFailedChunks', { chunks: failedChunks });
+			return `${notice}\n\n${mergedText}`;
 		}
 		
 		return mergedText;

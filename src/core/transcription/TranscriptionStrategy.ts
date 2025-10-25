@@ -8,6 +8,7 @@ import { TranscriptionResult, TranscriptionOptions, TranscriptionProgress } from
 import { ChunkProcessingMode } from '../chunking/ChunkingTypes';
 import { TranscriptionService } from './TranscriptionService';
 import { Logger } from '../../utils/Logger';
+import { t } from '../../i18n';
 
 export abstract class TranscriptionStrategy {
 	protected transcriptionService: TranscriptionService;
@@ -73,7 +74,7 @@ export abstract class TranscriptionStrategy {
 			currentChunk: 0,
 			totalChunks: chunks.length,
 			percentage: 0,
-			operation: `Starting ${this.strategyName} transcription`,
+			operation: t('modal.transcription.processing'),
 			cancellable: true
 		});
 
@@ -112,7 +113,7 @@ export abstract class TranscriptionStrategy {
 					currentChunk: results.length,
 					totalChunks: chunks.length,
 					percentage: 95,
-					operation: 'Merging transcription results',
+					operation: t('modal.transcription.processing'),
 					cancellable: false
 				});
 
@@ -139,29 +140,43 @@ export abstract class TranscriptionStrategy {
 				const successfulResults = results.filter(r => r.success);
 				const isPartial = successfulResults.length < chunks.length || processingError !== null;
 				
-				this.reportProgress({
-					currentChunk: results.length,
-					totalChunks: chunks.length,
-					percentage: 100,
-					operation: isPartial ? 'Partial transcription complete' : 'Transcription complete',
-					cancellable: false
-				});
+			this.reportProgress({
+				currentChunk: results.length,
+				totalChunks: chunks.length,
+				percentage: 100,
+				operation: isPartial ? t('modal.transcription.partialResult') : t('modal.transcription.completed'),
+				cancellable: false
+			});
 
 				const result: any = {
 					text: mergedText,
 					segments: allSegments
 				};
 
-				if (isPartial) {
-					result.partial = true;
-					// Add partial result header to the text
-					result.text = `[部分的な文字起こし結果]\n${successfulResults.length}/${chunks.length}チャンクを処理しました。\n\n${mergedText}`;
-					if (isCancelled) {
-						result.error = `Transcription cancelled. Completed ${successfulResults.length} out of ${chunks.length} chunks.`;
-					} else if (processingError) {
-						result.error = `Partial transcription due to error: ${processingError.message}. Completed ${successfulResults.length} out of ${chunks.length} chunks.`;
-					}
+			if (isPartial) {
+				result.partial = true;
+				const processedCount = successfulResults.length.toString();
+				const totalCount = chunks.length.toString();
+				const partialHeader = t('modal.transcription.partialResult');
+				const summary = t('modal.transcription.partialSummary', {
+					processed: processedCount,
+					total: totalCount
+				});
+				result.text = `${partialHeader}\n${summary}\n\n${mergedText}`;
+				if (isCancelled) {
+					result.error = t('modal.transcription.partialCancelled', {
+						processed: processedCount,
+						total: totalCount
+					});
+				} else if (processingError) {
+					const errorMessage = processingError.message || t('errors.general');
+					result.error = t('modal.transcription.partialError', {
+						error: errorMessage,
+						processed: processedCount,
+						total: totalCount
+					});
 				}
+			}
 
 				return result;
 
@@ -169,30 +184,30 @@ export abstract class TranscriptionStrategy {
 				this.logger.error('Merge failed', mergeError);
 				// Even if merge fails, try to return something
 				const successfulResults = results.filter(r => r.success && r.text);
-				if (successfulResults.length > 0) {
-					const fallbackText = successfulResults.map(r => r.text).join('\n\n');
-					return {
-						text: fallbackText,
-						partial: true,
-						error: `Merge failed but recovered ${successfulResults.length} chunks: ${(mergeError as Error).message}`
-					};
-				}
-				throw mergeError;
+			if (successfulResults.length > 0) {
+				const fallbackText = successfulResults.map(r => r.text).join('\n\n');
+				return {
+					text: fallbackText,
+					partial: true,
+					error: `${t('modal.transcription.partialFailedChunks', { chunks: successfulResults.length.toString() })} ${(mergeError as Error).message}`
+				};
 			}
-		} else {
+			throw mergeError;
+		}
+	} else {
 			// No results at all
 			if (isCancelled) {
 				// Return empty result with cancellation message
 				return {
-					text: '[部分的な文字起こし結果]\n\n文字起こしがキャンセルされました。処理済みのチャンクはありません。',
+					text: `${t('modal.transcription.partialResult')}\n\n${t('modal.transcription.partialNoChunks')}`,
 					partial: true,
-					error: 'Transcription cancelled before any chunks were processed'
+					error: t('modal.transcription.partialNoChunks')
 				};
 			}
 			if (processingError) {
 				throw processingError;
 			}
-			throw new Error('No transcription results obtained');
+			throw new Error(t('errors.noTranscriptionResults'));
 		}
 	}
 
@@ -210,7 +225,7 @@ export abstract class TranscriptionStrategy {
 	 */
 	protected checkAborted(): void {
 		if (this.abortSignal?.aborted) {
-			throw new Error('Transcription cancelled by user');
+			throw new Error(t('errors.transcriptionCancelledByUser'));
 		}
 	}
 
@@ -239,13 +254,14 @@ export abstract class TranscriptionStrategy {
 
 		} catch (error) {
 			// Return error result for this chunk
+			const errorMessage = error instanceof Error ? error.message : t('errors.general');
 			return {
 				id: chunk.id,
-				text: `[Chunk ${chunk.id} transcription failed: ${error instanceof Error ? error.message : 'Unknown error'}]`,
+				text: t('modal.transcription.chunkFailure', { index: chunk.id.toString(), error: errorMessage }),
 				startTime: chunk.startTime,
 				endTime: chunk.endTime,
 				success: false,
-				error: error instanceof Error ? error.message : 'Unknown error'
+				error: errorMessage
 			};
 		}
 	}
@@ -260,14 +276,14 @@ export abstract class TranscriptionStrategy {
 			// Check if already aborted
 			if (this.abortSignal?.aborted) {
 				clearTimeout(timeoutId);
-				reject(new Error('Delay cancelled due to abort signal'));
+				reject(new Error(t('errors.cancelled')));
 				return;
 			}
 			
 			// Listen for abort
 			const abortHandler = () => {
 				clearTimeout(timeoutId);
-				reject(new Error('Delay cancelled due to abort signal'));
+				reject(new Error(t('errors.cancelled')));
 			};
 			
 			this.abortSignal?.addEventListener('abort', abortHandler, { once: true });

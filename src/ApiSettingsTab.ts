@@ -12,7 +12,6 @@ export class APISettingsTab extends PluginSettingTab {
 	private static readonly SUPPORT_CONFIG = {
 		fundingUrl: 'https://buymeacoffee.com/mssoft',
 		imageUrl: 'https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png',
-		imageAlt: 'Support this plugin by buying me a coffee',
 		imageWidth: '217',
 		imageHeight: '60'
 	} as const;
@@ -44,10 +43,10 @@ export class APISettingsTab extends PluginSettingTab {
 			.setDesc(languageDesc)
 			.addDropdown(dropdown => dropdown
 				.addOption('auto', t('settings.language.autoDetect'))
-				.addOption('ja', 'Japanese')
-				.addOption('en', 'English')
-				.addOption('zh', 'Chinese')
-				.addOption('ko', 'Korean')
+				.addOption('ja', t('settings.language.options.ja'))
+				.addOption('en', t('settings.language.options.en'))
+				.addOption('zh', t('settings.language.options.zh'))
+				.addOption('ko', t('settings.language.options.ko'))
 				.setValue(this.plugin.settings.language)
 				.onChange(async (value) => {
 					this.plugin.settings.language = value;
@@ -200,7 +199,7 @@ export class APISettingsTab extends PluginSettingTab {
 			banner.createEl('img', {
 				attr: {
 					src: APISettingsTab.SUPPORT_CONFIG.imageUrl,
-					alt: APISettingsTab.SUPPORT_CONFIG.imageAlt,
+					alt: t('support.imageAlt'),
 					width: APISettingsTab.SUPPORT_CONFIG.imageWidth,
 					height: APISettingsTab.SUPPORT_CONFIG.imageHeight
 				}

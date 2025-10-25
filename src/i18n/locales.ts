@@ -51,6 +51,12 @@ export interface TranslationKeys {
 			desc: string;
 			autoDetect: string;
 			useObsidianLang: string;
+			options: {
+				ja: string;
+				en: string;
+				zh: string;
+				ko: string;
+			};
 		};
 		outputFormat: {
 			name: string;
@@ -157,6 +163,15 @@ export interface TranslationKeys {
 			clearButton: string;
 			clearedNotice: string;
 		};
+	};
+
+	// Provider display names
+	providers: {
+		openai: string;
+		whisper: string;
+		whisperTs: string;
+		gpt4o: string;
+		gpt4oMini: string;
 	};
 
 	// Commands
@@ -272,6 +287,14 @@ export interface TranslationKeys {
 			savingResults: string;
 			completed: string;
 			partialResult: string;
+			partialSummary: string;
+			partialCancelled: string;
+			partialError: string;
+			partialNoChunks: string;
+			partialFailedChunks: string;
+			chunkFailure: string;
+			chunkFailureSummary: string;
+			costEstimateSummary: string;
 		};
 		postProcessing: {
 			titlePre: string;
@@ -312,6 +335,12 @@ export interface TranslationKeys {
 		mergingFailed: string;
 		saveFailed: string;
 		createFileFailed: string;
+		validationFailed: string;
+		transcriptionCancelledByUser: string;
+		unsupportedAudioFormat: string;
+		audioValidationFailed: string;
+		noTranscriptionResults: string;
+		costEstimateUnavailable: string;
 		settingsLoad: string;
 		settingsSave: string;
 		fileNotFound: string;
@@ -420,11 +449,21 @@ export interface TranslationKeys {
 		historyUpdated: string;
 		selectFile: string;
 		multipleFilesFound: string;
+		fileSize: {
+			zero: string;
+			units: {
+				bytes: string;
+				kb: string;
+				mb: string;
+				gb: string;
+			};
+		};
 	};
 
 	// Support section
 	support: {
 		message: string;
+		imageAlt: string;
 	};
 }
 

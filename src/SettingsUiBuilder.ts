@@ -22,7 +22,7 @@ export class SettingsUIBuilder {
 		// API Key setting
 		new Setting(containerEl)
 			.setName(t('settings.apiKey.name'))
-			.setDesc(this.createApiKeyDescription('OpenAI', 'https://platform.openai.com/api-keys'))
+			.setDesc(this.createApiKeyDescription(t('providers.openai'), 'https://platform.openai.com/api-keys'))
 			.addText(text => {
 				// Retrieve stored API key
 				const apiKey = SafeStorageService.decryptFromStore(settings.openaiApiKey);

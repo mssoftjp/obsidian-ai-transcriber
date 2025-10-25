@@ -254,11 +254,11 @@ export class APITranscriptionModal extends Modal {
 				if (this.metaInfoBtn) {
 					if (this.metaInfo && this.metaInfo.rawContent) {
 						const filledText = t('modal.transcription.metaInfoButtonFilled');
-						this.metaInfoBtn.textContent = filledText || '関連情報入力済み ✓';
+						this.metaInfoBtn.textContent = filledText;
 						this.metaInfoBtn.addClass('has-info');
 					} else {
 						const normalText = t('modal.transcription.metaInfoButton');
-						this.metaInfoBtn.textContent = normalText || '関連情報入力';
+						this.metaInfoBtn.textContent = normalText;
 						this.metaInfoBtn.removeClass('has-info');
 					}
 				}
@@ -456,6 +456,7 @@ export class APITranscriptionModal extends Modal {
 			// Transcribe using API
 			let transcription = '';
 			let modelUsed = '';
+			const partialMarker = this.getPartialResultMarker();
 			try {
 				const result = await this.transcriber.transcribe(this.audioFile, startTime, endTime);
 				if (typeof result === 'string') {
@@ -468,7 +469,7 @@ export class APITranscriptionModal extends Modal {
 			} catch (error) {
 				// Check if error contains partial results
 				const errorMessage = error instanceof Error ? error.message : '';
-				if (errorMessage.includes('[部分的な文字起こし結果]')) {
+				if (errorMessage.includes(partialMarker)) {
 					// This is a partial result, use it
 					transcription = errorMessage;
 				} else {
@@ -478,7 +479,7 @@ export class APITranscriptionModal extends Modal {
 			}
 
 			// Check if this is a partial result
-			const isPartialResult = transcription.includes('[部分的な文字起こし結果]');
+			const isPartialResult = transcription.includes(partialMarker);
 
 			if (!transcription || (transcription.trim().length === 0 && !isPartialResult)) {
 				throw new Error(t('errors.messages.noTranscriptionText'));
@@ -571,6 +572,7 @@ export class APITranscriptionModal extends Modal {
 		// Transcribe using API with dictionary context
 		let transcription = '';
 		let modelUsed = '';
+		const partialMarker = this.getPartialResultMarker();
 		try {
 			const result = await this.transcriber.transcribe(this.audioFile, startTime, endTime);
 			if (typeof result === 'string') {
@@ -583,7 +585,7 @@ export class APITranscriptionModal extends Modal {
 		} catch (error) {
 			// Check if error contains partial results
 			const errorMessage = error instanceof Error ? error.message : '';
-			if (errorMessage.includes('[部分的な文字起こし結果]')) {
+			if (errorMessage.includes(partialMarker)) {
 				// This is a partial result, use it
 				transcription = errorMessage;
 			} else {
@@ -597,7 +599,7 @@ export class APITranscriptionModal extends Modal {
 		}
 
 		// Check if this is a partial result
-		const isPartialResult = transcription.includes('[部分的な文字起こし結果]');
+		const isPartialResult = transcription.includes(partialMarker);
 
 		// Adjust progress based on whether post-processing is enabled
 		// If post-processing is enabled and will be performed: 70%
@@ -662,6 +664,7 @@ export class APITranscriptionModal extends Modal {
 
 
 	private async insertTranscription(transcription: string, modelUsed?: string) {
+		const partialMarker = this.getPartialResultMarker();
 		this.logger.info('Starting transcription insertion', {
 			modelUsed,
 			transcriptionLength: transcription.length,
@@ -1025,7 +1028,7 @@ export class APITranscriptionModal extends Modal {
 				// Background mode: update progress tracker
 				const currentTask = this.progressTracker.getCurrentTask();
 				if (currentTask) {
-					this.progressTracker.updateProgress(currentTask.id, currentTask.completedChunks, 'File saved', 100);
+					this.progressTracker.updateProgress(currentTask.id, currentTask.completedChunks, t('modal.transcription.completed'), 100);
 				}
 			}
 		}
@@ -1034,7 +1037,7 @@ export class APITranscriptionModal extends Modal {
 		if (this.progressTracker && !this.processInBackground) {
 			const currentTask = this.progressTracker.getCurrentTask();
 			if (currentTask) {
-				const isPartialResult = transcription.includes('[部分的な文字起こし結果]');
+				const isPartialResult = transcription.includes(partialMarker);
 				if (isPartialResult) {
 					// Mark as partial
 					this.progressTracker.updateTaskStatus(currentTask.id, 'partial');
@@ -1071,10 +1074,10 @@ export class APITranscriptionModal extends Modal {
 			.setName(t('settings.language.name'))
 			.addDropdown(dropdown => dropdown
 				.addOption('auto', t('settings.language.autoDetect'))
-				.addOption('ja', 'Japanese')
-				.addOption('en', 'English')
-				.addOption('zh', 'Chinese')
-				.addOption('ko', 'Korean')
+				.addOption('ja', t('settings.language.options.ja'))
+				.addOption('en', t('settings.language.options.en'))
+				.addOption('zh', t('settings.language.options.zh'))
+				.addOption('ko', t('settings.language.options.ko'))
 				.setValue(this.settings.language)
 				.onChange(async (value) => {
 					this.settings.language = value;
@@ -1615,16 +1618,23 @@ export class APITranscriptionModal extends Modal {
 		}
 	}
 
-
-
+	private getPartialResultMarker(): string {
+		return t('modal.transcription.partialResult');
+	}
 
 	private formatFileSize(bytes: number): string {
-		const sizes = ['Bytes', 'KB', 'MB', 'GB'];
 		if (bytes === 0) {
-			return '0 Bytes';
+			return t('common.fileSize.zero');
 		}
-		const i = Math.floor(Math.log(bytes) / Math.log(1024));
-		return Math.round(bytes / Math.pow(1024, i) * 100) / 100 + ' ' + sizes[i];
+		const units = [
+			t('common.fileSize.units.bytes'),
+			t('common.fileSize.units.kb'),
+			t('common.fileSize.units.mb'),
+			t('common.fileSize.units.gb')
+		];
+		const index = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
+		const value = Math.round((bytes / Math.pow(1024, index)) * 100) / 100;
+		return `${value} ${units[index]}`;
 	}
 
 	/**
@@ -1633,13 +1643,13 @@ export class APITranscriptionModal extends Modal {
 	private getModelDisplayName(model: string): string {
 		switch (model) {
 		case 'whisper-1':
-			return 'OpenAI Whisper';
+			return t('providers.whisper');
 		case 'whisper-1-ts':
-			return 'OpenAI Whisper (with timestamps)';
+			return t('providers.whisperTs');
 		case 'gpt-4o-transcribe':
-			return 'GPT-4o Transcribe';
+			return t('providers.gpt4o');
 		case 'gpt-4o-mini-transcribe':
-			return 'GPT-4o Mini Transcribe';
+			return t('providers.gpt4oMini');
 		default:
 			// Fallback to model name with proper formatting
 			return model.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());

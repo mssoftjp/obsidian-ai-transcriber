@@ -52,7 +52,13 @@ const ja: TranslationKeys = {
 			name: '言語',
 			desc: '文字起こしの主要言語',
 			autoDetect: '自動検出',
-			useObsidianLang: 'Obsidianの言語を使用'
+			useObsidianLang: 'Obsidianの言語を使用',
+			options: {
+				ja: '日本語',
+				en: '英語',
+				zh: '中国語',
+				ko: '韓国語'
+			}
 		},
 		outputFormat: {
 			name: '出力形式',
@@ -159,6 +165,15 @@ const ja: TranslationKeys = {
 			clearButton: 'キーをすべて削除',
 			clearedNotice: 'APIキーを削除しました'
 		}
+	},
+
+	// プロバイダー名
+	providers: {
+		openai: 'OpenAI',
+		whisper: 'OpenAI Whisper',
+		whisperTs: 'OpenAI Whisper（タイムスタンプあり）',
+		gpt4o: 'GPT-4o Transcribe',
+		gpt4oMini: 'GPT-4o Mini Transcribe'
 	},
 
 	// Commands
@@ -273,7 +288,15 @@ const ja: TranslationKeys = {
 			postProcessingCompleted: '後処理が完了しました',
 			savingResults: '結果を保存中',
 			completed: '完了',
-			partialResult: '[部分的な文字起こし結果]'
+			partialResult: '[部分的な文字起こし結果]',
+			partialSummary: '{total}チャンク中{processed}チャンクを処理しました。',
+			partialCancelled: '文字起こしをキャンセルしました。{total}チャンク中{processed}チャンクが完了しています。',
+			partialError: 'エラーにより部分的な文字起こしになりました（{error}）。{total}チャンク中{processed}チャンクが完了しています。',
+			partialNoChunks: '文字起こしは開始前にキャンセルされました（処理済みのチャンクはありません）。',
+			partialFailedChunks: '一部のチャンク（{chunks}）で失敗しました。',
+			chunkFailure: '[チャンク{index}で失敗: {error}]',
+			chunkFailureSummary: 'チャンク{ id }: {error}',
+			costEstimateSummary: '約{minutes}分 @ {rate}/分'
 		},
 		postProcessing: {
 			titlePre: '関連情報の事前入力',
@@ -314,6 +337,12 @@ const ja: TranslationKeys = {
 		mergingFailed: '文字起こしチャンクの結合に失敗しました',
 		saveFailed: '文字起こしの保存に失敗しました',
 		createFileFailed: '文字起こしファイルの作成に失敗しました: {error}',
+		validationFailed: '検証に失敗しました: {details}',
+		transcriptionCancelledByUser: 'ユーザーによって文字起こしがキャンセルされました',
+		unsupportedAudioFormat: '未対応の音声形式です: {extension}。対応形式: {formats}',
+		audioValidationFailed: '音声検証に失敗しました: {error}',
+		noTranscriptionResults: '文字起こし結果を取得できませんでした',
+		costEstimateUnavailable: 'コストを見積もれませんでした',
 		settingsLoad: '設定の読み込みに失敗しました',
 		settingsSave: '設定の保存に失敗しました',
 		fileNotFound: '文字起こしファイルが見つかりません',
@@ -421,12 +450,22 @@ const ja: TranslationKeys = {
 		multipleAudioFilesFound: '複数の音声ファイルが見つかりました',
 		historyUpdated: '履歴を更新しました',
 		selectFile: 'ファイルを選択',
-		multipleFilesFound: '複数のファイルが見つかりました。選択してください：'
+		multipleFilesFound: '複数のファイルが見つかりました。選択してください：',
+		fileSize: {
+			zero: '0 バイト',
+			units: {
+				bytes: 'バイト',
+				kb: 'KB',
+				mb: 'MB',
+				gb: 'GB'
+			}
+		}
 	},
 	
 	// Support section
 	support: {
-		message: 'このプラグインが役に立ちましたら、開発継続のためにご支援をお願いいたします：'
+		message: 'このプラグインが役に立ちましたら、開発継続のためにご支援をお願いいたします：',
+		imageAlt: 'Buy Me a Coffee で AI Transcriber を支援'
 	}
 };
 

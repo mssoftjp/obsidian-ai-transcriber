@@ -52,10 +52,10 @@ export class DictionaryManagementModal extends Modal {
 		// Language tabs
 		this.tabsContainer = tabBarContainer.createEl('div', { cls: 'dictionary-language-tabs' });
 		const languages = [
-			{ code: 'ja', name: 'Japanese' },
-			{ code: 'en', name: 'English' },
-			{ code: 'zh', name: 'Chinese' },
-			{ code: 'ko', name: 'Korean' }
+			{ code: 'ja', name: t('settings.language.options.ja') },
+			{ code: 'en', name: t('settings.language.options.en') },
+			{ code: 'zh', name: t('settings.language.options.zh') },
+			{ code: 'ko', name: t('settings.language.options.ko') }
 		];
 
 		languages.forEach(lang => {

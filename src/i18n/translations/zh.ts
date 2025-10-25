@@ -52,7 +52,13 @@ const zh: TranslationKeys = {
 			name: '语言',
 			desc: '设置转录语言（留空为自动检测）',
 			autoDetect: '自动检测',
-			useObsidianLang: '使用 Obsidian 语言设置'
+			useObsidianLang: '使用 Obsidian 语言设置',
+			options: {
+				ja: '日语',
+				en: '英语',
+				zh: '中文',
+				ko: '韩语'
+			}
 		},
 		outputFormat: {
 			name: '输出格式',
@@ -159,6 +165,15 @@ const zh: TranslationKeys = {
 			clearButton: '清除全部密钥',
 			clearedNotice: '已清除 API 密钥'
 		}
+	},
+
+	// 提供方名称
+	providers: {
+		openai: 'OpenAI',
+		whisper: 'OpenAI Whisper',
+		whisperTs: 'OpenAI Whisper（含时间戳）',
+		gpt4o: 'GPT-4o Transcribe',
+		gpt4oMini: 'GPT-4o Mini Transcribe'
 	},
 
 	// Commands
@@ -273,7 +288,15 @@ const zh: TranslationKeys = {
 			postProcessingCompleted: '后处理已完成',
 			savingResults: '保存结果',
 			completed: '完成！',
-			partialResult: '（部分结果）'
+			partialResult: '（部分结果）',
+			partialSummary: '已处理 {processed}/{total} 个区块。',
+			partialCancelled: '转录已取消，已完成 {processed}/{total} 个区块。',
+			partialError: '发生错误导致部分转录（{error}）。{processed}/{total} 个区块完成。',
+			partialNoChunks: '转录在开始前被取消，尚未处理任何区块。',
+			partialFailedChunks: '部分区块失败（{chunks}）。',
+			chunkFailure: '[区块 {index} 失败: {error}]',
+			chunkFailureSummary: '区块 {id}: {error}',
+			costEstimateSummary: '约 {minutes} 分钟 @ {rate}/分钟'
 		},
 		postProcessing: {
 			titlePre: '相关信息预输入',
@@ -314,6 +337,12 @@ const zh: TranslationKeys = {
 		mergingFailed: '合并结果失败',
 		saveFailed: '保存失败',
 		createFileFailed: '创建文件失败',
+		validationFailed: '校验失败：{details}',
+		transcriptionCancelledByUser: '用户已取消转录',
+		unsupportedAudioFormat: '不支持的音频格式：{extension}。支持格式：{formats}',
+		audioValidationFailed: '音频校验失败：{error}',
+		noTranscriptionResults: '未获得任何转录结果',
+		costEstimateUnavailable: '无法估算成本',
 		settingsLoad: '加载设置失败',
 		settingsSave: '保存设置失败',
 		fileNotFound: '转录文件未找到',
@@ -421,12 +450,22 @@ const zh: TranslationKeys = {
 		multipleAudioFilesFound: '找到多个音频文件',
 		historyUpdated: '历史已更新',
 		selectFile: '选择文件',
-		multipleFilesFound: '找到多个文件。请选择：'
+		multipleFilesFound: '找到多个文件。请选择：',
+		fileSize: {
+			zero: '0 字节',
+			units: {
+				bytes: '字节',
+				kb: 'KB',
+				mb: 'MB',
+				gb: 'GB'
+			}
+		}
 	},
 	
 	// Support section
 	support: {
-		message: '如果这个插件对您有帮助，请支持我们的持续开发：'
+		message: '如果这个插件对您有帮助，请支持我们的持续开发：',
+		imageAlt: '通过 Buy Me a Coffee 支持 AI Transcriber'
 	}
 };
 
