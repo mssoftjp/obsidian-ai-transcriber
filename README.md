@@ -32,8 +32,6 @@ A powerful speech-to-text transcription plugin for Obsidian that uses OpenAI's G
 3. Reload Obsidian
 4. Enable the plugin in Settings → Community plugins
 
-Note for releases: Community distribution bundles only three files — `main.js`, `manifest.json`, and `styles.css`. The build script also generates a `release/` folder and a zip with exactly these files under `build/<version>/`. Do not include other files (e.g., `fvad.wasm`) in the GitHub release.
-
 ## Setup
 
 ### Getting an OpenAI API Key
@@ -55,6 +53,16 @@ Note for releases: Community distribution bundles only three files — `main.js`
    - **GPT-4o Mini Transcribe**: Fast and cost-effective
    - **Whisper**: Traditional transcription model
 4. Configure other settings as needed
+
+#### Optional: Local VAD (fvad.wasm)
+
+By default, the plugin uses server-side VAD. If you prefer local VAD (WebRTC VAD) for on-device speech/silence detection:
+
+1. Download `fvad.wasm` from the echogarden project: https://github.com/echogarden-project/fvad-wasm
+2. Place the file at: `<vault>/.obsidian/plugins/ai-transcriber/fvad.wasm`
+3. In the plugin settings, set VAD Mode to “Local”.
+
+If `fvad.wasm` is not present, the plugin automatically falls back to server-side VAD (or no VAD depending on your settings).
 
 ## Usage
 
@@ -201,8 +209,6 @@ OpenAIのGPT-4oとWhisper APIを使用したObsidian用の強力な音声認識�
 3. Obsidianを再読み込み
 4. 設定 → Community pluginsでプラグインを有効化
 
-配布に関する注意: コミュニティ配布に含めるファイルは `main.js`, `manifest.json`, `styles.css` の3つのみです。ビルド後、`build/<version>/release/` および `build/<version>/ai-transcriber-<version>.zip` が生成され、上記3ファイルのみが格納されます。`fvad.wasm` などその他のファイルはリリースに含めないでください。
-
 ## セットアップ
 
 ### OpenAI APIキーの取得
@@ -224,6 +230,16 @@ OpenAIのGPT-4oとWhisper APIを使用したObsidian用の強力な音声認識�
    - **GPT-4o Mini Transcribe**: 高速でコスト効率が良い
    - **Whisper**: 従来の文字起こしモデル
 4. 必要に応じて他の設定を構成
+
+#### ローカルVAD（任意 / fvad.wasm）
+
+既定ではサーバーサイドVADを使用します。端末内で音声/無音判定（WebRTC VAD）を行いたい場合は以下の手順でローカルVADを有効化できます。
+
+1. echogardenプロジェクトから `fvad.wasm` をダウンロード: https://github.com/echogarden-project/fvad-wasm
+2. 次の場所に配置: `<vault>/.obsidian/plugins/ai-transcriber/fvad.wasm`
+3. プラグイン設定で VAD モードを「ローカル」に設定
+
+`fvad.wasm` が見つからない場合は、自動的にサーバーサイドVAD（または設定に応じてVADなし）へフォールバックします。
 
 ## 使用方法
 
