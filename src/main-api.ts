@@ -1,4 +1,4 @@
-import { App, Notice, Plugin, TFile, Menu, Platform } from 'obsidian';
+import { App, Notice, Plugin, TFile, Menu, Platform, moment } from 'obsidian';
 import { APITranscriber } from './ApiTranscriber';
 import { APITranscriptionSettings, DEFAULT_API_SETTINGS, UserDictionary, LanguageDictionaries, DictionaryEntry, ContextualCorrection } from './ApiSettings';
 import { APISettingsTab } from './ApiSettingsTab';
@@ -17,7 +17,6 @@ import zh from './i18n/translations/zh';
 import ko from './i18n/translations/ko';
 import { Logger, LogLevel } from './utils/Logger';
 import { PathUtils } from './utils/PathUtils';
-import { ObsidianApp } from './types/global';
 
 export default class AITranscriberPlugin extends Plugin {
 	settings: APITranscriptionSettings;
@@ -223,11 +222,12 @@ export default class AITranscriberPlugin extends Plugin {
 	 * Get Obsidian's language setting and map to our supported languages
 	 */
 	getObsidianLanguage(): string {
-		// Get Obsidian's locale setting
-		const locale = ((this.app as unknown) as ObsidianApp).vault?.config?.locale || 
-		               (window as { moment?: { locale(): string } }).moment?.locale() || 
-		               navigator.language || 
-		               'en';
+		// Prefer the vault's configured locale if available
+		const vaultLocale = (this.app?.vault as { config?: { locale?: string } })?.config?.locale;
+		const locale = vaultLocale ||
+			(typeof moment.locale === 'function' ? moment.locale() : '') || 
+			navigator.language || 
+			'en';
 		
 		// Map common locale codes to our supported languages
 		const localeMap: Record<string, string> = {
@@ -296,7 +296,7 @@ export default class AITranscriberPlugin extends Plugin {
 		// Check if API key is configured first
 		if (!this.isApiConfigured()) {
 			this.logger.warn('API key not configured');
-			new Notice('❌ API key not configured. Please add your OpenAI API key in settings.');
+			new Notice(t('notices.apiKeyNotConfigured'));
 			return;
 		}
 
@@ -333,7 +333,7 @@ export default class AITranscriberPlugin extends Plugin {
 		// Check if API is configured (redundant check for safety)
 		if (!this.isApiConfigured()) {
 			this.logger.error('API key not configured when attempting transcription');
-			new Notice('❌ API key not configured. Please add your OpenAI API key in settings.');
+			new Notice(t('notices.apiKeyNotConfigured'));
 			return;
 		}
 

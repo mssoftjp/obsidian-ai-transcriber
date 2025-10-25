@@ -31,7 +31,7 @@ export function initializeI18n(app: unknown): void {
 	const obsidianApp = app as ObsidianApp;
 	appInstance = obsidianApp; // eslint-disable-line @typescript-eslint/no-unused-vars
 
-	// Get Obsidian's language setting
+	// Get Obsidian's language setting (prefer explicit vault setting)
 	const locale = obsidianApp.vault?.config?.locale ||
 		moment.locale() ||
 		navigator.language ||

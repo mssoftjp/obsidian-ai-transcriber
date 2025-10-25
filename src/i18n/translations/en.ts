@@ -141,6 +141,23 @@ const en: TranslationKeys = {
 				spoken: 'Spoken Language',
 				symbol: 'Symbol/Unit'
 			}
+		},
+		connection: {
+			title: 'Connection Test',
+			name: 'Test API Connection',
+			desc: 'Verify your API key and connection',
+			testButton: 'Test Connection',
+			testing: 'Testing...',
+			successNotice: '✅ {provider} connection successful!',
+			successButton: '✅ Connected',
+			failureNotice: '❌ {provider} connection failed. Check your API key.',
+			failureButton: '❌ Failed',
+			errorNotice: '❌ Connection test failed: {error}',
+			errorButton: '❌ Error',
+			clearTitle: 'Clear API Keys',
+			clearDesc: 'Remove all stored API keys (useful for troubleshooting)',
+			clearButton: 'Clear All Keys',
+			clearedNotice: 'API key cleared'
 		}
 	},
 
@@ -185,7 +202,15 @@ const en: TranslationKeys = {
 		settingsSaved: 'Settings saved',
 		largeFileWarning: 'Processing large file ({size} MB) may take time',
 		unsupportedFormat: 'Unsupported audio format: {format}',
-		legacyHistoryItem: 'Legacy history item - file path not recorded'
+		legacyHistoryItem: 'Legacy history item - file path not recorded',
+		backgroundProcessingStarted: 'Background transcription started. Check the status bar for progress.',
+		backgroundProcessingError: 'Background processing error: {message}',
+		partialTranscriptionComplete: 'Partial transcription completed: generated {count} characters (some errors).',
+		transcriptionCompleteDetailed: 'Transcription completed: generated {count} characters{details}',
+		postProcessingSuffix: ' (post-processing: {model})',
+		transcriptionAppendedFallback: 'Transcription appended to the end of the file due to an insertion error.',
+		transcriptionSavedToNewFile: 'Transcription saved to new file: {fileName}',
+		transcriptionCopyFallback: 'Failed to insert transcription. Content copied to clipboard.'
 	},
 
 	// Transcription Modal
@@ -245,6 +270,7 @@ const en: TranslationKeys = {
 			preparingAudio: 'Preparing audio',
 			transcribing: 'Transcribing',
 			postProcessing: 'Post-processing with AI',
+			postProcessingCompleted: 'Post-processing completed',
 			savingResults: 'Saving results',
 			completed: 'Completed',
 			partialResult: '[Partial transcription result]'
@@ -308,6 +334,7 @@ const en: TranslationKeys = {
 			apiKeyRecheck: 'Please check your API key again.',
 			apiUsageLimitReached: 'API usage limit reached. Please wait before retrying.',
 			apiConnectionIssue: 'There seems to be a connection issue. Please check your API key.',
+			apiConnectionFailedDetailed: 'API connection failed. Please check your API key and internet connection.',
 			fileNotFound: 'Audio file not found. Please check if the file has been moved or deleted.',
 			fileAccessDenied: 'Cannot access the file. Please check file permissions.',
 			fileLoadFailed: 'Failed to load audio file. Please check the file format (MP3, WAV, M4A, etc.).',
@@ -317,7 +344,12 @@ const en: TranslationKeys = {
 			diskSpaceLow: 'Insufficient available space (remaining: {available}GB).',
 			unexpectedErrorOccurred: 'An error occurred during processing. Please wait and try again.',
 			noAudioTrack: 'The video file does not contain an audio track.',
-			unsupportedVideoCodec: 'Unsupported video codec. Please convert to a different format.'
+			unsupportedVideoCodec: 'Unsupported video codec. Please convert to a different format.',
+			noTranscriptionText: 'No transcription text was generated. Please check audio quality and try again.',
+			invalidTimeRange: 'Start time must be earlier than end time.',
+			endTimeExceedsDuration: 'End time ({end}) exceeds audio duration ({duration}).',
+			unableToOpenFile: 'Unable to open the created file.',
+			fileInsertionFailed: 'File insertion failed. Transcription copied to clipboard.'
 		},
 		recoveryActions: {
 			openSettings: 'Open Settings',

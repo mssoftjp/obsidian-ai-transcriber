@@ -1,6 +1,7 @@
 import { Setting, Notice } from 'obsidian';
 import { APITranscriber } from './ApiTranscriber';
 import { APITranscriptionSettings } from './ApiSettings';
+import { t } from './i18n';
 
 export class SettingsConnectionTest {
 	/**
@@ -13,36 +14,36 @@ export class SettingsConnectionTest {
 		saveSettings: () => Promise<void>,
 		refreshDisplay: () => void
 	): void {
-		containerEl.createEl('h3', { text: 'Connection Test' });
+		containerEl.createEl('h3', { text: t('settings.connection.title') });
 
 		const testSetting = new Setting(containerEl)
-			.setName('Test API Connection')
-			.setDesc('Verify your API key and connection')
+			.setName(t('settings.connection.name'))
+			.setDesc(t('settings.connection.desc'))
 			.addButton(button => button
-				.setButtonText('Test Connection')
+				.setButtonText(t('settings.connection.testButton'))
 				.onClick(async () => {
-					button.setButtonText('Testing...');
+					button.setButtonText(t('settings.connection.testing'));
 					button.setDisabled(true);
 
 					try {
 						const isConnected = await transcriber.checkApiConnection();
 						
 						if (isConnected) {
-							new Notice(`✅ ${transcriber.getProviderDisplayName()} connection successful!`);
-							button.setButtonText('✅ Connected');
+							new Notice(t('settings.connection.successNotice', { provider: transcriber.getProviderDisplayName() }));
+							button.setButtonText(t('settings.connection.successButton'));
 							button.setCta();
 						} else {
-							new Notice(`❌ ${transcriber.getProviderDisplayName()} connection failed. Check your API key.`);
-							button.setButtonText('❌ Failed');
+							new Notice(t('settings.connection.failureNotice', { provider: transcriber.getProviderDisplayName() }));
+							button.setButtonText(t('settings.connection.failureButton'));
 							button.removeCta();
 						}
 					} catch (error) {
-						new Notice(`❌ Connection test failed: ${error.message}`);
-						button.setButtonText('❌ Error');
+						new Notice(t('settings.connection.errorNotice', { error: (error as Error).message }));
+						button.setButtonText(t('settings.connection.errorButton'));
 						button.removeCta();
 					} finally {
 						setTimeout(() => {
-							button.setButtonText('Test Connection');
+							button.setButtonText(t('settings.connection.testButton'));
 							button.setDisabled(false);
 							button.removeCta();
 						}, 3000);
@@ -51,15 +52,15 @@ export class SettingsConnectionTest {
 
 		// Clear API keys button
 		new Setting(containerEl)
-			.setName('Clear API Keys')
-			.setDesc('Remove all stored API keys (useful for troubleshooting)')
+			.setName(t('settings.connection.clearTitle'))
+			.setDesc(t('settings.connection.clearDesc'))
 			.addButton(button => button
-				.setButtonText('Clear All Keys')
+				.setButtonText(t('settings.connection.clearButton'))
 				.setWarning()
 				.onClick(async () => {
 					settings.openaiApiKey = '';
 					await saveSettings();
-					new Notice('API key cleared');
+					new Notice(t('settings.connection.clearedNotice'));
 					refreshDisplay(); // Refresh display
 				}));
 	}

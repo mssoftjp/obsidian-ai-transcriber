@@ -140,6 +140,23 @@ export interface TranslationKeys {
 				symbol: string;
 			};
 		};
+		connection: {
+			title: string;
+			name: string;
+			desc: string;
+			testButton: string;
+			testing: string;
+			successNotice: string;
+			successButton: string;
+			failureNotice: string;
+			failureButton: string;
+			errorNotice: string;
+			errorButton: string;
+			clearTitle: string;
+			clearDesc: string;
+			clearButton: string;
+			clearedNotice: string;
+		};
 	};
 
 	// Commands
@@ -184,6 +201,14 @@ export interface TranslationKeys {
 		unsupportedFormat: string;
 		legacyHistoryItem: string;
 		externalFileNotSupported: string;
+		backgroundProcessingStarted: string;
+		backgroundProcessingError: string;
+		partialTranscriptionComplete: string;
+		transcriptionCompleteDetailed: string;
+		postProcessingSuffix: string;
+		transcriptionAppendedFallback: string;
+		transcriptionSavedToNewFile: string;
+		transcriptionCopyFallback: string;
 	};
 
 	// Transcription Modal
@@ -243,6 +268,7 @@ export interface TranslationKeys {
 			preparingAudio: string;
 			transcribing: string;
 			postProcessing: string;
+			postProcessingCompleted: string;
 			savingResults: string;
 			completed: string;
 			partialResult: string;
@@ -306,6 +332,7 @@ export interface TranslationKeys {
 			apiKeyRecheck: string;
 			apiUsageLimitReached: string;
 			apiConnectionIssue: string;
+			apiConnectionFailedDetailed: string;
 			fileNotFound: string;
 			fileAccessDenied: string;
 			fileLoadFailed: string;
@@ -316,6 +343,11 @@ export interface TranslationKeys {
 			unexpectedErrorOccurred: string;
 			noAudioTrack: string;
 			unsupportedVideoCodec: string;
+			noTranscriptionText: string;
+			invalidTimeRange: string;
+			endTimeExceedsDuration: string;
+			unableToOpenFile: string;
+			fileInsertionFailed: string;
 		};
 		recoveryActions: {
 			openSettings: string;

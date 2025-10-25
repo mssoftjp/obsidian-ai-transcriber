@@ -141,6 +141,23 @@ const zh: TranslationKeys = {
 				spoken: '口语',
 				symbol: '符号/单位'
 			}
+		},
+		connection: {
+			title: '连接测试',
+			name: '测试 API 连接',
+			desc: '验证 API 密钥与连接状态',
+			testButton: '测试连接',
+			testing: '测试中...',
+			successNotice: '✅ {provider} 连接成功！',
+			successButton: '✅ 已连接',
+			failureNotice: '❌ {provider} 连接失败。请检查 API 密钥。',
+			failureButton: '❌ 失败',
+			errorNotice: '❌ 连接测试失败: {error}',
+			errorButton: '❌ 错误',
+			clearTitle: '清除 API 密钥',
+			clearDesc: '删除所有保存的 API 密钥（用于排查问题）',
+			clearButton: '清除全部密钥',
+			clearedNotice: '已清除 API 密钥'
 		}
 	},
 
@@ -185,7 +202,15 @@ const zh: TranslationKeys = {
 		settingsSaved: '设置已保存',
 		largeFileWarning: '大文件可能需要更长时间处理',
 		unsupportedFormat: '不支持的文件格式',
-		legacyHistoryItem: '旧版本历史记录 - 未记录文件路径'
+		legacyHistoryItem: '旧版本历史记录 - 未记录文件路径',
+		backgroundProcessingStarted: '已在后台开始转录。请在状态栏查看进度。',
+		backgroundProcessingError: '后台处理出错: {message}',
+		partialTranscriptionComplete: '部分转录完成：生成 {count} 个字符（存在部分错误）。',
+		transcriptionCompleteDetailed: '转录完成：生成 {count} 个字符{details}',
+		postProcessingSuffix: '（后处理: {model}）',
+		transcriptionAppendedFallback: '由于插入错误，已将转录附加在文件末尾。',
+		transcriptionSavedToNewFile: '转录已保存为新文件：{fileName}',
+		transcriptionCopyFallback: '插入转录失败。内容已复制到剪贴板。'
 	},
 
 	// Transcription Modal
@@ -245,6 +270,7 @@ const zh: TranslationKeys = {
 			preparingAudio: '准备音频',
 			transcribing: '转录中',
 			postProcessing: '后处理中',
+			postProcessingCompleted: '后处理已完成',
 			savingResults: '保存结果',
 			completed: '完成！',
 			partialResult: '（部分结果）'
@@ -308,6 +334,7 @@ const zh: TranslationKeys = {
 			apiKeyRecheck: '请再次检查 API 密钥。',
 			apiUsageLimitReached: '达到 API 使用限制。请稍后再试。',
 			apiConnectionIssue: '连接似乎有问题。请检查 API 密钥。',
+			apiConnectionFailedDetailed: 'API 连接失败。请检查 API 密钥和网络连接。',
 			fileNotFound: '找不到音频文件。请检查文件是否已移动或删除。',
 			fileAccessDenied: '无法访问文件。请检查文件权限。',
 			fileLoadFailed: '加载音频文件失败。请检查文件格式（MP3、WAV、M4A等）。',
@@ -317,7 +344,12 @@ const zh: TranslationKeys = {
 			diskSpaceLow: '可用空间不足（剩余：{available}GB）。',
 			unexpectedErrorOccurred: '处理过程中发生错误。请稍后再试。',
 			noAudioTrack: '视频文件不包含音频轨道。',
-			unsupportedVideoCodec: '不支持的视频编解码器。请转换为其他格式。'
+			unsupportedVideoCodec: '不支持的视频编解码器。请转换为其他格式。',
+			noTranscriptionText: '未生成任何转录文本。请检查音频质量后再试。',
+			invalidTimeRange: '开始时间必须早于结束时间。',
+			endTimeExceedsDuration: '结束时间（{end}）超过了音频时长（{duration}）。',
+			unableToOpenFile: '无法打开创建的文件。',
+			fileInsertionFailed: '写入文件失败。已将转录复制到剪贴板。'
 		},
 		recoveryActions: {
 			openSettings: '打开设置',

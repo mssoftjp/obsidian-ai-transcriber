@@ -11,6 +11,7 @@ import { getModelConfig } from './config/ModelProcessingConfig';
 import { ProgressTracker } from './ui/ProgressTracker';
 import { ErrorHandler } from './ErrorHandler';
 import { Logger } from './utils/Logger';
+import { t } from './i18n';
 
 /**
  * Legacy APITranscriber class maintained for backward compatibility
@@ -120,7 +121,7 @@ export class APITranscriber {
 				}
 				
 				// Only show notice and return empty if no partial results
-				new Notice('Transcription cancelled');
+				new Notice(t('notices.transcriptionCancelled'));
 				
 				// Mark task as cancelled in progress tracker
 				if (this.progressTracker && this.currentTaskId) {

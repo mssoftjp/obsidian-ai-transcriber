@@ -1,4 +1,4 @@
-import { App, Modal, Notice, TFile, MarkdownView, Platform, Setting } from 'obsidian';
+import { App, Modal, Notice, TFile, MarkdownView, Platform, Setting, moment } from 'obsidian';
 import { APITranscriber } from '../ApiTranscriber';
 import { APITranscriptionSettings } from '../ApiSettings';
 import { MODEL_OPTIONS, getModelOption } from '../config/ModelOptions';
@@ -402,7 +402,7 @@ export class APITranscriptionModal extends Modal {
 		// If background processing is enabled, close modal and continue
 		if (this.processInBackground && this.progressTracker) {
 			await this.requestWakeLock();
-			new Notice('文字起こしをバックグラウンドで開始しました。進捗はステータスバーで確認できます。');
+			new Notice(t('notices.backgroundProcessingStarted'));
 			this.close();
 
 			// Continue processing in background
@@ -481,7 +481,7 @@ export class APITranscriptionModal extends Modal {
 			const isPartialResult = transcription.includes('[部分的な文字起こし結果]');
 
 			if (!transcription || (transcription.trim().length === 0 && !isPartialResult)) {
-				throw new Error('No transcription text was generated.');
+				throw new Error(t('errors.messages.noTranscriptionText'));
 			}
 
 			// Update progress to 70% before processing
@@ -489,7 +489,7 @@ export class APITranscriptionModal extends Modal {
 				const currentTask = this.progressTracker.getCurrentTask();
 				if (currentTask && this.progressCalculator) {
 					const progress = this.progressCalculator.postProcessingProgress('start');
-					this.progressTracker.updateProgress(currentTask.id, currentTask.completedChunks, 'Starting post-processing', progress);
+					this.progressTracker.updateProgress(currentTask.id, currentTask.completedChunks, t('modal.transcription.postProcessing'), progress);
 				}
 			}
 
@@ -501,7 +501,7 @@ export class APITranscriptionModal extends Modal {
 				const currentTask = this.progressTracker.getCurrentTask();
 				if (currentTask && this.progressCalculator) {
 					const progress = this.progressCalculator.completionProgress();
-					this.progressTracker.updateProgress(currentTask.id, currentTask.completedChunks, 'Completed', progress);
+					this.progressTracker.updateProgress(currentTask.id, currentTask.completedChunks, t('common.completed'), progress);
 				}
 			}
 
@@ -520,15 +520,16 @@ export class APITranscriptionModal extends Modal {
 			}
 
 			// Show completion notice
+			const charCount = transcription.length;
 			if (isPartialResult) {
-				new Notice(`部分的な文字起こしが完了しました: ${transcription.length}文字を生成（一部エラーあり）`);
+				new Notice(t('notices.partialTranscriptionComplete', { count: charCount.toString() }));
 			} else {
-				new Notice(`文字起こしが完了しました: ${transcription.length}文字を生成`);
+				new Notice(t('notices.transcriptionCompleteDetailed', { count: charCount.toString(), details: '' }));
 			}
 
 		} catch (error) {
 			const userError = ErrorHandler.handleError(error as Error, 'Background transcription');
-			new Notice(`バックグラウンド処理でエラー: ${userError.message}`);
+			new Notice(t('notices.backgroundProcessingError', { message: userError.message }));
 			ErrorHandler.displayError(userError);
 
 			// Mark task as failed in progress tracker
@@ -551,7 +552,7 @@ export class APITranscriptionModal extends Modal {
 		// Check API connection
 		const isConnected = await this.transcriber.checkApiConnection();
 		if (!isConnected) {
-			throw new Error('API connection failed. Please check your API key and internet connection.');
+			throw new Error(t('errors.messages.apiConnectionFailedDetailed'));
 		}
 
 		// Show appropriate message based on file type
@@ -592,7 +593,7 @@ export class APITranscriptionModal extends Modal {
 		}
 
 		if (!transcription || transcription.trim().length === 0) {
-			throw new Error('No transcription text was generated. Please check audio quality and try again.');
+			throw new Error(t('errors.messages.noTranscriptionText'));
 		}
 
 		// Check if this is a partial result
@@ -612,15 +613,16 @@ export class APITranscriptionModal extends Modal {
 		const shouldShowCompletionNotice = !this.settings.postProcessingEnabled || !this.metaInfo || !this.metaInfo.enablePostProcessing;
 
 		if (shouldShowCompletionNotice) {
+			const charCount = transcription.length.toString();
 			if (isPartialResult) {
 				this.updateStatus(t('modal.transcription.partialResult'));
-				new Notice(`部分的な文字起こし完了: ${transcription.length}文字を生成（一部エラーあり）`, 5000);
+				new Notice(t('notices.partialTranscriptionComplete', { count: charCount }), 5000);
 			} else {
 				this.updateStatus(t('modal.transcription.completed'));
 				const modelInfo = this.settings.postProcessingEnabled && this.metaInfo && this.metaInfo.enablePostProcessing
-					? ` (後処理: ${modelUsed || this.settings.model})`
+					? t('notices.postProcessingSuffix', { model: modelUsed || this.settings.model })
 					: '';
-				new Notice(`文字起こし完了: ${transcription.length}文字を生成${modelInfo}`, 5000);
+				new Notice(t('notices.transcriptionCompleteDetailed', { count: charCount, details: modelInfo }), 5000);
 			}
 			this.updateProgress(100);
 		}
@@ -643,11 +645,14 @@ export class APITranscriptionModal extends Modal {
 			endTime = this.parseTimeString(this.endTimeInput.value);
 
 			if (endTime > 0 && startTime >= endTime) {
-				throw new Error('Start time must be less than end time');
+				throw new Error(t('errors.messages.invalidTimeRange'));
 			}
 
 			if (this.audioDuration > 0 && endTime > this.audioDuration) {
-				throw new Error(`End time (${this.formatTime(endTime)}) exceeds audio duration (${this.formatTime(this.audioDuration)})`);
+				throw new Error(t('errors.messages.endTimeExceedsDuration', {
+					end: this.formatTime(endTime),
+					duration: this.formatTime(this.audioDuration)
+				}));
 			}
 		}
 
@@ -699,21 +704,21 @@ export class APITranscriptionModal extends Modal {
 				if (this.progressCalculator) {
 					this.updateProgress(this.progressCalculator.postProcessingProgress('done'));
 					// Update progress tracker for background processing
-					if (this.progressTracker && this.processInBackground) {
-						const currentTask = this.progressTracker.getCurrentTask();
-						if (currentTask) {
-							this.progressTracker.updateProgress(currentTask.id, currentTask.completedChunks, 'Post-processing done', 90);
-						}
+				if (this.progressTracker && this.processInBackground) {
+					const currentTask = this.progressTracker.getCurrentTask();
+					if (currentTask) {
+						this.progressTracker.updateProgress(currentTask.id, currentTask.completedChunks, t('modal.transcription.postProcessingCompleted'), 90);
 					}
+				}
 				}
 
 				this.updateStatus(t('modal.transcription.completed'));
 				// Remove duplicate notice - the main completion notice will be shown later
 
 				// Don't update to 100% yet - wait until file is saved
-			} catch (error) {
-				this.logger.error('Post-processing failed', error);
-				new Notice('後処理に失敗しました。元の文字起こし結果を使用します。');
+		} catch (error) {
+			this.logger.error('Post-processing failed', error);
+			new Notice(t('notices.postProcessingFailed'));
 				// Update to 90% on error (ready for save)
 				if (this.progressCalculator) {
 					this.updateProgress(this.progressCalculator.postProcessingProgress('done'));
@@ -799,11 +804,11 @@ export class APITranscriptionModal extends Modal {
 			}
 		} catch (error) {
 			this.logger.error('Failed to create new note', { error: error.message, filePath });
-			throw new Error(`Failed to create new note: ${(error as Error).message}`);
+			throw new Error(t('errors.createFileFailed', { error: (error as Error).message }));
 		}
 
 		if (!activeView) {
-			throw new Error('Unable to open the created file');
+			throw new Error(t('errors.messages.unableToOpenFile'));
 		}
 
 		const editor = activeView.editor;
@@ -813,7 +818,7 @@ export class APITranscriptionModal extends Modal {
 		// Format transcription based on settings
 		let formattedTranscription = '';
 		// Use the user's locale or fallback to system default
-		const userLocale = ((this.app as unknown) as ObsidianApp).vault?.config?.locale || navigator.language || 'en-US';
+		const userLocale = (typeof moment.locale === 'function' ? moment.locale() : '') || navigator.language || 'en-US';
 		const timestamp = new Date().toLocaleString(userLocale);
 		// Use the actual model used if available, otherwise fall back to current settings
 		const providerName = modelUsed ? this.getModelDisplayName(modelUsed) : this.transcriber.getProviderDisplayName();
@@ -960,7 +965,7 @@ export class APITranscriptionModal extends Modal {
 					editor.setValue(newContent);
 					editor.setCursor(editor.offsetToPos(newContent.length));
 
-					new Notice('Transcription appended to end of file due to insertion error');
+					new Notice(t('notices.transcriptionAppendedFallback'));
 
 					// Emit completion events for fallback insertion
 					this.app.workspace.trigger('transcription:completed', {
@@ -983,7 +988,7 @@ export class APITranscriptionModal extends Modal {
 						const leaf = this.app.workspace.getLeaf(false);
 						await leaf.openFile(newFile);
 
-						new Notice(`Transcription saved to new file: ${fileName}`);
+						new Notice(t('notices.transcriptionSavedToNewFile', { fileName }));
 
 						// Emit completion events for new file creation
 						this.app.workspace.trigger('transcription:completed', {
@@ -1004,10 +1009,10 @@ export class APITranscriptionModal extends Modal {
 
 				// Last resort: Copy to clipboard
 				await navigator.clipboard.writeText(transcription);
-				new Notice('Failed to insert transcription. Content copied to clipboard.', 10000);
+				new Notice(t('notices.transcriptionCopyFallback'), 10000);
 
 				// Log the formatted content for debugging
-				throw new Error('File insertion failed. Transcription copied to clipboard.');
+				throw new Error(t('errors.messages.fileInsertionFailed'));
 			}
 		}
 
@@ -1645,7 +1650,7 @@ export class APITranscriptionModal extends Modal {
 	 * Get localized timestamp
 	 */
 	private getLocalTimestamp(): string {
-		const userLocale = ((this.app as unknown) as ObsidianApp).vault?.config?.locale || navigator.language || 'en-US';
+		const userLocale = (typeof moment.locale === 'function' ? moment.locale() : '') || navigator.language || 'en-US';
 		return new Date().toLocaleString(userLocale);
 	}
 

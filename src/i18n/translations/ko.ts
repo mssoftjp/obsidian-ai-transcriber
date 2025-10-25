@@ -141,6 +141,23 @@ const ko: TranslationKeys = {
 				spoken: '구어체',
 				symbol: '기호/단위'
 			}
+		},
+		connection: {
+			title: '연결 테스트',
+			name: 'API 연결 테스트',
+			desc: 'API 키와 연결 상태를 확인합니다',
+			testButton: '연결 테스트',
+			testing: '테스트 중...',
+			successNotice: '✅ {provider} 연결에 성공했습니다!',
+			successButton: '✅ 연결됨',
+			failureNotice: '❌ {provider} 연결에 실패했습니다. API 키를 확인하세요.',
+			failureButton: '❌ 실패',
+			errorNotice: '❌ 연결 테스트 실패: {error}',
+			errorButton: '❌ 오류',
+			clearTitle: 'API 키 지우기',
+			clearDesc: '저장된 모든 API 키를 삭제합니다 (문제 해결용)',
+			clearButton: '모든 키 삭제',
+			clearedNotice: 'API 키를 삭제했습니다'
 		}
 	},
 
@@ -185,7 +202,15 @@ const ko: TranslationKeys = {
 		settingsSaved: '설정 저장됨',
 		largeFileWarning: '큰 파일 ({size} MB) 처리에 시간이 걸릴 수 있습니다',
 		unsupportedFormat: '지원되지 않는 오디오 형식: {format}',
-		legacyHistoryItem: '레거시 기록 - 파일 경로가 기록되지 않음'
+		legacyHistoryItem: '레거시 기록 - 파일 경로가 기록되지 않음',
+		backgroundProcessingStarted: '백그라운드에서 전사를 시작했습니다. 진행 상황은 상태 표시줄에서 확인하세요.',
+		backgroundProcessingError: '백그라운드 처리 오류: {message}',
+		partialTranscriptionComplete: '부분 전사가 완료되었습니다: {count}자 생성(일부 오류 있음).',
+		transcriptionCompleteDetailed: '전사가 완료되었습니다: {count}자 생성{details}',
+		postProcessingSuffix: ' (후처리: {model})',
+		transcriptionAppendedFallback: '삽입 오류로 인해 전사를 파일 끝에 추가했습니다.',
+		transcriptionSavedToNewFile: '전사를 새 파일에 저장했습니다: {fileName}',
+		transcriptionCopyFallback: '전사를 삽입하지 못했습니다. 내용을 클립보드에 복사했습니다.'
 	},
 
 	// Transcription Modal
@@ -245,6 +270,7 @@ const ko: TranslationKeys = {
 			preparingAudio: '오디오 준비 중',
 			transcribing: '전사 중',
 			postProcessing: 'AI로 후처리 중',
+			postProcessingCompleted: '후처리가 완료되었습니다',
 			savingResults: '결과 저장 중',
 			completed: '완료',
 			partialResult: '[부분 전사 결과]'
@@ -308,6 +334,7 @@ const ko: TranslationKeys = {
 			apiKeyRecheck: 'API 키를 다시 확인해주세요.',
 			apiUsageLimitReached: 'API 사용 한도에 도달했습니다. 잠시 후 다시 시도해주세요.',
 			apiConnectionIssue: '연결 문제가 있는 것 같습니다. API 키를 확인해주세요.',
+			apiConnectionFailedDetailed: 'API 연결에 실패했습니다. API 키와 네트워크 연결을 확인하세요.',
 			fileNotFound: '오디오 파일을 찾을 수 없습니다. 파일이 이동되거나 삭제되었는지 확인해주세요.',
 			fileAccessDenied: '파일에 접근할 수 없습니다. 파일 권한을 확인해주세요.',
 			fileLoadFailed: '오디오 파일을 로드하지 못했습니다. 파일 형식(MP3, WAV, M4A 등)을 확인해주세요.',
@@ -317,7 +344,12 @@ const ko: TranslationKeys = {
 			diskSpaceLow: '사용 가능한 공간이 부족합니다 (남은 공간: {available}GB).',
 			unexpectedErrorOccurred: '처리 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.',
 			noAudioTrack: '비디오 파일에 오디오 트랙이 없습니다.',
-			unsupportedVideoCodec: '지원되지 않는 비디오 코덱입니다. 다른 형식으로 변환해주세요.'
+			unsupportedVideoCodec: '지원되지 않는 비디오 코덱입니다. 다른 형식으로 변환해주세요.',
+			noTranscriptionText: '전사 텍스트가 생성되지 않았습니다. 오디오 상태를 확인한 뒤 다시 시도하세요.',
+			invalidTimeRange: '시작 시간은 종료 시간보다 앞서야 합니다.',
+			endTimeExceedsDuration: '종료 시간({end})이 오디오 길이({duration})를 초과합니다.',
+			unableToOpenFile: '생성된 파일을 열 수 없습니다.',
+			fileInsertionFailed: '파일에 쓰지 못했습니다. 전사를 클립보드에 복사했습니다.'
 		},
 		recoveryActions: {
 			openSettings: '설정 열기',

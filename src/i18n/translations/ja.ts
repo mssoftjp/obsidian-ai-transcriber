@@ -141,6 +141,23 @@ const ja: TranslationKeys = {
 				spoken: '話し言葉',
 				symbol: '記号・単位'
 			}
+		},
+		connection: {
+			title: '接続テスト',
+			name: 'API接続をテスト',
+			desc: 'APIキーと接続状態を確認します',
+			testButton: '接続テスト',
+			testing: 'テスト中...',
+			successNotice: '✅ {provider} への接続に成功しました！',
+			successButton: '✅ 接続済み',
+			failureNotice: '❌ {provider} への接続に失敗しました。APIキーを確認してください。',
+			failureButton: '❌ 失敗',
+			errorNotice: '❌ 接続テストでエラー: {error}',
+			errorButton: '❌ エラー',
+			clearTitle: 'APIキーを削除',
+			clearDesc: '保存済みのAPIキーをすべて削除します（トラブルシューティング向け）',
+			clearButton: 'キーをすべて削除',
+			clearedNotice: 'APIキーを削除しました'
 		}
 	},
 
@@ -185,7 +202,15 @@ const ja: TranslationKeys = {
 		settingsSaved: '設定を保存しました',
 		largeFileWarning: '大きなファイル（{size} MB）の処理には時間がかかる場合があります',
 		unsupportedFormat: 'サポートされていない音声形式: {format}',
-		legacyHistoryItem: '旧バージョンの履歴項目のため、ファイルパスが記録されていません'
+		legacyHistoryItem: '旧バージョンの履歴項目のため、ファイルパスが記録されていません',
+		backgroundProcessingStarted: '文字起こしをバックグラウンドで開始しました。進捗はステータスバーで確認できます。',
+		backgroundProcessingError: 'バックグラウンド処理でエラー: {message}',
+		partialTranscriptionComplete: '部分的な文字起こし完了: {count}文字を生成（一部エラーあり）',
+		transcriptionCompleteDetailed: '文字起こし完了: {count}文字を生成{details}',
+		postProcessingSuffix: '（後処理: {model}）',
+		transcriptionAppendedFallback: '挿入エラーが発生したため、文字起こしをファイル末尾に追記しました。',
+		transcriptionSavedToNewFile: '文字起こしを新規ファイルに保存しました: {fileName}',
+		transcriptionCopyFallback: '文字起こしの挿入に失敗したため、内容をクリップボードにコピーしました。'
 	},
 
 	// Transcription Modal
@@ -245,6 +270,7 @@ const ja: TranslationKeys = {
 			preparingAudio: '音声を準備中',
 			transcribing: '文字起こし中',
 			postProcessing: 'AIで後処理中',
+			postProcessingCompleted: '後処理が完了しました',
 			savingResults: '結果を保存中',
 			completed: '完了',
 			partialResult: '[部分的な文字起こし結果]'
@@ -308,6 +334,7 @@ const ja: TranslationKeys = {
 			apiKeyRecheck: 'APIキーをもう一度確認してみてください。',
 			apiUsageLimitReached: 'APIの使用制限に達しました。しばらく時間をおいてから再試行してください。',
 			apiConnectionIssue: '接続に問題があるようです。APIキーを確認してみてください。',
+			apiConnectionFailedDetailed: 'API接続に失敗しました。APIキーとネットワーク接続を確認してください。',
 			fileNotFound: '文字起こしファイルが見つかりません。ファイルが移動または削除されていないか確認してください。',
 			fileAccessDenied: 'ファイルにアクセスできません。ファイルの権限を確認してください。',
 			fileLoadFailed: '音声ファイルの読み込みに失敗しました。ファイル形式（MP3, WAV, M4A等）を確認してください。',
@@ -317,7 +344,12 @@ const ja: TranslationKeys = {
 			diskSpaceLow: '使用可能な容量が不足しています（残り: {available}GB）。',
 			unexpectedErrorOccurred: '処理中にエラーが発生しました。しばらく時間をおいてから再試行してください。',
 			noAudioTrack: '動画ファイルに音声トラックが含まれていません。',
-			unsupportedVideoCodec: 'サポートされていない動画コーデックです。別の形式に変換してください。'
+			unsupportedVideoCodec: 'サポートされていない動画コーデックです。別の形式に変換してください。',
+			noTranscriptionText: '文字起こし結果が生成されませんでした。音声状態を確認して再度お試しください。',
+			invalidTimeRange: '開始時刻は終了時刻より前である必要があります。',
+			endTimeExceedsDuration: '終了時刻（{end}）が音声の長さ（{duration}）を超えています。',
+			unableToOpenFile: '作成したファイルを開けませんでした。',
+			fileInsertionFailed: 'ファイルへの挿入に失敗しました。文字起こしをクリップボードにコピーしました。'
 		},
 		recoveryActions: {
 			openSettings: '設定を開く',
