@@ -1,7 +1,7 @@
 {
   "id": "ai-transcriber",
   "name": "AI Transcriber",
-  "version": "0.9.1",
+  "version": "0.9.2",
   "minAppVersion": "1.8.0",
   "description": "AI-powered speech-to-text transcription using OpenAI GPT-4o and Whisper APIs",
   "author": "Musashino Software",
