@@ -5,8 +5,7 @@ A powerful speech-to-text transcription plugin for Obsidian that uses OpenAI's G
 ## Features
 
 - **File Transcription**: Transcribe existing audio files (MP3, WAV, WebM, M4A, etc.)
-- **AI-Powered**: Uses OpenAI's models (GPT-4o and Whisper)
-- **Post-Processing**: Optional transcript enhancement to improve transcription accuracy
+- **Post-Processing**: Optional word correction to improve transcription accuracy
 - **Multi-Language**: Supports multiple languages with automatic detection
 
 ## Requirements
@@ -52,15 +51,14 @@ A powerful speech-to-text transcription plugin for Obsidian that uses OpenAI's G
    - **GPT-4o Transcribe**: Highest quality transcription (recommended)
    - **GPT-4o Mini Transcribe**: Fast and cost-effective
    - **Whisper**: Traditional transcription model
-4. Configure other settings as needed
 
 #### Optional: Local VAD (fvad.wasm)
 
 By default, the plugin uses server-side VAD. If you prefer local VAD (WebRTC VAD) for on-device speech/silence detection:
 
 1. Download `fvad.wasm` from the echogarden project: https://github.com/echogarden-project/fvad-wasm
-2. Place the file at: `<vault>/.obsidian/plugins/ai-transcriber/fvad.wasm`
-3. In the plugin settings, set VAD Mode to “Local”.
+2. In the plugin settings, select "Local" from the VAD Mode dropdown and load the file using the file loader (alternatively, place the file at: `<vault>/.obsidian/plugins/ai-transcriber/fvad.wasm`)
+3. Set VAD Mode to "Local" in the plugin settings
 
 If `fvad.wasm` is not present, the plugin automatically falls back to server-side VAD (or no VAD depending on your settings).
 
@@ -79,7 +77,7 @@ If `fvad.wasm` is not present, the plugin automatically falls back to server-sid
 ### API Settings
 - **API Key**: Your OpenAI API key (stored securely)
 - **Model Selection**: Choose between GPT-4o Transcribe, GPT-4o Mini Transcribe, and Whisper
-- **Language**: Auto-detect or specify a language
+- **Language**: Specify a language (settings serve as a baseline, but the API will detect as appropriate)
 
 ### Output Settings
 - **Save Location**: Folder for transcribed notes
@@ -89,8 +87,6 @@ If `fvad.wasm` is not present, the plugin automatically falls back to server-sid
 - **Custom Dictionary**: Improve transcription accuracy with personalized corrections
   - Register commonly mistranscribed words or proper nouns
   - Support for multiple languages (Japanese, English, Chinese, Korean)
-  - Categories: Names, places, technical terms, etc.
-  - Context-aware intelligent correction
 
 
 ## Network Usage Disclosure
@@ -177,19 +173,18 @@ Notable third-party components:
 
 # AI Transcriber
 
-OpenAIのGPT-4oとWhisper APIを使用したObsidian用の強力な音声認識テキスト変換プラグインです。
+OpenAIのGPT-4o transcribeとWhisper APIを使用したObsidian用の強力な音声認識テキスト変換プラグインです。
 
 ## 機能
 
 - **ファイル文字起こし**: 既存の音声ファイル（MP3、WAV、WebM、M4Aなど）を文字起こし
-- **AI駆動**: OpenAIのモデル（GPT-4oとWhisper）を使用
-- **後処理**: 文字起こし精度を向上させるオプションのtranscript強化機能
+- **後処理**: 文字起こし精度を向上させるオプションの単語校正機能
 - **多言語対応**: 自動検出による複数言語のサポート
 
 ## 必要条件
 
 - Obsidian v1.8.0以上（デスクトップ版のみ）
-- API キーを持つOpenAI APIアカウント
+- OpenAI APIキー
 - API呼び出し用のインターネット接続
 
 ## インストール
@@ -229,17 +224,15 @@ OpenAIのGPT-4oとWhisper APIを使用したObsidian用の強力な音声認識�
    - **GPT-4o Transcribe**: 最高品質の文字起こし（推奨）
    - **GPT-4o Mini Transcribe**: 高速でコスト効率が良い
    - **Whisper**: 従来の文字起こしモデル
-4. 必要に応じて他の設定を構成
 
 #### ローカルVAD（任意 / fvad.wasm）
 
 既定ではサーバーサイドVADを使用します。端末内で音声/無音判定（WebRTC VAD）を行いたい場合は以下の手順でローカルVADを有効化できます。
 
 1. echogardenプロジェクトから `fvad.wasm` をダウンロード: https://github.com/echogarden-project/fvad-wasm
-2. 次の場所に配置: `<vault>/.obsidian/plugins/ai-transcriber/fvad.wasm`
+2. 設定の無音検出方式のプルダウンでローカルを選択し、ファイルの読み込みでfvad.wasmを導入（もしくは次の場所に配置: `<vault>/.obsidian/plugins/ai-transcriber/fvad.wasm`）
 3. プラグイン設定で VAD モードを「ローカル」に設定
 
-`fvad.wasm` が見つからない場合は、自動的にサーバーサイドVAD（または設定に応じてVADなし）へフォールバックします。
 
 ## 使用方法
 
@@ -256,7 +249,7 @@ OpenAIのGPT-4oとWhisper APIを使用したObsidian用の強力な音声認識�
 ### API設定
 - **APIキー**: OpenAI APIキー（安全に保存）
 - **モデル選択**: GPT-4o Transcribe、GPT-4o Mini Transcribe、Whisperから選択
-- **言語**: 自動検出または言語を指定
+- **言語**: 言語を指定（設定を基本としつつもAPI側で適宜判別）
 
 ### 出力設定
 - **保存場所**: 文字起こしノートのフォルダ
@@ -266,8 +259,7 @@ OpenAIのGPT-4oとWhisper APIを使用したObsidian用の強力な音声認識�
 - **カスタム辞書**: 個人用の補正辞書で文字起こし精度を向上
   - よく誤認識される単語や固有名詞を登録
   - 複数言語対応（日本語、英語、中国語、韓国語）
-  - カテゴリ分類：人名、地名、専門用語など
-  - 文脈を考慮した賢い補正
+
 
 ## ネットワーク使用の開示
 
