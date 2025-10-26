@@ -44,7 +44,23 @@ export interface TranslationKeys {
 				local: string;
 				disabled: string;
 			};
+			summaries: {
+				server: string;
+				local: string;
+				disabled: string;
+			};
 			missingWarning: string;
+			missingInlineNote: string;
+			localNote: string;
+			installWasm: {
+				name: string;
+				desc: string;
+				button: string;
+				success: string;
+				invalidName: string;
+				invalidType: string;
+				writeError: string;
+			};
 		};
 		language: {
 			name: string;

@@ -39,14 +39,30 @@ const ko: TranslationKeys = {
 			gpt4oMiniCost: 'GPT-4o Mini Transcribe'
 		},
 		vadMode: {
-			name: 'VAD 모드',
-			desc: '무음 처리를 어떤 방식으로 수행할지 선택하세요',
+			name: '무음 감지(VAD) 방식',
+			desc: '무음 구간을 처리하면 음성 인식 작업을 줄이고 전송 데이터 양을 줄일 수 있습니다',
 			options: {
-				server: '서버 VAD (기본)',
-				local: '로컬 VAD (fvad.wasm 필요)',
-				disabled: 'VAD 사용 안 함'
+				server: '서버',
+				local: '로컬',
+				disabled: '처리 안 함'
 			},
-			missingWarning: 'fvad.wasm 파일을 찾을 수 없습니다. 공식 저장소에서 다운로드하여 플러그인 폴더에 넣은 후 로컬 VAD를 활성화하세요.'
+			summaries: {
+				server: '표준: 처리 속도 향상',
+				local: '고급: 속도 향상·전송 데이터 감소',
+				disabled: '무음 처리를 하지 않습니다'
+			},
+			missingWarning: "로컬 VAD 사용에는 서드파티 모듈이 필요합니다. fvad-wasm 저장소에서 'fvad.wasm'을 다운로드한 뒤, '파일 선택' 버튼을 눌러 플러그인 폴더로 복사하세요.",
+			missingInlineNote: "로컬 VAD 사용에는 서드파티 모듈이 필요합니다. fvad-wasm 저장소에서 'fvad.wasm'을 다운로드한 뒤, '파일 선택' 버튼을 눌러 플러그인 폴더로 복사하세요.",
+			localNote: '전송 전에 로컬에서 무음 구간을 제거하므로 API 비용 절감에 도움이 됩니다.',
+			installWasm: {
+			name: 'fvad.wasm 배치',
+			desc: '준비한 fvad.wasm 파일을 선택하면 플러그인 폴더에 자동 배치합니다',
+			button: '파일 선택',
+			success: 'fvad.wasm 배치 완료',
+			invalidName: 'fvad.wasm 파일을 선택하세요',
+			invalidType: '올바른 WASM 파일이 아닙니다',
+			writeError: '배치에 실패했습니다: {error}'
+		}
 		},
 		language: {
 			name: '언어',

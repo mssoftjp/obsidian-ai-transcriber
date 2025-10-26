@@ -39,14 +39,30 @@ const en: TranslationKeys = {
 			gpt4oMiniCost: 'GPT-4o Mini Transcribe'
 		},
 		vadMode: {
-			name: 'VAD Mode',
-			desc: 'Select how silence detection is handled before sending audio to OpenAI',
+			name: 'Silence Detection (VAD)',
+			desc: 'Processing silent segments can lighten speech recognition workload and reduce the amount of data sent',
 			options: {
-				server: 'Server-side VAD (default)',
-				local: 'Local WebRTC VAD (requires fvad.wasm)',
-				disabled: 'Disable VAD'
+				server: 'Server',
+				local: 'Local',
+				disabled: 'Off'
 			},
-			missingWarning: 'fvad.wasm was not found. Download it from the official repository and place it in the plugin folder before enabling local VAD.'
+			summaries: {
+				server: 'standard: faster processing',
+				local: 'advanced: faster, less data sent',
+				disabled: 'no silence processing'
+			},
+			missingWarning: "Using Local VAD requires a third-party module. Download 'fvad.wasm' from the fvad-wasm repository, then click 'Choose file' to copy it into the plugin folder.",
+			missingInlineNote: "Using Local VAD requires a third-party module. Download 'fvad.wasm' from the fvad-wasm repository, then click 'Choose file' to copy it into the plugin folder.",
+			localNote: 'Since silent segments are removed on-device before sending, it helps reduce API costs.',
+			installWasm: {
+			name: 'Place fvad.wasm',
+			desc: 'Select an existing fvad.wasm to automatically place it into the plugin folder',
+			button: 'Choose file',
+			success: 'Placed fvad.wasm successfully',
+			invalidName: 'Please select fvad.wasm',
+			invalidType: 'Not a valid WASM file',
+			writeError: 'Failed to place file: {error}'
+		}
 		},
 		language: {
 			name: 'Language',

@@ -165,33 +165,105 @@ export class SettingsUIBuilder {
 		modelInfoEl.appendText(' ' + t('settings.model.gpt4oMiniDesc'));
 
 		const initialVadMode = settings.vadMode ?? 'server';
-		new Setting(containerEl)
-			.setName(t('settings.vadMode.name'))
-			.setDesc(t('settings.vadMode.desc'))
-			.addDropdown(dropdown => {
-				dropdown.addOption('server', t('settings.vadMode.options.server'));
-				dropdown.addOption('local', t('settings.vadMode.options.local'));
-				dropdown.addOption('disabled', t('settings.vadMode.options.disabled'));
+    	const vadModeSetting = new Setting(containerEl)
+				.setName(t('settings.vadMode.name'))
+				.setDesc(this.createVADDescription(t('settings.vadMode.desc'), false, false))
+				.addDropdown(dropdown => {
+					dropdown.addOption('server', t('settings.vadMode.options.server'));
+					dropdown.addOption('local', t('settings.vadMode.options.local'));
+					dropdown.addOption('disabled', t('settings.vadMode.options.disabled'));
 				dropdown.setValue(initialVadMode);
-				dropdown.onChange(async (value) => {
-					const mode = value as VADMode;
-					if (mode === 'local') {
-						const hasLocalWasm = await this.checkLocalWasm(app);
-						if (!hasLocalWasm) {
-							new Notice(t('settings.vadMode.missingWarning'), 8000);
-							try {
-								window.open(SettingsUIBuilder.FVAD_DOWNLOAD_URL, '_blank');
-							} catch (error) {
-								this.logger.warn('Failed to open fvad download link', error);
-							}
-							dropdown.setValue(settings.vadMode ?? 'server');
-							return;
-						}
-					}
-					settings.vadMode = mode;
-					await saveSettings();
-				});
+					dropdown.onChange(async (value) => {
+						const mode = value as VADMode;
+						if (mode === 'local') {
+							const hasLocalWasm = await this.checkLocalWasm(app);
+                    const includeMissing = !hasLocalWasm;
+                    const includeLocal = hasLocalWasm;
+                    vadModeSetting.setDesc(this.createVADDescription(t('settings.vadMode.desc'), includeMissing, includeLocal));
+                    if (includeMissing && !Platform.isMobileApp) {
+                        helperContainer.style.display = '';
+                        helperNote.setText(t('settings.vadMode.installWasm.desc'));
+                    } else {
+                        helperContainer.style.display = 'none';
+                        helperNote.setText('');
+                    }
+                } else {
+                    // Non-local: show base desc only and hide helper
+                    vadModeSetting.setDesc(this.createVADDescription(t('settings.vadMode.desc'), false, false));
+                    helperContainer.style.display = 'none';
+                }
+						settings.vadMode = mode;
+						await saveSettings();
+					});
 			});
+
+		// Inline helper elements (place under the description, left column)
+		const infoEl = vadModeSetting.settingEl.querySelector('.setting-item-info') as HTMLElement;
+        const helperContainer = infoEl?.createDiv({ cls: 'ai-vad-inline-helper' }) as HTMLDivElement;
+		const helperNote = helperContainer.createDiv({ cls: 'setting-item-description' });
+		const helperBtn = helperContainer.createEl('button', { text: t('settings.vadMode.installWasm.button') });
+		helperBtn.classList.add('mod-cta');
+		helperContainer.style.display = 'none';
+
+		helperBtn.addEventListener('click', async () => {
+			try {
+				const input = document.createElement('input');
+				input.type = 'file';
+				input.accept = '.wasm,application/wasm';
+				input.onchange = async () => {
+					const file = input.files?.[0];
+					if (!file) return;
+					if (file.name !== 'fvad.wasm') {
+						new Notice(t('settings.vadMode.installWasm.invalidName'));
+						return;
+					}
+					const buffer = await file.arrayBuffer();
+					const bytes = new Uint8Array(buffer);
+					if (bytes.length < 8 || !(bytes[0] === 0x00 && bytes[1] === 0x61 && bytes[2] === 0x73 && bytes[3] === 0x6d)) {
+						new Notice(t('settings.vadMode.installWasm.invalidType'));
+						return;
+					}
+
+					try {
+						const adapter = app.vault.adapter;
+						const pluginDir = PathUtils.getPluginDir(app);
+						if (!(await adapter.exists(pluginDir))) {
+							await adapter.mkdir(pluginDir);
+						}
+						const targetPath = PathUtils.getPluginFilePath(app, 'fvad.wasm');
+						await adapter.writeBinary(targetPath, bytes);
+						new Notice(t('settings.vadMode.installWasm.success'));
+                            // Reflect installed state for local mode
+                            vadModeSetting.setDesc(this.createVADDescription(t('settings.vadMode.desc'), false, true));
+                            // Hide helper after successful installation
+                            helperContainer.style.display = 'none';
+                            helperNote.setText('');
+					} catch (error) {
+						new Notice(t('settings.vadMode.installWasm.writeError', { error: error instanceof Error ? error.message : String(error) }));
+					}
+				};
+				input.click();
+			} catch (error) {
+				new Notice(t('settings.vadMode.installWasm.writeError', { error: error instanceof Error ? error.message : String(error) }));
+			}
+		});
+
+		// If current mode is local but wasm is missing (e.g., manual config edit), show the inline note
+        this.checkLocalWasm(app).then((exists) => {
+            const includeMissing = initialVadMode === 'local' && !exists;
+            const includeLocal = initialVadMode === 'local' && exists;
+            vadModeSetting.setDesc(this.createVADDescription(t('settings.vadMode.desc'), includeMissing, includeLocal));
+            // Helper visibility: show only when local mode AND wasm is missing
+            if (initialVadMode === 'local' && includeMissing && !Platform.isMobileApp) {
+                helperContainer.style.display = '';
+                helperNote.setText(t('settings.vadMode.installWasm.desc'));
+            } else {
+                helperContainer.style.display = 'none';
+                helperNote.setText('');
+            }
+        }).catch(error => {
+            this.logger.warn('Failed to check local wasm on settings load', error);
+        });
 	}
 
 
@@ -286,6 +358,36 @@ export class SettingsUIBuilder {
 				this.logger.warn('Error checking fvad.wasm path', { path, error });
 			}
 		}
-		return false;
-	}
+			return false;
+		}
+
+
+	/**
+	 * Create VAD description with optional inline missing-wasm note and link
+	 */
+    private static createVADDescription(baseDesc: string, includeMissingNote: boolean, includeLocalNote: boolean): DocumentFragment {
+        const fragment = document.createDocumentFragment();
+        fragment.appendText(baseDesc);
+        // Always show concise summaries for both selectable modes on the next line
+        fragment.appendChild(document.createElement('br'));
+        const summaryLine = `${t('settings.vadMode.options.server')}（${t('settings.vadMode.summaries.server')}）、` +
+          `${t('settings.vadMode.options.local')}（${t('settings.vadMode.summaries.local')}）`;
+        fragment.appendText(summaryLine);
+        if (includeMissingNote) {
+            // Add a light separator (empty line) before the missing-note block
+            fragment.appendChild(document.createElement('br'));
+            fragment.appendChild(document.createElement('br'));
+            fragment.appendText(t('settings.vadMode.missingInlineNote') + ' ');
+            const link = document.createElement('a');
+            link.href = SettingsUIBuilder.FVAD_DOWNLOAD_URL;
+            link.textContent = SettingsUIBuilder.FVAD_DOWNLOAD_URL;
+            link.target = '_blank';
+            fragment.appendChild(link);
+        }
+        if (includeLocalNote) {
+            fragment.appendChild(document.createElement('br'));
+            fragment.appendText(t('settings.vadMode.localNote'));
+        }
+        return fragment;
+    }
 }

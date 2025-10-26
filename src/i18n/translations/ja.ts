@@ -39,14 +39,30 @@ const ja: TranslationKeys = {
 			gpt4oMiniCost: 'GPT-4o Mini Transcribe'
 		},
 		vadMode: {
-			name: 'VADモード',
-			desc: '無音検出をどの方式で行うか選択します',
+			name: '無音検出（VAD）方式',
+			desc: '無音区間の処理により、音声認識処理の軽減や送信データ量の削減が図れます',
 			options: {
-				server: 'サーバーVAD（標準）',
-				local: 'ローカルVAD（fvad.wasmが必要）',
-				disabled: 'VADなし'
+				server: 'サーバー',
+				local: 'ローカル',
+				disabled: '処理なし'
 			},
-			missingWarning: 'fvad.wasm が見つかりません。公式リポジトリからダウンロードし、プラグインフォルダに配置してからローカルVADを有効にしてください。'
+			summaries: {
+				server: '標準：処理速度向上',
+				local: '高度：速度向上・通信量削減',
+				disabled: '無音の処理を行いません'
+			},
+			missingWarning: 'ローカルVADの使用にはサードパーティのモジュールが必要です。fvad-wasmリポジトリからfvad.wasmファイルをダウンロードし、「ファイルを選択」ボタンを押してプラグインフォルダにコピーしてください。',
+			missingInlineNote: 'ローカルVADの使用にはサードパーティのモジュールが必要です。fvad-wasmリポジトリからfvad.wasmファイルをダウンロードし、「ファイルを選択」ボタンを押してプラグインフォルダにコピーしてください。',
+			localNote: '端末内で無音箇所を送信前に削除するため、APIコストの削減につながります。',
+			installWasm: {
+			name: 'fvad.wasm を配置',
+			desc: '取得済みの fvad.wasm を選択すると自動でプラグインフォルダに配置します',
+			button: 'ファイルを選択',
+			success: 'fvad.wasm を配置しました',
+			invalidName: 'fvad.wasm を選択してください',
+			invalidType: '有効なWASMファイルではありません',
+			writeError: '配置に失敗しました: {error}'
+		}
 		},
 		language: {
 			name: '言語',

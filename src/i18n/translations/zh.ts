@@ -39,14 +39,30 @@ const zh: TranslationKeys = {
 			gpt4oMiniCost: 'GPT-4o Mini Transcribe'
 		},
 		vadMode: {
-			name: 'VAD 模式',
-			desc: '选择在上传前如何处理静音',
+			name: '静音检测（VAD）方式',
+			desc: '通过处理静音片段，可以减轻语音识别处理并减少发送的数据量',
 			options: {
-				server: '服务器端 VAD（默认）',
-				local: '本地 VAD（需要 fvad.wasm）',
-				disabled: '关闭 VAD'
+				server: '服务器',
+				local: '本地',
+				disabled: '不处理'
 			},
-			missingWarning: '未找到 fvad.wasm。请从官方仓库下载并放入插件文件夹后再启用本地 VAD。'
+			summaries: {
+				server: '默认：处理速度提升',
+				local: '高级：速度提升、减少发送数据量',
+				disabled: '不进行静音处理'
+			},
+			missingWarning: '使用本地 VAD 需要第三方模块。请从 fvad-wasm 仓库下载 fvad.wasm，然后点击“选择文件”按钮将其复制到插件文件夹。',
+			missingInlineNote: '使用本地 VAD 需要第三方模块。请从 fvad-wasm 仓库下载 fvad.wasm，然后点击“选择文件”按钮将其复制到插件文件夹。',
+			localNote: '由于在发送前在本地删除静音片段，有助于降低 API 成本。',
+			installWasm: {
+			name: '放置 fvad.wasm',
+			desc: '选择已获取的 fvad.wasm，自动复制到插件文件夹',
+			button: '选择文件',
+			success: '已放置 fvad.wasm',
+			invalidName: '请选择 fvad.wasm',
+			invalidType: '不是有效的 WASM 文件',
+			writeError: '放置失败：{error}'
+		}
 		},
 		language: {
 			name: '语言',
