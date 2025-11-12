@@ -12,34 +12,34 @@ const en: TranslationKeys = {
 	
 	// Settings
 	settings: {
-		title: 'AI Transcriber Settings',
+		title: 'AI Transcriber settings',
 		apiKey: {
-			name: 'OpenAI API Key',
+			name: 'OpenAI API key',
 			desc: 'Your OpenAI API key',
 			placeholder: 'Enter your OpenAI API key',
-			testButton: 'Test Connection',
+			testButton: 'Test connection',
 			testSuccess: 'Connection successful',
 			testFailed: 'Connection failed. Please check your API key.',
 			insecureWarning: 'OS encryption not available. Using fallback encryption method.',
 			migrated: 'API key has been automatically migrated to the new encryption format.'
 		},
 		model: {
-			name: 'Default Transcription Model',
+			name: 'Default transcription model',
 			desc: 'Choose the AI model for transcription',
-			comparison: 'Model Comparison:',
+			comparison: 'Model comparison:',
 			whisper: 'Whisper-1',
 			whisperDesc: 'Supports timestamped output',
-			gpt4o: 'GPT-4o Transcribe',
+			gpt4o: 'GPT-4o transcribe',
 			gpt4oDesc: 'High accuracy',
-			gpt4oMini: 'GPT-4o Mini Transcribe',
+			gpt4oMini: 'GPT-4o mini transcribe',
 			gpt4oMiniDesc: 'Low cost',
-			whisperNoTimestamp: 'Whisper-1 (No Timestamps)',
-			whisperWithTimestamp: 'Whisper-1 (With Timestamps)',
-			gpt4oHigh: 'GPT-4o Transcribe',
-			gpt4oMiniCost: 'GPT-4o Mini Transcribe'
+			whisperNoTimestamp: 'Whisper-1 (no timestamps)',
+			whisperWithTimestamp: 'Whisper-1 (with timestamps)',
+			gpt4oHigh: 'GPT-4o transcribe',
+			gpt4oMiniCost: 'GPT-4o mini transcribe'
 		},
 		vadMode: {
-			name: 'Silence Detection (VAD)',
+			name: 'Silence detection (VAD)',
 			desc: 'Processing silent segments can lighten speech recognition workload and reduce the amount of data sent',
 			options: {
 				server: 'Server',
@@ -77,49 +77,49 @@ const en: TranslationKeys = {
 			}
 		},
 		outputFormat: {
-			name: 'Output Format',
+			name: 'Output format',
 			desc: 'How to format the transcription output',
-			callout: 'Callout Block',
-			quote: 'Quote Block',
-			plain: 'Plain Text'
+			callout: 'Callout block',
+			quote: 'Quote block',
+			plain: 'Plain text'
 		},
 		postProcessing: {
-			name: 'Enable Post-Processing',
+			name: 'Enable post-processing',
 			desc: 'Use AI to enhance transcription with related information after completion'
 		},
 		dictionaryCorrection: {
-			name: 'Enable Dictionary Correction',
+			name: 'Enable dictionary correction',
 			desc: 'Automatically correct transcription results using dictionary-based text correction'
 		},
 		outputFolder: {
-			name: 'Output Folder',
+			name: 'Output folder',
 			desc: 'Folder to save transcription results (empty for vault root)',
 			placeholder: 'e.g., Transcriptions',
-			select: 'Select Folder'
+			select: 'Select folder'
 		},
 		advanced: {
-			title: 'Advanced Settings',
-			chunkInfo: 'Chunk Settings Guide:',
-			chunk180s: '180s (3 min): Recommended - Avoids timeouts',
-			chunk300s: '300s (5 min): Default - Balanced performance',
-			chunk600s: '600s (10 min): Maximum - May cause timeouts',
+			title: 'Advanced settings',
+			chunkInfo: 'Chunk settings guide:',
+			chunk180s: '180s (3 min): Recommended - avoids timeouts',
+			chunk300s: '300s (5 min): Default - balanced performance',
+			chunk600s: '600s (10 min): Maximum - may cause timeouts',
 			chunkNote: 'Note: Smaller chunks are more reliable but may increase API calls'
 		},
 		progressUI: {
-			title: 'Progress UI Settings',
-			statusBar: 'Show Status Bar',
+			title: 'Progress UI settings',
+			statusBar: 'Show status bar',
 			statusBarDesc: 'Display transcription progress in the status bar',
-			autoOpen: 'Auto-open Side Panel',
+			autoOpen: 'Auto-open side panel',
 			autoOpenDesc: 'Automatically open the side panel when transcription starts',
-			maxHistory: 'Maximum History Items',
+			maxHistory: 'Maximum history items',
 			maxHistoryDesc: 'Number of transcription history items to keep (10-100)'
 		},
 		debug: {
-			mode: 'Debug Mode',
+			mode: 'Debug mode',
 			modeDesc: 'Output detailed console logs (for developers)'
 		},
 		dictionary: {
-			name: 'User Dictionary',
+			name: 'User dictionary',
 			desc: 'Edit the dictionary to correct speech recognition errors',
 			addButton: '+ Add',
 			deleteButton: 'Delete',
@@ -129,9 +129,9 @@ const en: TranslationKeys = {
 			category: 'Category',
 			priority: 'Priority',
 			context: 'Context',
-			definiteCorrections: 'Definite Corrections',
-			contextualCorrections: 'Contextual Corrections',
-			importExport: 'Import/Export',
+			definiteCorrections: 'Definite corrections',
+			contextualCorrections: 'Contextual corrections',
+			importExport: 'Import/export',
 			importExportDesc: 'Import/Export dictionary data in JSON format',
 			import: 'Import',
 			export: 'Export',
@@ -143,10 +143,10 @@ const en: TranslationKeys = {
 			importConfirm: 'What would you like to do with existing dictionary data?',
 			replace: 'Replace',
 			merge: 'Merge',
-			manageDictionary: 'Dictionary Management',
+			manageDictionary: 'Dictionary management',
 			manageDictionaryDesc: 'Edit and manage user dictionary',
-			openManager: 'Manage Dictionary',
-			title: 'User Dictionary Management',
+			openManager: 'Manage dictionary',
+			title: 'User dictionary management',
 			fromPlaceholder: 'From (comma-separated)',
 			toPlaceholder: 'To',
 			autoModeDesc: 'All language dictionaries will be applied in auto-detect mode',
@@ -158,17 +158,17 @@ const en: TranslationKeys = {
 				person: 'Person',
 				place: 'Place',
 				org: 'Organization',
-				proper: 'Proper Noun',
-				technical: 'Technical Term',
-				spoken: 'Spoken Language',
-				symbol: 'Symbol/Unit'
+				proper: 'Proper noun',
+				technical: 'Technical term',
+				spoken: 'Spoken language',
+				symbol: 'Symbol/unit'
 			}
 		},
 		connection: {
-			title: 'Connection Test',
-			name: 'Test API Connection',
+			title: 'Connection test',
+			name: 'Test API connection',
 			desc: 'Verify your API key and connection',
-			testButton: 'Test Connection',
+			testButton: 'Test connection',
 			testing: 'Testing...',
 			successNotice: '✅ {provider} connection successful!',
 			successButton: '✅ Connected',
@@ -176,9 +176,9 @@ const en: TranslationKeys = {
 			failureButton: '❌ Failed',
 			errorNotice: '❌ Connection test failed: {error}',
 			errorButton: '❌ Error',
-			clearTitle: 'Clear API Keys',
+			clearTitle: 'Clear API keys',
 			clearDesc: 'Remove all stored API keys (useful for troubleshooting)',
-			clearButton: 'Clear All Keys',
+			clearButton: 'Clear all keys',
 			clearedNotice: 'API key cleared'
 		}
 	},
@@ -188,8 +188,8 @@ const en: TranslationKeys = {
 		openai: 'OpenAI',
 		whisper: 'OpenAI Whisper',
 		whisperTs: 'OpenAI Whisper (with timestamps)',
-		gpt4o: 'GPT-4o Transcribe',
-		gpt4oMini: 'GPT-4o Mini Transcribe'
+		gpt4o: 'GPT-4o transcribe',
+		gpt4oMini: 'GPT-4o mini transcribe'
 	},
 
 	// Commands
@@ -252,7 +252,7 @@ const en: TranslationKeys = {
 			cancel: 'Cancel'
 		},
 		audioFileSelection: {
-			title: 'Select Audio File',
+			title: 'Select audio file',
 			searchPlaceholder: 'Search by filename...',
 			sortBy: 'Sort by:',
 			sortByCreated: 'Date created',
@@ -260,42 +260,42 @@ const en: TranslationKeys = {
 			sortByDate: 'Date modified',
 			sortByName: 'Name',
 			sortByPath: 'Path',
-			fileName: 'File Name',
-			fileCreated: 'Date Created',
+			fileName: 'File name',
+			fileCreated: 'Date created',
 			filePath: 'Path',
 			noFiles: 'No audio files found',
-			selectExternal: 'Select from Outside Vault',
+			selectExternal: 'Select from outside vault',
 			copying: 'Copying file...',
 			externalFileNotice: 'When selecting files from outside the vault, they will be temporarily copied to a folder within the vault due to Obsidian restrictions.\nCopied files will be deleted on the next startup.'
 		},
 		transcription: {
 			title: 'AI Transcriber',
-			fileInfo: 'File Information',
-			modelLabel: 'Transcription AI Model',
+			fileInfo: 'File information',
+			modelLabel: 'Transcription AI model',
 			fileSize: 'Size: {size}',
-			fileType: 'File Type: {type}',
-			audioFile: 'Audio File',
-			videoFile: 'Video File',
+			fileType: 'File type: {type}',
+			audioFile: 'Audio file',
+			videoFile: 'Video file',
 			extractingAudio: 'Extracting audio from video',
 			largeFileWarning: 'Processing large file ({size} MB) may take time',
-			costEstimate: 'Estimated Cost',
+			costEstimate: 'Estimated cost',
 			costNote: 'Actual cost may vary based on processing',
 			costDetails: 'Model: {model} • Rate: {rate}',
-			timeRange: 'Time Range',
+			timeRange: 'Time range',
 			selectTimeRange: 'Select specific time range (optional)',
 			startTime: 'Start',
 			endTime: 'End',
 			duration: 'Duration: {duration}',
-			metaInfoButton: 'Add Related Info',
-			metaInfoButtonFilled: 'Related Info Added',
+			metaInfoButton: 'Add related info',
+			metaInfoButtonFilled: 'Related info added',
 			processingOptions: {
-				title: 'Processing Options',
-				enablePostProcessing: 'Enable AI Post-Processing',
-				enableDictionaryCorrection: 'Use User Dictionary in Post-Processing',
-				outputFolder: 'Output Folder',
-				relatedInfo: 'Related Information'
+				title: 'Processing options',
+				enablePostProcessing: 'Enable AI post-processing',
+				enableDictionaryCorrection: 'Use user dictionary in post-processing',
+				outputFolder: 'Output folder',
+				relatedInfo: 'Related information'
 			},
-			startButton: 'Start Transcription',
+			startButton: 'Start transcription',
 			cancelButton: 'Cancel',
 			processing: 'Processing',
 			preparingAudio: 'Preparing audio',
@@ -315,10 +315,10 @@ const en: TranslationKeys = {
 			costEstimateSummary: '~{minutes} minutes @ {rate}/min'
 		},
 		postProcessing: {
-			titlePre: 'Pre-transcription Related Information',
-			titlePost: 'Post-transcription Processing',
-			transcriptionPreview: 'Transcription Preview',
-			relatedInfo: 'Related Information',
+			titlePre: 'Pre-transcription related information',
+			titlePost: 'Post-transcription processing',
+			transcriptionPreview: 'Transcription preview',
+			relatedInfo: 'Related information',
 			metaInfoPlaceholder: 'Examples: Speakers (John Smith, Jane Doe), Topics (AI technology, machine learning), Technical terms (neural networks, deep learning), Context (meeting, interview), or any other information related to the audio content',
 			metaInfoDescription: 'Enter any information about the audio content or speakers. This information will be used by AI for more accurate transcription and post-processing.',
 			emptyInputError: 'Please enter related information.',
@@ -364,16 +364,16 @@ const en: TranslationKeys = {
 		fileNotFound: 'Transcription file not found',
 		// Error Handler specific
 		titles: {
-			apiKeyCheck: 'API Key Check',
-			apiUsageLimit: 'API Usage Limit',
-			apiConnection: 'API Connection',
-			fileError: 'File Error',
-			fileAccessError: 'File Access Error',
-			fileLoadError: 'File Load Error',
-			networkError: 'Network Error',
-			audioProcessError: 'Audio Processing Error',
-			fileSizeError: 'File Size Error',
-			unexpectedError: 'Unexpected Error'
+			apiKeyCheck: 'API key check',
+			apiUsageLimit: 'API usage limit',
+			apiConnection: 'API connection',
+			fileError: 'File error',
+			fileAccessError: 'File access error',
+			fileLoadError: 'File load error',
+			networkError: 'Network error',
+			audioProcessError: 'Audio processing error',
+			fileSizeError: 'File size error',
+			unexpectedError: 'Unexpected error'
 		},
 		messages: {
 			apiKeyRecheck: 'Please check your API key again.',
@@ -397,17 +397,17 @@ const en: TranslationKeys = {
 			fileInsertionFailed: 'File insertion failed. Transcription copied to clipboard.'
 		},
 		recoveryActions: {
-			openSettings: 'Open Settings',
-			connectionTest: 'Connection Test',
-			checkSupportedFormats: 'Check Supported Formats',
+			openSettings: 'Open settings',
+			connectionTest: 'Connection test',
+			checkSupportedFormats: 'Check supported formats',
 			retry: 'Retry',
-			tryOtherFormat: 'Try Other Format',
-			checkSizeLimit: 'Check Size Limit',
-			enableDebugMode: 'Enable Debug Mode'
+			tryOtherFormat: 'Try other format',
+			checkSizeLimit: 'Check size limit',
+			enableDebugMode: 'Enable debug mode'
 		},
-		notices: {
-			settingsCheck: 'Please check your API key in settings',
-			settingsConnectionTest: 'Please try the "Connection Test" button in settings',
+			notices: {
+				settingsCheck: 'Please check your API key in settings',
+				settingsConnectionTest: 'Please try the "Test connection" button in settings',
 			supportedFormats: 'Supported formats: Audio (MP3, WAV, M4A, FLAC, AAC, OGG), Video (MP4, MOV, AVI, MKV, WebM)',
 			networkRetry: 'Please check network connection and try again',
 			formatConversion: 'Please convert to WAV or MP3 format and try again',
@@ -427,7 +427,7 @@ const en: TranslationKeys = {
 
 	// Audio Range Selection
 	audioRange: {
-		title: 'Audio Range Selection',
+		title: 'Audio range selection',
 		description: 'Select specific time range to reduce hallucinations and processing time',
 		audioDuration: 'Audio duration',
 		enableSelection: 'Enable time range selection',
@@ -457,15 +457,15 @@ const en: TranslationKeys = {
 		warning: 'Warning',
 		info: 'Info',
 		success: 'Success',
-		history: 'Transcription History',
-		progressStatus: 'Progress Status',
-		elapsedTime: 'Elapsed Time',
+		history: 'Transcription history',
+		progressStatus: 'Progress status',
+		elapsedTime: 'Elapsed time',
 		searchForFile: 'Search for file with transcription timestamp "{timestamp}"?',
 		search: 'Search',
 		manualSearchRequired: 'Not found automatically. Please search manually.',
 		multipleAudioFilesFound: 'Multiple audio files found',
 		historyUpdated: 'History updated',
-		selectFile: 'Select File',
+		selectFile: 'Select file',
 		multipleFilesFound: 'Multiple files found. Please select:',
 		fileSize: {
 			zero: '0 Bytes',

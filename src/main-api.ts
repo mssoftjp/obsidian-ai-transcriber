@@ -1,4 +1,4 @@
-import { App, Notice, Plugin, TFile, Menu, Platform, moment } from 'obsidian';
+import { App, Notice, Plugin, TFile, Menu, Platform, moment, getLanguage } from 'obsidian';
 import { APITranscriber } from './ApiTranscriber';
 import { APITranscriptionSettings, DEFAULT_API_SETTINGS } from './ApiSettings';
 import { APISettingsTab } from './ApiSettingsTab';
@@ -206,9 +206,7 @@ export default class AITranscriberPlugin extends Plugin {
 	 * Get Obsidian's language setting and map to our supported languages
 	 */
 	getObsidianLanguage(): string {
-		// Prefer the vault's configured locale if available
-		const vaultLocale = (this.app?.vault as { config?: { locale?: string } })?.config?.locale;
-		const locale = vaultLocale ||
+		const locale = (typeof getLanguage === 'function' ? getLanguage() : undefined) ||
 			(typeof moment.locale === 'function' ? moment.locale() : '') || 
 			navigator.language || 
 			'en';

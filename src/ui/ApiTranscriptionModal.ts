@@ -707,21 +707,21 @@ export class APITranscriptionModal extends Modal {
 				if (this.progressCalculator) {
 					this.updateProgress(this.progressCalculator.postProcessingProgress('done'));
 					// Update progress tracker for background processing
-				if (this.progressTracker && this.processInBackground) {
-					const currentTask = this.progressTracker.getCurrentTask();
-					if (currentTask) {
-						this.progressTracker.updateProgress(currentTask.id, currentTask.completedChunks, t('modal.transcription.postProcessingCompleted'), 90);
+					if (this.progressTracker && this.processInBackground) {
+						const currentTask = this.progressTracker.getCurrentTask();
+						if (currentTask) {
+							this.progressTracker.updateProgress(currentTask.id, currentTask.completedChunks, t('modal.transcription.postProcessingCompleted'), 90);
+						}
 					}
-				}
 				}
 
 				this.updateStatus(t('modal.transcription.completed'));
 				// Remove duplicate notice - the main completion notice will be shown later
 
 				// Don't update to 100% yet - wait until file is saved
-		} catch (error) {
-			this.logger.error('Post-processing failed', error);
-			new Notice(t('notices.postProcessingFailed'));
+			} catch (error) {
+				this.logger.error('Post-processing failed', error);
+				new Notice(t('notices.postProcessingFailed'));
 				// Update to 90% on error (ready for save)
 				if (this.progressCalculator) {
 					this.updateProgress(this.progressCalculator.postProcessingProgress('done'));

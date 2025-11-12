@@ -86,7 +86,6 @@ export class VADPreprocessor {
 		try {
 			// プロセッサーの選択と初期化
 			this.processor = await this.createProcessor();
-			const fallbackMode = this.fallbackMode;
 
 			if (this.processor) {
 				this.logger.info('VAD processor initialized successfully', {

@@ -2,7 +2,7 @@
  * Internationalization (i18n) helper functions
  */
 
-import { moment } from 'obsidian';
+import { moment, getLanguage } from 'obsidian';
 import { TranslationKeys, SupportedLocale } from './locales';
 import { Logger } from '../utils/Logger';
 import { ObsidianApp } from '../types/global';
@@ -31,8 +31,8 @@ export function initializeI18n(app: unknown): void {
 	const obsidianApp = app as ObsidianApp;
 	appInstance = obsidianApp; // eslint-disable-line @typescript-eslint/no-unused-vars
 
-	// Get Obsidian's language setting (prefer explicit vault setting)
-	const locale = obsidianApp.vault?.config?.locale ||
+	// Get Obsidian's language preference via API with graceful fallbacks
+	const locale = (typeof getLanguage === 'function' ? getLanguage() : undefined) ||
 		moment.locale() ||
 		navigator.language ||
 		'en';
