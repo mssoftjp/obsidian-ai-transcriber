@@ -34,23 +34,23 @@ export class WebAudioChunkingService extends ChunkingService {
 	): number {
 		
 		// Step 1: Check if we have a model-preferred duration
-		if (this.preferredChunkDuration) {
-			const preferredDuration = this.preferredChunkDuration;
-			
-			// Step 2: Check time constraint first
-			if (preferredDuration > maxDuration) {
-			} else {
+			if (this.preferredChunkDuration) {
+				const preferredDuration = this.preferredChunkDuration;
+				
+				// Step 2: Check time constraint first
+				if (preferredDuration > maxDuration) {
+					return maxDuration;
+				}
+
 				// Step 3: Check size constraint
 				const estimatedChunks = Math.ceil(totalDuration / preferredDuration);
 				const estimatedChunkSizeMB = estimatedSizeMB / estimatedChunks;
 				
-				
 				if (estimatedChunkSizeMB <= maxSizeMB) {
 					return preferredDuration;
-				} else {
 				}
+				// Otherwise fall back to base calculation
 			}
-		}
 
 		// Step 4: Fallback to base constraint-based calculation
 		return super.calculateOptimalChunkDuration(totalDuration, estimatedSizeMB, maxDuration, maxSizeMB);

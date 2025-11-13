@@ -15,7 +15,7 @@ import { t } from './index';
  */
 export function replacePromptParams(
 	template: string,
-	params: Record<string, any> | string
+	params: Record<string, unknown> | string
 ): string {
 	if (typeof params === 'string') {
 		// Simple replacement for single parameter
@@ -51,7 +51,7 @@ export function replacePromptParams(
 export function getPrompt(
 	key: string,
 	_language = 'en',
-	params?: Record<string, any>
+	params?: Record<string, unknown>
 ): string {
 	// Get the localized prompt
 	const prompt = t(key);
@@ -119,7 +119,7 @@ export function formatPrompt(prompt: string, indent = 0): string {
  */
 export function validatePromptParams(
 	template: string,
-	params: Record<string, any>
+	params: Record<string, unknown>
 ): string[] {
 	const requiredParams = new Set<string>();
 	const paramRegex = /{([^:}]+)(?::[^}]*)?}/g;

@@ -181,16 +181,14 @@ export class SettingsUIBuilder {
                     const includeLocal = hasLocalWasm;
                     vadModeSetting.setDesc(this.createVADDescription(t('settings.vadMode.desc'), includeMissing, includeLocal));
                     if (includeMissing && !Platform.isMobileApp) {
-                        helperContainer.style.display = '';
-                        helperNote.setText(t('settings.vadMode.installWasm.desc'));
+                        this.setHelperVisibility(helperContainer, helperNote, true, t('settings.vadMode.installWasm.desc'));
                     } else {
-                        helperContainer.style.display = 'none';
-                        helperNote.setText('');
+                        this.setHelperVisibility(helperContainer, helperNote, false);
                     }
                 } else {
                     // Non-local: show base desc only and hide helper
                     vadModeSetting.setDesc(this.createVADDescription(t('settings.vadMode.desc'), false, false));
-                    helperContainer.style.display = 'none';
+                    this.setHelperVisibility(helperContainer, helperNote, false);
                 }
 						settings.vadMode = mode;
 						await saveSettings();
@@ -198,49 +196,58 @@ export class SettingsUIBuilder {
 			});
 
 		// Inline helper elements (place under the description, left column)
-		const infoEl = vadModeSetting.settingEl.querySelector('.setting-item-info') as HTMLElement;
-        const helperContainer = infoEl?.createDiv({ cls: 'ai-vad-inline-helper' }) as HTMLDivElement;
-		const helperNote = helperContainer.createDiv({ cls: 'setting-item-description' });
-		const helperBtn = helperContainer.createEl('button', { text: t('settings.vadMode.installWasm.button') });
-		helperBtn.classList.add('mod-cta');
-		helperContainer.style.display = 'none';
+		const infoEl = vadModeSetting.settingEl.querySelector('.setting-item-info');
+        const helperContainer = infoEl instanceof HTMLElement
+			? infoEl.createDiv({ cls: 'ai-vad-inline-helper ait-hidden' })
+			: null;
+		const helperNote = helperContainer?.createDiv({ cls: 'setting-item-description' }) ?? null;
+		const helperBtn = helperContainer?.createEl('button', { text: t('settings.vadMode.installWasm.button') }) ?? null;
+		helperBtn?.classList.add('mod-cta');
 
-		helperBtn.addEventListener('click', async () => {
+		helperBtn?.addEventListener('click', () => {
 			try {
 				const input = document.createElement('input');
 				input.type = 'file';
 				input.accept = '.wasm,application/wasm';
-				input.onchange = async () => {
-					const file = input.files?.[0];
-					if (!file) return;
-					if (file.name !== 'fvad.wasm') {
-						new Notice(t('settings.vadMode.installWasm.invalidName'));
-						return;
-					}
-					const buffer = await file.arrayBuffer();
-					const bytes = new Uint8Array(buffer);
-					if (bytes.length < 8 || !(bytes[0] === 0x00 && bytes[1] === 0x61 && bytes[2] === 0x73 && bytes[3] === 0x6d)) {
-						new Notice(t('settings.vadMode.installWasm.invalidType'));
-						return;
-					}
-
-					try {
-						const adapter = app.vault.adapter;
-						const pluginDir = PathUtils.getPluginDir(app);
-						if (!(await adapter.exists(pluginDir))) {
-							await adapter.mkdir(pluginDir);
+				input.onchange = () => {
+					void (async () => {
+						const file = input.files?.[0];
+						if (!file) {
+							return;
 						}
-						const targetPath = PathUtils.getPluginFilePath(app, 'fvad.wasm');
-						await adapter.writeBinary(targetPath, bytes);
-						new Notice(t('settings.vadMode.installWasm.success'));
+						if (file.name !== 'fvad.wasm') {
+							new Notice(t('settings.vadMode.installWasm.invalidName'));
+							return;
+						}
+						const buffer = await file.arrayBuffer();
+						const bytes = new Uint8Array(buffer);
+						const isWasm = bytes.length >= 4 &&
+							bytes[0] === 0x00 &&
+							bytes[1] === 0x61 &&
+							bytes[2] === 0x73 &&
+							bytes[3] === 0x6d;
+						if (!isWasm) {
+							new Notice(t('settings.vadMode.installWasm.invalidType'));
+							return;
+						}
+
+						try {
+							const adapter = app.vault.adapter;
+							const pluginDir = PathUtils.getPluginDir(app);
+							if (!(await adapter.exists(pluginDir))) {
+								await adapter.mkdir(pluginDir);
+							}
+							const targetPath = PathUtils.getPluginFilePath(app, 'fvad.wasm');
+							await adapter.writeBinary(targetPath, bytes);
+							new Notice(t('settings.vadMode.installWasm.success'));
                             // Reflect installed state for local mode
                             vadModeSetting.setDesc(this.createVADDescription(t('settings.vadMode.desc'), false, true));
                             // Hide helper after successful installation
-                            helperContainer.style.display = 'none';
-                            helperNote.setText('');
-					} catch (error) {
-						new Notice(t('settings.vadMode.installWasm.writeError', { error: error instanceof Error ? error.message : String(error) }));
-					}
+                            this.setHelperVisibility(helperContainer, helperNote, false);
+						} catch (error) {
+							new Notice(t('settings.vadMode.installWasm.writeError', { error: error instanceof Error ? error.message : String(error) }));
+						}
+					})();
 				};
 				input.click();
 			} catch (error) {
@@ -255,11 +262,9 @@ export class SettingsUIBuilder {
             vadModeSetting.setDesc(this.createVADDescription(t('settings.vadMode.desc'), includeMissing, includeLocal));
             // Helper visibility: show only when local mode AND wasm is missing
             if (initialVadMode === 'local' && includeMissing && !Platform.isMobileApp) {
-                helperContainer.style.display = '';
-                helperNote.setText(t('settings.vadMode.installWasm.desc'));
+                this.setHelperVisibility(helperContainer, helperNote, true, t('settings.vadMode.installWasm.desc'));
             } else {
-                helperContainer.style.display = 'none';
-                helperNote.setText('');
+                this.setHelperVisibility(helperContainer, helperNote, false);
             }
         }).catch(error => {
             this.logger.warn('Failed to check local wasm on settings load', error);
@@ -326,6 +331,26 @@ export class SettingsUIBuilder {
 		fragment.appendText('.');
 		
 		return fragment;
+	}
+
+	private static setHelperVisibility(
+		container: HTMLDivElement | null,
+		note: HTMLDivElement | null,
+		show: boolean,
+		message: string = ''
+	): void {
+		if (!container || !note) {
+			return;
+		}
+		if (show) {
+			container.removeClass('ait-hidden');
+			if (message) {
+				note.setText(message);
+			}
+		} else {
+			container.addClass('ait-hidden');
+			note.setText('');
+		}
 	}
 
 

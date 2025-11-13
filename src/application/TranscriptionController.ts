@@ -14,7 +14,7 @@ import { ChunkingConfig } from '../core/chunking/ChunkingTypes';
 import { ChunkingService } from '../core/chunking/ChunkingService';
 import { getModelConfig, getTranscriptionConfig, logAllModelConfigs } from '../config/ModelProcessingConfig';
 import { AUDIO_CONSTANTS } from '../config/constants';
-import { DictionaryCorrector } from '../core/transcription/DictionaryCorrector';
+import { DictionaryCorrector, DictionaryEntry as CorrectionDictionaryEntry } from '../core/transcription/DictionaryCorrector';
 import { GPTDictionaryCorrectionService } from '../infrastructure/api/dictionary/GPTDictionaryCorrectionService';
 import { ResourceManager } from '../core/resources/ResourceManager';
 
@@ -139,7 +139,7 @@ export class TranscriptionController {
 			// If VAD was applied, don't apply time range again (already applied in VAD)
 			const effectiveStartTime = vadApplied ? undefined : startTime;
 			const effectiveEndTime = vadApplied ? undefined : endTime;
-			const options = await this.prepareWorkflowOptions(effectiveStartTime, effectiveEndTime, abortSignal);
+			const options = this.prepareWorkflowOptions(effectiveStartTime, effectiveEndTime, abortSignal);
 
 			// Create workflow
 			const workflow = this.createWorkflow();
@@ -272,7 +272,7 @@ export class TranscriptionController {
 	/**
 	 * Create audio pipeline
 	 */
-	private async createAudioPipeline(): Promise<AudioPipeline> {
+	private createAudioPipeline(): AudioPipeline {
 		// Audio processing config
 		const audioConfig: AudioProcessingConfig = {
 			targetSampleRate: AUDIO_CONSTANTS.SAMPLE_RATE,
@@ -525,8 +525,8 @@ export class TranscriptionController {
 	/**
 	 * Convert a single user dictionary to entries
 	 */
-	private convertDictionaryToEntries(userDictionary: UserDictionary): any[] {
-		const entries: any[] = [];
+	private convertDictionaryToEntries(userDictionary: UserDictionary): CorrectionDictionaryEntry[] {
+		const entries: CorrectionDictionaryEntry[] = [];
 
 		// Add definite corrections as rules
 		entries.push(
@@ -567,8 +567,8 @@ export class TranscriptionController {
 	/**
 	 * Convert all language dictionaries to entries
 	 */
-	private convertAllDictionariesToEntries(): any[] {
-		const allEntries: any[] = [];
+	private convertAllDictionariesToEntries(): CorrectionDictionaryEntry[] {
+		const allEntries: CorrectionDictionaryEntry[] = [];
 		const languages: ('ja' | 'en' | 'zh' | 'ko')[] = ['ja', 'en', 'zh', 'ko'];
 
 		for (const lang of languages) {
@@ -648,11 +648,11 @@ export class TranscriptionController {
 	/**
 	 * Prepare workflow options
 	 */
-	private async prepareWorkflowOptions(
+	private prepareWorkflowOptions(
 		startTime?: number,
 		endTime?: number,
 		abortSignal?: AbortSignal
-	): Promise<WorkflowOptions> {
+	): WorkflowOptions {
 		return {
 			startTime,
 			endTime,

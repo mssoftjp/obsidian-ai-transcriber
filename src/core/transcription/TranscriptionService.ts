@@ -17,7 +17,8 @@ import {
 	CleaningPipeline, 
 	WhisperCleaningPipeline, 
 	GPT4oCleaningPipeline,
-	StandardCleaningPipeline
+	StandardCleaningPipeline,
+	CleaningContext
 } from './cleaners';
 import { getModelCleaningStrategy } from '../../config/ModelCleaningConfig';
 import { Logger } from '../../utils/Logger';
@@ -158,7 +159,7 @@ export abstract class TranscriptionService {
 	/**
 	 * Clean text using the configured pipeline
 	 */
-	async cleanText(text: string, language: string = 'auto', context?: any): Promise<string> {
+	async cleanText(text: string, language: string = 'auto', context?: CleaningContext): Promise<string> {
 		// Validate input
 		if (!text || typeof text !== 'string') {
 			this.logger.warn(`[${this.modelId}] Invalid text input for cleaning, returning empty string`);
@@ -181,16 +182,12 @@ export abstract class TranscriptionService {
 			return text;
 		}
 		
-		// CLEANER_DEBUG_START - Remove this block after confirming new cleaner system works
-//
-//
-		// CLEANER_DEBUG_END
-
 		try {
-			const result = await this.cleaningPipeline.execute(text, language, {
+			const pipelineContext: CleaningContext = {
 				modelId: this.modelId,
-				...context
-			});
+				...(context ?? {})
+			};
+			const result = await this.cleaningPipeline.execute(text, language, pipelineContext);
 			
 			// Validate pipeline result
 			if (!result || typeof result.finalText !== 'string') {
@@ -198,16 +195,12 @@ export abstract class TranscriptionService {
 				return text;
 			}
 			
-			// CLEANER_DEBUG_START - Remove this block after confirming new cleaner system works
-//
-//
-//
-//
-//
-			// CLEANER_DEBUG_END
-			
 			// Log summary if there were significant changes or issues
 			if (result.metadata.totalIssuesFound > 0 || result.metadata.totalReductionRatio > 0.1) {
+				this.logger.debug(`[${this.modelId}] Cleaning pipeline made significant adjustments`, {
+					issuesFound: result.metadata.totalIssuesFound,
+					reductionRatio: result.metadata.totalReductionRatio
+				});
 			}
 			
 			return result.finalText;

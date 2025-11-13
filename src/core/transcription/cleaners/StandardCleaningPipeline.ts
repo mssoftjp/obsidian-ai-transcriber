@@ -55,9 +55,10 @@ export class StandardCleaningPipeline implements CleaningPipeline {
 
 			const stageStartTime = Date.now();
 			
-			try {
-				if (this.config.enableDetailedLogging) {
-				}
+				try {
+					if (this.config.enableDetailedLogging) {
+						this.logger.debug('Executing cleaner', { cleaner: cleaner.name });
+					}
 
 				// Execute the cleaner
 				const result = await Promise.resolve(cleaner.clean(currentText, language, enhancedContext));
@@ -78,8 +79,11 @@ export class StandardCleaningPipeline implements CleaningPipeline {
 				totalIssuesFound += result.issues.length;
 
 				// Log issues if found
-				if (result.issues.length > 0 && this.config.enableDetailedLogging) {
-				}
+					if (result.issues.length > 0 && this.config.enableDetailedLogging) {
+						this.logger.warn(`Cleaner ${cleaner.name} reported issues`, {
+							issues: result.issues
+						});
+					}
 
 				// Check for critical issues that should stop the pipeline
 				if (this.config.stopOnCriticalIssue && this.isCriticalIssue(result.issues)) {
@@ -131,8 +135,9 @@ export class StandardCleaningPipeline implements CleaningPipeline {
 		};
 
 
-		if (this.config.enableDetailedLogging) {
-		}
+			if (this.config.enableDetailedLogging) {
+				this.logger.info('Standard cleaning pipeline summary', pipelineResult.metadata);
+			}
 
 		return pipelineResult;
 	}

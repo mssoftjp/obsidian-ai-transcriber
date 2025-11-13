@@ -287,8 +287,12 @@ export class TranscriptionMerger {
 					matchedText
 				);
 				
-				if (matches.length > 1) {
-				}
+					if (matches.length > 1) {
+						this.logger.debug('Multiple overlap matches detected', {
+							matchCount: matches.length,
+							candidateLength
+						});
+					}
 				
 				const trimmedText = currentText.slice(lastMatch.position + lastMatch.length).trim();
 				const connector = this.determineConnector(previousText);
@@ -607,19 +611,22 @@ export class TranscriptionMerger {
 		}
 		
 		// Remove duplicates in reverse order to maintain correct positions
-		if (duplicatesToRemove.length > 0) {
-			// Sort by start position descending
-			duplicatesToRemove.sort((a, b) => b.start - a.start);
-			
-			let totalRemoved = 0;
+			if (duplicatesToRemove.length > 0) {
+				// Sort by start position descending
+				duplicatesToRemove.sort((a, b) => b.start - a.start);
+				
+				let totalRemoved = 0;
 			for (const range of duplicatesToRemove) {
-				processedText = processedText.slice(0, range.start) + processedText.slice(range.end);
-				totalRemoved += range.end - range.start;
+					processedText = processedText.slice(0, range.start) + processedText.slice(range.end);
+					totalRemoved += range.end - range.start;
+				}
+				this.logger.info('Removed duplicate text segments', {
+					segmentsRemoved: duplicatesToRemove.length,
+					totalCharacters: totalRemoved
+				});
+			} else {
+				this.logger.debug('No duplicates detected during merge');
 			}
-			
-			
-		} else {
-		}
 		
 		return processedText;
 	}

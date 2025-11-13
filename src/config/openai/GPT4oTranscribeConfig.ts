@@ -122,30 +122,39 @@ export const GPT4O_TRANSCRIBE_CONFIG: GPT4oTranscribeConfig = {
 	}
 };
 
+export interface GPT4oTranscribeRequestPayload {
+	model: string;
+	response_format?: string;
+	temperature: number;
+	language?: string;
+	prompt?: string;
+	stream?: boolean;
+	include?: string[];
+}
+
 /**
  * Build GPT-4o Transcribe API request parameters
  */
 export function buildGPT4oTranscribeRequest(
 	params: Partial<GPT4oTranscribeParams>,
 	isFirstChunk: boolean = true
-): Record<string, any> {
+): GPT4oTranscribeRequestPayload {
 	const config = GPT4O_TRANSCRIBE_CONFIG;
-	const result: Record<string, any> = {};
-	
-	// Required parameter
 	if (!params.model) {
 		throw new Error('[GPT4oTranscribeConfig] Model parameter is required');
 	}
-	result.model = params.model;
+	const result: GPT4oTranscribeRequestPayload = {
+		model: params.model,
+		temperature: config.defaults.temperature
+	};
 	
+	// Required parameter
 	// Optional parameters
 	if (params.response_format && params.response_format !== config.defaults.response_format) {
 		result.response_format = params.response_format;
 	}
 	
 	// Always use the fixed temperature from config
-	result.temperature = config.defaults.temperature;
-	
 	// Always include language parameter if specified (not 'auto')
 	if (params.language && params.language !== 'auto') {
 		result.language = params.language;

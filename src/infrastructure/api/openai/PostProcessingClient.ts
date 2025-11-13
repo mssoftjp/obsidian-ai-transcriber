@@ -10,6 +10,7 @@ import { ErrorHandler } from '../../../ErrorHandler';
 import { SafeStorageService } from '../../storage/SafeStorageService';
 import { LanguageDetector } from '../../../core/utils/LanguageDetector';
 import { Logger } from '../../../utils/Logger';
+import { OpenAIChatResponse } from './OpenAIChatTypes';
 
 export interface PostProcessingResult {
 	processedText: string;
@@ -57,7 +58,7 @@ export class PostProcessingClient extends ApiClient {
 			
 			const request = buildPostProcessingRequest(transcription, context, keywords, detectedLanguage);
 			
-			const response = await this.post<any>(
+			const response = await this.post<OpenAIChatResponse>(
 				POST_PROCESSING_CONFIG.endpoint,
 				request,
 				{},
@@ -126,7 +127,7 @@ export class PostProcessingClient extends ApiClient {
 				max_tokens: 5
 			};
 
-			await this.post<any>(POST_PROCESSING_CONFIG.endpoint, testRequest);
+			await this.post<OpenAIChatResponse>(POST_PROCESSING_CONFIG.endpoint, testRequest);
 
 			return {
 				isValid: true,

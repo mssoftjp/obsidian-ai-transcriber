@@ -147,7 +147,7 @@ export class APITranscriber {
 	/**
 	 * Cancel ongoing transcription
 	 */
-	async cancelTranscription(): Promise<void> {
+	cancelTranscription(): Promise<void> {
 		this.isCancelled = true;
 		
 		if (this.abortController) {
@@ -159,6 +159,7 @@ export class APITranscriber {
 			this.progressTracker.cancelTask(this.currentTaskId);
 			this.currentTaskId = null;
 		}
+		return Promise.resolve();
 	}
 
 	/**
@@ -175,7 +176,7 @@ export class APITranscriber {
 	async cleanup(): Promise<void> {
 		try {
 			// Cancel any ongoing operations
-			this.cancelTranscription();
+			await this.cancelTranscription();
 			
 			// Controller handles its own cleanup internally
 		} catch (error) {
@@ -248,10 +249,13 @@ export class APITranscriber {
 	 * Debug log helper (for compatibility)
 	 */
 	private log(message: string, data?: unknown): void {
-		if (this.settings.debugMode) {
-			if (data !== undefined) {
-			} else {
-			}
+		if (!this.settings.debugMode) {
+			return;
+		}
+		if (data !== undefined) {
+			this.logger.debug(message, data);
+		} else {
+			this.logger.debug(message);
 		}
 	}
 

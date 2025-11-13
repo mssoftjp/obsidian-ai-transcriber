@@ -10,6 +10,7 @@ import { buildPostProcessingMetaRequest, POST_PROCESSING_CONFIG, estimateTokenCo
 import { ErrorHandler } from '../../ErrorHandler';
 import { LanguageDetector } from '../../core/utils/LanguageDetector';
 import { Logger } from '../../utils/Logger';
+import { OpenAIChatResponse } from '../../infrastructure/api/openai/OpenAIChatTypes';
 
 export interface ProcessedTranscription {
 	originalText: string;
@@ -190,7 +191,7 @@ export class PostProcessingService {
 				metaInfo.language
 			);
 
-			const response = await this.client['post']<any>(
+			const response = await this.client['post']<OpenAIChatResponse>(
 				POST_PROCESSING_CONFIG.endpoint,
 				request,
 				{},

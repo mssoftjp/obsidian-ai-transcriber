@@ -3,6 +3,7 @@
  */
 
 import { Logger } from '../../utils/Logger';
+import { ModelConfig } from '../../config/ModelProcessingConfig';
 
 export class OverlapAnalyzer {
 	private static logger = Logger.getLogger('OverlapAnalyzer');
@@ -14,7 +15,7 @@ export class OverlapAnalyzer {
 		currentStartTime: number,
 		previousText: string,
 		currentText: string,
-		modelConfig: any
+		modelConfig: ModelConfig
 	): void {
 		this.logger.debug('=== Analyzing Overlap Problem ===');
 		

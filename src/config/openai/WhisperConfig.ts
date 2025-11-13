@@ -103,25 +103,32 @@ export const WHISPER_CONFIG: WhisperConfig = {
 	}
 };
 
+export interface WhisperRequestPayload {
+	model: string;
+	response_format: string;
+	temperature: number;
+	language?: string;
+	prompt?: string;
+	timestamp_granularities?: ('word' | 'segment')[];
+}
+
 /**
  * Build Whisper API request parameters
  */
 export function buildWhisperRequest(
 	params: Partial<WhisperTranscriptionParams>,
 	isFirstChunk: boolean = true
-): Record<string, any> {
+): WhisperRequestPayload {
 	const config = WHISPER_CONFIG;
-	const result: Record<string, any> = {};
+	const result: WhisperRequestPayload = {
+		model: 'whisper-1',
+		response_format: params.response_format || config.defaults.response_format,
+		temperature: config.defaults.temperature
+	};
 	
 	// Required parameters
-	result.model = 'whisper-1';
-	
 	// Optional parameters (but always include response_format for clarity)
-	result.response_format = params.response_format || config.defaults.response_format;
-	
 	// Always use the fixed temperature from config
-	result.temperature = config.defaults.temperature;
-	
 	// Always include language parameter if specified (not 'auto')
 	if (params.language && params.language !== 'auto') {
 		result.language = params.language;

@@ -12,7 +12,7 @@ interface WindowWithWebKit extends Window {
 export interface ResourceConfig {
 	id: string;
 	type: 'audio-context' | 'abort-controller' | 'other';
-	metadata?: Record<string, any>;
+	metadata?: Record<string, unknown>;
 }
 
 export class ResourceManager {

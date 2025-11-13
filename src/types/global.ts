@@ -88,10 +88,18 @@ export interface ObsidianApp {
 }
 
 // Module import types
+export interface FvadWasmInstance {
+	HEAP16: Int16Array;
+	_malloc(size: number): number;
+	_free(ptr: number): void;
+	_fvad_new(): number;
+	_fvad_set_sample_rate(instance: number, sampleRate: number): number;
+	_fvad_set_mode(instance: number, mode: number): number;
+	_fvad_process(instance: number, bufferPtr: number, length: number): number;
+}
+
 export interface FvadModule {
-	default(options?: unknown): Promise<unknown>;
-	createInstance(): unknown;
-	// Add other methods as needed
+	default(options?: Record<string, unknown>): Promise<FvadWasmInstance>;
 }
 
 // Type assertions for common casts

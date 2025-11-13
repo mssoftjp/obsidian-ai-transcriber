@@ -126,7 +126,7 @@ export class TranscriptionView extends ItemView {
 			cls: 'mod-warning cancel-task-button ait-hidden'
 		});
 		this.cancelBtnEl.addEventListener('click', () => {
-			this.handleCancel();
+			void this.handleCancel();
 		});
 	}
 
@@ -146,7 +146,7 @@ export class TranscriptionView extends ItemView {
 			cls: 'mod-secondary'
 		});
 		clearBtn.addEventListener('click', () => {
-			this.handleClearHistory();
+			void this.handleClearHistory();
 		});
 	}
 
@@ -325,7 +325,7 @@ export class TranscriptionView extends ItemView {
 			// Make all completed items clickable
 			if (task.status === 'completed' || task.outputFilePath) {
 				item.addEventListener('click', () => {
-					this.showTranscriptionResult(task);
+					void this.showTranscriptionResult(task);
 				});
 				item.addClass('clickable');
 			}
@@ -399,7 +399,7 @@ export class TranscriptionView extends ItemView {
 				await this.app.workspace.openLinkText(file.path, '', true);
 			} else {
 				// ファイルが見つからない場合、検索を提案
-				this.handleMissingFile(task);
+				await this.handleMissingFile(task);
 			}
 			return;
 		}
@@ -436,7 +436,7 @@ export class TranscriptionView extends ItemView {
 
 				if (matchingFiles.length > 0) {
 					// ファイル選択モーダルを表示
-					this.showFileSelectionModal(task, matchingFiles);
+					void this.showFileSelectionModal(task, matchingFiles);
 				} else {
 					// 見つからない場合は全文検索を開く
 					const searchPlugin = ((this.app as unknown) as ObsidianApp).internalPlugins?.getPluginById('global-search');

@@ -1,4 +1,4 @@
-import { App, PluginSettingTab, Setting, Notice } from 'obsidian';
+import { App, PluginSettingTab, Setting, Notice, ToggleComponent } from 'obsidian';
 import { t } from './i18n';
 import { SettingsUIBuilder } from './SettingsUiBuilder';
 import { FolderSuggestModal } from './ui/FolderSuggestModal';
@@ -29,7 +29,9 @@ export class APISettingsTab extends PluginSettingTab {
 		// Remove the main title as requested
 
 		// API settings (unified for all models)
-		SettingsUIBuilder.displayAPISettings(containerEl, this.plugin.settings, () => this.plugin.saveSettings(), this.app);
+		SettingsUIBuilder.displayAPISettings(containerEl, this.plugin.settings, () => {
+			void this.plugin.saveSettings();
+		}, this.app);
 
 		// Transcription settings - no heading needed
 
@@ -83,7 +85,7 @@ export class APISettingsTab extends PluginSettingTab {
                                 }));
 
 		// Store toggle reference for later use
-		let dictionaryToggle: any;
+		let dictionaryToggle: ToggleComponent | undefined;
 
 		// Post-processing settings
 		new Setting(containerEl)
@@ -129,18 +131,20 @@ export class APISettingsTab extends PluginSettingTab {
 			.addExtraButton(button => button
 				.setIcon('folder')
 				.setTooltip(t('settings.outputFolder.select'))
-				.onClick(async () => {
+				.onClick(() => {
 					const modal = new FolderSuggestModal(this.app, this.plugin.settings.transcriptionOutputFolder);
-					modal.onChooseFolderPath = async (folder: string) => {
+					modal.onChooseFolderPath = (folder: string) => {
 						this.plugin.settings.transcriptionOutputFolder = folder;
-						await this.plugin.saveSettings();
+						void this.plugin.saveSettings();
 						this.display();
 					};
 					modal.open();
 				}));
 
 		// Advanced settings
-		SettingsUIBuilder.displayAdvancedSettings(containerEl, this.plugin.settings, () => this.plugin.saveSettings(), () => this.display());
+		SettingsUIBuilder.displayAdvancedSettings(containerEl, this.plugin.settings, () => {
+			void this.plugin.saveSettings();
+		}, () => this.display());
 		
 		// Dictionary management button
 		const dictionarySetting = new Setting(containerEl)
@@ -167,10 +171,14 @@ export class APISettingsTab extends PluginSettingTab {
 		this.updateDictionaryDesc = updateDictionaryDesc;
 		
 		// Progress UI settings
-		SettingsUIBuilder.displayProgressUISettings(containerEl, this.plugin.settings, () => this.plugin.saveSettings());
+		SettingsUIBuilder.displayProgressUISettings(containerEl, this.plugin.settings, () => {
+			void this.plugin.saveSettings();
+		});
 		
 		// Debug settings - commented out for production release
-		// SettingsUIBuilder.displayDebugSettings(containerEl, this.plugin.settings, () => this.plugin.saveSettings());
+		// SettingsUIBuilder.displayDebugSettings(containerEl, this.plugin.settings, () => {
+		// 	void this.plugin.saveSettings();
+		// });
 		
 		// Buy Me a Coffee banner
 		this.displaySupportBanner(containerEl);

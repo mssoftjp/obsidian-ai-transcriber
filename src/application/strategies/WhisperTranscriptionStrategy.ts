@@ -7,7 +7,7 @@ import { TranscriptionStrategy } from '../../core/transcription/TranscriptionStr
 import { TranscriptionService } from '../../core/transcription/TranscriptionService';
 import { TranscriptionMerger } from '../../core/transcription/TranscriptionMerger';
 import { AudioChunk } from '../../core/audio/AudioTypes';
-import { TranscriptionResult, TranscriptionOptions } from '../../core/transcription/TranscriptionTypes';
+import { TranscriptionResult, TranscriptionOptions, TranscriptionProgress } from '../../core/transcription/TranscriptionTypes';
 import { getModelConfig } from '../../config/ModelProcessingConfig';
 import { Logger } from '../../utils/Logger';
 import { t } from '../../i18n';
@@ -22,7 +22,7 @@ export class WhisperTranscriptionStrategy extends TranscriptionStrategy {
 
 	constructor(
 		transcriptionService: TranscriptionService,
-		onProgress?: (progress: any) => void
+		onProgress?: (progress: TranscriptionProgress) => void
 	) {
 		super(transcriptionService, onProgress);
 		// Pass model name to merger for model-specific merge config
@@ -115,7 +115,10 @@ export class WhisperTranscriptionStrategy extends TranscriptionStrategy {
 
 		// Log statistics
 		if (failed.length > 0) {
+			const failedIds = failed.map(chunk => chunk.id).join(', ');
+			this.logger.warn(`Whisper merge encountered failed chunks: ${failedIds}`);
 		} else {
+			this.logger.debug('All Whisper chunks processed successfully before merging');
 		}
 
 		// If no valid results but we have failed results, return error information

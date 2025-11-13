@@ -16,7 +16,7 @@ export class OverlapDebugger {
 		this.enabled = false;
 	}
 
-	static log(message: string, data?: any) {
+	static log(message: string, data?: unknown) {
 		if (!this.enabled) return;
 		
 		if (data) {

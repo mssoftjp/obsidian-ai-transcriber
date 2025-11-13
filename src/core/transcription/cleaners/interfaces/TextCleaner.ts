@@ -56,5 +56,5 @@ export interface CleaningContext {
 	/** Enable detailed logging for debugging */
 	enableDetailedLogging?: boolean;
 	/** Custom data that specific cleaners might need */
-	customData?: Record<string, any>;
+	customData?: Record<string, unknown>;
 }

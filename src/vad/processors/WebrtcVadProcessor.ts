@@ -3,14 +3,14 @@ import { VADProcessor, VADResult, VADConfig, VADError, SpeechSegment } from '../
 import { AUDIO_CONSTANTS } from '../../config/constants';
 import { Logger } from '../../utils/Logger';
 import { PathUtils } from '../../utils/PathUtils';
-import { FvadModule } from '../../types/global';
+import { FvadModule, FvadWasmInstance } from '../../types/global';
 
 /**
  * WebRTC VADプロセッサー
  * Google WebRTCプロジェクトのVADアルゴリズムを使用した高精度な音声検出
  */
 export class WebRTCVADProcessor implements VADProcessor {
-  protected fvadModule: any = null;
+  protected fvadModule: FvadWasmInstance | null = null;
   protected vadInstance: number | null = null;
   protected available = false;
   protected bufferPtr: number | null = null;
@@ -49,15 +49,18 @@ export class WebRTCVADProcessor implements VADProcessor {
             return '';
           },
           // import.meta.urlの問題を回避
-          instantiateWasm: async (imports: any, successCallback: Function) => {
+          instantiateWasm: async (
+            imports: WebAssembly.Imports,
+            successCallback: (instance: WebAssembly.Instance) => void
+          ): Promise<WebAssembly.Instance> => {
             try {
               const result = await WebAssembly.instantiate(new Uint8Array(wasmBuffer), imports);
               successCallback(result.instance);
+              return result.instance;
             } catch (error) {
               this.logger.error('WASM instantiation error', error);
               throw error;
             }
-            return {}; // プレースホルダー
           }
         };
         
@@ -95,7 +98,7 @@ export class WebRTCVADProcessor implements VADProcessor {
       this.available = true;
     } catch (error) {
       this.logger.error('Initialization failed', error);
-      this.cleanup();
+      await this.cleanup();
       throw error;
     }
   }

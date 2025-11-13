@@ -7,7 +7,7 @@ import { TranscriptionStrategy } from '../../core/transcription/TranscriptionStr
 import { TranscriptionService } from '../../core/transcription/TranscriptionService';
 import { TranscriptionMerger } from '../../core/transcription/TranscriptionMerger';
 import { AudioChunk } from '../../core/audio/AudioTypes';
-import { TranscriptionResult, TranscriptionOptions } from '../../core/transcription/TranscriptionTypes';
+import { TranscriptionResult, TranscriptionOptions, TranscriptionProgress } from '../../core/transcription/TranscriptionTypes';
 import { getModelConfig } from '../../config/ModelProcessingConfig';
 import { Logger } from '../../utils/Logger';
 import { t } from '../../i18n';
@@ -22,7 +22,7 @@ export class GPT4oTranscriptionStrategy extends TranscriptionStrategy {
 
 	constructor(
 		transcriptionService: TranscriptionService,
-		onProgress?: (progress: any) => void
+		onProgress?: (progress: TranscriptionProgress) => void
 	) {
 		super(transcriptionService, onProgress);
 		this.merger = new TranscriptionMerger(transcriptionService.modelId);
@@ -76,7 +76,6 @@ export class GPT4oTranscriptionStrategy extends TranscriptionStrategy {
 					if (lastSentences) {
 						previousContext = lastSentences;
 					}
-				} else {
 				}
 
 				// Process chunk

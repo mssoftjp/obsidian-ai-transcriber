@@ -8,6 +8,7 @@ import { IGPTCorrectionService } from '../../../core/transcription/DictionaryCor
 import { DICTIONARY_CORRECTION_CONFIG } from '../../../config/DictionaryCorrectionConfig';
 import { ResourceManager } from '../../../core/resources/ResourceManager';
 import { Logger } from '../../../utils/Logger';
+import { OpenAIChatResponse } from '../openai/OpenAIChatTypes';
 
 /**
  * GPT dictionary correction service implementation
@@ -60,7 +61,7 @@ export class GPTDictionaryCorrectionService extends ApiClient implements IGPTCor
 		}, DICTIONARY_CORRECTION_CONFIG.gpt.timeout);
 
 		try {
-			const response = await this.post<any>(
+			const response = await this.post<OpenAIChatResponse>(
 				'/chat/completions',
 				requestBody,
 				{},
@@ -190,7 +191,7 @@ Return only the corrected text. No explanations needed.`
 	 */
 	async testConnection(): Promise<boolean> {
 		try {
-			const response = await this.get<any>('/models');
+			const response = await this.get<unknown>('/models');
 			this.logger.debug('Connection test succeeded');
 			return true;
 		} catch (error) {

@@ -30,7 +30,7 @@ export interface ApiErrorData {
 	status: number;
 	message: string;
 	code?: string;
-	details?: any;
+	details?: unknown;
 }
 
 export abstract class ApiClient {
@@ -59,7 +59,7 @@ export abstract class ApiClient {
 	 */
 	protected async post<T>(
 		endpoint: string,
-		data: FormData | Record<string, any>,
+		data: FormData | Record<string, unknown>,
 		options: RequestInit = {},
 		signal?: AbortSignal
 	): Promise<T> {
@@ -139,10 +139,8 @@ export abstract class ApiClient {
 				
 				// Build multipart/form-data manually
 				const formData = options.body as FormData;
-				// Use a type guard to ensure type safety
-				const formDataAny = formData as any;
-				if ('entries' in formDataAny && typeof formDataAny.entries === 'function') {
-					for (const [key, value] of formDataAny.entries()) {
+				if (typeof formData.entries === 'function') {
+					for (const [key, value] of formData.entries()) {
 						chunks.push(encoder.encode(`--${boundary}\r\n`));
 						
 						if (value instanceof File) {

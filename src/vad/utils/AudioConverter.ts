@@ -186,7 +186,10 @@ export class AudioConverter {
    */
   cleanup(): void {
     if (this.audioContext) {
-      this.audioContext.close();
+      const closePromise = this.audioContext.close();
+      closePromise.catch((error) => {
+        console.warn('Failed to close AudioContext in AudioConverter', error);
+      });
       this.audioContext = null;
     }
   }

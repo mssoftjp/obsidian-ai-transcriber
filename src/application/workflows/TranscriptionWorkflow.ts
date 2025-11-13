@@ -185,9 +185,10 @@ export class TranscriptionWorkflow {
 				throw error; // Pass it through
 			}
 			
-			// Re-throw original error
-			if (error instanceof Error && error.message.includes('cancelled')) {
-			}
+				// Re-throw original error
+				if (error instanceof Error && error.message.includes('cancelled')) {
+					this.logger.info('Transcription workflow cancelled after processing began');
+				}
 			throw error;
 		} finally {
 			this.cleanup();

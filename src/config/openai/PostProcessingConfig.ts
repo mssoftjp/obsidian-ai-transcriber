@@ -6,6 +6,7 @@
 import { ModelSpecificOptions } from '../../core/transcription/TranscriptionTypes';
 import { estimateTokenCount as tokenEstimateTokenCount } from '../TokenConstants';
 import { replacePromptParams } from '../../i18n/promptHelpers';
+import { OpenAIChatRequest } from '../../infrastructure/api/openai/OpenAIChatTypes';
 
 export interface PostProcessingConfig {
 	endpoint: string;
@@ -337,7 +338,7 @@ function getPrompt(
 export function buildPostProcessingMetaRequest(
 	metaInfo: string,
 	language: string = 'ja'
-): any {
+): OpenAIChatRequest {
 	
 	// Use prompts from config directly instead of i18n
 	const systemPrompt = getPrompt(POST_PROCESSING_CONFIG.prompts.metaReduction.system, language);
@@ -400,7 +401,7 @@ export function buildPostProcessingRequest(
 	context: string,
 	keywords: string[],
 	language: string = 'ja'
-): any {
+): OpenAIChatRequest {
 	
 	// Use prompts from config directly instead of i18n
 	const systemPrompt = getPrompt(POST_PROCESSING_CONFIG.prompts.postProcessing.system, language);

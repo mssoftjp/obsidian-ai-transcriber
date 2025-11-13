@@ -25,6 +25,7 @@ export class Logger {
 		prefix: '[AI Transcriber]'
 	};
 	private moduleLoggers: Map<string, Logger> = new Map();
+	private timers: Map<string, number> = new Map();
 	private static readonly MAX_MODULE_LOGGERS = 100; // Prevent unbounded growth
 
 	private constructor(config?: Partial<LoggerConfig>) {
@@ -107,25 +108,29 @@ export class Logger {
 	/**
 	 * Log an error message
 	 */
-	error(message: string, error?: Error | any): void {
-		if (this.shouldLog(LogLevel.ERROR)) {
-			const formattedMsg = this.formatMessage(LogLevel.ERROR, message);
-			if (error) {
-				console.error(formattedMsg, error);
-				// Always show stack trace for errors, regardless of debug mode
-				if (error.stack) {
-					console.error('Stack trace:', error.stack);
-				}
-			} else {
-				console.error(formattedMsg);
-			}
+	error(message: string, error?: unknown): void {
+		if (!this.shouldLog(LogLevel.ERROR)) {
+			return;
 		}
+		const formattedMsg = this.formatMessage(LogLevel.ERROR, message);
+		if (error instanceof Error) {
+			console.error(formattedMsg, error);
+			if (error.stack) {
+				console.error('Stack trace:', error.stack);
+			}
+			return;
+		}
+		if (error !== undefined) {
+			console.error(formattedMsg, error);
+			return;
+		}
+		console.error(formattedMsg);
 	}
 
 	/**
 	 * Log a warning message
 	 */
-	warn(message: string, data?: any): void {
+	warn(message: string, data?: unknown): void {
 		if (this.shouldLog(LogLevel.WARN)) {
 			const formattedMsg = this.formatMessage(LogLevel.WARN, message);
 			if (data !== undefined) {
@@ -139,49 +144,40 @@ export class Logger {
 	/**
 	 * Log an info message
 	 */
-	info(message: string, data?: any): void {
-		if (this.shouldLog(LogLevel.INFO)) {
-			const formattedMsg = this.formatMessage(LogLevel.INFO, message);
-			if (data !== undefined) {
-				console.log(formattedMsg, data);
-			} else {
-				console.log(formattedMsg);
-			}
+	info(message: string, data?: unknown): void {
+		if (!this.shouldLog(LogLevel.INFO)) {
+			return;
 		}
+		const formattedMsg = this.formatMessage(LogLevel.INFO, message);
+		this.recordLog(LogLevel.INFO, formattedMsg, data);
 	}
 
 	/**
 	 * Log a debug message
 	 */
-	debug(message: string, data?: any): void {
-		if (this.shouldLog(LogLevel.DEBUG)) {
-			const formattedMsg = this.formatMessage(LogLevel.DEBUG, message);
-			if (data !== undefined) {
-				console.log(formattedMsg, data);
-			} else {
-				console.log(formattedMsg);
-			}
+	debug(message: string, data?: unknown): void {
+		if (!this.shouldLog(LogLevel.DEBUG)) {
+			return;
 		}
+		const formattedMsg = this.formatMessage(LogLevel.DEBUG, message);
+		this.recordLog(LogLevel.DEBUG, formattedMsg, data);
 	}
 
 	/**
 	 * Log a trace message (most verbose)
 	 */
-	trace(message: string, data?: any): void {
-		if (this.shouldLog(LogLevel.TRACE)) {
-			const formattedMsg = this.formatMessage(LogLevel.TRACE, message);
-			if (data !== undefined) {
-				console.log(formattedMsg, data);
-			} else {
-				console.log(formattedMsg);
-			}
+	trace(message: string, data?: unknown): void {
+		if (!this.shouldLog(LogLevel.TRACE)) {
+			return;
 		}
+		const formattedMsg = this.formatMessage(LogLevel.TRACE, message);
+		this.recordLog(LogLevel.TRACE, formattedMsg, data);
 	}
 
 	/**
 	 * Log method entry (for tracing execution flow)
 	 */
-	enter(methodName: string, params?: any): void {
+	enter(methodName: string, params?: unknown): void {
 		if (this.shouldLog(LogLevel.TRACE)) {
 			const message = `→ ${methodName}`;
 			if (params !== undefined) {
@@ -195,7 +191,7 @@ export class Logger {
 	/**
 	 * Log method exit (for tracing execution flow)
 	 */
-	exit(methodName: string, result?: any): void {
+	exit(methodName: string, result?: unknown): void {
 		if (this.shouldLog(LogLevel.TRACE)) {
 			const message = `← ${methodName}`;
 			if (result !== undefined) {
@@ -210,20 +206,28 @@ export class Logger {
 	 * Log performance timing
 	 */
 	time(label: string): void {
-		if (this.shouldLog(LogLevel.DEBUG)) {
-			// eslint-disable-next-line no-console
-			console.time(`${this.config.prefix} ${label}`);
+		if (!this.shouldLog(LogLevel.DEBUG)) {
+			return;
 		}
+		const timerKey = `${this.config.prefix} ${label}`;
+		this.timers.set(timerKey, this.getTimestamp());
 	}
 
 	/**
 	 * End performance timing
 	 */
 	timeEnd(label: string): void {
-		if (this.shouldLog(LogLevel.DEBUG)) {
-			// eslint-disable-next-line no-console
-			console.timeEnd(`${this.config.prefix} ${label}`);
+		if (!this.shouldLog(LogLevel.DEBUG)) {
+			return;
 		}
+		const timerKey = `${this.config.prefix} ${label}`;
+		const start = this.timers.get(timerKey);
+		if (start === undefined) {
+			return;
+		}
+		const duration = this.getTimestamp() - start;
+		this.debug(`${label} completed in ${duration.toFixed(2)}ms`);
+		this.timers.delete(timerKey);
 	}
 
 	/**
@@ -236,8 +240,26 @@ export class Logger {
 			prefix: `${this.config.prefix} [${scopeName}]`
 		});
 	}
+
+	private recordLog(level: LogLevel, message: string, data?: unknown): void {
+		if (typeof window === 'undefined') {
+			return;
+		}
+		const globalObj = window as Window & { __aiTranscriberLogs?: Array<{ level: LogLevel; message: string; data?: unknown }> };
+		if (!globalObj.__aiTranscriberLogs) {
+			globalObj.__aiTranscriberLogs = [];
+		}
+		globalObj.__aiTranscriberLogs.push({ level, message, data });
+	}
+
+	private getTimestamp(): number {
+		if (typeof performance !== 'undefined' && typeof performance.now === 'function') {
+			return performance.now();
+		}
+		return Date.now();
+	}
 }
 
 // Export convenience functions
 export const logger = Logger.getInstance();
-export const getLogger = Logger.getLogger;
+export const getLogger = (moduleName: string): Logger => Logger.getLogger(moduleName);

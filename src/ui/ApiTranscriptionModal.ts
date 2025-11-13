@@ -181,7 +181,7 @@ export class APITranscriptionModal extends Modal {
 		// Third row: Cost estimation (integrated)
 		const costRow = fileInfo.createEl('div', { cls: 'file-info-row cost-row' });
 		this.costEl = costRow.createEl('div', { cls: 'cost-info' });
-		this.displayCostEstimate();
+		void this.displayCostEstimate();
 
 		// Show warning for large files
 		const sizeMB = this.audioFile.stat.size / (1024 * 1024);
@@ -205,7 +205,7 @@ export class APITranscriptionModal extends Modal {
 			text: t('common.loading')
 		});
 		// Load time range controls asynchronously
-		this.loadTimeRangeControls(loadingEl);
+		void this.loadTimeRangeControls(loadingEl);
 
 		// Always process in background on desktop
 		if (!Platform.isMobile && this.progressTracker) {
@@ -372,14 +372,14 @@ export class APITranscriptionModal extends Modal {
 	}
 
 	private releaseWakeLock() {
-		try {
-			if (this.wakeLock) {
-				this.wakeLock.release();
-				this.wakeLock = null;
-			}
-		} catch (err) {
-			this.logger.warn('Failed to release wake lock', err);
+		if (!this.wakeLock) {
+			return;
 		}
+		const releasePromise = this.wakeLock.release();
+		releasePromise.catch(err => {
+			this.logger.warn('Failed to release wake lock', err);
+		});
+		this.wakeLock = null;
 	}
 
 	private async startTranscription() {
@@ -406,7 +406,7 @@ export class APITranscriptionModal extends Modal {
 			this.close();
 
 			// Continue processing in background
-			this.performTranscriptionInBackground().finally(() => {
+			void this.performTranscriptionInBackground().finally(() => {
 				this.releaseWakeLock();
 				this.isTranscribing = false;
 			});
@@ -1106,16 +1106,16 @@ export class APITranscriptionModal extends Modal {
 				.onClick(async () => {
 					const { FolderSuggestModal } = await import('./FolderSuggestModal');
 					const modal = new FolderSuggestModal(this.app, this.settings.transcriptionOutputFolder || '');
-					modal.onChooseFolderPath = async (folderPath: string) => {
+					modal.onChooseFolderPath = (folderPath: string) => {
 						this.settings.transcriptionOutputFolder = folderPath;
-						await this.transcriber.updateSettings(this.settings);
+						void this.transcriber.updateSettings(this.settings);
 						if (this.saveSettings) {
-							await this.saveSettings();
+							void this.saveSettings();
 						}
 						// Update the text input
 						const textComponent = folderSetting.components[0];
 						if (textComponent && 'setValue' in textComponent) {
-							(textComponent as unknown as { setValue: (value: string) => void }).setValue(folderPath);
+							(textComponent as { setValue: (value: string) => void }).setValue(folderPath);
 						}
 					};
 					modal.open();
@@ -1269,7 +1269,7 @@ export class APITranscriptionModal extends Modal {
 			});
 
 			// Update cost estimate with actual audio duration
-			this.displayCostEstimate();
+			void this.displayCostEstimate();
 
 			// Add waveform selector
 			const waveformContainer = this.timeRangeEl.createEl('div', {
@@ -1312,7 +1312,7 @@ export class APITranscriptionModal extends Modal {
 					checkbox.checked = true;
 				}
 				this.updateTimeRangeControls();
-				this.displayCostEstimate();
+				void this.displayCostEstimate();
 			});
 
 			// Close audio context after successful load
@@ -1352,7 +1352,7 @@ export class APITranscriptionModal extends Modal {
 			this.enableTimeRange = (e.target as HTMLInputElement).checked;
 			this.updateTimeRangeControls();
 			// Update cost estimate when range is enabled/disabled
-			this.displayCostEstimate();
+			void this.displayCostEstimate();
 		});
 
 		// Time inputs with separate fields for better UX
@@ -1519,7 +1519,7 @@ export class APITranscriptionModal extends Modal {
 		this.endTimeInput.value = this.formatTimeFromComponents(endHours, endMins, endSecs);
 
 		// Update cost estimate and waveform
-		this.displayCostEstimate();
+		void this.displayCostEstimate();
 		if (this.waveformSelector) {
 			const start = this.parseTimeString(this.startTimeInput.value);
 			const end = this.parseTimeString(this.endTimeInput.value);
@@ -1696,13 +1696,11 @@ export class APITranscriptionModal extends Modal {
 		}
 		// Clean up audio context if still open
 		if (this.modalAudioContext && this.modalAudioContext.state !== 'closed') {
-			try {
-				this.modalAudioContext.close();
-			} catch (error) {
+			const closePromise = this.modalAudioContext.close();
+			closePromise.catch(error => {
 				this.logger.error('Failed to close AudioContext on modal close', error);
-			} finally {
-				this.modalAudioContext = null;
-			}
+			});
+			this.modalAudioContext = null;
 		}
 		// Release wake lock if still held
 		this.releaseWakeLock();

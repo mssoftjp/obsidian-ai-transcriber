@@ -213,7 +213,7 @@ export class DictionaryManagementModal extends Modal {
 				priority: DICTIONARY_CONSTANTS.DEFAULT_PRIORITY
 			};
 			entries.push(newEntry);
-			this.saveSettings();
+			void this.saveSettings();
 			this.displayDictionary();
 		});
 	}
@@ -276,7 +276,7 @@ export class DictionaryManagementModal extends Modal {
 				contextKeywords: []
 			};
 			entries.push(newEntry);
-			this.saveSettings();
+			void this.saveSettings();
 			this.displayDictionary();
 		});
 	}
@@ -294,7 +294,7 @@ export class DictionaryManagementModal extends Modal {
 		fromInput.addEventListener('change', (e) => {
 			const value = (e.target as HTMLInputElement).value;
 			entry.from = value ? value.split(',').map(s => s.trim()).filter(s => s) : [];
-			this.saveSettings();
+			void this.saveSettings();
 		});
 
 		// To
@@ -306,7 +306,7 @@ export class DictionaryManagementModal extends Modal {
 		});
 		toInput.addEventListener('change', (e) => {
 			entry.to = (e.target as HTMLInputElement).value;
-			this.saveSettings();
+			void this.saveSettings();
 		});
 
 		// Category
@@ -323,7 +323,7 @@ export class DictionaryManagementModal extends Modal {
 		});
 		categorySelect.addEventListener('change', (e) => {
 			entry.category = (e.target as HTMLSelectElement).value as DictionaryCategory;
-			this.saveSettings();
+			void this.saveSettings();
 		});
 
 		// Priority
@@ -340,7 +340,7 @@ export class DictionaryManagementModal extends Modal {
 		});
 		prioritySelect.addEventListener('change', (e) => {
 			entry.priority = parseInt((e.target as HTMLSelectElement).value);
-			this.saveSettings();
+			void this.saveSettings();
 		});
 
 		// Delete button
@@ -352,7 +352,7 @@ export class DictionaryManagementModal extends Modal {
 		deleteButton.addEventListener('click', () => {
 			const currentDict = this.getCurrentDictionary();
 			currentDict.definiteCorrections.splice(index, 1);
-			this.saveSettings();
+			void this.saveSettings();
 			this.displayDictionary();
 		});
 	}
@@ -370,7 +370,7 @@ export class DictionaryManagementModal extends Modal {
 		fromInput.addEventListener('change', (e) => {
 			const value = (e.target as HTMLInputElement).value;
 			entry.from = value ? value.split(',').map(s => s.trim()).filter(s => s) : [];
-			this.saveSettings();
+			void this.saveSettings();
 		});
 
 		// To
@@ -382,7 +382,7 @@ export class DictionaryManagementModal extends Modal {
 		});
 		toInput.addEventListener('change', (e) => {
 			entry.to = (e.target as HTMLInputElement).value;
-			this.saveSettings();
+			void this.saveSettings();
 		});
 
 		// Category
@@ -399,7 +399,7 @@ export class DictionaryManagementModal extends Modal {
 		});
 		categorySelect.addEventListener('change', (e) => {
 			entry.category = (e.target as HTMLSelectElement).value as DictionaryCategory;
-			this.saveSettings();
+			void this.saveSettings();
 		});
 
 		// Priority
@@ -416,7 +416,7 @@ export class DictionaryManagementModal extends Modal {
 		});
 		prioritySelect.addEventListener('change', (e) => {
 			entry.priority = parseInt((e.target as HTMLSelectElement).value);
-			this.saveSettings();
+			void this.saveSettings();
 		});
 
 		// Context
@@ -429,7 +429,7 @@ export class DictionaryManagementModal extends Modal {
 		contextInput.addEventListener('change', (e) => {
 			const value = (e.target as HTMLInputElement).value;
 			entry.contextKeywords = value ? value.split(',').map(k => k.trim()).filter(k => k) : [];
-			this.saveSettings();
+			void this.saveSettings();
 		});
 
 		// Delete button
@@ -442,7 +442,7 @@ export class DictionaryManagementModal extends Modal {
 			const currentDict = this.getCurrentDictionary();
 			const entries = currentDict.contextualCorrections || [];
 			entries.splice(index, 1);
-			this.saveSettings();
+			void this.saveSettings();
 			this.displayDictionary();
 		});
 	}
@@ -453,7 +453,7 @@ export class DictionaryManagementModal extends Modal {
 		}
 	}
 
-	private async exportDictionary(): Promise<void> {
+	private exportDictionary(): void {
 		try {
 			// Check if any dictionary has data
 			const hasData = Object.values(this.settings.userDictionaries).some(dict =>
@@ -499,7 +499,7 @@ export class DictionaryManagementModal extends Modal {
 		}
 	}
 
-	private async importDictionary(): Promise<void> {
+	private importDictionary(): void {
 		const input = document.createElement('input');
 		input.type = 'file';
 		input.accept = '.json';

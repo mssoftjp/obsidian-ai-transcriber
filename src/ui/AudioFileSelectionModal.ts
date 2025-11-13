@@ -25,7 +25,7 @@ export class AudioFileSelectionModal extends Modal {
 		this.tempFileManager = new TempFileManager(app);
 	}
 
-	async onOpen() {
+	onOpen() {
 		const { contentEl } = this;
 		contentEl.empty();
 		this.modalEl.addClass('ai-transcriber-modal');
@@ -265,7 +265,7 @@ export class AudioFileSelectionModal extends Modal {
 		}
 	}
 
-	private async onExternalFileSelect() {
+	private onExternalFileSelect() {
 		const input = document.createElement('input');
 		input.type = 'file';
 		input.accept = SUPPORTED_FORMATS.EXTENSIONS.map(ext => `.${ext}`).join(',');

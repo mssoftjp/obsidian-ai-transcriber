@@ -179,11 +179,16 @@ export class BaseHallucinationCleaner implements TextCleaner {
 			// we allow up to configured limit (default 99.9%)
 			const iterationReductionLimit = this.strategy?.safetyThresholds?.iterationReductionLimit || 0.999;
 			const iterationReduction = (previousLength - currentLength) / previousLength;
-			if (iterationReduction > iterationReductionLimit) {
-				if (enableDetailedLogging) {
+				if (iterationReduction > iterationReductionLimit) {
+					if (enableDetailedLogging) {
+						this.logger.warn('Iteration reduction exceeded threshold', {
+							iteration,
+							iterationReduction,
+							limit: iterationReductionLimit
+						});
+					}
+					break;
 				}
-				break;
-			}
 			
 			previousLength = currentLength;
 			iteration++;
@@ -234,14 +239,15 @@ export class BaseHallucinationCleaner implements TextCleaner {
 		}
 
 		// Detailed logging if enabled
-		if (enableDetailedLogging) {
-			
-			if (removedSections.length > 0) {
-				removedSections.forEach((removal, index) => {
-				});
-			} else {
+			if (enableDetailedLogging) {
+				if (removedSections.length > 0) {
+					removedSections.forEach((removal, index) => {
+						this.logger.debug(`Removed section #${index + 1}`, removal);
+					});
+				} else {
+					this.logger.debug('No sections removed during hallucination cleaning');
+				}
 			}
-		}
 
 		const significantChangeThreshold = this.strategy?.safetyThresholds?.significantChangeThreshold || 0.1;
 		
@@ -272,9 +278,10 @@ export class BaseHallucinationCleaner implements TextCleaner {
 	): string {
 		let cleanedText = text;
 
-		for (const pattern of patterns) {
-			if (enableDetailedLogging) {
-			}
+			for (const pattern of patterns) {
+				if (enableDetailedLogging) {
+					this.logger.trace('Evaluating hallucination pattern', { pattern: pattern.toString() });
+				}
 			
 			const beforeText = cleanedText;
 			const beforeLength = cleanedText.length;
@@ -307,15 +314,23 @@ export class BaseHallucinationCleaner implements TextCleaner {
 				const afterReplace = cleanedText.replace(pattern, '');
 				const patternReduction = (beforeLength - afterReplace.length) / originalLength;
 
-				if (enableDetailedLogging && matches) {
-				}
-				
-				// Apply pattern only if within safe reduction limit
-				if (patternReduction <= maxReduction) {
-					if (enableDetailedLogging) {
+					if (enableDetailedLogging && matches) {
+						this.logger.trace('Pattern match count', {
+							pattern: pattern.toString(),
+							matchCount: matches.length
+						});
 					}
-					cleanedText = afterReplace;
 					
+					// Apply pattern only if within safe reduction limit
+					if (patternReduction <= maxReduction) {
+						if (enableDetailedLogging) {
+							this.logger.debug('Pattern applied', {
+								pattern: pattern.toString(),
+								reduction: patternReduction
+							});
+						}
+						cleanedText = afterReplace;
+						
 					if (beforeLength !== cleanedText.length && enableDetailedLogging) {
 						const matches = Array.from(beforeText.matchAll(pattern));
 						for (const match of matches) {
@@ -326,11 +341,16 @@ export class BaseHallucinationCleaner implements TextCleaner {
 							});
 						}
 					}
-				} else if (enableDetailedLogging) {
+					} else if (enableDetailedLogging) {
+						this.logger.debug('Skipped pattern due to reduction limit', {
+							pattern: pattern.toString(),
+							reduction: patternReduction,
+							maxReduction
+						});
+					}
 				}
-			}
-			
-			if (beforeLength !== cleanedText.length) {
+				
+				if (beforeLength !== cleanedText.length) {
 				patternsMatched.push(pattern.toString());
 			}
 		}
@@ -688,8 +708,9 @@ export class BaseHallucinationCleaner implements TextCleaner {
 			seen.add(fp);
 			keep.push(s);
 			
-			if (enableDetailedLogging) {
-			}
+				if (enableDetailedLogging) {
+					this.logger.trace('Keeping unique sentence fingerprint', { fingerprint: fp });
+				}
 		}
 
 		return keep.join('');

@@ -10,6 +10,13 @@ import { TranscriptionService } from './TranscriptionService';
 import { Logger } from '../../utils/Logger';
 import { t } from '../../i18n';
 
+export interface TranscriptionExecutionResult {
+	text: string;
+	segments?: Array<{ text: string; start: number; end: number; }>;
+	partial?: boolean;
+	error?: string;
+}
+
 export abstract class TranscriptionStrategy {
 	protected transcriptionService: TranscriptionService;
 	protected onProgress?: (progress: TranscriptionProgress) => void;
@@ -66,7 +73,7 @@ export abstract class TranscriptionStrategy {
 	async execute(
 		chunks: AudioChunk[],
 		options: TranscriptionOptions
-	): Promise<{ text: string; segments?: Array<{ text: string; start: number; end: number; }>; partial?: boolean; error?: string }> {
+	): Promise<TranscriptionExecutionResult> {
 		this.abortSignal = options.signal;
 
 		// Report initial progress
@@ -93,11 +100,10 @@ export abstract class TranscriptionStrategy {
 			processingError = error as Error;
 			isCancelled = processingError.message.includes('cancelled') || processingError.message.includes('aborted') || processingError.name === 'AbortError';
 			
-			// Log the interruption
-			if (isCancelled) {
-			} else {
-				this.logger.warn(`Processing interrupted: ${processingError.message}`);
-			}
+				// Log the interruption
+				if (!isCancelled) {
+					this.logger.warn(`Processing interrupted: ${processingError.message}`);
+				}
 			
 			// If no results at all and not cancelled, re-throw the error
 			if (results.length === 0 && !isCancelled) {
@@ -148,7 +154,7 @@ export abstract class TranscriptionStrategy {
 				cancellable: false
 			});
 
-				const result: any = {
+				const result: TranscriptionExecutionResult = {
 					text: mergedText,
 					segments: allSegments
 				};

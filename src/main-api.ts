@@ -76,34 +76,34 @@ export default class AITranscriberPlugin extends Plugin {
 			this.statusBarManager.initialize();
 			
 			// Set click handler to open side panel
-			this.statusBarManager.setClickHandler(() => {
-				this.logger.debug('Status bar clicked, opening transcription view');
-				this.activateTranscriptionView();
-			});
-		}
+				this.statusBarManager.setClickHandler(() => {
+					this.logger.debug('Status bar clicked, opening transcription view');
+					void this.activateTranscriptionView();
+				});
+			}
 
 		// Add command to transcribe selected audio file
 		this.addCommand({
 			id: 'api-transcribe-audio',
-			name: t('commands.transcribeAudio'),
-			callback: () => {
-				this.transcribeCurrentAudio();
-			}
-		});
+				name: t('commands.transcribeAudio'),
+				callback: () => {
+					void this.transcribeCurrentAudio();
+				}
+			});
 
 		// Add command to open transcription view
 		this.addCommand({
 			id: 'open-transcription-view',
-			name: t('commands.openPanel'),
-			callback: () => {
-				this.activateTranscriptionView();
-			}
-		});
+				name: t('commands.openPanel'),
+				callback: () => {
+					void this.activateTranscriptionView();
+				}
+			});
 
 		// Add ribbon icon
-		this.addRibbonIcon('file-audio', t('ribbon.tooltip'), () => {
-			this.transcribeCurrentAudio();
-		});
+			this.addRibbonIcon('file-audio', t('ribbon.tooltip'), () => {
+				void this.transcribeCurrentAudio();
+			});
 
 		// Register context menu for audio files
 		this.registerEvent(
@@ -141,9 +141,9 @@ export default class AITranscriberPlugin extends Plugin {
 		}
 
 		// Clean up API transcriber resources
-		if (this.transcriber && typeof this.transcriber.cleanup === 'function') {
-			this.transcriber.cleanup();
-		}
+			if (this.transcriber && typeof this.transcriber.cleanup === 'function') {
+				await this.transcriber.cleanup();
+			}
 
 		// Clean up all global resources via ResourceManager
 		await ResourceManager.getInstance().cleanupAll();
@@ -348,23 +348,21 @@ export default class AITranscriberPlugin extends Plugin {
 			// Activating transcription view...
 
 			// Check if view already exists
-			const existing = workspace.getLeavesOfType(VIEW_TYPE_TRANSCRIPTION);
-			if (existing.length) {
-				// Found existing view, revealing it
-				// Reveal existing view
-				workspace.revealLeaf(existing[0]);
-				return;
-			}
+				const existing = workspace.getLeavesOfType(VIEW_TYPE_TRANSCRIPTION);
+				if (existing.length) {
+					await workspace.revealLeaf(existing[0]);
+					return;
+				}
 
 			// Create new view in right sidebar
 			// Creating new view in right sidebar
 			const leaf = workspace.getRightLeaf(false);
-			if (leaf) {
-				await leaf.setViewState({
-					type: VIEW_TYPE_TRANSCRIPTION,
-					active: true,
-				});
-				workspace.revealLeaf(leaf);
+				if (leaf) {
+					await leaf.setViewState({
+						type: VIEW_TYPE_TRANSCRIPTION,
+						active: true,
+					});
+					await workspace.revealLeaf(leaf);
 				// View created and revealed successfully
 			} else {
 				// Failed to get right leaf

@@ -348,7 +348,7 @@ export class VADPreprocessor {
 	private logStatistics(result: VADResult, totalTimeMs: number, rangeStart?: number, rangeEnd?: number): void {
 		const stats = result.statistics;
 
-		const logData: any = {
+		const logData: Record<string, string | number> = {
 			totalSegments: stats.totalSegments,
 			speechRatio: `${(stats.speechRatio * 100).toFixed(1)}%`,
 			processingTime: `${totalTimeMs.toFixed(2)}ms`
