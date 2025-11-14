@@ -1,4 +1,4 @@
-import { App, Notice, Plugin, TFile, Menu, Platform, moment, getLanguage } from 'obsidian';
+import { Notice, Plugin, TFile, Menu, Platform, moment, getLanguage } from 'obsidian';
 import { APITranscriber } from './ApiTranscriber';
 import { APITranscriptionSettings, DEFAULT_API_SETTINGS } from './ApiSettings';
 import { APISettingsTab } from './ApiSettingsTab';
@@ -29,7 +29,7 @@ export default class AITranscriberPlugin extends Plugin {
 	async onload() {
 		// Initialize i18n BEFORE loading settings
 		initializeTranslations({ en, ja, zh, ko });
-		initializeI18n(this.app);
+		initializeI18n();
 
 		await this.loadSettings();
 

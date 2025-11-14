@@ -32,7 +32,7 @@ export class AudioWaveformSelector {
 	/**
 	 * Load audio buffer and draw waveform
 	 */
-	async loadAudio(audioBuffer: AudioBuffer) {
+	loadAudio(audioBuffer: AudioBuffer): void {
 		this.audioBuffer = audioBuffer;
 		this.endTime = audioBuffer.duration;
 		this.precomputeWaveform();
@@ -153,7 +153,7 @@ export class AudioWaveformSelector {
 		const data = this.audioBuffer.getChannelData(0);
 		const step = Math.ceil(data.length / width);
 
-		this.waveformData = new Array(width);
+		this.waveformData = new Array<{ min: number; max: number }>(width);
 
 		for (let i = 0; i < width; i++) {
 			let min = 1.0;
@@ -247,18 +247,18 @@ export class AudioWaveformSelector {
 	 * Setup mouse event listeners
 	 */
 	private setupEventListeners() {
-		this.canvas.addEventListener('mousedown', this.handleMouseDown.bind(this));
-		this.canvas.addEventListener('mousemove', this.handleMouseMove.bind(this));
-		this.canvas.addEventListener('mouseup', this.handleMouseUp.bind(this));
-		this.canvas.addEventListener('mouseleave', this.handleMouseUp.bind(this));
+		this.canvas.addEventListener('mousedown', this.handleMouseDown);
+		this.canvas.addEventListener('mousemove', this.handleMouseMove);
+		this.canvas.addEventListener('mouseup', this.handleMouseUp);
+		this.canvas.addEventListener('mouseleave', this.handleMouseUp);
 
 		// Touch events for mobile
-		this.canvas.addEventListener('touchstart', this.handleTouchStart.bind(this));
-		this.canvas.addEventListener('touchmove', this.handleTouchMove.bind(this));
-		this.canvas.addEventListener('touchend', this.handleTouchEnd.bind(this));
+		this.canvas.addEventListener('touchstart', this.handleTouchStart, { passive: false });
+		this.canvas.addEventListener('touchmove', this.handleTouchMove, { passive: false });
+		this.canvas.addEventListener('touchend', this.handleTouchEnd, { passive: false });
 	}
 
-	private handleMouseDown(e: MouseEvent) {
+	private handleMouseDown = (e: MouseEvent): void => {
 		if (!this.audioBuffer) {
 			return;
 		}
@@ -287,9 +287,9 @@ export class AudioWaveformSelector {
 
 		this.canvas.classList.remove('ait-cursor-default', 'ait-cursor-grab', 'ait-cursor-ew-resize');
 		this.canvas.classList.add('ait-cursor-grabbing');
-	}
+	};
 
-	private handleMouseMove(e: MouseEvent) {
+	private handleMouseMove = (e: MouseEvent): void => {
 		if (!this.audioBuffer) {
 			return;
 		}
@@ -341,17 +341,17 @@ export class AudioWaveformSelector {
 				this.onRangeChange(this.startTime, this.endTime);
 			}
 		}
-	}
+	};
 
-	private handleMouseUp() {
+	private handleMouseUp = (): void => {
 		this.isDragging = false;
 		this.dragType = null;
 		this.canvas.classList.remove('ait-cursor-grab', 'ait-cursor-ew-resize', 'ait-cursor-grabbing');
 		this.canvas.classList.add('ait-cursor-default');
-	}
+	};
 
 	// Touch event handlers
-	private handleTouchStart(e: TouchEvent) {
+	private handleTouchStart = (e: TouchEvent): void => {
 		e.preventDefault();
 		const touch = e.touches[0];
 		const mouseEvent = new MouseEvent('mousedown', {
@@ -359,9 +359,9 @@ export class AudioWaveformSelector {
 			clientY: touch.clientY
 		});
 		this.handleMouseDown(mouseEvent);
-	}
+	};
 
-	private handleTouchMove(e: TouchEvent) {
+	private handleTouchMove = (e: TouchEvent): void => {
 		e.preventDefault();
 		const touch = e.touches[0];
 		const mouseEvent = new MouseEvent('mousemove', {
@@ -369,12 +369,12 @@ export class AudioWaveformSelector {
 			clientY: touch.clientY
 		});
 		this.handleMouseMove(mouseEvent);
-	}
+	};
 
-	private handleTouchEnd(e: TouchEvent) {
+	private handleTouchEnd = (e: TouchEvent): void => {
 		e.preventDefault();
 		this.handleMouseUp();
-	}
+	};
 
 	/**
 	 * Format time in MM:SS

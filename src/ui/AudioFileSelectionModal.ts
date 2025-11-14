@@ -293,14 +293,13 @@ export class AudioFileSelectionModal extends Modal {
 				progressContainer.createEl('h3', { text: t('modal.audioFileSelection.copying') });
 
 				const progressBar = progressContainer.createDiv({ cls: 'ai-transcriber-progress-bar' });
-				progressBar.createDiv({ cls: 'ai-transcriber-progress-fill' });
+				const progressFill = progressBar.createDiv({ cls: 'ai-transcriber-progress-fill' });
 				const progressText = progressContainer.createDiv({ cls: 'ai-transcriber-progress-text' });
 
 				try {
 					// 外部ファイルをvault内に一時コピー
 					const result = await this.tempFileManager.copyExternalFile(file, (progress) => {
-						// Use CSP-compliant approach for progress updates
-						this.setProgressViaStylesheet('.copy-progress-container .ai-transcriber-progress-fill', progress);
+						this.updateProgressFill(progressFill, progress);
 						progressText.setText(`${Math.round(progress)}%`);
 					});
 
@@ -318,32 +317,14 @@ export class AudioFileSelectionModal extends Modal {
 		input.click();
 	}
 
-	/**
-	 * Set progress using CSP-compliant dynamic stylesheet
-	 */
-	private setProgressViaStylesheet(selector: string, percentage: number): void {
-		// Find or create our dynamic stylesheet for progress updates
-		let styleSheet = document.querySelector('#ait-dynamic-progress-copy') as HTMLStyleElement;
-		if (!styleSheet) {
-			styleSheet = document.createElement('style');
-			styleSheet.id = 'ait-dynamic-progress-copy';
-			document.head.appendChild(styleSheet);
-		}
-
-		// Update the CSS rule for this progress bar
-		const rule = `${selector} { width: ${percentage}%; }`;
-		styleSheet.textContent = rule;
+	private updateProgressFill(element: HTMLElement, percentage: number): void {
+		const clamped = Math.max(0, Math.min(percentage, 100));
+		element.style.setProperty('width', `${clamped}%`);
 	}
 
 	onClose() {
 		const { contentEl } = this;
 		contentEl.empty();
-
-		// Clean up dynamic stylesheet for CSP compliance
-		const dynamicStyleSheet = document.querySelector('#ait-dynamic-progress-copy');
-		if (dynamicStyleSheet) {
-			dynamicStyleSheet.remove();
-		}
 
 		// クリーンアップはプラグイン起動時に一括で行うため、ここでは何もしない
 	}

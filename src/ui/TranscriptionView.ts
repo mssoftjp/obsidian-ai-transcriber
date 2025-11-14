@@ -1,4 +1,4 @@
-import { ItemView, WorkspaceLeaf, TFile, Notice, Modal, App } from 'obsidian';
+import { ItemView, WorkspaceLeaf, TFile, Notice, Modal, App, CachedMetadata } from 'obsidian';
 import { ProgressTracker, TranscriptionTask } from './ProgressTracker';
 import { t } from '../i18n';
 import { LoadingAnimation } from '../core/utils/LoadingAnimation';
@@ -49,7 +49,7 @@ export class TranscriptionView extends ItemView {
 		return 'file-audio';
 	}
 
-	async onOpen() {
+	onOpen(): Promise<void> {
 		const { contentEl } = this;
 		contentEl.empty();
 		contentEl.addClass('ai-transcriber-view');
@@ -63,7 +63,7 @@ export class TranscriptionView extends ItemView {
 		this.buildControlSection();
 
 		// Subscribe to progress updates
-		this.unsubscribeProgress = this.progressTracker.addListener(this.handleProgressUpdate.bind(this));
+		this.unsubscribeProgress = this.progressTracker.addListener(this.handleProgressUpdate);
 
 		// Start update interval
 		this.updateInterval = window.setInterval(() => {
@@ -74,9 +74,10 @@ export class TranscriptionView extends ItemView {
 		this.updateView();
 		// Ensure history is displayed even if data is still loading
 		this.updateHistoryDisplay();
+		return Promise.resolve();
 	}
 
-	async onClose() {
+	onClose(): Promise<void> {
 		// Clear update interval
 		if (this.updateInterval !== null) {
 			window.clearInterval(this.updateInterval);
@@ -98,6 +99,7 @@ export class TranscriptionView extends ItemView {
 		this.timeEl = null;
 		this.cancelBtnEl = null;
 		this.noTaskEl = null;
+		return Promise.resolve();
 	}
 
 	private buildProgressSection() {
@@ -150,7 +152,7 @@ export class TranscriptionView extends ItemView {
 		});
 	}
 
-	private handleProgressUpdate() {
+	private handleProgressUpdate = (_task: TranscriptionTask | null): void => {
 		const currentTask = this.progressTracker.getCurrentTask();
 		// タスクが完了または失敗した場合は履歴も更新
 		if (currentTask && ['completed', 'error', 'partial', 'cancelled'].includes(currentTask.status)) {
@@ -160,7 +162,7 @@ export class TranscriptionView extends ItemView {
 		} else {
 			this.updateView();
 		}
-	}
+	};
 
 	private updateView() {
 		this.updateProgressDisplay();
@@ -399,7 +401,7 @@ export class TranscriptionView extends ItemView {
 				await this.app.workspace.openLinkText(file.path, '', true);
 			} else {
 				// ファイルが見つからない場合、検索を提案
-				await this.handleMissingFile(task);
+				this.handleMissingFile(task);
 			}
 			return;
 		}
@@ -414,7 +416,7 @@ export class TranscriptionView extends ItemView {
 	/**
 	 * Handle missing transcription file
 	 */
-	private async handleMissingFile(task: TranscriptionTask) {
+	private handleMissingFile(task: TranscriptionTask): void {
 		const searchQuery = task.transcriptionTimestamp ||
 			new Date(task.endTime || task.startTime).toLocaleString('ja-JP');
 
@@ -426,22 +428,27 @@ export class TranscriptionView extends ItemView {
 			t('common.fileNotFound'),
 			t('common.searchForFile', { timestamp: searchQuery }),
 			t('common.search'),
-			async () => {
+			() => {
 				// タイムスタンプで文字起こしファイルを検索
 				const files = this.app.vault.getFiles();
-				const matchingFiles = files.filter(file =>
-					file.extension === 'md' &&
-					this.app.metadataCache.getFileCache(file)?.frontmatter?.['transcription_timestamp']?.includes(searchQuery)
-				);
+				const matchingFiles = files.filter(file => {
+					if (file.extension !== 'md') {
+						return false;
+					}
+					const cache: CachedMetadata | null = this.app.metadataCache.getFileCache(file);
+					const transcriptionTimestampValue: unknown = cache?.frontmatter?.['transcription_timestamp'];
+					return typeof transcriptionTimestampValue === 'string' && transcriptionTimestampValue.includes(searchQuery);
+				});
 
 				if (matchingFiles.length > 0) {
 					// ファイル選択モーダルを表示
 					void this.showFileSelectionModal(task, matchingFiles);
 				} else {
 					// 見つからない場合は全文検索を開く
-					const searchPlugin = ((this.app as unknown) as ObsidianApp).internalPlugins?.getPluginById('global-search');
+					const searchPlugin: unknown = ((this.app as unknown) as ObsidianApp).internalPlugins?.getPluginById('global-search');
 					if (this.isSearchPlugin(searchPlugin)) {
-						searchPlugin.instance.openGlobalSearch(`"${searchQuery}"`);
+						const globalSearch: { openGlobalSearch: (query: string) => void } = searchPlugin.instance;
+						globalSearch.openGlobalSearch(`"${searchQuery}"`);
 					}
 					new Notice(t('common.manualSearchRequired'));
 				}
@@ -453,7 +460,7 @@ export class TranscriptionView extends ItemView {
 	/**
 	 * Show file selection modal and update history
 	 */
-	private async showFileSelectionModal(task: TranscriptionTask, matchingFiles: TFile[]) {
+	private showFileSelectionModal(task: TranscriptionTask, matchingFiles: TFile[]): void {
 		const modal = new FileSelectionModal(
 			this.app,
 			matchingFiles,
@@ -467,9 +474,10 @@ export class TranscriptionView extends ItemView {
 
 				// フロントマターから元の音声ファイル情報を取得
 				const frontmatter = this.app.metadataCache.getFileCache(selectedFile)?.frontmatter;
-				if (frontmatter?.source_file) {
+				const sourceFilePath = typeof frontmatter?.source_file === 'string' ? frontmatter.source_file : null;
+				if (sourceFilePath) {
 					// 元の音声ファイルも検索
-					const audioFile = this.app.vault.getAbstractFileByPath(frontmatter.source_file);
+					const audioFile = this.app.vault.getAbstractFileByPath(sourceFilePath);
 					if (audioFile instanceof TFile) {
 						updatedTask.inputFilePath = audioFile.path;
 						updatedTask.inputFileName = audioFile.name;
@@ -524,13 +532,23 @@ export class TranscriptionView extends ItemView {
 	}
 
 	private isSearchPlugin(plugin: unknown): plugin is { enabled: boolean; instance: { openGlobalSearch: (query: string) => void } } {
-		return typeof plugin === 'object' &&
-			plugin !== null &&
-			'enabled' in plugin &&
-			'instance' in plugin &&
-			typeof (plugin as Record<string, unknown>).enabled === 'boolean' &&
-			(plugin as Record<string, unknown>).enabled === true &&
-			typeof (plugin as Record<string, unknown>).instance === 'object';
+		if (typeof plugin !== 'object' || plugin === null) {
+			return false;
+		}
+
+		const candidate = plugin as Record<string, unknown>;
+		const { enabled, instance } = candidate;
+
+		if (typeof enabled !== 'boolean' || enabled === false) {
+			return false;
+		}
+
+		if (typeof instance !== 'object' || instance === null) {
+			return false;
+		}
+
+		const searchInstance = instance as { openGlobalSearch?: unknown };
+		return typeof searchInstance.openGlobalSearch === 'function';
 	}
 }
 

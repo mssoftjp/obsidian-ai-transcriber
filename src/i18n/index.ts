@@ -5,16 +5,12 @@
 import { moment, getLanguage } from 'obsidian';
 import { TranslationKeys, SupportedLocale } from './locales';
 import { Logger } from '../utils/Logger';
-import { ObsidianApp } from '../types/global';
 
 // Translations will be imported here
 let translations: Partial<Record<SupportedLocale, TranslationKeys>> = {};
 
 // Current locale
 let currentLocale: SupportedLocale = 'en';
-
-// App instance for accessing Obsidian settings
-let appInstance: ObsidianApp | null = null;
 
 /**
  * Initialize i18n with translations
@@ -27,10 +23,7 @@ export function initializeTranslations(translationData: Record<SupportedLocale, 
 /**
  * Initialize i18n with app instance and detect locale
  */
-export function initializeI18n(app: unknown): void {
-	const obsidianApp = app as ObsidianApp;
-	appInstance = obsidianApp; // eslint-disable-line @typescript-eslint/no-unused-vars
-
+export function initializeI18n(): void {
 	// Get Obsidian's language preference via API with graceful fallbacks
 	const locale = (typeof getLanguage === 'function' ? getLanguage() : undefined) ||
 		moment.locale() ||

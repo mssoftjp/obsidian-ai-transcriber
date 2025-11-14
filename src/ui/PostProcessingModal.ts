@@ -160,7 +160,8 @@ export class PostProcessingModal extends Modal {
 			this.onSubmit(metaInfo);
 
 		} catch (error) {
-			ErrorHandler.handleAndDisplay(error, 'メタ情報の保存');
+			const err = error instanceof Error ? error : new Error(String(error));
+			ErrorHandler.handleAndDisplay(err, 'メタ情報の保存');
 		}
 	}
 

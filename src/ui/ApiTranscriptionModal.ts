@@ -1,4 +1,4 @@
-import { App, Modal, Notice, TFile, MarkdownView, Platform, Setting, moment } from 'obsidian';
+import { App, Modal, Notice, TFile, MarkdownView, Platform, Setting, moment, TextComponent } from 'obsidian';
 import { APITranscriber } from '../ApiTranscriber';
 import { APITranscriptionSettings } from '../ApiSettings';
 import { MODEL_OPTIONS, getModelOption } from '../config/ModelOptions';
@@ -153,7 +153,7 @@ export class APITranscriptionModal extends Modal {
 			}
 
 			// Update cost estimate
-			this.displayCostEstimate();
+			void this.displayCostEstimate();
 		});
 
 		// File info with integrated cost estimation
@@ -318,6 +318,8 @@ export class APITranscriptionModal extends Modal {
 			const detailsEl = this.costEl.createEl('small', { cls: 'cost-details' });
 			detailsEl.setText(adjustedDetails);
 		} catch (error) {
+			const err = error instanceof Error ? error : new Error(String(error));
+			this.logger.error('Failed to calculate cost estimate', err);
 			// Clear and rebuild cost element for error case
 			this.costEl.empty();
 
@@ -806,8 +808,9 @@ export class APITranscriptionModal extends Modal {
 				}
 			}
 		} catch (error) {
-			this.logger.error('Failed to create new note', { error: error.message, filePath });
-			throw new Error(t('errors.createFileFailed', { error: (error as Error).message }));
+			const err = error instanceof Error ? error : new Error(String(error));
+			this.logger.error('Failed to create new note', { error: err.message, filePath });
+			throw new Error(t('errors.createFileFailed', { error: err.message }));
 		}
 
 		if (!activeView) {
@@ -927,7 +930,8 @@ export class APITranscriptionModal extends Modal {
 					this.logger.trace('Frontmatter metadata updated');
 
 				} catch (metadataError) {
-					this.logger.warn('Failed to add frontmatter metadata', { error: metadataError.message });
+					const err = metadataError instanceof Error ? metadataError : new Error(String(metadataError));
+					this.logger.warn('Failed to add frontmatter metadata', { error: err.message });
 					// Don't fail the whole operation for metadata errors
 				}
 			}
@@ -1088,18 +1092,22 @@ export class APITranscriptionModal extends Modal {
 				}));
 
 		// Output folder - same pattern as settings tab
-		const folderSetting = new Setting(optionsSection)
+		let folderTextComponent: TextComponent | null = null;
+		new Setting(optionsSection)
 			.setName(t('modal.transcription.processingOptions.outputFolder'))
-			.addText(text => text
-				.setPlaceholder(t('settings.outputFolder.placeholder'))
-				.setValue(this.settings.transcriptionOutputFolder)
-				.onChange(async (value) => {
-					this.settings.transcriptionOutputFolder = value;
-					await this.transcriber.updateSettings(this.settings);
-					if (this.saveSettings) {
-						await this.saveSettings();
-					}
-				}))
+			.addText(text => {
+				folderTextComponent = text;
+				return text
+					.setPlaceholder(t('settings.outputFolder.placeholder'))
+					.setValue(this.settings.transcriptionOutputFolder)
+					.onChange(async (value) => {
+						this.settings.transcriptionOutputFolder = value;
+						await this.transcriber.updateSettings(this.settings);
+						if (this.saveSettings) {
+							await this.saveSettings();
+						}
+					});
+			})
 			.addExtraButton(button => button
 				.setIcon('folder')
 				.setTooltip(t('settings.outputFolder.select'))
@@ -1113,17 +1121,15 @@ export class APITranscriptionModal extends Modal {
 							void this.saveSettings();
 						}
 						// Update the text input
-						const textComponent = folderSetting.components[0];
-						if (textComponent && 'setValue' in textComponent) {
-							(textComponent as { setValue: (value: string) => void }).setValue(folderPath);
-						}
+						folderTextComponent?.setValue(folderPath);
 					};
 					modal.open();
 				}));
 
-		// Create a reference to store the container
-		// eslint-disable-next-line prefer-const
-		let aiDependentContainer: HTMLDivElement;
+		const aiDependentContainer = document.createElement('div');
+		if (!this.settings.postProcessingEnabled) {
+			aiDependentContainer.classList.add('ait-hidden');
+		}
 
 		// Post-processing toggle - updates visibility of dependent options
 		new Setting(optionsSection)
@@ -1137,19 +1143,17 @@ export class APITranscriptionModal extends Modal {
 						await this.saveSettings();
 					}
 					// Update visibility of dependent options
-					if (aiDependentContainer) {
-						if (value) {
-							aiDependentContainer.classList.remove('ait-hidden');
-						} else {
-							aiDependentContainer.classList.add('ait-hidden');
-						}
+					if (value) {
+						aiDependentContainer.classList.remove('ait-hidden');
+					} else {
+						aiDependentContainer.classList.add('ait-hidden');
 					}
 					// Update related info button visibility
 					this.updateRelatedInfoButton();
 				}));
 
 		// Container for AI post-processing dependent options (created after toggle for proper DOM order)
-		aiDependentContainer = optionsSection.createEl('div');
+		optionsSection.appendChild(aiDependentContainer);
 
 		// Add separator between AI post-processing and dictionary correction
 		optionsSection.createEl('div', { cls: 'setting-item-separator' });
@@ -1216,7 +1220,7 @@ export class APITranscriptionModal extends Modal {
 			this.metaInfoBtn.classList.add('ait-hidden');
 		}
 
-		this.metaInfoBtn.addEventListener('click', async () => {
+		this.metaInfoBtn.addEventListener('click', () => {
 			// Open post-processing modal for meta info input
 			const modal = new PostProcessingModal(
 				this.app,

@@ -332,8 +332,14 @@ export class VADPreprocessor {
 		// キャッシュサイズ制限のチェック
 		if (this.audioBufferCache.size >= this.cacheMaxSize) {
 			// 最も古いエントリを削除（FIFO）
-			const firstKey = this.audioBufferCache.keys().next().value;
-			this.audioBufferCache.delete(firstKey);
+			let firstKey: string | undefined;
+			for (const key of this.audioBufferCache.keys()) {
+				firstKey = key;
+				break;
+			}
+			if (firstKey) {
+				this.audioBufferCache.delete(firstKey);
+			}
 		}
 
 		// キャッシュに追加
