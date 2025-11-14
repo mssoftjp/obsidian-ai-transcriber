@@ -6,7 +6,6 @@
 import { ApiClient } from '../ApiClient';
 import { APITranscriptionSettings } from '../../../ApiSettings';
 import { buildPostProcessingRequest, POST_PROCESSING_CONFIG } from '../../../config/openai/PostProcessingConfig';
-import { ErrorHandler } from '../../../ErrorHandler';
 import { SafeStorageService } from '../../storage/SafeStorageService';
 import { LanguageDetector } from '../../../core/utils/LanguageDetector';
 import { Logger } from '../../../utils/Logger';

@@ -56,7 +56,7 @@ function createEmptyDictionary(): UserDictionary {
 	};
 }
 
-const { userDictionaries: _defaultDicts, ...DEFAULT_SETTINGS_CORE } = DEFAULT_API_SETTINGS;
+const DEFAULT_SETTINGS_CORE = (({ userDictionaries: _ignored, ...rest }) => rest)(DEFAULT_API_SETTINGS);
 
 function getDefaultState(): PluginState {
 	return {

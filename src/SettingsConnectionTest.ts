@@ -16,7 +16,7 @@ export class SettingsConnectionTest {
 	): void {
 		containerEl.createEl('h3', { text: t('settings.connection.title') });
 
-		const testSetting = new Setting(containerEl)
+		new Setting(containerEl)
 			.setName(t('settings.connection.name'))
 			.setDesc(t('settings.connection.desc'))
 			.addButton(button => button

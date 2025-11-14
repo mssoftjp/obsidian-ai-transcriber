@@ -6,7 +6,6 @@
 import { ChunkingService } from '../../core/chunking/ChunkingService';
 import { ProcessedAudio, AudioChunk } from '../../core/audio/AudioTypes';
 import { ChunkStrategy, ChunkingConfig } from '../../core/chunking/ChunkingTypes';
-import { getModelConfig } from '../../config/ModelProcessingConfig';
 
 export class WebAudioChunkingService extends ChunkingService {
 	private preferredChunkDuration?: number;

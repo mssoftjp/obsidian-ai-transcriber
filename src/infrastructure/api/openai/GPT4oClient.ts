@@ -3,7 +3,7 @@
  * Handles GPT-4o-specific API calls with context preservation
  */
 
-import { ApiClient, ApiConfig } from '../ApiClient';
+import { ApiClient } from '../ApiClient';
 import { AudioChunk } from '../../../core/audio/AudioTypes';
 import { 
 	TranscriptionResult, 
@@ -12,11 +12,9 @@ import {
 } from '../../../core/transcription/TranscriptionTypes';
 import { 
 	GPT4O_TRANSCRIBE_CONFIG,
-	buildGPT4oTranscribeRequest,
-	validateGPT4oTranscribeFile
+	buildGPT4oTranscribeRequest
 } from '../../../config/openai/GPT4oTranscribeConfig';
 import { DEFAULT_REQUEST_CONFIG } from '../../../config/openai/index';
-import { getModelConfig } from '../../../config/ModelProcessingConfig';
 import { Logger } from '../../../utils/Logger';
 
 interface GPT4oResponse {

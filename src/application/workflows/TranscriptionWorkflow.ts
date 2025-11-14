@@ -140,8 +140,6 @@ export class TranscriptionWorkflow {
 
 			// Step 5: Calculate final statistics
 			const duration = (Date.now() - startTime) / 1000;
-			const completionStatus = result.partial ? 'Partial transcription' : 'Transcription';
-
 			const workflowResult = {
 				text: result.text,
 				duration,

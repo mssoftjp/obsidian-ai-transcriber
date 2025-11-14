@@ -13,7 +13,6 @@ import {
 import { SUPPORTED_FORMATS, APP_LIMITS, FileTypeUtils } from '../../config/constants';
 import { ResourceManager } from '../../core/resources/ResourceManager';
 import { t } from '../../i18n';
-import { Logger } from '../../utils/Logger';
 
 interface WindowWithWebKit extends Window {
 	webkitAudioContext?: typeof AudioContext;
@@ -26,7 +25,7 @@ export class WebAudioEngine extends AudioProcessor {
 
 	constructor(config: AudioProcessingConfig) {
 		super(config);
-		this.resourceId = `audio-engine-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+		this.resourceId = `audio-engine-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
 		this.resourceManager = ResourceManager.getInstance();
 	}
 
@@ -42,6 +41,7 @@ export class WebAudioEngine extends AudioProcessor {
 					{ sampleRate: this.config.targetSampleRate }
 				);
 			} catch (error) {
+				this.logger.error('Failed to initialize audio context', error);
 				throw new Error('Web Audio API not available in this environment');
 			}
 		}
@@ -81,6 +81,7 @@ export class WebAudioEngine extends AudioProcessor {
 				channels: 0 // Will be determined during decode
 			};
 		} catch (error) {
+			this.logger.error('Failed to initialize audio processing context', error);
 			validation.isValid = false;
 			validation.error = 'Failed to initialize audio processing';
 		}
@@ -136,7 +137,6 @@ export class WebAudioEngine extends AudioProcessor {
 	async convertToTargetFormat(audioBuffer: AudioBuffer): Promise<ProcessedAudio> {
 		const targetSampleRate = this.config.targetSampleRate;
 		const duration = audioBuffer.duration;
-		const targetLength = Math.floor(duration * targetSampleRate);
 		
 		// Get mono channel
 		const monoData = audioBuffer.numberOfChannels > 1

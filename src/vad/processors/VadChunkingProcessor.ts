@@ -1,7 +1,7 @@
 import { App } from 'obsidian';
 import { WebRTCVADProcessor } from './WebrtcVadProcessor';
 import { VADConfig, VADResult, SpeechSegment } from '../VadTypes';
-import { AudioChunk, ProcessedAudio } from '../../core/audio/AudioTypes';
+import { AudioChunk } from '../../core/audio/AudioTypes';
 import { ChunkingConfig } from '../../core/chunking/ChunkingTypes';
 import { AUDIO_CONSTANTS } from '../../config/constants';
 import { getModelConfig } from '../../config/ModelProcessingConfig';

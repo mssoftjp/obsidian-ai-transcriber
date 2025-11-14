@@ -7,7 +7,7 @@ import { SecurityUtils } from './infrastructure/storage/SecurityUtils';
 import { t } from './i18n';
 import { Logger } from './utils/Logger';
 import { PathUtils } from './utils/PathUtils';
-import { ElectronRenderer, isElectronWindow } from './types/global';
+import { isElectronWindow } from './types/global';
 
 export class SettingsUIBuilder {
 	private static readonly FVAD_DOWNLOAD_URL = 'https://github.com/echogarden-project/fvad-wasm';

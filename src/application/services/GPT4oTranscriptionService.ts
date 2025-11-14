@@ -14,7 +14,6 @@ import {
 	TranscriptionValidation
 } from '../../core/transcription/TranscriptionTypes';
 import { getModelConfig } from '../../config/ModelProcessingConfig';
-import { GPT4O_TRANSCRIBE_CONFIG } from '../../config/openai/GPT4oTranscribeConfig';
 import { DictionaryCorrector } from '../../core/transcription/DictionaryCorrector';
 import { Logger } from '../../utils/Logger';
 

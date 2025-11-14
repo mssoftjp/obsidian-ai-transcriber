@@ -11,7 +11,6 @@ import {
 	AudioProcessingConfig 
 } from '../../core/audio/AudioTypes';
 import { getModelConfig } from '../../config/ModelProcessingConfig';
-import { Logger } from '../../utils/Logger';
 
 export class FallbackEngine extends AudioProcessor {
 	constructor(config: AudioProcessingConfig) {

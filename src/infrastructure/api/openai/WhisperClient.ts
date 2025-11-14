@@ -3,7 +3,7 @@
  * Handles Whisper-specific API calls and response parsing
  */
 
-import { ApiClient, ApiConfig } from '../ApiClient';
+import { ApiClient } from '../ApiClient';
 import { AudioChunk } from '../../../core/audio/AudioTypes';
 import { 
 	TranscriptionResult, 
@@ -12,8 +12,7 @@ import {
 } from '../../../core/transcription/TranscriptionTypes';
 import { 
 	WHISPER_CONFIG,
-	buildWhisperRequest,
-	validateWhisperFile
+	buildWhisperRequest
 } from '../../../config/openai/WhisperConfig';
 import { DEFAULT_REQUEST_CONFIG } from '../../../config/openai/index';
 import { Logger } from '../../../utils/Logger';

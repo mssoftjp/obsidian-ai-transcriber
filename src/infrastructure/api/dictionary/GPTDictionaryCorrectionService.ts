@@ -191,7 +191,7 @@ Return only the corrected text. No explanations needed.`
 	 */
 	async testConnection(): Promise<boolean> {
 		try {
-			const response = await this.get<unknown>('/models');
+			await this.get<unknown>('/models');
 			this.logger.debug('Connection test succeeded');
 			return true;
 		} catch (error) {

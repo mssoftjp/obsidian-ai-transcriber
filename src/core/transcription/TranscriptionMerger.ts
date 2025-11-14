@@ -9,7 +9,6 @@ import { OverlapDebugger } from '../utils/OverlapDebugger';
 import { OverlapAnalyzer } from '../utils/OverlapAnalyzer';
 import { FuzzyOverlapDetector, FuzzyMatchOptions } from './FuzzyOverlapDetector';
 import { 
-	calculateNGramSimilarity, 
 	buildNGramIndex, 
 	findPotentialMatches,
 	getOptimalNGramSize,
@@ -457,7 +456,6 @@ export class TranscriptionMerger {
 		const duplicateSimilarity = duplicateRemovalConfig.duplicateSimilarityThreshold || 0.9;
 		const useFuzzyMatching = duplicateRemovalConfig.useFuzzyMatching !== false;
 		let processedText = text;
-		let duplicatesFound = 0;
 		
 		
 		
@@ -581,7 +579,6 @@ export class TranscriptionMerger {
 							}
 							
 							if (fullSimilarity >= duplicateSimilarity) {
-								duplicatesFound++;
 								
 								
 								// Add to removal list

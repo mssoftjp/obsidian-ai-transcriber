@@ -296,10 +296,9 @@ export default class AITranscriberPlugin extends Plugin {
 		await this.transcribeAudioFile(activeFile);
 	}
 
-	private async transcribeAudioFile(file: TFile, isExternal: boolean = false) {
-		const startTime = performance.now();
-		this.logger.info('Starting transcription', { 
-			file: file.name, 
+		private async transcribeAudioFile(file: TFile, isExternal: boolean = false) {
+			this.logger.info('Starting transcription', { 
+				file: file.name, 
 			fileSize: `${(file.stat.size / 1024 / 1024).toFixed(2)}MB`,
 			isExternal 
 		});

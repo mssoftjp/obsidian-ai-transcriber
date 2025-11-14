@@ -252,10 +252,8 @@ export class JapaneseTextValidator implements TextCleaner {
 
 		// Count different character types
 		const hiragana = (text.match(/[あ-ん]/g) || []).length;
-		const katakana = (text.match(/[ア-ン]/g) || []).length;
 		const kanji = (text.match(/[一-龯]/g) || []).length;
 		const latin = (text.match(/[a-zA-Z]/g) || []).length;
-		const numbers = (text.match(/[0-9０-９]/g) || []).length;
 
 		// Check for extremely unbalanced distributions
 		const hiraganaRatio = hiragana / totalChars;

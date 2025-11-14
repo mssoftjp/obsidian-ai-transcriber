@@ -4,7 +4,7 @@
  */
 
 import { ProcessedAudio, AudioChunk } from '../audio/AudioTypes';
-import { ChunkStrategy, ChunkingConstraints, ChunkingConfig } from './ChunkingTypes';
+import { ChunkStrategy, ChunkingConfig } from './ChunkingTypes';
 import { Logger } from '../../utils/Logger';
 
 export abstract class ChunkingService {
@@ -30,7 +30,7 @@ export abstract class ChunkingService {
 		const totalDuration = audio.duration;
 		const estimatedSizeMB = this.estimateSize(audio);
 
-		const { maxSizeMB, maxDurationSeconds, chunkDurationSeconds } = this.config.constraints;
+		const { maxSizeMB, chunkDurationSeconds } = this.config.constraints;
 		
 		this.logger.debug('Calculating chunking strategy', {
 			totalDuration: `${totalDuration.toFixed(2)}s`,

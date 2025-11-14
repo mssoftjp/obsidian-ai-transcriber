@@ -15,7 +15,6 @@ import {
 	TranscriptionSegment
 } from '../../core/transcription/TranscriptionTypes';
 import { getModelConfig } from '../../config/ModelProcessingConfig';
-import { SUPPORTED_FORMATS } from '../../config/constants';
 import { DictionaryCorrector } from '../../core/transcription/DictionaryCorrector';
 import { Logger } from '../../utils/Logger';
 

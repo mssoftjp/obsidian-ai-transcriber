@@ -10,7 +10,6 @@ import { VADChunkingProcessor } from '../../vad/processors/VadChunkingProcessor'
 import { VADConfig } from '../../vad/VadTypes';
 import { App, Notice } from 'obsidian';
 import { t } from '../../i18n';
-import { Logger } from '../../utils/Logger';
 
 export class VADChunkingService extends ChunkingService {
 	private vadProcessor: VADChunkingProcessor | null = null;
@@ -128,7 +127,7 @@ export class VADChunkingService extends ChunkingService {
 		
 		
 		// Process audio through VAD chunking
-		const { vadResult, chunks } = await this.vadProcessor.processAudioWithChunking(
+		const { chunks } = await this.vadProcessor.processAudioWithChunking(
 			audio.pcmData,
 			audio.sampleRate
 		);

@@ -7,7 +7,6 @@ import { APITranscriptionSettings } from '../../ApiSettings';
 import { TranscriptionMetaInfo } from '../../core/transcription/TranscriptionTypes';
 import { PostProcessingClient, PostProcessingResult } from '../../infrastructure/api/openai/PostProcessingClient';
 import { buildPostProcessingMetaRequest, POST_PROCESSING_CONFIG, estimateTokenCount } from '../../config/openai/PostProcessingConfig';
-import { ErrorHandler } from '../../ErrorHandler';
 import { LanguageDetector } from '../../core/utils/LanguageDetector';
 import { Logger } from '../../utils/Logger';
 import { OpenAIChatResponse } from '../../infrastructure/api/openai/OpenAIChatTypes';
@@ -396,9 +395,6 @@ export class PostProcessingService {
 			/[.!?]\s*$/,        // 英語の文末
 			/[。！？.!?]\s*$/,  // 混在
 		];
-		
-		// 段落区切りパターン
-		const paragraphPattern = /\n\s*\n/;
 		
 		// 読点パターン
 		const commaPattern = /[、,]\s*$/;

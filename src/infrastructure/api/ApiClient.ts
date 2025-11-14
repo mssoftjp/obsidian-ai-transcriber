@@ -252,7 +252,7 @@ export abstract class ApiClient {
 				code: data.error?.code || data.code,
 				details: data.error || data
 			};
-		} catch (e) {
+		} catch (_error) {
 			return {
 				status: response.status,
 				message: response.text || `HTTP ${response.status} error`

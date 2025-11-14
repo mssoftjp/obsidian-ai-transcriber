@@ -3,7 +3,6 @@
  * Used for applying meta information to improve transcription accuracy
  */
 
-import { ModelSpecificOptions } from '../../core/transcription/TranscriptionTypes';
 import { estimateTokenCount as tokenEstimateTokenCount } from '../TokenConstants';
 import { replacePromptParams } from '../../i18n/promptHelpers';
 import { OpenAIChatRequest } from '../../infrastructure/api/openai/OpenAIChatTypes';
