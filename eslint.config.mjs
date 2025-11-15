@@ -10,12 +10,22 @@ const typescriptRules = {
   '@typescript-eslint/no-empty-function': 'warn',
   '@typescript-eslint/require-await': 'error',
   '@typescript-eslint/no-floating-promises': 'error',
-  '@typescript-eslint/no-misused-promises': ['error', { checksVoidReturn: false }],
-  '@typescript-eslint/no-unnecessary-type-assertion': 'off',
-  '@typescript-eslint/await-thenable': 'off',
-  '@typescript-eslint/no-base-to-string': 'off',
+  '@typescript-eslint/no-misused-promises': ['error', {
+    checksConditionals: true,
+    checksSpreads: true,
+    checksVoidReturn: true
+  }],
+  '@typescript-eslint/no-unnecessary-type-assertion': 'error',
+  '@typescript-eslint/await-thenable': 'error',
+  '@typescript-eslint/no-base-to-string': 'error',
   '@typescript-eslint/no-unsafe-member-access': 'off',
-  '@typescript-eslint/restrict-template-expressions': 'off',
+  '@typescript-eslint/restrict-template-expressions': ['error', {
+    allowAny: false,
+    allowBoolean: false,
+    allowNullish: false,
+    allowNumber: true,
+    allowRegExp: false
+  }],
   'no-console': ['error', { allow: ['warn', 'error', 'debug'] }],
   'prefer-const': 'error',
   'no-var': 'error',
@@ -44,7 +54,7 @@ export default [
     ]
   },
   js.configs.recommended,
-  ...flattenConfigs([...obsidianmd.configs.recommended]),
+  ...flattenConfigs([...obsidianmd.configs.recommendedWithLocalesEn]),
   {
     files: ['src/**/*.ts'],
     languageOptions: {

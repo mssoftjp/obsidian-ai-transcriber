@@ -9,8 +9,8 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
-    "lint": "node scripts/setup-eslint-plugin.mjs && eslint src/**/*.ts",
-    "lint:fix": "node scripts/setup-eslint-plugin.mjs && eslint src/**/*.ts --fix",
+    "lint": "node scripts/setup-eslint-plugin.mjs && eslint \"src/**/*.ts\"",
+    "lint:fix": "node scripts/setup-eslint-plugin.mjs && eslint \"src/**/*.ts\" --fix",
     "check": "npm run lint && npm run build",
     "setup:eslint-plugin": "node scripts/setup-eslint-plugin.mjs"
   },
