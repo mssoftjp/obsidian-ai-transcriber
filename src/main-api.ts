@@ -26,7 +26,13 @@ export default class AITranscriberPlugin extends Plugin {
 	private stateRepo: PluginStateRepository;
 	private logger = Logger.getLogger('Plugin');
 
-	async onload() {
+	onload(): void {
+		void this.initializePlugin().catch(error => {
+			this.logger.error('Failed to load AI Transcriber plugin', error);
+		});
+	}
+
+	private async initializePlugin(): Promise<void> {
 		// Initialize i18n BEFORE loading settings
 		initializeTranslations({ en, ja, zh, ko });
 		initializeI18n();
@@ -113,13 +119,13 @@ export default class AITranscriberPlugin extends Plugin {
 						item
 							.setTitle(t('commands.contextMenu'))
 							.setIcon('file-audio')
-							.onClick(async () => {
+							.onClick(() => {
 								// Check if API key is configured before showing modal
 								if (!this.isApiConfigured()) {
 									new Notice(t('notices.apiKeyNotConfigured'));
 									return;
 								}
-								await this.transcribeAudioFile(file);
+								this.transcribeAudioFile(file);
 							});
 					});
 				}
@@ -132,7 +138,13 @@ export default class AITranscriberPlugin extends Plugin {
 		this.logger.info('AI Transcriber plugin loaded successfully');
 	}
 
-	async onunload() {
+	onunload(): void {
+		void this.disposePlugin().catch(error => {
+			this.logger.error('Failed to unload AI Transcriber plugin', error);
+		});
+	}
+
+	private async disposePlugin(): Promise<void> {
 		this.logger.info('Unloading AI Transcriber plugin...');
 
 		// Clean up status bar
@@ -264,7 +276,7 @@ export default class AITranscriberPlugin extends Plugin {
 		return audioExtensions.includes(extension);
 	}
 
-	private async transcribeCurrentAudio() {
+	private transcribeCurrentAudio(): void {
 		this.logger.debug('Transcribe audio command triggered');
 
 		// Check if API key is configured first
@@ -279,10 +291,10 @@ export default class AITranscriberPlugin extends Plugin {
 			// Show file selection modal when no audio file is selected
 			const modal = new AudioFileSelectionModal(
 				this.app,
-				async (file: TFile | File, isExternal: boolean) => {
+				(file: TFile | File, isExternal: boolean) => {
 					// TFileオブジェクトとして処理（外部ファイルも既にコピー済み）
 					if (file instanceof TFile) {
-						await this.transcribeAudioFile(file, isExternal);
+						this.transcribeAudioFile(file, isExternal);
 					} else {
 						// ここには到達しないはず（AudioFileSelectionModalで既にTFileに変換済み）
 						new Notice(t('errors.general'));
@@ -293,10 +305,10 @@ export default class AITranscriberPlugin extends Plugin {
 			return;
 		}
 
-		await this.transcribeAudioFile(activeFile);
+		this.transcribeAudioFile(activeFile);
 	}
 
-	private async transcribeAudioFile(file: TFile, isExternal: boolean = false) {
+	private transcribeAudioFile(file: TFile, isExternal: boolean = false): void {
 		this.logger.info('Starting transcription', {
 			file: file.name,
 			fileSize: `${(file.stat.size / 1024 / 1024).toFixed(2)}MB`,

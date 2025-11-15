@@ -98,7 +98,7 @@ export class PluginStateRepository {
 			return this.state;
 		}
 
-		const raw = await this.plugin.loadData();
+		const raw: unknown = await this.plugin.loadData();
 		if (this.isPluginState(raw)) {
 			this.state = this.mergeWithDefaults(raw);
 		} else if (raw && typeof raw === 'object') {

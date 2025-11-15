@@ -84,12 +84,12 @@ export class PostProcessingClient extends ApiClient {
 				confidence: response.usage ? 0.9 : undefined // Placeholder confidence
 			};
 
-		} catch (error) {
-			if (error.name === 'AbortError') {
+		} catch (error: unknown) {
+			if (error instanceof Error && error.name === 'AbortError') {
 				throw error;
 			}
 
-			const errorMessage = error instanceof Error ? error.message : String(error);
+			const errorMessage = this.formatUnknownError(error);
 			this.logger.error('Processing failed', { error: errorMessage });
 
 			// Return original transcription on error
@@ -132,10 +132,10 @@ export class PostProcessingClient extends ApiClient {
 				isValid: true,
 				model: POST_PROCESSING_CONFIG.model
 			};
-		} catch (error) {
+		} catch (error: unknown) {
 			return {
 				isValid: false,
-				error: error instanceof Error ? error.message : String(error),
+				error: this.formatUnknownError(error),
 				model: POST_PROCESSING_CONFIG.model
 			};
 		}
@@ -170,5 +170,23 @@ export class PostProcessingClient extends ApiClient {
 	 */
 	private detectLanguage(text: string): string {
 		return LanguageDetector.detectLanguage(text);
+	}
+
+	/**
+	 * Normalize unknown error values into a safe string
+	 */
+	private formatUnknownError(error: unknown): string {
+		if (error instanceof Error) {
+			return error.message;
+		}
+		if (typeof error === 'string') {
+			return error;
+		}
+		try {
+			const serialized = JSON.stringify(error);
+			return serialized ?? 'Unknown error';
+		} catch {
+			return 'Unknown error';
+		}
 	}
 }

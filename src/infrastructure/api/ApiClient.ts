@@ -33,6 +33,17 @@ export interface ApiErrorData {
 	details?: unknown;
 }
 
+interface ApiErrorResponseBody {
+	error?: {
+		message?: string;
+		code?: string;
+		[key: string]: unknown;
+	};
+	message?: string;
+	code?: string;
+	[key: string]: unknown;
+}
+
 export abstract class ApiClient {
 	protected config: ApiConfig;
 	private readonly defaultMaxRetries = 3;
@@ -205,7 +216,7 @@ export abstract class ApiClient {
 
 
 			if (response.status < 200 || response.status >= 300) {
-				const error = await this.parseError(response);
+				const error = this.parseError(response);
 
 				// Check if retryable
 				if (this.isRetryable(response.status) && retryCount < this.config.maxRetries) {
@@ -244,19 +255,24 @@ export abstract class ApiClient {
 	/**
 	 * Parse error response
 	 */
-	private async parseError(response: RequestUrlResponse): Promise<ApiErrorData> {
+	private parseError(response: RequestUrlResponse): ApiErrorData {
 		try {
-			const data = response.json;
+			const data = response.json as ApiErrorResponseBody;
+			const nestedError = data.error ?? {};
 			return {
 				status: response.status,
-				message: data.error?.message || data.message || `HTTP ${response.status} error`,
-				code: data.error?.code || data.code,
-				details: data.error || data
+				message: nestedError.message || data.message || `HTTP ${response.status} error`,
+				code: nestedError.code || data.code,
+				details: nestedError || data
 			};
-		} catch (_error) {
+		} catch (error) {
+			this.logger.warn('Failed to parse API error response as JSON', error);
+			const fallbackMessage = typeof response.text === 'string' && response.text.trim().length > 0
+				? response.text
+				: `HTTP ${response.status} error`;
 			return {
 				status: response.status,
-				message: response.text || `HTTP ${response.status} error`
+				message: fallbackMessage
 			};
 		}
 	}

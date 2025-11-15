@@ -64,7 +64,7 @@ export class WebAudioChunkingService extends ChunkingService {
 	): Promise<AudioChunk[]> {
 		if (!strategy.needsChunking) {
 			// Single chunk
-			return [await this.createSingleChunk(audio)];
+			return [this.createSingleChunk(audio)];
 		}
 
 		// Calculate chunk parameters
@@ -160,7 +160,7 @@ export class WebAudioChunkingService extends ChunkingService {
 	/**
 	 * Create a single chunk from all audio
 	 */
-	private async createSingleChunk(audio: ProcessedAudio): Promise<AudioChunk> {
+	private createSingleChunk(audio: ProcessedAudio): AudioChunk {
 		const wavData = this.pcmToWav(audio.pcmData, audio.sampleRate);
 
 		return {

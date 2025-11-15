@@ -44,7 +44,7 @@ export class WebRTCVADProcessor implements VADProcessor {
 				// モジュールの初期化オプション
 				const moduleOptions = {
 					wasmBinary: new Uint8Array(wasmBuffer),
-					locateFile: (filename: string) => {
+					locateFile: (_filename: string) => {
 						// この関数は呼ばれないはず（wasmBinaryを直接提供しているため）
 						return '';
 					},
@@ -168,13 +168,14 @@ export class WebRTCVADProcessor implements VADProcessor {
 			const wasmBuffer = await adapter.readBinary(wasmPath);
 
 			return wasmBuffer;
-		} catch (error) {
+		} catch (error: unknown) {
 			this.logger.error('Failed to load WASM file', error);
-			throw new Error(`Failed to load WASM file: ${error.message}`);
+			const errorMessage = this.formatUnknownError(error);
+			throw new Error(`Failed to load WASM file: ${errorMessage}`);
 		}
 	}
 
-	async processAudio(audioData: Float32Array, sampleRate: number): Promise<VADResult> {
+	processAudio(audioData: Float32Array, sampleRate: number): Promise<VADResult> {
 		if (!this.available || !this.vadInstance || !this.bufferPtr) {
 			throw new VADError('VAD not initialized', 'NOT_INITIALIZED');
 		}
@@ -185,7 +186,7 @@ export class WebRTCVADProcessor implements VADProcessor {
 			// 1. リサンプリング（必要な場合）
 			let processData = audioData;
 			if (sampleRate !== AUDIO_CONSTANTS.SAMPLE_RATE) {
-				processData = await this.resampleTo16kHz(audioData, sampleRate);
+				processData = this.resampleTo16kHz(audioData, sampleRate);
 			}
 
 			// 2. Float32 → Int16 変換
@@ -210,17 +211,18 @@ export class WebRTCVADProcessor implements VADProcessor {
 			);
 
 
-			return result;
-		} catch (error) {
+			return Promise.resolve(result);
+		} catch (error: unknown) {
 			this.logger.error('Processing error', error);
-			throw new VADError(`VAD processing failed: ${error.message}`, 'PROCESSING_ERROR');
+			const errorMessage = this.formatUnknownError(error);
+			throw new VADError(`VAD processing failed: ${errorMessage}`, 'PROCESSING_ERROR');
 		}
 	}
 
 	/**
    * 16kHzにリサンプリング
    */
-	protected async resampleTo16kHz(audioData: Float32Array, sourceSampleRate: number): Promise<Float32Array> {
+	protected resampleTo16kHz(audioData: Float32Array, sourceSampleRate: number): Float32Array {
 		const targetSampleRate = AUDIO_CONSTANTS.SAMPLE_RATE;
 		const ratio = targetSampleRate / sourceSampleRate;
 		const targetLength = Math.floor(audioData.length * ratio);
@@ -448,11 +450,26 @@ export class WebRTCVADProcessor implements VADProcessor {
 		};
 	}
 
+	private formatUnknownError(error: unknown): string {
+		if (error instanceof Error) {
+			return error.message;
+		}
+		if (typeof error === 'string') {
+			return error;
+		}
+		try {
+			const serialized = JSON.stringify(error);
+			return serialized ?? 'Unknown error';
+		} catch {
+			return 'Unknown error';
+		}
+	}
+
 	isAvailable(): boolean {
 		return this.available;
 	}
 
-	async cleanup(): Promise<void> {
+	cleanup(): Promise<void> {
 
 		// メモリバッファの解放
 		if (this.fvadModule && this.bufferPtr) {
@@ -478,5 +495,6 @@ export class WebRTCVADProcessor implements VADProcessor {
 		this.fvadModule = null;
 		this.available = false;
 
+		return Promise.resolve();
 	}
 }

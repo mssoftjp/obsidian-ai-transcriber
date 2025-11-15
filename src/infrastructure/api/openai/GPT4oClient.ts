@@ -12,7 +12,8 @@ import {
 } from '../../../core/transcription/TranscriptionTypes';
 import {
 	GPT4O_TRANSCRIBE_CONFIG,
-	buildGPT4oTranscribeRequest
+	buildGPT4oTranscribeRequest,
+	GPT4oTranscribeRequestPayload
 } from '../../../config/openai/GPT4oTranscribeConfig';
 import { DEFAULT_REQUEST_CONFIG } from '../../../config/openai/index';
 import { Logger } from '../../../utils/Logger';
@@ -80,10 +81,15 @@ export class GPT4oClient extends ApiClient {
 		}, chunk.id === 0 && !modelOptions?.gpt4o?.previousContext);
 
 		// Append all parameters to FormData
-		Object.entries(requestParams).forEach(([key, value]) => {
-			if (value !== undefined) {
-				formData.append(key, value.toString());
+		const paramEntries = Object.entries(requestParams) as Array<
+			[keyof GPT4oTranscribeRequestPayload, GPT4oTranscribeRequestPayload[keyof GPT4oTranscribeRequestPayload]]
+		>;
+		paramEntries.forEach(([key, value]) => {
+			if (value === undefined) {
+				return;
 			}
+			const serialized = Array.isArray(value) ? value.join(',') : String(value);
+			formData.append(key, serialized);
 		});
 
 		try {
@@ -163,7 +169,7 @@ export class GPT4oClient extends ApiClient {
 	 */
 	async testConnection(): Promise<boolean> {
 		try {
-			const response = await this.get('/models');
+			await this.get('/models');
 			return true;
 		} catch (error) {
 			this.logger.error('GPT-4o API connection test failed', error);

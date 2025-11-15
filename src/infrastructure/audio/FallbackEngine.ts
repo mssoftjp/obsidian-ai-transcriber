@@ -21,7 +21,7 @@ export class FallbackEngine extends AudioProcessor {
 	/**
 	 * Validate audio input
 	 */
-	async validate(input: AudioInput): Promise<AudioValidationResult> {
+	validate(input: AudioInput): Promise<AudioValidationResult> {
 		const validation: AudioValidationResult = {
 			isValid: true,
 			warnings: []
@@ -34,14 +34,14 @@ export class FallbackEngine extends AudioProcessor {
 		if (sizeMB > maxSizeMB) {
 			validation.isValid = false;
 			validation.error = `File size ${sizeMB.toFixed(1)}MB exceeds maximum ${maxSizeMB}MB for fallback processor`;
-			return validation;
+			return Promise.resolve(validation);
 		}
 
 		// Only support WAV in fallback mode
 		if (input.extension.toLowerCase() !== 'wav') {
 			validation.isValid = false;
 			validation.error = `Fallback processor only supports WAV format, got '${input.extension}'`;
-			return validation;
+			return Promise.resolve(validation);
 		}
 
 		// Check if it's a valid WAV file
@@ -52,7 +52,7 @@ export class FallbackEngine extends AudioProcessor {
 		if (riff !== 'RIFF' || wave !== 'WAVE') {
 			validation.isValid = false;
 			validation.error = 'Invalid WAV file format';
-			return validation;
+			return Promise.resolve(validation);
 		}
 
 		// Extract WAV properties
@@ -78,13 +78,13 @@ export class FallbackEngine extends AudioProcessor {
 			validation.warnings.push(`${channels} channels detected (fallback mode does not support mixing to mono)`);
 		}
 
-		return validation;
+		return Promise.resolve(validation);
 	}
 
 	/**
 	 * Decode audio - in fallback mode, just parse WAV header
 	 */
-	async decode(input: AudioInput): Promise<AudioBuffer> {
+	decode(input: AudioInput): Promise<AudioBuffer> {
 		// Since we only support WAV, we can create a simple AudioBuffer-like object
 		const view = new DataView(input.data);
 
@@ -130,13 +130,13 @@ export class FallbackEngine extends AudioProcessor {
 		} as unknown as AudioBuffer;
 
 
-		return audioBuffer;
+		return Promise.resolve(audioBuffer);
 	}
 
 	/**
 	 * Convert to target format - limited in fallback mode
 	 */
-	async convertToTargetFormat(audioBuffer: AudioBuffer): Promise<ProcessedAudio> {
+	convertToTargetFormat(audioBuffer: AudioBuffer): Promise<ProcessedAudio> {
 		// In fallback mode, we can't resample, so just extract the data
 		const pcmData = audioBuffer.getChannelData(0); // Just use first channel
 
@@ -153,23 +153,23 @@ export class FallbackEngine extends AudioProcessor {
 			});
 		}
 
-		return {
+		return Promise.resolve({
 			pcmData: new Float32Array(pcmData), // Make a copy
 			sampleRate: audioBuffer.sampleRate, // Keep original sample rate
 			duration: audioBuffer.duration,
 			channels: 1,
 			source: audioBuffer as unknown as AudioInput
-		};
+		});
 	}
 
 	/**
 	 * Preprocess - not supported in fallback mode
 	 */
-	async preprocess(audio: ProcessedAudio): Promise<ProcessedAudio> {
+	preprocess(audio: ProcessedAudio): Promise<ProcessedAudio> {
 		if (this.config.enableVAD) {
 			this.logger.warn('VAD preprocessing not supported in fallback mode');
 		}
-		return audio;
+		return Promise.resolve(audio);
 	}
 
 	/**

@@ -13,7 +13,6 @@ import {
 import { SUPPORTED_FORMATS, APP_LIMITS, FileTypeUtils } from '../../config/constants';
 import { ResourceManager } from '../../core/resources/ResourceManager';
 import { t } from '../../i18n';
-import { Logger } from '../../utils/Logger';
 
 interface WindowWithWebKit extends Window {
 	webkitAudioContext?: typeof AudioContext;
@@ -135,9 +134,8 @@ export class WebAudioEngine extends AudioProcessor {
 	/**
 	 * Convert audio to target format
 	 */
-	async convertToTargetFormat(audioBuffer: AudioBuffer): Promise<ProcessedAudio> {
+	convertToTargetFormat(audioBuffer: AudioBuffer): Promise<ProcessedAudio> {
 		const targetSampleRate = this.config.targetSampleRate;
-		const duration = audioBuffer.duration;
 
 		// Get mono channel
 		const monoData = audioBuffer.numberOfChannels > 1
@@ -155,25 +153,25 @@ export class WebAudioEngine extends AudioProcessor {
 			processedData = new Float32Array(monoData);
 		}
 
-		return {
+		return Promise.resolve({
 			pcmData: processedData,
 			sampleRate: targetSampleRate,
 			duration: processedData.length / targetSampleRate,
 			channels: 1,
 			source: audioBuffer as unknown as AudioInput // Store original for reference
-		};
+		});
 	}
 
 	/**
 	 * Apply preprocessing (VAD, etc.)
 	 */
-	async preprocess(audio: ProcessedAudio): Promise<ProcessedAudio> {
+	preprocess(audio: ProcessedAudio): Promise<ProcessedAudio> {
 		if (!this.config.enableVAD) {
-			return audio;
+			return Promise.resolve(audio);
 		}
 
 		// VAD is handled at the file level by TranscriptionController before chunking
-		return audio;
+		return Promise.resolve(audio);
 	}
 
 	/**

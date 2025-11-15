@@ -20,7 +20,7 @@ const en: TranslationKeys = {
 			testButton: 'Test connection',
 			testSuccess: 'Connection successful',
 			testFailed: 'Connection failed. Please check your API key.',
-			insecureWarning: 'OS encryption not available; using fallback encryption method.',
+			insecureWarning: 'Operating system encryption not available; using the fallback encryption method.',
 			migrated: 'API key has been automatically migrated to the new encryption format.'
 		},
 		model: {
@@ -39,7 +39,7 @@ const en: TranslationKeys = {
 			gpt4oMiniCost: 'GPT-4o mini transcribe'
 		},
 		vadMode: {
-			name: 'Silence detection (VAD)',
+			name: 'Silence detection (voice activity detection)',
 			desc: 'Processing silent segments can lighten speech recognition workload and reduce the amount of data sent',
 			options: {
 				server: 'Server',
@@ -51,8 +51,8 @@ const en: TranslationKeys = {
 				local: 'Advanced: faster, less data sent',
 				disabled: 'No silence processing'
 			},
-			missingWarning: "Using Local VAD requires a third-party module. Download 'fvad.wasm' from the fvad-wasm repository, then click 'Choose file' to copy it into the plugin folder.",
-			missingInlineNote: "Using Local VAD requires a third-party module. Download 'fvad.wasm' from the fvad-wasm repository, then click 'Choose file' to copy it into the plugin folder.",
+			missingWarning: "Using local voice activity detection requires a third-party module; download 'fvad.wasm' from the fvad-wasm repository, then click the choose file button to copy it into the plugin folder.",
+			missingInlineNote: "Using local voice activity detection requires a third-party module; download 'fvad.wasm' from the fvad-wasm repository, then click the choose file button to copy it into the plugin folder.",
 			localNote: 'Since silent segments are removed on-device before sending, it helps reduce API costs.',
 			installWasm: {
 				name: 'Place fvad.wasm',
@@ -60,7 +60,7 @@ const en: TranslationKeys = {
 				button: 'Choose file',
 				success: 'Placed fvad.wasm successfully',
 				invalidName: 'Please select fvad.wasm',
-				invalidType: 'Not a valid WASM file',
+				invalidType: 'Not a valid WebAssembly file',
 				writeError: 'Failed to place file: {error}'
 			}
 		},
@@ -100,10 +100,10 @@ const en: TranslationKeys = {
 		advanced: {
 			title: 'Advanced settings',
 			chunkInfo: 'Chunk settings guide:',
-			chunk180s: '180s (3 min): Recommended - avoids timeouts',
-			chunk300s: '300s (5 min): Default - balanced performance',
-			chunk600s: '600s (10 min): Maximum - may cause timeouts',
-			chunkNote: 'Note: Smaller chunks are more reliable but may increase API calls'
+			chunk180s: '180s (3 min): recommended - avoids timeouts',
+			chunk300s: '300s (5 min): default - balanced performance',
+			chunk600s: '600s (10 min): maximum - may cause timeouts',
+			chunkNote: 'Note: smaller chunks are more reliable but may increase API calls'
 		},
 		progressUI: {
 			title: 'Progress UI settings',
@@ -186,8 +186,8 @@ const en: TranslationKeys = {
 	// Provider names
 	providers: {
 		openai: 'OpenAI',
-		whisper: 'OpenAI Whisper',
-		whisperTs: 'OpenAI Whisper (with timestamps)',
+		whisper: 'OpenAI whisper',
+		whisperTs: 'OpenAI whisper (with timestamps)',
 		gpt4o: 'GPT-4o transcribe',
 		gpt4oMini: 'GPT-4o mini transcribe'
 	},
@@ -195,7 +195,7 @@ const en: TranslationKeys = {
 	// Commands
 	commands: {
 		transcribeAudio: 'Transcribe audio file (API)',
-		openPanel: 'Open AI Transcriber panel',
+		openPanel: 'Open AI transcriber panel',
 		contextMenu: 'Transcribe with AI'
 	},
 
@@ -222,10 +222,10 @@ const en: TranslationKeys = {
 		transcriptionCancelled: 'Transcription cancelled',
 		noAudioFile: 'No audio file selected',
 		processingFile: 'Processing file: {fileName}',
-		vadInitError: 'VAD initialization error: fvad.wasm file not found. Please place it in the plugin folder.',
-		vadServerFallback: 'Local VAD module not found. Falling back to server-side VAD.',
-		vadProcessingError: 'VAD processing error: {error}',
-		vadUnavailable: 'VAD is unavailable, proceeding without silence removal.',
+		vadInitError: 'Voice activity detection initialization error: fvad.wasm file not found. Please place it in the plugin folder.',
+		vadServerFallback: 'Local voice activity detection module not found. Falling back to server-side processing.',
+		vadProcessingError: 'Voice activity detection processing error: {error}',
+		vadUnavailable: 'Voice activity detection is unavailable, proceeding without silence removal.',
 		externalFileNotSupported: 'External file processing will be implemented in the next phase',
 		postProcessingComplete: 'Post-processing completed: {model} was used',
 		postProcessingFailed: 'Post-processing failed. Using original transcription.',
@@ -319,7 +319,7 @@ const en: TranslationKeys = {
 			titlePost: 'Post-transcription processing',
 			transcriptionPreview: 'Transcription preview',
 			relatedInfo: 'Related information',
-			metaInfoPlaceholder: 'Examples: Speakers (John Smith, Jane Doe), Topics (AI technology, machine learning), Technical terms (neural networks, deep learning), Context (meeting, interview), or any other information related to the audio content',
+			metaInfoPlaceholder: 'Examples: speaker names, topics (artificial intelligence, machine learning), technical terms (neural networks, deep learning), context (meeting, interview), or any other information related to the audio content',
 			metaInfoDescription: 'Enter any information about the audio content or speakers. This information will be used by AI for more accurate transcription and post-processing.',
 			emptyInputError: 'Please enter related information.',
 			templateOnlyError: 'Please enter actual information based on the template examples.',
@@ -382,10 +382,10 @@ const en: TranslationKeys = {
 			apiConnectionFailedDetailed: 'API connection failed. Please check your API key and internet connection.',
 			fileNotFound: 'Audio file not found. Please check if the file has been moved or deleted.',
 			fileAccessDenied: 'Cannot access the file. Please check file permissions.',
-			fileLoadFailed: 'Failed to load audio file. Please check the file format (MP3, WAV, M4A, etc.).',
+			fileLoadFailed: 'Failed to load audio file. Please check the file format (mp3, wav, m4a, etc.).',
 			networkConnectionIssue: 'Please check your internet connection and retry when stable.',
 			audioProcessFailed: 'Audio file processing failed. Please check if the file is corrupted or in a supported format.',
-			fileSizeExceeded: 'File size exceeds limit (500MB max).',
+			fileSizeExceeded: 'File size exceeds the limit (500 megabytes max).',
 			diskSpaceLow: 'Insufficient available space (remaining: {available}GB).',
 			unexpectedErrorOccurred: 'An error occurred during processing. Please wait and try again.',
 			noAudioTrack: 'The video file does not contain an audio track.',
@@ -407,11 +407,11 @@ const en: TranslationKeys = {
 		},
 		notices: {
 			settingsCheck: 'Please check your API key in settings',
-			settingsConnectionTest: 'Please try the "Test connection" button in settings',
-			supportedFormats: 'Supported formats: audio (MP3, WAV, M4A, FLAC, AAC, OGG), video (MP4, MOV, AVI, MKV, WebM)',
+			settingsConnectionTest: 'Please try the test connection button in settings.',
+			supportedFormats: 'Supported formats include audio (mp3, wav, m4a, flac, aac, ogg) and video (mp4, mov, avi, mkv, webm).',
 			networkRetry: 'Please check network connection and try again',
-			formatConversion: 'Please convert to WAV or MP3 format and try again',
-			sizeLimit: 'GPT-4o: 20MB/25min, Whisper: 20MB',
+			formatConversion: 'Please convert to wav or mp3 format and try again.',
+			sizeLimit: 'The advanced option supports 20 megabytes per 25 minutes, and the whisper option supports 20 megabytes.',
 			debugModeEnable: 'Enable debug mode in settings to view detailed logs'
 		}
 	},
@@ -481,7 +481,7 @@ const en: TranslationKeys = {
 	// Support section
 	support: {
 		message: 'If this plugin adds value for you and you would like to help support continued development, please use the buttons below:',
-		imageAlt: 'Support AI transcriber via Buy Me a Coffee'
+		imageAlt: 'Support AI transcriber via the buy me a coffee link.'
 	}
 
 };

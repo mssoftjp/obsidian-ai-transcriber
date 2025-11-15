@@ -160,7 +160,7 @@ export class PostProcessingModal extends Modal {
 			this.onSubmit(metaInfo);
 
 		} catch (error) {
-			const err = error instanceof Error ? error : new Error(String(error));
+			const err = error instanceof Error ? error : new Error(this.formatUnknownError(error));
 			ErrorHandler.handleAndDisplay(err, 'メタ情報の保存');
 		}
 	}
@@ -179,6 +179,21 @@ export class PostProcessingModal extends Modal {
 			return text;
 		}
 		return text.substring(0, maxLength) + '...\n\n[以下省略]';
+	}
+
+	private formatUnknownError(error: unknown): string {
+		if (error instanceof Error) {
+			return error.message;
+		}
+		if (typeof error === 'string') {
+			return error;
+		}
+		try {
+			const serialized = JSON.stringify(error);
+			return serialized ?? 'Unknown error';
+		} catch {
+			return 'Unknown error';
+		}
 	}
 
 	onClose() {

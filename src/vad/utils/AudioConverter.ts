@@ -33,9 +33,10 @@ export class AudioConverter {
 				audioData,
 				sampleRate: decodedAudio.sampleRate
 			};
-		} catch (error) {
+		} catch (error: unknown) {
+			const errorMessage = this.formatUnknownError(error);
 			throw new Error(
-				`Failed to decode audio file (${fileExtension}): ${error.message}`
+				`Failed to decode audio file (${fileExtension}): ${errorMessage}`
 			);
 		}
 	}
@@ -43,7 +44,7 @@ export class AudioConverter {
 	/**
    * Float32ArrayをWAVフォーマットにエンコード
    */
-	async encodeToWAV(
+	encodeToWAV(
 		audioData: Float32Array,
 		sampleRate: number
 	): Promise<ArrayBuffer> {
@@ -67,7 +68,7 @@ export class AudioConverter {
 		const uint8Array = new Uint8Array(buffer);
 		uint8Array.set(new Uint8Array(pcmData.buffer), headerSize);
 
-		return buffer;
+		return Promise.resolve(buffer);
 	}
 
 	/**
@@ -191,6 +192,21 @@ export class AudioConverter {
 				console.warn('Failed to close AudioContext in AudioConverter', error);
 			});
 			this.audioContext = null;
+		}
+	}
+
+	private formatUnknownError(error: unknown): string {
+		if (error instanceof Error) {
+			return error.message;
+		}
+		if (typeof error === 'string') {
+			return error;
+		}
+		try {
+			const serialized = JSON.stringify(error);
+			return serialized ?? 'Unknown error';
+		} catch {
+			return 'Unknown error';
 		}
 	}
 }

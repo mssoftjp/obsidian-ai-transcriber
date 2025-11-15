@@ -5,7 +5,6 @@ import { AudioChunk } from '../../core/audio/AudioTypes';
 import { ChunkingConfig } from '../../core/chunking/ChunkingTypes';
 import { AUDIO_CONSTANTS } from '../../config/constants';
 import { getModelConfig } from '../../config/ModelProcessingConfig';
-import { Logger } from '../../utils/Logger';
 
 /**
  * Chunk information during VAD processing
@@ -72,7 +71,7 @@ export class VADChunkingProcessor extends WebRTCVADProcessor {
 	/**
 	 * Process audio and create chunks in a single pass
 	 */
-	async processAudioWithChunking(
+	processAudioWithChunking(
 		audioData: Float32Array,
 		sampleRate: number
 	): Promise<{ vadResult: VADResult; chunks: AudioChunk[] }> {
@@ -87,7 +86,7 @@ export class VADChunkingProcessor extends WebRTCVADProcessor {
 			let processData = audioData;
 			let vadSampleRate = sampleRate;
 			if (sampleRate !== AUDIO_CONSTANTS.SAMPLE_RATE) {
-				processData = await this.resampleTo16kHz(audioData, sampleRate);
+				processData = this.resampleTo16kHz(audioData, sampleRate);
 				vadSampleRate = AUDIO_CONSTANTS.SAMPLE_RATE;
 			}
 
@@ -117,10 +116,7 @@ export class VADChunkingProcessor extends WebRTCVADProcessor {
 				performance.now() - startTime
 			);
 
-			chunks.forEach((chunk, i) => {
-			});
-
-			return { vadResult, chunks };
+			return Promise.resolve({ vadResult, chunks });
 		} catch (error) {
 			this.logger.error('Processing error', error);
 			throw error;

@@ -464,44 +464,8 @@ export class TranscriptionView extends ItemView {
 		const modal = new FileSelectionModal(
 			this.app,
 			matchingFiles,
-			async (selectedFile: TFile) => {
-				// 更新するタスクのコピーを作成
-				const updatedTask = { ...task };
-
-				// 文字起こしファイルのパスを更新
-				updatedTask.outputFilePath = selectedFile.path;
-				updatedTask.outputFileName = selectedFile.name;
-
-				// フロントマターから元の音声ファイル情報を取得
-				const frontmatter = this.app.metadataCache.getFileCache(selectedFile)?.frontmatter;
-				const sourceFilePath = typeof frontmatter?.source_file === 'string' ? frontmatter.source_file : null;
-				if (sourceFilePath) {
-					// 元の音声ファイルも検索
-					const audioFile = this.app.vault.getAbstractFileByPath(sourceFilePath);
-					if (audioFile instanceof TFile) {
-						updatedTask.inputFilePath = audioFile.path;
-						updatedTask.inputFileName = audioFile.name;
-					} else {
-						// 音声ファイルが見つからない場合、ファイル名で検索
-						const searchFileName = task.inputFileName || '';
-						const audioFiles = this.app.vault.getFiles().filter(f =>
-							f.name === searchFileName && this.isAudioFile(f.extension)
-						);
-						if (audioFiles.length === 1) {
-							updatedTask.inputFilePath = audioFiles[0].path;
-							updatedTask.inputFileName = audioFiles[0].name;
-						} else if (audioFiles.length > 1) {
-							// 複数見つかった場合は選択モーダルを表示
-							new Notice(t('common.multipleAudioFilesFound'));
-						}
-					}
-				}
-
-				// 履歴を更新
-				await this.updateTaskInHistory(updatedTask);
-
-				// ファイルを開く
-				await this.app.workspace.openLinkText(selectedFile.path, '', true);
+			(selectedFile: TFile) => {
+				void this.handleFileSelection(task, selectedFile);
 			}
 		);
 		modal.open();
@@ -521,6 +485,37 @@ export class TranscriptionView extends ItemView {
 			// UIを更新
 			this.updateHistoryDisplay();
 		}
+	}
+
+	private async handleFileSelection(task: TranscriptionTask, selectedFile: TFile): Promise<void> {
+		const updatedTask = { ...task };
+
+		updatedTask.outputFilePath = selectedFile.path;
+		updatedTask.outputFileName = selectedFile.name;
+
+		const frontmatter = this.app.metadataCache.getFileCache(selectedFile)?.frontmatter;
+		const sourceFilePath = typeof frontmatter?.source_file === 'string' ? frontmatter.source_file : null;
+		if (sourceFilePath) {
+			const audioFile = this.app.vault.getAbstractFileByPath(sourceFilePath);
+			if (audioFile instanceof TFile) {
+				updatedTask.inputFilePath = audioFile.path;
+				updatedTask.inputFileName = audioFile.name;
+			} else {
+				const searchFileName = task.inputFileName || '';
+				const audioFiles = this.app.vault.getFiles().filter(f =>
+					f.name === searchFileName && this.isAudioFile(f.extension)
+				);
+				if (audioFiles.length === 1) {
+					updatedTask.inputFilePath = audioFiles[0].path;
+					updatedTask.inputFileName = audioFiles[0].name;
+				} else if (audioFiles.length > 1) {
+					new Notice(t('common.multipleAudioFilesFound'));
+				}
+			}
+		}
+
+		await this.updateTaskInHistory(updatedTask);
+		await this.app.workspace.openLinkText(selectedFile.path, '', true);
 	}
 
 	/**

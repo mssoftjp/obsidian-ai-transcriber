@@ -12,7 +12,8 @@ import {
 } from '../../../core/transcription/TranscriptionTypes';
 import {
 	WHISPER_CONFIG,
-	buildWhisperRequest
+	buildWhisperRequest,
+	WhisperRequestPayload
 } from '../../../config/openai/WhisperConfig';
 import { DEFAULT_REQUEST_CONFIG } from '../../../config/openai/index';
 import { Logger } from '../../../utils/Logger';
@@ -76,20 +77,29 @@ export class WhisperClient extends ApiClient {
 
 
 		// Append all parameters to FormData
-		Object.entries(requestParams).forEach(([key, value]) => {
-			if (value !== undefined) {
-				if (key === 'timestamp_granularities' && Array.isArray(value)) {
-					// OpenAI expects each array element as a separate form field with brackets
-					value.forEach(item => {
-						formData.append('timestamp_granularities[]', item.toString());
-					});
-				} else if (Array.isArray(value)) {
-					// For other arrays, use JSON string format
-					formData.append(key, JSON.stringify(value));
-				} else {
-					formData.append(key, value.toString());
-				}
+		const requestEntries = Object.entries(requestParams) as Array<
+			[keyof WhisperRequestPayload, WhisperRequestPayload[keyof WhisperRequestPayload]]
+		>;
+		requestEntries.forEach(([key, value]) => {
+			if (value === undefined) {
+				return;
 			}
+
+			if (key === 'timestamp_granularities' && Array.isArray(value)) {
+				// OpenAI expects each array element as a separate form field with brackets
+				value.forEach(item => {
+					formData.append('timestamp_granularities[]', item);
+				});
+				return;
+			}
+
+			if (Array.isArray(value)) {
+				// For other arrays, use JSON string format
+				formData.append(key, JSON.stringify(value));
+				return;
+			}
+
+			formData.append(key, String(value));
 		});
 
 		try {

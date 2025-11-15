@@ -13,7 +13,7 @@ import { PostProcessingService } from '../application/services/PostProcessingSer
 import { TranscriptionMetaInfo } from '../core/transcription/TranscriptionTypes';
 import { createTranslationMetadata } from '../core/transcription/TranslationUtils';
 import { t } from '../i18n';
-import { ObsidianApp, ObsidianPlugin, isNavigatorWithWakeLock, WakeLockSentinel } from '../types/global';
+import { ObsidianApp, isNavigatorWithWakeLock, WakeLockSentinel } from '../types/global';
 import { FileTypeUtils } from '../config/constants';
 import { Logger } from '../utils/Logger';
 import { PathUtils } from '../utils/PathUtils';
@@ -130,30 +130,8 @@ export class APITranscriptionModal extends Modal {
 		modelSelect.value = this.settings.model;
 
 		// Handle model change
-		modelSelect.addEventListener('change', async () => {
-			const option = getModelOption(modelSelect.value);
-			if (!option) {
-				return;
-			}
-
-			this.settings.model = option.model;
-
-			// Save settings through the provided callback if available
-			if (this.saveSettings) {
-				await this.saveSettings();
-			} else {
-				// Fallback: try to get plugin instance with proper typing
-				const obsidianApp = this.app as ObsidianApp;
-				const plugin = obsidianApp.plugins?.plugins?.[PathUtils.getCurrentPluginId()];
-				if (plugin?.saveSettings && typeof plugin.saveSettings === 'function') {
-					await plugin.saveSettings();
-				} else {
-					this.logger.warn('Unable to save settings - saveSettings callback or plugin instance not found');
-				}
-			}
-
-			// Update cost estimate
-			void this.displayCostEstimate();
+		modelSelect.addEventListener('change', () => {
+			void this.handleModelChange(modelSelect.value);
 		});
 
 		// File info with integrated cost estimation
@@ -318,7 +296,7 @@ export class APITranscriptionModal extends Modal {
 			const detailsEl = this.costEl.createEl('small', { cls: 'cost-details' });
 			detailsEl.setText(adjustedDetails);
 		} catch (error) {
-			const err = error instanceof Error ? error : new Error(String(error));
+			const err = error instanceof Error ? error : new Error(this.formatUnknownError(error));
 			this.logger.error('Failed to calculate cost estimate', err);
 			// Clear and rebuild cost element for error case
 			this.costEl.empty();
@@ -329,6 +307,33 @@ export class APITranscriptionModal extends Modal {
 			const valueSpan = this.costEl.createSpan({ cls: 'cost-value' });
 			valueSpan.setText('--');
 		}
+	}
+
+	private async handleModelChange(selectedValue: string): Promise<void> {
+		const option = getModelOption(selectedValue);
+		if (!option) {
+			return;
+		}
+
+		this.settings.model = option.model;
+
+		try {
+			if (this.saveSettings) {
+				await this.saveSettings();
+			} else {
+				const obsidianApp = this.app as ObsidianApp;
+				const plugin = obsidianApp.plugins?.plugins?.[PathUtils.getCurrentPluginId()];
+				if (plugin?.saveSettings && typeof plugin.saveSettings === 'function') {
+					await plugin.saveSettings();
+				} else {
+					this.logger.warn('Unable to save settings - saveSettings callback or plugin instance not found');
+				}
+			}
+		} catch (error) {
+			this.logger.error('Failed to persist model change', error);
+		}
+
+		void this.displayCostEstimate();
 	}
 
 	private async cancelTranscription() {
@@ -808,7 +813,7 @@ export class APITranscriptionModal extends Modal {
 				}
 			}
 		} catch (error) {
-			const err = error instanceof Error ? error : new Error(String(error));
+			const err = error instanceof Error ? error : new Error(this.formatUnknownError(error));
 			this.logger.error('Failed to create new note', { error: err.message, filePath });
 			throw new Error(t('errors.createFileFailed', { error: err.message }));
 		}
@@ -930,7 +935,7 @@ export class APITranscriptionModal extends Modal {
 					this.logger.trace('Frontmatter metadata updated');
 
 				} catch (metadataError) {
-					const err = metadataError instanceof Error ? metadataError : new Error(String(metadataError));
+					const err = metadataError instanceof Error ? metadataError : new Error(this.formatUnknownError(metadataError));
 					this.logger.warn('Failed to add frontmatter metadata', { error: err.message });
 					// Don't fail the whole operation for metadata errors
 				}
@@ -1085,7 +1090,7 @@ export class APITranscriptionModal extends Modal {
 				.setValue(this.settings.language)
 				.onChange(async (value) => {
 					this.settings.language = value;
-					await this.transcriber.updateSettings(this.settings);
+					this.transcriber.updateSettings(this.settings);
 					if (this.saveSettings) {
 						await this.saveSettings();
 					}
@@ -1102,7 +1107,7 @@ export class APITranscriptionModal extends Modal {
 					.setValue(this.settings.transcriptionOutputFolder)
 					.onChange(async (value) => {
 						this.settings.transcriptionOutputFolder = value;
-						await this.transcriber.updateSettings(this.settings);
+						this.transcriber.updateSettings(this.settings);
 						if (this.saveSettings) {
 							await this.saveSettings();
 						}
@@ -1138,7 +1143,7 @@ export class APITranscriptionModal extends Modal {
 				.setValue(this.settings.postProcessingEnabled)
 				.onChange(async (value) => {
 					this.settings.postProcessingEnabled = value;
-					await this.transcriber.updateSettings(this.settings);
+					this.transcriber.updateSettings(this.settings);
 					if (this.saveSettings) {
 						await this.saveSettings();
 					}
@@ -1175,7 +1180,7 @@ export class APITranscriptionModal extends Modal {
 			.setValue(this.settings.dictionaryCorrectionEnabled)
 			.onChange(async (value) => {
 				this.settings.dictionaryCorrectionEnabled = value;
-				await this.transcriber.updateSettings(this.settings);
+				this.transcriber.updateSettings(this.settings);
 				if (this.saveSettings) {
 					await this.saveSettings();
 				}
@@ -1285,7 +1290,7 @@ export class APITranscriptionModal extends Modal {
 			const waveformWidth = Math.min(modalWidth - 40, 560); // Leave some padding
 
 			this.waveformSelector = new AudioWaveformSelector(waveformContainer, waveformWidth, 100);
-			await this.waveformSelector.loadAudio(decodedAudio);
+			this.waveformSelector.loadAudio(decodedAudio);
 
 			// Set up range change callback
 			this.waveformSelector.setOnRangeChange((start, end) => {
@@ -1468,7 +1473,7 @@ export class APITranscriptionModal extends Modal {
 					nextInput.select();
 				} else {
 					// Focus transcribe button
-					const transcribeBtn = this.contentEl.querySelector('button.mod-cta');
+					const transcribeBtn = this.contentEl.querySelector<HTMLButtonElement>('button.mod-cta');
 					if (transcribeBtn) {
 						transcribeBtn.focus();
 					}
@@ -1657,6 +1662,21 @@ export class APITranscriptionModal extends Modal {
 		default:
 			// Fallback to model name with proper formatting
 			return model.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+		}
+	}
+
+	private formatUnknownError(error: unknown): string {
+		if (error instanceof Error) {
+			return error.message;
+		}
+		if (typeof error === 'string') {
+			return error;
+		}
+		try {
+			const serialized = JSON.stringify(error);
+			return serialized ?? 'Unknown error';
+		} catch {
+			return 'Unknown error';
 		}
 	}
 
