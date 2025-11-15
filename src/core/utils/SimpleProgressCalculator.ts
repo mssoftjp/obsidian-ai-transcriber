@@ -46,12 +46,12 @@ export class SimpleProgressCalculator {
 		}
 
 		switch (stage) {
-			case 'start':
-				return 70;
-			case 'processing':
-				return 80;
-			case 'done':
-				return 90;
+		case 'start':
+			return 70;
+		case 'processing':
+			return 80;
+		case 'done':
+			return 90;
 		}
 	}
 

@@ -4,11 +4,11 @@
  */
 
 import { AudioProcessor } from '../../core/audio/AudioProcessor';
-import { 
-	AudioInput, 
-	ProcessedAudio, 
+import {
+	AudioInput,
+	ProcessedAudio,
 	AudioValidationResult,
-	AudioProcessingConfig 
+	AudioProcessingConfig
 } from '../../core/audio/AudioTypes';
 import { getModelConfig } from '../../config/ModelProcessingConfig';
 
@@ -30,7 +30,7 @@ export class FallbackEngine extends AudioProcessor {
 		// More restrictive for fallback
 		const maxSizeMB = 25; // Match API limits
 		const sizeMB = input.size / (1024 * 1024);
-		
+
 		if (sizeMB > maxSizeMB) {
 			validation.isValid = false;
 			validation.error = `File size ${sizeMB.toFixed(1)}MB exceeds maximum ${maxSizeMB}MB for fallback processor`;
@@ -72,10 +72,10 @@ export class FallbackEngine extends AudioProcessor {
 
 		// Warnings for non-optimal settings
 		if (sampleRate !== this.config.targetSampleRate) {
-			validation.warnings!.push(`Sample rate ${sampleRate}Hz will be passed as-is (no resampling in fallback mode)`);
+			validation.warnings.push(`Sample rate ${sampleRate}Hz will be passed as-is (no resampling in fallback mode)`);
 		}
 		if (channels !== 1) {
-			validation.warnings!.push(`${channels} channels detected (fallback mode does not support mixing to mono)`);
+			validation.warnings.push(`${channels} channels detected (fallback mode does not support mixing to mono)`);
 		}
 
 		return validation;
@@ -87,13 +87,13 @@ export class FallbackEngine extends AudioProcessor {
 	async decode(input: AudioInput): Promise<AudioBuffer> {
 		// Since we only support WAV, we can create a simple AudioBuffer-like object
 		const view = new DataView(input.data);
-		
+
 		// Read WAV header
 		const sampleRate = view.getUint32(24, true);
 		const channels = view.getUint16(22, true);
 		const bitsPerSample = view.getUint16(34, true);
 		const dataSize = view.getUint32(40, true);
-		
+
 		// Calculate properties
 		const bytesPerSample = bitsPerSample / 8;
 		const samplesPerChannel = dataSize / (channels * bytesPerSample);
@@ -109,10 +109,10 @@ export class FallbackEngine extends AudioProcessor {
 				// Extract channel data from interleaved WAV data
 				const channelData = new Float32Array(samplesPerChannel);
 				const dataStart = 44; // WAV header size
-				
+
 				for (let i = 0; i < samplesPerChannel; i++) {
 					const sampleOffset = dataStart + (i * channels + channel) * bytesPerSample;
-					
+
 					if (bitsPerSample === 16) {
 						const sample = view.getInt16(sampleOffset, true) / 32768;
 						channelData[i] = sample;
@@ -124,7 +124,7 @@ export class FallbackEngine extends AudioProcessor {
 						channelData[i] = 0;
 					}
 				}
-				
+
 				return channelData;
 			}
 		} as unknown as AudioBuffer;
@@ -180,7 +180,7 @@ export class FallbackEngine extends AudioProcessor {
 		supportsVAD: boolean;
 		maxChannels: number;
 		supportedFormats: string[];
-	} {
+		} {
 		return {
 			supportsResampling: false,
 			supportsVAD: false,
@@ -196,8 +196,8 @@ export class FallbackEngine extends AudioProcessor {
 		// デフォルトでWhisperモデルの制限を使用（最も一般的なケース）
 		const whisperConfig = getModelConfig('whisper-1');
 		const maxSizeBytes = whisperConfig.maxFileSizeMB * 1024 * 1024;
-		
-		return input.extension.toLowerCase() === 'wav' && 
+
+		return input.extension.toLowerCase() === 'wav' &&
 		       input.size < maxSizeBytes;
 	}
 }

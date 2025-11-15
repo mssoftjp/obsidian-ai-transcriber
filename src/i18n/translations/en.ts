@@ -5,14 +5,14 @@
 import { TranslationKeys } from '../locales';
 
 const en: TranslationKeys = {
-		// Plugin info
-		plugin: {
-			name: 'AI transcriber' // Not translated
-		},
-	
+	// Plugin info
+	plugin: {
+		name: 'AI transcriber' // Not translated
+	},
+
 	// Settings
-		settings: {
-			title: 'AI transcriber settings',
+	settings: {
+		title: 'AI transcriber settings',
 		apiKey: {
 			name: 'OpenAI API key',
 			desc: 'Your OpenAI API key',
@@ -20,7 +20,7 @@ const en: TranslationKeys = {
 			testButton: 'Test connection',
 			testSuccess: 'Connection successful',
 			testFailed: 'Connection failed. Please check your API key.',
-				insecureWarning: 'OS encryption not available; using fallback encryption method.',
+			insecureWarning: 'OS encryption not available; using fallback encryption method.',
 			migrated: 'API key has been automatically migrated to the new encryption format.'
 		},
 		model: {
@@ -38,31 +38,31 @@ const en: TranslationKeys = {
 			gpt4oHigh: 'GPT-4o transcribe',
 			gpt4oMiniCost: 'GPT-4o mini transcribe'
 		},
-			vadMode: {
-				name: 'Silence detection (VAD)',
+		vadMode: {
+			name: 'Silence detection (VAD)',
 			desc: 'Processing silent segments can lighten speech recognition workload and reduce the amount of data sent',
 			options: {
 				server: 'Server',
 				local: 'Local',
 				disabled: 'Off'
 			},
-				summaries: {
-					server: 'Standard: faster processing',
-					local: 'Advanced: faster, less data sent',
-					disabled: 'No silence processing'
-				},
+			summaries: {
+				server: 'Standard: faster processing',
+				local: 'Advanced: faster, less data sent',
+				disabled: 'No silence processing'
+			},
 			missingWarning: "Using Local VAD requires a third-party module. Download 'fvad.wasm' from the fvad-wasm repository, then click 'Choose file' to copy it into the plugin folder.",
 			missingInlineNote: "Using Local VAD requires a third-party module. Download 'fvad.wasm' from the fvad-wasm repository, then click 'Choose file' to copy it into the plugin folder.",
 			localNote: 'Since silent segments are removed on-device before sending, it helps reduce API costs.',
 			installWasm: {
-			name: 'Place fvad.wasm',
-			desc: 'Select an existing fvad.wasm to automatically place it into the plugin folder',
-			button: 'Choose file',
-			success: 'Placed fvad.wasm successfully',
-			invalidName: 'Please select fvad.wasm',
-			invalidType: 'Not a valid WASM file',
-			writeError: 'Failed to place file: {error}'
-		}
+				name: 'Place fvad.wasm',
+				desc: 'Select an existing fvad.wasm to automatically place it into the plugin folder',
+				button: 'Choose file',
+				success: 'Placed fvad.wasm successfully',
+				invalidName: 'Please select fvad.wasm',
+				invalidType: 'Not a valid WASM file',
+				writeError: 'Failed to place file: {error}'
+			}
 		},
 		language: {
 			name: 'Language',
@@ -91,12 +91,12 @@ const en: TranslationKeys = {
 			name: 'Enable dictionary correction',
 			desc: 'Automatically correct transcription results using dictionary-based text correction'
 		},
-			outputFolder: {
-				name: 'Output folder',
-				desc: 'Folder to save transcription results (empty for vault root)',
-				placeholder: 'E.g., transcriptions',
-				select: 'Select folder'
-			},
+		outputFolder: {
+			name: 'Output folder',
+			desc: 'Folder to save transcription results (empty for vault root)',
+			placeholder: 'E.g., transcriptions',
+			select: 'Select folder'
+		},
 		advanced: {
 			title: 'Advanced settings',
 			chunkInfo: 'Chunk settings guide:',
@@ -118,11 +118,11 @@ const en: TranslationKeys = {
 			mode: 'Debug mode',
 			modeDesc: 'Output detailed console logs (for developers)'
 		},
-			dictionary: {
-				name: 'User dictionary',
-				desc: 'Edit the dictionary to correct speech recognition errors',
-				addButton: 'Add entry',
-				deleteButton: 'Delete',
+		dictionary: {
+			name: 'User dictionary',
+			desc: 'Edit the dictionary to correct speech recognition errors',
+			addButton: 'Add entry',
+			deleteButton: 'Delete',
 			from: 'From',
 			to: 'To',
 			enabled: 'Enabled',
@@ -131,8 +131,8 @@ const en: TranslationKeys = {
 			context: 'Context',
 			definiteCorrections: 'Definite corrections',
 			contextualCorrections: 'Contextual corrections',
-				importExport: 'Import/export',
-				importExportDesc: 'Import or export dictionary data in JSON format',
+			importExport: 'Import/export',
+			importExportDesc: 'Import or export dictionary data in JSON format',
 			import: 'Import',
 			export: 'Export',
 			importSuccess: 'Dictionary imported successfully',
@@ -164,23 +164,23 @@ const en: TranslationKeys = {
 				symbol: 'Symbol/unit'
 			}
 		},
-			connection: {
-				title: 'Connection test',
-				name: 'Test API connection',
-				desc: 'Verify your API key and connection',
-				testButton: 'Test connection',
-				testing: 'Testing...',
-				successNotice: '{provider} connection successful ✅!',
-				successButton: 'Connected ✅',
-				failureNotice: '{provider} connection failed ❌. Check your API key.',
-				failureButton: 'Failed ❌',
-				errorNotice: 'Connection test failed ❌: {error}',
-				errorButton: 'Error ❌',
-				clearTitle: 'Clear API keys',
-				clearDesc: 'Remove all stored API keys (useful for troubleshooting)',
-				clearButton: 'Clear all keys',
-				clearedNotice: 'API key cleared'
-			}
+		connection: {
+			title: 'Connection test',
+			name: 'Test API connection',
+			desc: 'Verify your API key and connection',
+			testButton: 'Test connection',
+			testing: 'Testing...',
+			successNotice: '{provider} connection successful ✅!',
+			successButton: 'Connected ✅',
+			failureNotice: '{provider} connection failed ❌. Check your API key.',
+			failureButton: 'Failed ❌',
+			errorNotice: 'Connection test failed ❌: {error}',
+			errorButton: 'Error ❌',
+			clearTitle: 'Clear API keys',
+			clearDesc: 'Remove all stored API keys (useful for troubleshooting)',
+			clearButton: 'Clear all keys',
+			clearedNotice: 'API key cleared'
+		}
 	},
 
 	// Provider names
@@ -199,10 +199,10 @@ const en: TranslationKeys = {
 		contextMenu: 'Transcribe with AI'
 	},
 
-		// Ribbon
-		ribbon: {
-			tooltip: 'AI transcriber'
-		},
+	// Ribbon
+	ribbon: {
+		tooltip: 'AI transcriber'
+	},
 
 	// Status bar
 	statusBar: {
@@ -213,8 +213,8 @@ const en: TranslationKeys = {
 		clickToOpen: 'Click to view details'
 	},
 
-		// Notices
-		notices: {
+	// Notices
+	notices: {
 		apiKeyNotConfigured: 'API key not configured. Please add your OpenAI API key in settings.',
 		apiKeyMissing: 'API key not configured. Please add your OpenAI API key in settings.',
 		transcriptionComplete: 'Transcription completed successfully',
@@ -222,10 +222,10 @@ const en: TranslationKeys = {
 		transcriptionCancelled: 'Transcription cancelled',
 		noAudioFile: 'No audio file selected',
 		processingFile: 'Processing file: {fileName}',
-			vadInitError: 'VAD initialization error: fvad.wasm file not found. Please place it in the plugin folder.',
-			vadServerFallback: 'Local VAD module not found. Falling back to server-side VAD.',
-			vadProcessingError: 'VAD processing error: {error}',
-			vadUnavailable: 'VAD is unavailable, proceeding without silence removal.',
+		vadInitError: 'VAD initialization error: fvad.wasm file not found. Please place it in the plugin folder.',
+		vadServerFallback: 'Local VAD module not found. Falling back to server-side VAD.',
+		vadProcessingError: 'VAD processing error: {error}',
+		vadUnavailable: 'VAD is unavailable, proceeding without silence removal.',
 		externalFileNotSupported: 'External file processing will be implemented in the next phase',
 		postProcessingComplete: 'Post-processing completed: {model} was used',
 		postProcessingFailed: 'Post-processing failed. Using original transcription.',
@@ -268,8 +268,8 @@ const en: TranslationKeys = {
 			copying: 'Copying file...',
 			externalFileNotice: 'When selecting files from outside the vault, they will be temporarily copied to a folder within the vault due to Obsidian restrictions.\nCopied files will be deleted on the next startup.'
 		},
-			transcription: {
-				title: 'AI transcriber',
+		transcription: {
+			title: 'AI transcriber',
 			fileInfo: 'File information',
 			modelLabel: 'Transcription AI model',
 			fileSize: 'Size: {size}',
@@ -303,17 +303,17 @@ const en: TranslationKeys = {
 			postProcessing: 'Post-processing with AI',
 			postProcessingCompleted: 'Post-processing completed',
 			savingResults: 'Saving results',
-				completed: 'Completed',
-				partialResult: 'Partial transcription result',
+			completed: 'Completed',
+			partialResult: 'Partial transcription result',
 			partialSummary: '{processed}/{total} chunks processed.',
 			partialCancelled: 'Transcription cancelled. Completed {processed} out of {total} chunks.',
 			partialError: 'Partial transcription due to error: {error}. Completed {processed} out of {total} chunks.',
 			partialNoChunks: 'Transcription was cancelled before any chunks were processed.',
 			partialFailedChunks: 'Some chunks ({chunks}) failed.',
-				chunkFailure: 'Chunk {index} failed: {error}',
-				chunkFailureSummary: 'Chunk {id}: {error}',
-				costEstimateSummary: 'Approximately {minutes} minutes @ {rate}/min'
-			},
+			chunkFailure: 'Chunk {index} failed: {error}',
+			chunkFailureSummary: 'Chunk {id}: {error}',
+			costEstimateSummary: 'Approximately {minutes} minutes @ {rate}/min'
+		},
 		postProcessing: {
 			titlePre: 'Pre-transcription related information',
 			titlePost: 'Post-transcription processing',
@@ -396,34 +396,34 @@ const en: TranslationKeys = {
 			unableToOpenFile: 'Unable to open the created file.',
 			fileInsertionFailed: 'File insertion failed. Transcription copied to clipboard.'
 		},
-			recoveryActions: {
-				openSettings: 'Open settings',
-				connectionTest: 'Connection test',
-				checkSupportedFormats: 'Check supported formats',
-				retry: 'Retry',
-				tryOtherFormat: 'Try other format',
-				checkSizeLimit: 'Check size limit',
-				enableDebugMode: 'Enable debug mode'
-			},
-			notices: {
-				settingsCheck: 'Please check your API key in settings',
-				settingsConnectionTest: 'Please try the "Test connection" button in settings',
-				supportedFormats: 'Supported formats: audio (MP3, WAV, M4A, FLAC, AAC, OGG), video (MP4, MOV, AVI, MKV, WebM)',
-				networkRetry: 'Please check network connection and try again',
-				formatConversion: 'Please convert to WAV or MP3 format and try again',
-				sizeLimit: 'GPT-4o: 20MB/25min, Whisper: 20MB',
-				debugModeEnable: 'Enable debug mode in settings to view detailed logs'
-			}
+		recoveryActions: {
+			openSettings: 'Open settings',
+			connectionTest: 'Connection test',
+			checkSupportedFormats: 'Check supported formats',
+			retry: 'Retry',
+			tryOtherFormat: 'Try other format',
+			checkSizeLimit: 'Check size limit',
+			enableDebugMode: 'Enable debug mode'
 		},
+		notices: {
+			settingsCheck: 'Please check your API key in settings',
+			settingsConnectionTest: 'Please try the "Test connection" button in settings',
+			supportedFormats: 'Supported formats: audio (MP3, WAV, M4A, FLAC, AAC, OGG), video (MP4, MOV, AVI, MKV, WebM)',
+			networkRetry: 'Please check network connection and try again',
+			formatConversion: 'Please convert to WAV or MP3 format and try again',
+			sizeLimit: 'GPT-4o: 20MB/25min, Whisper: 20MB',
+			debugModeEnable: 'Enable debug mode in settings to view detailed logs'
+		}
+	},
 
 	// Units
-		units: {
-			seconds: 'Seconds',
-			minutes: 'Minutes',
-			hours: 'Hours',
-			mb: 'MB',
-			gb: 'GB'
-		},
+	units: {
+		seconds: 'Seconds',
+		minutes: 'Minutes',
+		hours: 'Hours',
+		mb: 'MB',
+		gb: 'GB'
+	},
 
 	// Audio Range Selection
 	audioRange: {
@@ -436,7 +436,7 @@ const en: TranslationKeys = {
 	},
 
 	// Common
-		common: {
+	common: {
 		noHistory: 'No transcription history',
 		noActiveTask: 'No active transcription tasks',
 		loading: 'Loading',
@@ -467,22 +467,22 @@ const en: TranslationKeys = {
 		historyUpdated: 'History updated',
 		selectFile: 'Select file',
 		multipleFilesFound: 'Multiple files found. Please select:',
-			fileSize: {
-				zero: 'Zero bytes',
-				units: {
-					bytes: 'Bytes',
-					kb: 'KB',
-					mb: 'MB',
-					gb: 'GB'
-				}
+		fileSize: {
+			zero: 'Zero bytes',
+			units: {
+				bytes: 'Bytes',
+				kb: 'KB',
+				mb: 'MB',
+				gb: 'GB'
 			}
-		},
-	
-	// Support section
-		support: {
-			message: 'If this plugin adds value for you and you would like to help support continued development, please use the buttons below:',
-			imageAlt: 'Support AI transcriber via Buy Me a Coffee'
 		}
+	},
+
+	// Support section
+	support: {
+		message: 'If this plugin adds value for you and you would like to help support continued development, please use the buttons below:',
+		imageAlt: 'Support AI transcriber via Buy Me a Coffee'
+	}
 
 };
 

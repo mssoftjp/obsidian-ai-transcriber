@@ -5,12 +5,12 @@
 
 import { ApiClient } from '../ApiClient';
 import { AudioChunk } from '../../../core/audio/AudioTypes';
-import { 
-	TranscriptionResult, 
+import {
+	TranscriptionResult,
 	TranscriptionOptions,
-	ModelSpecificOptions 
+	ModelSpecificOptions
 } from '../../../core/transcription/TranscriptionTypes';
-import { 
+import {
 	WHISPER_CONFIG,
 	buildWhisperRequest
 } from '../../../config/openai/WhisperConfig';
@@ -44,7 +44,7 @@ export class WhisperClient extends ApiClient {
 			maxRetries: DEFAULT_REQUEST_CONFIG.maxRetries,
 			retryDelay: DEFAULT_REQUEST_CONFIG.retryDelayMs
 		});
-		
+
 		this.logger = Logger.getLogger('WhisperClient');
 	}
 
@@ -94,7 +94,7 @@ export class WhisperClient extends ApiClient {
 
 		try {
 			const startTime = performance.now();
-			this.logger.trace('Sending request to Whisper API', { 
+			this.logger.trace('Sending request to Whisper API', {
 				chunkId: chunk.id,
 				requestParams: {
 					model: requestParams.model,
@@ -103,27 +103,27 @@ export class WhisperClient extends ApiClient {
 					language: requestParams.language
 				}
 			});
-			
+
 			const response = await this.post<WhisperResponse | string>(
 				'/audio/transcriptions',
 				formData,
 				{},
 				options.signal
 			);
-			
+
 			this.logger.debug('Whisper API response type', {
 				chunkId: chunk.id,
 				responseType: typeof response,
 				hasSegments: typeof response === 'object' && 'segments' in response,
 				segmentsCount: typeof response === 'object' && response.segments?.length,
 				// Log first few segments for debugging
-				sampleSegments: typeof response === 'object' && response.segments 
+				sampleSegments: typeof response === 'object' && response.segments
 					? response.segments.slice(0, 2).map(s => ({ start: s.start, end: s.end, textLength: s.text.length }))
 					: null
 			});
 
 			const result = this.parseResponse(response, chunk);
-			
+
 			const elapsedTime = performance.now() - startTime;
 			this.logger.debug('Whisper transcription completed', {
 				chunkId: chunk.id,
@@ -132,7 +132,7 @@ export class WhisperClient extends ApiClient {
 				hasSegments: !!result.segments,
 				segmentsCount: result.segments?.length
 			});
-			
+
 			return result;
 
 		} catch (error) {
@@ -140,7 +140,7 @@ export class WhisperClient extends ApiClient {
 				chunkId: chunk.id,
 				error: error instanceof Error ? error.message : 'Unknown error'
 			});
-			
+
 			return {
 				id: chunk.id,
 				text: '',
@@ -191,8 +191,8 @@ export class WhisperClient extends ApiClient {
 			segments,
 			language: response.language
 		};
-		
-		
+
+
 		return result;
 	}
 

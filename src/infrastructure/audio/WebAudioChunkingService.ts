@@ -9,11 +9,11 @@ import { ChunkStrategy, ChunkingConfig } from '../../core/chunking/ChunkingTypes
 
 export class WebAudioChunkingService extends ChunkingService {
 	private preferredChunkDuration?: number;
-	
+
 	constructor(config: ChunkingConfig) {
 		super(config);
 	}
-	
+
 	/**
 	 * Set preferred chunk duration from model config
 	 */
@@ -31,25 +31,25 @@ export class WebAudioChunkingService extends ChunkingService {
 		maxDuration: number,
 		maxSizeMB: number
 	): number {
-		
-		// Step 1: Check if we have a model-preferred duration
-			if (this.preferredChunkDuration) {
-				const preferredDuration = this.preferredChunkDuration;
-				
-				// Step 2: Check time constraint first
-				if (preferredDuration > maxDuration) {
-					return maxDuration;
-				}
 
-				// Step 3: Check size constraint
-				const estimatedChunks = Math.ceil(totalDuration / preferredDuration);
-				const estimatedChunkSizeMB = estimatedSizeMB / estimatedChunks;
-				
-				if (estimatedChunkSizeMB <= maxSizeMB) {
-					return preferredDuration;
-				}
-				// Otherwise fall back to base calculation
+		// Step 1: Check if we have a model-preferred duration
+		if (this.preferredChunkDuration) {
+			const preferredDuration = this.preferredChunkDuration;
+
+			// Step 2: Check time constraint first
+			if (preferredDuration > maxDuration) {
+				return maxDuration;
 			}
+
+			// Step 3: Check size constraint
+			const estimatedChunks = Math.ceil(totalDuration / preferredDuration);
+			const estimatedChunkSizeMB = estimatedSizeMB / estimatedChunks;
+
+			if (estimatedChunkSizeMB <= maxSizeMB) {
+				return preferredDuration;
+			}
+			// Otherwise fall back to base calculation
+		}
 
 		// Step 4: Fallback to base constraint-based calculation
 		return super.calculateOptimalChunkDuration(totalDuration, estimatedSizeMB, maxDuration, maxSizeMB);
@@ -88,7 +88,7 @@ export class WebAudioChunkingService extends ChunkingService {
 
 		// Create chunks
 		const chunks: AudioChunk[] = [];
-		
+
 		for (let i = 0; i < boundaries.length; i++) {
 			const startSample = Math.floor(boundaries[i] * sampleRate);
 			const endSample = i < boundaries.length - 1
@@ -102,13 +102,13 @@ export class WebAudioChunkingService extends ChunkingService {
 
 			// Extract chunk PCM data
 			const chunkPcm = audio.pcmData.slice(startSample, endSample);
-			
+
 			// Skip if chunk is too small (less than 0.1 seconds)
 			const chunkDuration = (endSample - startSample) / sampleRate;
 			if (chunkDuration < 0.1) {
 				continue;
 			}
-			
+
 			// Convert to WAV
 			const wavData = this.pcmToWav(chunkPcm, sampleRate);
 

@@ -87,19 +87,19 @@ export class DictionaryCorrector {
 	 */
 	async correct(text: string, language: string = 'ja'): Promise<string> {
 		let correctedText = text;
-		
+
 		// Apply rule-based corrections first
 		for (const dictionary of this.dictionaries.values()) {
 			if (!dictionary.enabled) {
 				continue;
 			}
-			
+
 			// Apply dictionary if it matches the language OR if it's a multi-language dictionary
 			if (dictionary.language === language || dictionary.language === 'multi') {
 				correctedText = this.applyDictionary(correctedText, dictionary);
 			}
 		}
-		
+
 		// Apply GPT-based correction if enabled
 		if (this.useGPTCorrection && this.gptService) {
 			try {
@@ -110,7 +110,7 @@ export class DictionaryCorrector {
 				// Fall back to rule-based correction only
 			}
 		}
-		
+
 		return correctedText;
 	}
 
@@ -119,13 +119,13 @@ export class DictionaryCorrector {
 	 */
 	private applyDictionary(text: string, dictionary: CorrectionDictionary): string {
 		let result = text;
-		
+
 		for (const entry of dictionary.entries) {
 			// Skip if condition is not met
 			if (entry.condition && !entry.condition(result)) {
 				continue;
 			}
-			
+
 			if (entry.pattern instanceof RegExp) {
 				// RegExp pattern
 				result = result.replace(entry.pattern, entry.replacement);
@@ -136,7 +136,7 @@ export class DictionaryCorrector {
 				result = result.replace(regex, entry.replacement);
 			}
 		}
-		
+
 		return result;
 	}
 
@@ -167,7 +167,7 @@ export class DictionaryCorrector {
 			if (!dictionary.enabled) {
 				continue;
 			}
-			
+
 			// Include dictionary if it matches the language OR if it's a multi-language dictionary
 			if (dictionary.language !== language && dictionary.language !== 'multi') {
 				continue;
@@ -176,7 +176,7 @@ export class DictionaryCorrector {
 			// Add definite corrections from user dictionary (max 50)
 			if (dictionary.definiteCorrections) {
 				const definiteEntries = getTopCorrections(dictionary.definiteCorrections, DICTIONARY_CONSTANTS.MAX_DEFINITE_CORRECTIONS)
-					.flatMap(entry => 
+					.flatMap(entry =>
 						// Expand array of patterns to individual entries
 						entry.from.map(pattern => ({
 							from: pattern,
@@ -192,7 +192,7 @@ export class DictionaryCorrector {
 			if (dictionary.contextualCorrections) {
 				const contextual = detectContextKeywords(text, dictionary.contextualCorrections);
 				const topContextual = getTopCorrections(contextual, DICTIONARY_CONSTANTS.MAX_CONTEXTUAL_CORRECTIONS)
-					.flatMap(entry => 
+					.flatMap(entry =>
 						// Expand array of patterns to individual entries
 						entry.from.map(pattern => ({
 							from: pattern,
@@ -247,7 +247,9 @@ function detectContextKeywords(
 	contextualCorrections: ContextualCorrection[]
 ): ContextualCorrection[] {
 	return contextualCorrections.filter(correction => {
-		if (!correction.contextKeywords || correction.contextKeywords.length === 0) return false;
+		if (!correction.contextKeywords || correction.contextKeywords.length === 0) {
+			return false;
+		}
 		return correction.contextKeywords.some(keyword => text.includes(keyword));
 	});
 }
@@ -261,7 +263,9 @@ function buildCompactCorrectionPrompt(
 	// Group by category
 	const grouped = corrections.reduce((acc, correction) => {
 		const category = correction.category || 'other';
-		if (!acc[category]) acc[category] = [];
+		if (!acc[category]) {
+			acc[category] = [];
+		}
 		acc[category].push(`${correction.from}→${correction.to}`);
 		return acc;
 	}, {} as Record<string, string[]>);

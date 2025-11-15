@@ -31,7 +31,7 @@ export abstract class ChunkingService {
 		const estimatedSizeMB = this.estimateSize(audio);
 
 		const { maxSizeMB, chunkDurationSeconds } = this.config.constraints;
-		
+
 		this.logger.debug('Calculating chunking strategy', {
 			totalDuration: `${totalDuration.toFixed(2)}s`,
 			estimatedSizeMB: `${estimatedSizeMB.toFixed(2)}MB`,
@@ -42,7 +42,7 @@ export abstract class ChunkingService {
 
 		// Step 1: Check chunk duration first (not max total duration)
 		const exceedsDuration = totalDuration > chunkDurationSeconds;
-		
+
 		if (exceedsDuration) {
 			this.logger.debug('Audio exceeds chunk duration limit', {
 				totalDuration: `${totalDuration.toFixed(2)}s`,
@@ -53,7 +53,7 @@ export abstract class ChunkingService {
 
 		// Step 2: If duration is OK, check file size
 		const exceedsSize = estimatedSizeMB > maxSizeMB * 0.9; // 90% threshold for safety
-		
+
 		if (exceedsSize) {
 			this.logger.debug('Audio exceeds file size limit', {
 				estimatedSizeMB: `${estimatedSizeMB.toFixed(2)}MB`,
@@ -81,21 +81,21 @@ export abstract class ChunkingService {
 	 * Create chunking strategy when chunking is required
 	 */
 	private createChunkingStrategy(
-		audio: ProcessedAudio, 
-		totalDuration: number, 
-		estimatedSizeMB: number, 
+		audio: ProcessedAudio,
+		totalDuration: number,
+		estimatedSizeMB: number,
 		primaryReason: 'duration' | 'file_size'
 	): ChunkStrategy {
 		this.logger.debug('Creating chunking strategy', { primaryReason });
-                const { maxSizeMB, maxDurationSeconds, chunkDurationSeconds } = this.config.constraints;
+		const { maxSizeMB, maxDurationSeconds, chunkDurationSeconds } = this.config.constraints;
 
 		// Calculate optimal chunk duration
-                const chunkDuration = this.calculateOptimalChunkDuration(
-                        totalDuration,
-                        estimatedSizeMB,
-                        chunkDurationSeconds,
-                        maxSizeMB
-                );
+		const chunkDuration = this.calculateOptimalChunkDuration(
+			totalDuration,
+			estimatedSizeMB,
+			chunkDurationSeconds,
+			maxSizeMB
+		);
 
 		// Calculate overlap
 		const overlapDuration = this.config.constraints.recommendedOverlapSeconds;
@@ -107,7 +107,7 @@ export abstract class ChunkingService {
 		// Adjust if last chunk would be too small
 		const MIN_CHUNK_DURATION = 15; // 15 seconds minimum for 30s chunks
 		const lastChunkDuration = totalDuration - (totalChunks - 1) * effectiveChunkDuration;
-		
+
 		if (lastChunkDuration < MIN_CHUNK_DURATION && totalChunks > 1) {
 			// Merge last chunk with previous one
 			totalChunks--;
@@ -125,7 +125,7 @@ export abstract class ChunkingService {
 			chunkDuration,
 			overlapDuration,
 			totalDuration,
-			reason: finalReason as 'file_size' | 'duration' | 'both',
+			reason: finalReason,
 			estimatedProcessingTime: this.estimateProcessingTime(totalChunks)
 		};
 
@@ -180,7 +180,7 @@ export abstract class ChunkingService {
 			maxDuration: `${maxDuration}s`,
 			maxSizeMB: `${maxSizeMB}MB`
 		});
-		
+
 		// Step 1: Apply time constraint first
 		let optimalDuration = Math.min(maxDuration, totalDuration);
 
@@ -192,8 +192,8 @@ export abstract class ChunkingService {
 				sizeFactor,
 				sizeBasedDuration: `${sizeBasedDuration.toFixed(2)}s`
 			});
-			
-			
+
+
 			if (sizeBasedDuration < optimalDuration) {
 				optimalDuration = sizeBasedDuration;
 			}
@@ -208,14 +208,14 @@ export abstract class ChunkingService {
 
 		// Step 4: Round to nearest 10 seconds for cleaner chunks
 		const roundedDuration = Math.round(optimalDuration / 10) * 10;
-		
+
 		return roundedDuration;
 	}
 
 	/**
 	 * Set preferred chunk duration (can be called from outside to use model-specific durations)
 	 */
-	setPreferredChunkDuration(duration: number): void {
+	setPreferredChunkDuration(_duration: number): void {
 		// This method can be overridden by specific implementations
 		// to use model-optimized chunk durations
 	}
@@ -226,7 +226,7 @@ export abstract class ChunkingService {
 	protected estimateProcessingTime(totalChunks: number): number {
 		const baseTimePerChunk = 30; // seconds
 		const parallelFactor = this.config.processingMode === 'parallel' ? 0.5 : 1;
-		
+
 		return totalChunks * baseTimePerChunk * parallelFactor;
 	}
 
@@ -244,21 +244,25 @@ export abstract class ChunkingService {
 		// Use custom boundary detector if provided
 		if (this.config.boundaryDetector) {
 			const vadBoundaries = await this.config.boundaryDetector(audio);
-			
+
 			// If VAD boundaries are found, use them to adjust target positions
 			if (vadBoundaries.length > 0) {
-				
+
 				// Adjust each target position to nearest VAD boundary within a reasonable window
 				const adjustedPositions = targetPositions.map((target, index) => {
 					// For first and last positions, keep them fixed
-					if (index === 0) return 0;
-					if (index === targetPositions.length - 1) return audio.duration;
-					
+					if (index === 0) {
+						return 0;
+					}
+					if (index === targetPositions.length - 1) {
+						return audio.duration;
+					}
+
 					// Find nearest VAD boundary within +/- 5 seconds of target
 					const windowSize = 5; // seconds
 					let bestBoundary = target;
 					let minDistance = windowSize;
-					
+
 					for (const boundary of vadBoundaries) {
 						const distance = Math.abs(boundary - target);
 						if (distance < minDistance) {
@@ -266,16 +270,16 @@ export abstract class ChunkingService {
 							bestBoundary = boundary;
 						}
 					}
-					
+
 					// If we found a boundary within the window, use it
 					if (minDistance < windowSize) {
 						return bestBoundary;
 					}
-					
+
 					// Otherwise keep the original position
 					return target;
 				});
-				
+
 				return adjustedPositions;
 			} else {
 				// No VAD boundaries found, fall back to original positions

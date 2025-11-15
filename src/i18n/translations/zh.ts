@@ -9,7 +9,7 @@ const zh: TranslationKeys = {
 	plugin: {
 		name: 'AI Transcriber' // Not translated
 	},
-	
+
 	// Settings
 	settings: {
 		title: 'AI 转录设置',
@@ -55,14 +55,14 @@ const zh: TranslationKeys = {
 			missingInlineNote: '使用本地 VAD 需要第三方模块。请从 fvad-wasm 仓库下载 fvad.wasm，然后点击“选择文件”按钮将其复制到插件文件夹。',
 			localNote: '由于在发送前在本地删除静音片段，有助于降低 API 成本。',
 			installWasm: {
-			name: '放置 fvad.wasm',
-			desc: '选择已获取的 fvad.wasm，自动复制到插件文件夹',
-			button: '选择文件',
-			success: '已放置 fvad.wasm',
-			invalidName: '请选择 fvad.wasm',
-			invalidType: '不是有效的 WASM 文件',
-			writeError: '放置失败：{error}'
-		}
+				name: '放置 fvad.wasm',
+				desc: '选择已获取的 fvad.wasm，自动复制到插件文件夹',
+				button: '选择文件',
+				success: '已放置 fvad.wasm',
+				invalidName: '请选择 fvad.wasm',
+				invalidType: '不是有效的 WASM 文件',
+				writeError: '放置失败：{error}'
+			}
 		},
 		language: {
 			name: '语言',
@@ -477,7 +477,7 @@ const zh: TranslationKeys = {
 			}
 		}
 	},
-	
+
 	// Support section
 	support: {
 		message: '如果这个插件对您有帮助，请支持我们的持续开发：',

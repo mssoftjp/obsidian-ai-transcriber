@@ -96,6 +96,7 @@ export interface FvadWasmInstance {
 	_fvad_set_sample_rate(instance: number, sampleRate: number): number;
 	_fvad_set_mode(instance: number, mode: number): number;
 	_fvad_process(instance: number, bufferPtr: number, length: number): number;
+	_fvad_free(instance: number): void;
 }
 
 export interface FvadModule {
@@ -103,7 +104,9 @@ export interface FvadModule {
 }
 
 // Type assertions for common casts
-export const isElectronWindow = (win: Window): win is Window & ElectronWindow => {
+export const isElectronWindow = (
+	win: Window
+): win is Window & ElectronWindow & { require: (moduleName: string) => ElectronRenderer } => {
 	return 'require' in win && typeof (win as Window & ElectronWindow).require === 'function';
 };
 

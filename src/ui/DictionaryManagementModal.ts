@@ -133,7 +133,7 @@ export class DictionaryManagementModal extends Modal {
 				definiteCorrections: [],
 				contextualCorrections: []
 			};
-			return this.settings.userDictionaries[this.currentLanguage]!;
+			return this.settings.userDictionaries[this.currentLanguage];
 		}
 
 		// Ensure arrays exist
@@ -534,7 +534,7 @@ export class DictionaryManagementModal extends Modal {
 									if (!this.settings.userDictionaries[lang].contextualCorrections) {
 										this.settings.userDictionaries[lang].contextualCorrections = [];
 									}
-									this.settings.userDictionaries[lang].contextualCorrections!.push(
+									this.settings.userDictionaries[lang].contextualCorrections.push(
 										...imported.dictionaries[lang].contextualCorrections
 									);
 								}

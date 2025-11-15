@@ -5,10 +5,10 @@
  */
 
 import { TextCleaner, CleaningResult, CleaningContext } from './interfaces/TextCleaner';
-import { 
+import {
 	ModelCleaningStrategy,
 	ValidationPatterns,
-	ValidationThresholds 
+	ValidationThresholds
 } from '../../../config/ModelCleaningConfig';
 
 export interface JapaneseValidationConfig {
@@ -53,7 +53,7 @@ export class JapaneseTextValidator implements TextCleaner {
 			sentenceEnding: '[。！？]',
 			strangePatterns: [
 				'[あ-ん]{20,}',     // Too many hiragana in sequence
-				'[ア-ン]{15,}',     // Too many katakana in sequence  
+				'[ア-ン]{15,}',     // Too many katakana in sequence
 				'[a-zA-Z]{10,}',    // Too much continuous Latin text
 				'\\d{6,}'           // Very long numbers
 			]
@@ -75,7 +75,7 @@ export class JapaneseTextValidator implements TextCleaner {
 	clean(text: string, language: string = 'auto', context?: CleaningContext): CleaningResult {
 		const issues: string[] = [];
 		const originalLength = context?.customData?.originalLength || text.length;
-		
+
 		// Only validate Japanese text
 		if (language !== 'ja' && language !== 'auto') {
 			return {
@@ -91,9 +91,9 @@ export class JapaneseTextValidator implements TextCleaner {
 		}
 
 		// 1. Check reduction ratio (if original length is provided)
-		if (originalLength !== text.length) {
+		if (typeof originalLength === 'number' && originalLength > 0 && originalLength !== text.length) {
 			const reductionRatio = (originalLength - text.length) / originalLength;
-			if (reductionRatio > this.config.maxReductionRatio!) {
+			if (reductionRatio > (this.config.maxReductionRatio ?? 0)) {
 				issues.push(`Excessive text removal: ${Math.round(reductionRatio * 100)}% of original text removed`);
 			}
 		}
@@ -101,25 +101,25 @@ export class JapaneseTextValidator implements TextCleaner {
 		// 2. Check for incomplete Japanese words (particles without content)
 		const incompleteWordPattern = new RegExp(this.validationPatterns.incompleteWord, 'g');
 		const incompleteMatches = text.match(incompleteWordPattern);
-		if (incompleteMatches && incompleteMatches.length > this.config.maxIncompleteWords!) {
+		if (incompleteMatches && incompleteMatches.length > this.config.maxIncompleteWords) {
 			issues.push(`Possible incomplete words detected: ${incompleteMatches.length} instances (particles without content)`);
 		}
 
 		// 3. Check for merged words (long sequences of hiragana/katakana)
 		const mergedWordPattern = new RegExp(this.validationPatterns.mergedWord, 'g');
 		const mergedMatches = text.match(mergedWordPattern);
-		if (mergedMatches && mergedMatches.length > this.config.maxMergedWords!) {
+		if (mergedMatches && mergedMatches.length > this.config.maxMergedWords) {
 			issues.push(`Possible merged words detected: ${mergedMatches.length} instances`);
 		}
 
 		// 4. Check if text is suspiciously short
-		if (text.length < this.config.minTextLength!) {
+		if (text.length < this.config.minTextLength) {
 			issues.push(`Text too short: only ${text.length} characters`);
 		}
 
 		// 5. Check against expected length based on audio duration
-		if (context?.audioDuration) {
-			const expectedLength = context.audioDuration * this.config.expectedCharsPerSecond!;
+		if (typeof context?.audioDuration === 'number' && typeof this.config.expectedCharsPerSecond === 'number') {
+			const expectedLength = context.audioDuration * this.config.expectedCharsPerSecond;
 			const actualLength = text.replace(/\s+/g, '').length;
 			if (actualLength < expectedLength * 0.3) { // Less than 30% of expected
 				issues.push(`Text significantly shorter than expected: ${actualLength} chars vs ~${Math.round(expectedLength)} expected`);
@@ -163,9 +163,11 @@ export class JapaneseTextValidator implements TextCleaner {
 			issues,
 			hasSignificantChanges: false, // Validator never changes text
 			metadata: {
-				originalLength,
+				originalLength: typeof originalLength === 'number' ? originalLength : text.length,
 				cleanedLength: text.length,
-				reductionRatio: originalLength !== text.length ? (originalLength - text.length) / originalLength : 0,
+				reductionRatio: typeof originalLength === 'number' && originalLength !== text.length && originalLength > 0
+					? (originalLength - text.length) / originalLength
+					: 0,
 				patternsMatched: issues.map(issue => issue.split(':')[0])
 			}
 		};
@@ -228,7 +230,7 @@ export class JapaneseTextValidator implements TextCleaner {
 		// Check for mixed writing systems in unusual ways
 		const mixedPatterns = [
 			/[あ-ん][A-Z][あ-ん]/, // hiragana-uppercase-hiragana
-			/[ア-ン][a-z]{5,}[ア-ン]/, // katakana-lowercase-katakana
+			/[ア-ン][a-z]{5,}[ア-ン]/ // katakana-lowercase-katakana
 		];
 
 		for (const pattern of mixedPatterns) {
@@ -248,7 +250,9 @@ export class JapaneseTextValidator implements TextCleaner {
 		const issues: string[] = [];
 		const totalChars = text.length;
 
-		if (totalChars === 0) return issues;
+		if (totalChars === 0) {
+			return issues;
+		}
 
 		// Count different character types
 		const hiragana = (text.match(/[あ-ん]/g) || []).length;

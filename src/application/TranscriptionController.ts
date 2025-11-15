@@ -265,7 +265,7 @@ export class TranscriptionController {
 		// Initialize audio pipeline
 		if (!this.audioPipeline) {
 			this.logger.debug('Creating audio pipeline...');
-			this.audioPipeline = await this.createAudioPipeline();
+			this.audioPipeline = this.createAudioPipeline();
 		}
 	}
 
@@ -421,7 +421,7 @@ export class TranscriptionController {
 		}
 
 		// Create workflow
-		const workflow = new TranscriptionWorkflow(this.audioPipeline!, strategy);
+		const workflow = new TranscriptionWorkflow(this.audioPipeline, strategy);
 		this.logger.debug('Workflow created successfully');
 		return workflow;
 	}
@@ -555,7 +555,7 @@ export class TranscriptionController {
 						category: entry.category,
 						priority: entry.priority,
 						condition: entry.contextKeywords && entry.contextKeywords.length > 0
-							? (text: string) => entry.contextKeywords!.some((keyword: string) => text.includes(keyword))
+							? (text: string) => entry.contextKeywords.some((keyword: string) => text.includes(keyword))
 							: undefined
 					}));
 				})

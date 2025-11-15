@@ -17,8 +17,10 @@ export class OverlapDebugger {
 	}
 
 	static log(message: string, data?: unknown) {
-		if (!this.enabled) return;
-		
+		if (!this.enabled) {
+			return;
+		}
+
 		if (data) {
 			this.logger.debug(message, data);
 		} else {
@@ -33,7 +35,9 @@ export class OverlapDebugger {
 		estimatedCharsPerSecond: number,
 		minMatchLength: number
 	) {
-		if (!this.enabled) return;
+		if (!this.enabled) {
+			return;
+		}
 
 		const estimatedOverlapChars = Math.floor(overlapDuration * estimatedCharsPerSecond);
 		const searchStart = Math.max(0, previousText.length - estimatedOverlapChars * 2);
@@ -59,7 +63,9 @@ export class OverlapDebugger {
 		matchPositionInCurrent: number,
 		matchedText: string
 	) {
-		if (!this.enabled) return;
+		if (!this.enabled) {
+			return;
+		}
 
 		this.logger.debug('*** MATCH FOUND ***', {
 			matchLength,
@@ -70,12 +76,16 @@ export class OverlapDebugger {
 	}
 
 	static logNoMatchFound() {
-		if (!this.enabled) return;
+		if (!this.enabled) {
+			return;
+		}
 		this.logger.debug('No overlap match found');
 	}
 
 	static logFinalResult(trimmedText: string, connector: string) {
-		if (!this.enabled) return;
+		if (!this.enabled) {
+			return;
+		}
 
 		this.logger.debug('Final Result', {
 			trimmedTextLength: trimmedText.length,

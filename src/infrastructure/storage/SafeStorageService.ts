@@ -12,20 +12,25 @@ export class SafeStorageService {
 	private static logger = Logger.getLogger('SafeStorageService');
 
 	/** safeStorageの遅延初期化 */
-	private static getSafeStorage() {
+	private static getSafeStorage(): ElectronRenderer['safeStorage'] | null {
 		if (!this.safeStorage) {
 			try {
 				// モバイル環境チェック
 				if (Platform.isMobileApp) {
 					return null;
 				}
-				
+
 				// Obsidianのelectron環境からsafeStorageを取得
-				const electron = isElectronWindow(window) ? window.require?.('electron') : null;
-				
-				this.safeStorage = electron?.remote?.safeStorage || electron?.safeStorage;
-			} catch (e) {
-				this.logger.error('Error during safeStorage initialization', { error: e.message });
+				if (!isElectronWindow(window) || typeof window.require !== 'function') {
+					return null;
+				}
+				const electron = window.require('electron') as ElectronRenderer;
+
+				this.safeStorage = electron.remote?.safeStorage || electron.safeStorage || null;
+			} catch (error) {
+				this.logger.error('Error during safeStorage initialization', {
+					error: this.formatError(error)
+				});
 			}
 		}
 		return this.safeStorage;
@@ -33,22 +38,28 @@ export class SafeStorageService {
 
 	/** 暗号化して保存用文字列へ変換 */
 	static encryptForStore(apiKey: string): string {
-		if (!apiKey) return '';
-		
+		if (!apiKey) {
+			return '';
+		}
+
 		// Trim the API key before storing
 		const trimmedKey = apiKey.trim();
-		if (!trimmedKey) return '';
+		if (!trimmedKey) {
+			return '';
+		}
 
 		this.logger.trace('Encrypting API key for storage');
-		
+
 		const safeStorage = this.getSafeStorage();
 		if (safeStorage?.isEncryptionAvailable?.()) {
 			try {
 				const buf = safeStorage.encryptString(trimmedKey);
 				this.logger.debug('API key encrypted using SafeStorage');
 				return PREFIX + buf.toString('base64');
-			} catch (e) {
-				this.logger.warn('SafeStorage encryption failed, using fallback', { error: e.message });
+			} catch (error) {
+				this.logger.warn('SafeStorage encryption failed, using fallback', {
+					error: this.formatError(error)
+				});
 			}
 		}
 		// フォールバック
@@ -59,7 +70,9 @@ export class SafeStorageService {
 
 	/** 保存文字列 -> 平文 API キー */
 	static decryptFromStore(stored: string): string {
-		if (!stored) return '';
+		if (!stored) {
+			return '';
+		}
 
 		this.logger.trace('Decrypting stored API key');
 
@@ -72,8 +85,8 @@ export class SafeStorageService {
 					const decrypted = safeStorage.decryptString(Buffer.from(b64, 'base64'));
 					this.logger.debug('API key decrypted using SafeStorage');
 					return decrypted;
-				} catch (e) {
-					this.logger.error('SafeStorage decryption failed', { error: e.message });
+				} catch (error) {
+					this.logger.error('SafeStorage decryption failed', { error: this.formatError(error) });
 					return '';
 				}
 			}
@@ -85,8 +98,8 @@ export class SafeStorageService {
 				const decrypted = this.xorDecrypt(encrypted, FIXED_KEY);
 				this.logger.debug('API key decrypted using XOR fallback');
 				return decrypted;
-			} catch (e) {
-				this.logger.error('XOR decryption failed', { error: e.message });
+			} catch (error) {
+				this.logger.error('XOR decryption failed', { error: this.formatError(error) });
 				return '';
 			}
 		}
@@ -95,7 +108,7 @@ export class SafeStorageService {
 		if (stored.startsWith(LEGACY_PLAIN)) {
 			return stored.replace(LEGACY_PLAIN, '');
 		}
-		
+
 		if (stored.startsWith('sk-') && stored.length > 40) {
 			return stored;
 		}
@@ -123,9 +136,23 @@ export class SafeStorageService {
 				);
 			}
 			return result;
-		} catch (e) {
-			this.logger.error('XOR decryption failed', { error: e.message });
+		} catch (error) {
+			this.logger.error('XOR decryption failed', { error: this.formatError(error) });
 			return '';
+		}
+	}
+
+	private static formatError(error: unknown): string {
+		if (error instanceof Error) {
+			return error.message;
+		}
+		if (typeof error === 'string') {
+			return error;
+		}
+		try {
+			return JSON.stringify(error);
+		} catch {
+			return 'Unknown error';
 		}
 	}
 }

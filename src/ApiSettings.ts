@@ -35,26 +35,26 @@ export interface LanguageDictionaries {
 export interface APITranscriptionSettings {
 	language: string;
 	outputFormat: string;
-	
+
 	// API settings (unified for all models)
 	openaiApiKey: string;
 	model: TranscriptionModel;
 	/** Preferred Voice Activity Detection mode */
 	vadMode: VADMode;
-	
+
 	// Post-processing settings
 	postProcessingEnabled: boolean; // Enable AI-powered post-processing
 	postProcessingModel?: string; // Model for post-processing
-	
+
 	// Dictionary correction settings
 	dictionaryCorrectionEnabled: boolean; // Enable dictionary-based text correction
-	
+
 	// Output settings
 	transcriptionOutputFolder: string; // Folder path for transcription output
-	
+
 	// Language-specific dictionaries
 	userDictionaries: LanguageDictionaries;
-	
+
 	// Debug settings (for developers only)
 	debugMode: boolean; // Enable detailed console logging
 }
@@ -62,18 +62,18 @@ export interface APITranscriptionSettings {
 export const DEFAULT_API_SETTINGS: APITranscriptionSettings = {
 	language: 'auto', // Default to auto-detect for international usage
 	outputFormat: 'callout',
-	
+
 	openaiApiKey: '',
 	model: 'gpt-4o-transcribe', // Default to high-accuracy model
 	vadMode: 'server',
-	
-	
+
+
 	// Post-processing settings
 	postProcessingEnabled: false, // Disabled by default
-	
+
 	// Dictionary correction settings
 	dictionaryCorrectionEnabled: false, // Disabled by default
-	
+
 	// Output settings
 	transcriptionOutputFolder: '', // Default to vault root
 	// Language-specific dictionaries
@@ -95,7 +95,7 @@ export const DEFAULT_API_SETTINGS: APITranscriptionSettings = {
 			contextualCorrections: []
 		}
 	},
-	
+
 	// Debug settings
 	debugMode: false // Disabled for production release
 };

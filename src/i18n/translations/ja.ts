@@ -9,7 +9,7 @@ const ja: TranslationKeys = {
 	plugin: {
 		name: 'AI Transcriber' // Not translated
 	},
-	
+
 	// Settings
 	settings: {
 		title: 'AI Transcriber 設定',
@@ -55,14 +55,14 @@ const ja: TranslationKeys = {
 			missingInlineNote: 'ローカルVADの使用にはサードパーティのモジュールが必要です。fvad-wasmリポジトリからfvad.wasmファイルをダウンロードし、「ファイルを選択」ボタンを押してプラグインフォルダにコピーしてください。',
 			localNote: '端末内で無音箇所を送信前に削除するため、APIコストの削減につながります。',
 			installWasm: {
-			name: 'fvad.wasm を配置',
-			desc: '取得済みの fvad.wasm を選択すると自動でプラグインフォルダに配置します',
-			button: 'ファイルを選択',
-			success: 'fvad.wasm を配置しました',
-			invalidName: 'fvad.wasm を選択してください',
-			invalidType: '有効なWASMファイルではありません',
-			writeError: '配置に失敗しました: {error}'
-		}
+				name: 'fvad.wasm を配置',
+				desc: '取得済みの fvad.wasm を選択すると自動でプラグインフォルダに配置します',
+				button: 'ファイルを選択',
+				success: 'fvad.wasm を配置しました',
+				invalidName: 'fvad.wasm を選択してください',
+				invalidType: '有効なWASMファイルではありません',
+				writeError: '配置に失敗しました: {error}'
+			}
 		},
 		language: {
 			name: '言語',
@@ -477,7 +477,7 @@ const ja: TranslationKeys = {
 			}
 		}
 	},
-	
+
 	// Support section
 	support: {
 		message: 'このプラグインが役に立ちましたら、開発継続のためにご支援をお願いいたします：',

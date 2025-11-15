@@ -114,9 +114,9 @@ export function getCurrentLocale(): SupportedLocale {
 /**
  * Set locale manually
  */
-export function setLocale(locale: SupportedLocale): void {
+export function setLocale(locale: string): void {
 	if (locale === 'en' || locale === 'ja' || locale === 'zh' || locale === 'ko') {
-		currentLocale = locale;
+		currentLocale = locale as SupportedLocale;
 	} else {
 		const logger = Logger.getLogger('i18n');
 		logger.warn(`Unsupported locale: ${locale}`);

@@ -47,8 +47,8 @@ export abstract class ApiClient {
 			timeout: this.defaultTimeout,
 			...config
 		};
-		
-		this.logger.debug('ApiClient initialized', { 
+
+		this.logger.debug('ApiClient initialized', {
 			baseUrl: config.baseUrl,
 			timeout: this.config.timeout
 		});
@@ -64,11 +64,11 @@ export abstract class ApiClient {
 		signal?: AbortSignal
 	): Promise<T> {
 		const url = `${this.config.baseUrl}${endpoint}`;
-		
+
 		const headers: Record<string, string> = {
 			'Authorization': `Bearer ${this.config.apiKey}`
 		};
-		
+
 
 		// Add custom headers if provided
 		if (options.headers) {
@@ -100,7 +100,7 @@ export abstract class ApiClient {
 		signal?: AbortSignal
 	): Promise<T> {
 		const url = new URL(`${this.config.baseUrl}${endpoint}`);
-		
+
 		if (params) {
 			Object.entries(params).forEach(([key, value]) => {
 				url.searchParams.append(key, value);
@@ -130,39 +130,40 @@ export abstract class ApiClient {
 			// Handle different body types for requestUrl
 			let body: string | ArrayBuffer | undefined;
 			const headers = options.headers as Record<string, string> || {};
-			
+
 			if (options.body instanceof FormData) {
 				// Convert FormData to ArrayBuffer for requestUrl compatibility
 				const boundary = `----ObsidianBoundary${Date.now()}`;
 				const chunks: Uint8Array[] = [];
 				const encoder = new TextEncoder();
-				
+
 				// Build multipart/form-data manually
-				const formData = options.body as FormData;
-				if (typeof formData.entries === 'function') {
-					for (const [key, value] of formData.entries()) {
-						chunks.push(encoder.encode(`--${boundary}\r\n`));
-						
-						if (value instanceof File) {
-							// Handle file fields
-							chunks.push(encoder.encode(`Content-Disposition: form-data; name="${key}"; filename="${value.name}"\r\n`));
-							chunks.push(encoder.encode(`Content-Type: ${value.type || 'application/octet-stream'}\r\n\r\n`));
-							chunks.push(new Uint8Array(await value.arrayBuffer()));
-							chunks.push(encoder.encode('\r\n'));
-						} else {
-							// Handle text fields
-							chunks.push(encoder.encode(`Content-Disposition: form-data; name="${key}"\r\n\r\n`));
-							chunks.push(encoder.encode(String(value)));
-							chunks.push(encoder.encode('\r\n'));
-						}
+				const formData = options.body;
+				const fields: Array<[string, FormDataEntryValue]> = [];
+				formData.forEach((value, key) => {
+					fields.push([key, value]);
+				});
+
+				for (const [key, value] of fields) {
+					chunks.push(encoder.encode(`--${boundary}\r\n`));
+
+					if (value instanceof File) {
+						// Handle file fields
+						chunks.push(encoder.encode(`Content-Disposition: form-data; name="${key}"; filename="${value.name}"\r\n`));
+						chunks.push(encoder.encode(`Content-Type: ${value.type || 'application/octet-stream'}\r\n\r\n`));
+						chunks.push(new Uint8Array(await value.arrayBuffer()));
+						chunks.push(encoder.encode('\r\n'));
+					} else {
+						// Handle text fields
+						chunks.push(encoder.encode(`Content-Disposition: form-data; name="${key}"\r\n\r\n`));
+						chunks.push(encoder.encode(String(value)));
+						chunks.push(encoder.encode('\r\n'));
 					}
-				} else {
-					throw new Error('FormData.entries is not supported in this environment.');
 				}
-				
+
 				// Add final boundary
 				chunks.push(encoder.encode(`--${boundary}--\r\n`));
-				
+
 				// Combine all chunks into a single ArrayBuffer
 				const totalLength = chunks.reduce((sum, chunk) => sum + chunk.length, 0);
 				const combined = new Uint8Array(totalLength);
@@ -171,14 +172,14 @@ export abstract class ApiClient {
 					combined.set(chunk, offset);
 					offset += chunk.length;
 				}
-				
+
 				body = combined.buffer;
 				headers['Content-Type'] = `multipart/form-data; boundary=${boundary}`;
 			} else {
 				// For non-FormData requests
 				body = options.body as string | ArrayBuffer;
 			}
-			
+
 			// Convert RequestInit options to RequestUrlParam format
 			const requestParams = {
 				url: url,
@@ -199,16 +200,16 @@ export abstract class ApiClient {
 			if (options.signal?.aborted) {
 				throw new Error('Request cancelled by user');
 			}
-			
+
 			const response = await requestUrl(requestParams);
-			
+
 
 			if (response.status < 200 || response.status >= 300) {
 				const error = await this.parseError(response);
-				
+
 				// Check if retryable
-				if (this.isRetryable(response.status) && retryCount < this.config.maxRetries!) {
-					await this.delay(this.config.retryDelay! * Math.pow(2, retryCount)); // Exponential backoff
+				if (this.isRetryable(response.status) && retryCount < this.config.maxRetries) {
+					await this.delay(this.config.retryDelay * Math.pow(2, retryCount)); // Exponential backoff
 					return this.executeWithRetry<T>(url, options, retryCount + 1);
 				}
 
@@ -217,14 +218,14 @@ export abstract class ApiClient {
 
 			// Parse response based on content type
 			const contentType = response.headers['content-type'] || response.headers['Content-Type'];
-			
+
 			let responseData: T;
 			if (contentType?.includes('application/json')) {
 				responseData = response.json as T;
 			} else {
 				responseData = response.text as unknown as T;
 			}
-			
+
 			return responseData;
 
 		} catch (error) {

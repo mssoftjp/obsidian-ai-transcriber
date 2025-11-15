@@ -13,9 +13,9 @@ import {
 	TranscriptionValidation
 } from './TranscriptionTypes';
 import { DictionaryCorrector } from './DictionaryCorrector';
-import { 
-	CleaningPipeline, 
-	WhisperCleaningPipeline, 
+import {
+	CleaningPipeline,
+	WhisperCleaningPipeline,
 	GPT4oCleaningPipeline,
 	StandardCleaningPipeline,
 	CleaningContext
@@ -93,7 +93,7 @@ export abstract class TranscriptionService {
 	 * Text cleaning pipeline for this model
 	 */
 	protected cleaningPipeline?: CleaningPipeline;
-	
+
 	/**
 	 * Logger instance
 	 */
@@ -103,56 +103,56 @@ export abstract class TranscriptionService {
 	 * Check if language is supported
 	 */
 	isLanguageSupported(language: string): boolean {
-		return language === 'auto' || 
+		return language === 'auto' ||
 		       this.capabilities.supportedLanguages.includes(language);
 	}
 
 	/**
 	 * Get MIME type for file extension
 	 */
-       protected getMimeType(extension: string): string {
-               const mimeTypes = SUPPORTED_FORMATS.MIME_TYPES;
-               const key = extension.toLowerCase() as keyof typeof mimeTypes;
-               return mimeTypes[key] || 'audio/mpeg';
-       }
+	protected getMimeType(extension: string): string {
+		const mimeTypes = SUPPORTED_FORMATS.MIME_TYPES;
+		const key = extension.toLowerCase() as keyof typeof mimeTypes;
+		return mimeTypes[key] || 'audio/mpeg';
+	}
 
 	/**
 	 * Initialize the cleaning pipeline for this model
 	 */
 	protected initializeCleaningPipeline(debugMode: boolean = false): void {
 		const strategy = getModelCleaningStrategy(this.modelId, debugMode);
-		
+
 		// CLEANER_DEBUG_START - Remove this block after confirming new cleaner system works
-//
-//
+		//
+		//
 		// CLEANER_DEBUG_END
-		
+
 		switch (strategy.pipelineType) {
-			case 'whisper':
-				this.cleaningPipeline = debugMode 
-					? WhisperCleaningPipeline.createWithLogging(this.dictionaryCorrector)
-					: WhisperCleaningPipeline.createDefault(this.dictionaryCorrector);
-				break;
-				
-			case 'gpt4o':
-				this.cleaningPipeline = debugMode
-					? GPT4oCleaningPipeline.createWithLogging(this.dictionaryCorrector, this.modelId)
-					: GPT4oCleaningPipeline.createDefault(this.dictionaryCorrector, this.modelId);
-				break;
-				
-			default:
-				// Fallback to standard pipeline
-				this.cleaningPipeline = new StandardCleaningPipeline({
-					name: 'StandardPipeline',
-					cleaners: [],
-					modelId: this.modelId,
-					enableDetailedLogging: debugMode
-				});
-				break;
+		case 'whisper':
+			this.cleaningPipeline = debugMode
+				? WhisperCleaningPipeline.createWithLogging(this.dictionaryCorrector)
+				: WhisperCleaningPipeline.createDefault(this.dictionaryCorrector);
+			break;
+
+		case 'gpt4o':
+			this.cleaningPipeline = debugMode
+				? GPT4oCleaningPipeline.createWithLogging(this.dictionaryCorrector, this.modelId)
+				: GPT4oCleaningPipeline.createDefault(this.dictionaryCorrector, this.modelId);
+			break;
+
+		default:
+			// Fallback to standard pipeline
+			this.cleaningPipeline = new StandardCleaningPipeline({
+				name: 'StandardPipeline',
+				cleaners: [],
+				modelId: this.modelId,
+				enableDetailedLogging: debugMode
+			});
+			break;
 		}
-		
+
 		// CLEANER_DEBUG_START - Remove this block after confirming new cleaner system works
-//
+		//
 		// CLEANER_DEBUG_END
 	}
 
@@ -175,26 +175,26 @@ export abstract class TranscriptionService {
 				return text; // Return original text if initialization fails
 			}
 		}
-		
+
 		// Final check for pipeline availability
 		if (!this.cleaningPipeline) {
 			this.logger.warn(`[${this.modelId}] No cleaning pipeline available after initialization, returning original text`);
 			return text;
 		}
-		
+
 		try {
 			const pipelineContext: CleaningContext = {
 				modelId: this.modelId,
 				...(context ?? {})
 			};
 			const result = await this.cleaningPipeline.execute(text, language, pipelineContext);
-			
+
 			// Validate pipeline result
 			if (!result || typeof result.finalText !== 'string') {
 				this.logger.error(`[${this.modelId}] Invalid pipeline result, falling back to original text`);
 				return text;
 			}
-			
+
 			// Log summary if there were significant changes or issues
 			if (result.metadata.totalIssuesFound > 0 || result.metadata.totalReductionRatio > 0.1) {
 				this.logger.debug(`[${this.modelId}] Cleaning pipeline made significant adjustments`, {
@@ -202,13 +202,13 @@ export abstract class TranscriptionService {
 					reductionRatio: result.metadata.totalReductionRatio
 				});
 			}
-			
+
 			return result.finalText;
 		} catch (error) {
 			// Provide more detailed error information
 			const errorMessage = error instanceof Error ? error.message : 'Unknown error';
 			const errorStack = error instanceof Error ? error.stack : undefined;
-			
+
 			this.logger.error(`[${this.modelId}] Text cleaning pipeline failed`, {
 				error: errorMessage,
 				textLength: text.length,
@@ -216,7 +216,7 @@ export abstract class TranscriptionService {
 				context,
 				stack: errorStack
 			});
-			
+
 			// Return original text as fallback
 			return text;
 		}

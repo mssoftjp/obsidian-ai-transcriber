@@ -8,7 +8,7 @@ export class SettingsConnectionTest {
 	 * Create connection test section with API key management
 	 */
 	static displayConnectionTest(
-		containerEl: HTMLElement, 
+		containerEl: HTMLElement,
 		transcriber: APITranscriber,
 		settings: APITranscriptionSettings,
 		saveSettings: () => Promise<void>,
@@ -27,7 +27,7 @@ export class SettingsConnectionTest {
 
 					try {
 						const isConnected = await transcriber.checkApiConnection();
-						
+
 						if (isConnected) {
 							new Notice(t('settings.connection.successNotice', { provider: transcriber.getProviderDisplayName() }));
 							button.setButtonText(t('settings.connection.successButton'));

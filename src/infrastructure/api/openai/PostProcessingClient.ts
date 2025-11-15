@@ -18,19 +18,19 @@ export interface PostProcessingResult {
 }
 
 export class PostProcessingClient extends ApiClient {
-	
+
 	constructor(settings: APITranscriptionSettings) {
 		const apiKey = SafeStorageService.decryptFromStore(settings.openaiApiKey);
 		if (!apiKey) {
 			throw new Error('OpenAI API key not configured');
 		}
-		
+
 		super({
 			baseUrl: 'https://api.openai.com',
 			apiKey: apiKey,
 			timeout: 180000  // 180秒に延長（後処理用）
 		});
-		
+
 		this.logger = Logger.getLogger('PostProcessingClient');
 		this.logger.debug('PostProcessingClient initialized', { model: POST_PROCESSING_CONFIG.model });
 	}
@@ -54,9 +54,9 @@ export class PostProcessingClient extends ApiClient {
 		try {
 			// 言語を検出（簡易的な実装）
 			const detectedLanguage = this.detectLanguage(transcription);
-			
+
 			const request = buildPostProcessingRequest(transcription, context, keywords, detectedLanguage);
-			
+
 			const response = await this.post<OpenAIChatResponse>(
 				POST_PROCESSING_CONFIG.endpoint,
 				request,
@@ -91,7 +91,7 @@ export class PostProcessingClient extends ApiClient {
 
 			const errorMessage = error instanceof Error ? error.message : String(error);
 			this.logger.error('Processing failed', { error: errorMessage });
-			
+
 			// Return original transcription on error
 			return {
 				processedText: transcription,
@@ -148,7 +148,7 @@ export class PostProcessingClient extends ApiClient {
 		name: string;
 		endpoint: string;
 		maxTokens: number;
-	} {
+		} {
 		return {
 			name: POST_PROCESSING_CONFIG.model,
 			endpoint: POST_PROCESSING_CONFIG.endpoint,
@@ -163,7 +163,7 @@ export class PostProcessingClient extends ApiClient {
 		const result = await this.validateConfiguration();
 		return result.isValid;
 	}
-	
+
 	/**
 	 * Detect language from text (simple implementation)
 	 * 言語検出の簡易実装

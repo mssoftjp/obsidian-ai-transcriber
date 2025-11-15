@@ -74,36 +74,36 @@ export default class AITranscriberPlugin extends Plugin {
 		if (!Platform.isMobile) {
 			this.statusBarManager = new StatusBarManager(this.app, this, this.progressTracker);
 			this.statusBarManager.initialize();
-			
+
 			// Set click handler to open side panel
-				this.statusBarManager.setClickHandler(() => {
-					this.logger.debug('Status bar clicked, opening transcription view');
-					void this.activateTranscriptionView();
-				});
-			}
+			this.statusBarManager.setClickHandler(() => {
+				this.logger.debug('Status bar clicked, opening transcription view');
+				void this.activateTranscriptionView();
+			});
+		}
 
 		// Add command to transcribe selected audio file
 		this.addCommand({
 			id: 'api-transcribe-audio',
-				name: t('commands.transcribeAudio'),
-				callback: () => {
-					void this.transcribeCurrentAudio();
-				}
-			});
+			name: t('commands.transcribeAudio'),
+			callback: () => {
+				void this.transcribeCurrentAudio();
+			}
+		});
 
 		// Add command to open transcription view
 		this.addCommand({
 			id: 'open-transcription-view',
-				name: t('commands.openPanel'),
-				callback: () => {
-					void this.activateTranscriptionView();
-				}
-			});
+			name: t('commands.openPanel'),
+			callback: () => {
+				void this.activateTranscriptionView();
+			}
+		});
 
 		// Add ribbon icon
-			this.addRibbonIcon('file-audio', t('ribbon.tooltip'), () => {
-				void this.transcribeCurrentAudio();
-			});
+		this.addRibbonIcon('file-audio', t('ribbon.tooltip'), () => {
+			void this.transcribeCurrentAudio();
+		});
 
 		// Register context menu for audio files
 		this.registerEvent(
@@ -134,20 +134,20 @@ export default class AITranscriberPlugin extends Plugin {
 
 	async onunload() {
 		this.logger.info('Unloading AI Transcriber plugin...');
-		
+
 		// Clean up status bar
 		if (this.statusBarManager) {
 			this.statusBarManager.destroy();
 		}
 
 		// Clean up API transcriber resources
-			if (this.transcriber && typeof this.transcriber.cleanup === 'function') {
-				await this.transcriber.cleanup();
-			}
+		if (this.transcriber && typeof this.transcriber.cleanup === 'function') {
+			await this.transcriber.cleanup();
+		}
 
 		// Clean up all global resources via ResourceManager
 		await ResourceManager.getInstance().cleanupAll();
-		
+
 		this.logger.info('AI Transcriber plugin unloaded');
 	}
 
@@ -161,23 +161,23 @@ export default class AITranscriberPlugin extends Plugin {
 		if (!this.settings.vadMode) {
 			this.settings.vadMode = DEFAULT_API_SETTINGS.vadMode;
 		}
-		
+
 		if (this.logger) {
 			this.logger.debug('Settings loaded', { debugMode: this.settings.debugMode });
 		}
-		
+
 		// Migrate from old XOR encryption to new SafeStorage format
-			if (this.settings.openaiApiKey && this.settings.openaiApiKey.startsWith('XOR_V1::')) {
-				const { SafeStorageService } = await import('./infrastructure/storage/SafeStorageService');
-				const apiKey = SafeStorageService.decryptFromStore(this.settings.openaiApiKey);
-				if (apiKey) {
-					// Re-encrypt with new format
-					this.settings.openaiApiKey = SafeStorageService.encryptForStore(apiKey);
-					await this.stateRepo.saveSettings(this.settings);
-					new Notice(t('settings.apiKey.migrated'));
-				}
+		if (this.settings.openaiApiKey && this.settings.openaiApiKey.startsWith('XOR_V1::')) {
+			const { SafeStorageService } = await import('./infrastructure/storage/SafeStorageService');
+			const apiKey = SafeStorageService.decryptFromStore(this.settings.openaiApiKey);
+			if (apiKey) {
+				// Re-encrypt with new format
+				this.settings.openaiApiKey = SafeStorageService.encryptForStore(apiKey);
+				await this.stateRepo.saveSettings(this.settings);
+				new Notice(t('settings.apiKey.migrated'));
 			}
-		
+		}
+
 		// If no language setting exists, use Obsidian's locale
 		if (!storedSettings?.language) {
 			const obsidianLanguage = this.getObsidianLanguage();
@@ -186,7 +186,7 @@ export default class AITranscriberPlugin extends Plugin {
 				// Using Obsidian's language setting
 			}
 		}
-		
+
 		const languages: ('ja' | 'en' | 'zh' | 'ko')[] = ['ja', 'en', 'zh', 'ko'];
 		for (const lang of languages) {
 			if (!this.settings.userDictionaries[lang]) {
@@ -199,7 +199,7 @@ export default class AITranscriberPlugin extends Plugin {
 				this.settings.userDictionaries[lang].contextualCorrections = [];
 			}
 		}
-		
+
 	}
 
 	/**
@@ -207,10 +207,10 @@ export default class AITranscriberPlugin extends Plugin {
 	 */
 	getObsidianLanguage(): string {
 		const locale = (typeof getLanguage === 'function' ? getLanguage() : undefined) ||
-			(typeof moment.locale === 'function' ? moment.locale() : '') || 
-			navigator.language || 
+			(typeof moment.locale === 'function' ? moment.locale() : '') ||
+			navigator.language ||
 			'en';
-		
+
 		// Map common locale codes to our supported languages
 		const localeMap: Record<string, string> = {
 			'ja': 'ja',      // Japanese
@@ -224,13 +224,13 @@ export default class AITranscriberPlugin extends Plugin {
 			'ko': 'ko',      // Korean
 			'ko-KR': 'ko'
 		};
-		
+
 		// Extract language code from locale (e.g., 'en-US' -> 'en')
 		const languageCode = locale.split('-')[0].toLowerCase();
-		
+
 		// Return mapped language or 'auto' if not found
-		return localeMap[locale.toLowerCase()] || 
-		       localeMap[languageCode] || 
+		return localeMap[locale.toLowerCase()] ||
+		       localeMap[languageCode] ||
 		       'auto';
 	}
 
@@ -238,18 +238,18 @@ export default class AITranscriberPlugin extends Plugin {
 		const startTime = performance.now();
 		this.logger.debug('Saving settings...');
 		await this.stateRepo.saveSettings(this.settings);
-		
+
 		// Update logger configuration if debugMode changed
 		Logger.getInstance().updateConfig({
 			debugMode: this.settings.debugMode,
 			logLevel: this.settings.debugMode ? LogLevel.DEBUG : LogLevel.INFO
 		});
-		
+
 		// Update transcriber with new settings
 		if (this.transcriber) {
 			this.transcriber.updateSettings(this.settings);
 		}
-		
+
 		const elapsedTime = performance.now() - startTime;
 		this.logger.info('Settings saved', { elapsedTime: `${elapsedTime.toFixed(2)}ms` });
 	}
@@ -266,7 +266,7 @@ export default class AITranscriberPlugin extends Plugin {
 
 	private async transcribeCurrentAudio() {
 		this.logger.debug('Transcribe audio command triggered');
-		
+
 		// Check if API key is configured first
 		if (!this.isApiConfigured()) {
 			this.logger.warn('API key not configured');
@@ -296,13 +296,13 @@ export default class AITranscriberPlugin extends Plugin {
 		await this.transcribeAudioFile(activeFile);
 	}
 
-		private async transcribeAudioFile(file: TFile, isExternal: boolean = false) {
-			this.logger.info('Starting transcription', { 
-				file: file.name, 
+	private async transcribeAudioFile(file: TFile, isExternal: boolean = false) {
+		this.logger.info('Starting transcription', {
+			file: file.name,
 			fileSize: `${(file.stat.size / 1024 / 1024).toFixed(2)}MB`,
-			isExternal 
+			isExternal
 		});
-		
+
 		// Check if API is configured (redundant check for safety)
 		if (!this.isApiConfigured()) {
 			this.logger.error('API key not configured when attempting transcription');
@@ -321,12 +321,12 @@ export default class AITranscriberPlugin extends Plugin {
 		// Unified OpenAI API check (works for all models)
 		// Note: API key decryption is handled in TranscriptionController using BetterEncryptionService
 		const hasOpenaiKey = !!this.settings.openaiApiKey;
-		
-		this.logger.debug('API configuration check', { 
+
+		this.logger.debug('API configuration check', {
 			hasKey: hasOpenaiKey,
 			model: this.settings.model
 		});
-		
+
 		return hasOpenaiKey;
 	}
 
@@ -347,21 +347,21 @@ export default class AITranscriberPlugin extends Plugin {
 			// Activating transcription view...
 
 			// Check if view already exists
-				const existing = workspace.getLeavesOfType(VIEW_TYPE_TRANSCRIPTION);
-				if (existing.length) {
-					await workspace.revealLeaf(existing[0]);
-					return;
-				}
+			const existing = workspace.getLeavesOfType(VIEW_TYPE_TRANSCRIPTION);
+			if (existing.length) {
+				await workspace.revealLeaf(existing[0]);
+				return;
+			}
 
 			// Create new view in right sidebar
 			// Creating new view in right sidebar
 			const leaf = workspace.getRightLeaf(false);
-				if (leaf) {
-					await leaf.setViewState({
-						type: VIEW_TYPE_TRANSCRIPTION,
-						active: true,
-					});
-					await workspace.revealLeaf(leaf);
+			if (leaf) {
+				await leaf.setViewState({
+					type: VIEW_TYPE_TRANSCRIPTION,
+					active: true
+				});
+				await workspace.revealLeaf(leaf);
 				// View created and revealed successfully
 			} else {
 				// Failed to get right leaf

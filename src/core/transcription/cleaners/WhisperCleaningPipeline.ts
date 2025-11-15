@@ -11,18 +11,18 @@ import { PipelineConfig } from './interfaces/CleaningPipeline';
 import { getModelCleaningStrategy } from '../../../config/ModelCleaningConfig';
 
 export class WhisperCleaningPipeline extends StandardCleaningPipeline {
-	
+
 	constructor(dictionaryCorrector?: DictionaryCorrector, enableDetailedLogging: boolean = false, modelId: string = 'whisper-1') {
 		// Get cleaning strategy from configuration
 		const strategy = getModelCleaningStrategy(modelId);
-		
+
 		// Configure pipeline for Whisper using strategy settings
 		const config: PipelineConfig = {
 			name: 'WhisperCleaningPipeline',
 			cleaners: [
 				// 1. Remove basic hallucinations (repetitions, artifacts)
 				new BaseHallucinationCleaner(dictionaryCorrector, strategy),
-				
+
 				// 2. Validate Japanese text quality
 				...(strategy.japaneseValidation ? [
 					new JapaneseTextValidator({
@@ -59,24 +59,24 @@ export class WhisperCleaningPipeline extends StandardCleaningPipeline {
 	/**
 	 * Get pipeline-specific summary
 	 */
-	getWhisperSummary(text: string, language: string): string {
+	getWhisperSummary(text: string, _language: string): string {
 		// Quick analysis without full execution
 		const issues: string[] = [];
-		
+
 		// Check for common Whisper-specific issues
 		if (text.includes('[Music]') || text.includes('[Applause]')) {
 			issues.push('Audio artifacts detected');
 		}
-		
+
 		if (/(.)\1{10,}/.test(text)) {
 			issues.push('Character repetition detected');
 		}
-		
+
 		const approxWords = text.split(/\s+/).length;
 		if (approxWords < 10) {
 			issues.push('Very short transcription');
 		}
-		
+
 		return `Whisper Pipeline Ready | Predicted issues: ${issues.length} | Text: ${text.length} chars`;
 	}
 }

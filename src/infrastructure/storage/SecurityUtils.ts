@@ -19,7 +19,7 @@ export class SecurityUtils {
 		// sk-proj-... format is also valid
 		// Updated to be more flexible with length (some keys can be quite long)
 		const pattern = /^sk-[a-zA-Z0-9\-_]{20,200}$/;
-		
+
 		if (!pattern.test(trimmedKey)) {
 			return { valid: false, error: t('errors.invalidApiKeyFormat') };
 		}
@@ -41,7 +41,7 @@ export class SecurityUtils {
 		try {
 			// Note: requestUrl doesn't support AbortController signals like fetch does
 			// However, it has built-in timeout handling and cross-platform compatibility
-			
+
 			const response = await requestUrl({
 				url: 'https://api.openai.com/v1/models',
 				method: 'GET',
@@ -58,23 +58,23 @@ export class SecurityUtils {
 
 			// Handle specific error cases
 			switch (response.status) {
-				case 401:
-					return { valid: false, error: t('errors.invalidApiKey') };
-				case 429:
-					return { valid: false, error: t('errors.rateLimitExceeded') };
-				case 500:
-				case 502:
-				case 503:
-					return { valid: false, error: t('errors.apiUnavailable') };
-				default:
-					return { 
-						valid: false, 
-						error: t('errors.apiConnectionFailed').replace('{status}', response.status.toString()) 
-					};
+			case 401:
+				return { valid: false, error: t('errors.invalidApiKey') };
+			case 429:
+				return { valid: false, error: t('errors.rateLimitExceeded') };
+			case 500:
+			case 502:
+			case 503:
+				return { valid: false, error: t('errors.apiUnavailable') };
+			default:
+				return {
+					valid: false,
+					error: t('errors.apiConnectionFailed').replace('{status}', response.status.toString())
+				};
 			}
 		} catch (error) {
 			Logger.getLogger('SecurityUtils').error('API test failed:', error);
-			
+
 			return { valid: false, error: t('errors.networkError') };
 		}
 	}
@@ -95,7 +95,9 @@ export class SecurityUtils {
 	 * Shows first 7 characters and masks the rest
 	 */
 	static maskApiKey(apiKey: string): string {
-		if (!apiKey || apiKey.length < 10) return '';
+		if (!apiKey || apiKey.length < 10) {
+			return '';
+		}
 		return apiKey.substring(0, 7) + '*'.repeat(40);
 	}
 

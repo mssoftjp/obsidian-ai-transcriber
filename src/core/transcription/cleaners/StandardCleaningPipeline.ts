@@ -54,16 +54,16 @@ export class StandardCleaningPipeline implements CleaningPipeline {
 			}
 
 			const stageStartTime = Date.now();
-			
-				try {
-					if (this.config.enableDetailedLogging) {
-						this.logger.debug('Executing cleaner', { cleaner: cleaner.name });
-					}
+
+			try {
+				if (this.config.enableDetailedLogging) {
+					this.logger.debug('Executing cleaner', { cleaner: cleaner.name });
+				}
 
 				// Execute the cleaner
 				const result = await Promise.resolve(cleaner.clean(currentText, language, enhancedContext));
 				const stageEndTime = Date.now();
-				
+
 				// Record stage result
 				const stageResult: CleaningStageResult = {
 					cleanerName: cleaner.name,
@@ -75,15 +75,15 @@ export class StandardCleaningPipeline implements CleaningPipeline {
 				// Trust each cleaner's internal safety mechanisms
 				// Each cleaner is responsible for its own safety thresholds
 				currentText = result.cleanedText;
-				
+
 				totalIssuesFound += result.issues.length;
 
 				// Log issues if found
-					if (result.issues.length > 0 && this.config.enableDetailedLogging) {
-						this.logger.warn(`Cleaner ${cleaner.name} reported issues`, {
-							issues: result.issues
-						});
-					}
+				if (result.issues.length > 0 && this.config.enableDetailedLogging) {
+					this.logger.warn(`Cleaner ${cleaner.name} reported issues`, {
+						issues: result.issues
+					});
+				}
 
 				// Check for critical issues that should stop the pipeline
 				if (this.config.stopOnCriticalIssue && this.isCriticalIssue(result.issues)) {
@@ -96,7 +96,7 @@ export class StandardCleaningPipeline implements CleaningPipeline {
 
 			} catch (error) {
 				this.logger.error(`Error in ${cleaner.name}:`, error);
-				
+
 				// Record the error but continue with other cleaners
 				const stageResult: CleaningStageResult = {
 					cleanerName: cleaner.name,
@@ -135,9 +135,9 @@ export class StandardCleaningPipeline implements CleaningPipeline {
 		};
 
 
-			if (this.config.enableDetailedLogging) {
-				this.logger.info('Standard cleaning pipeline summary', pipelineResult.metadata);
-			}
+		if (this.config.enableDetailedLogging) {
+			this.logger.info('Standard cleaning pipeline summary', pipelineResult.metadata);
+		}
 
 		return pipelineResult;
 	}
@@ -179,7 +179,7 @@ export class StandardCleaningPipeline implements CleaningPipeline {
 			/unicode replacement characters/i
 		];
 
-		return issues.some(issue => 
+		return issues.some(issue =>
 			criticalPatterns.some(pattern => pattern.test(issue))
 		);
 	}
@@ -190,14 +190,14 @@ export class StandardCleaningPipeline implements CleaningPipeline {
 	 */
 	private highlightRemovedContent(beforeText: string, afterText: string): string[] {
 		const removedParts: string[] = [];
-		
+
 		// Simple approach: find chunks that are in before but not in after
 		const beforeWords = beforeText.split(/\s+/);
 		const afterWords = afterText.split(/\s+/);
 		const afterSet = new Set(afterWords);
-		
+
 		let currentRemovedChunk: string[] = [];
-		
+
 		for (const word of beforeWords) {
 			if (!afterSet.has(word)) {
 				currentRemovedChunk.push(word);
@@ -208,12 +208,12 @@ export class StandardCleaningPipeline implements CleaningPipeline {
 				}
 			}
 		}
-		
+
 		// Add final chunk if exists
 		if (currentRemovedChunk.length > 0) {
 			removedParts.push(currentRemovedChunk.join(' '));
 		}
-		
+
 		return removedParts;
 	}
 
@@ -222,12 +222,12 @@ export class StandardCleaningPipeline implements CleaningPipeline {
 	 * Shorter texts can tolerate higher reduction rates due to higher hallucination likelihood
 	 * CURRENTLY DISABLED - using fixed threshold instead
 	 */
-	private getDynamicReductionThreshold(textLength: number): number {
+	private getDynamicReductionThreshold(_textLength: number): number {
 		const baseThreshold = this.config.maxReductionRatio || 0.4;
-		
+
 		// DISABLED: Dynamic thresholds - using fixed threshold for now
 		return baseThreshold;
-		
+
 		/*
 		if (textLength <= 40) {
 			// Very short texts: Allow up to 90% reduction (often heavy hallucination)
@@ -251,7 +251,7 @@ export class StandardCleaningPipeline implements CleaningPipeline {
 	getSummary(result: PipelineResult): string {
 		const { metadata } = result;
 		const reductionPercent = Math.round(metadata.totalReductionRatio * 100);
-		
+
 		return [
 			`Pipeline: ${this.name}`,
 			`Stages: ${metadata.stagesExecuted}`,

@@ -56,7 +56,7 @@ export class TranscriptionWorkflow {
 	) {
 		this.audioPipeline = audioPipeline;
 		this.strategy = strategy;
-		this.resourceId = `workflow-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+		this.resourceId = `workflow-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
 		this.resourceManager = ResourceManager.getInstance();
 		this.logger = Logger.getLogger('TranscriptionWorkflow');
 		this.logger.debug('TranscriptionWorkflow initialized', {
@@ -86,14 +86,14 @@ export class TranscriptionWorkflow {
 		// Create abort controller using ResourceManager
 		this.abortController = this.resourceManager.getAbortController(this.resourceId);
 		this.externalSignal = options.signal;
-		
+
 		if (options.signal) {
 			// Link external abort signal
 			const abortHandler = () => {
 				this.abortController?.abort();
 			};
 			options.signal.addEventListener('abort', abortHandler);
-			
+
 			// Register cleanup handler
 			this.resourceManager.registerCleanupHandler(this.resourceId, () => {
 				if (this.externalSignal) {
@@ -104,7 +104,7 @@ export class TranscriptionWorkflow {
 
 		let chunks: AudioChunk[] = [];
 		let chunkStrategy: ChunkStrategy;
-		
+
 		try {
 			// Step 1: Prepare audio input
 			this.logger.debug('Step 1: Preparing audio input');
@@ -168,7 +168,7 @@ export class TranscriptionWorkflow {
 				chunksProcessed: chunks.length,
 				error
 			});
-			
+
 			// Don't try to recover if we have no chunks
 			if (chunks.length === 0) {
 				if (error instanceof Error && error.message.includes('cancelled')) {
@@ -176,17 +176,17 @@ export class TranscriptionWorkflow {
 				}
 				throw error;
 			}
-			
+
 			// If the error came from execute() and includes partial results
 			if (error instanceof Error && error.message.includes('[部分的な文字起こし結果]')) {
 				// The error message itself contains the partial results
 				throw error; // Pass it through
 			}
-			
-				// Re-throw original error
-				if (error instanceof Error && error.message.includes('cancelled')) {
-					this.logger.info('Transcription workflow cancelled after processing began');
-				}
+
+			// Re-throw original error
+			if (error instanceof Error && error.message.includes('cancelled')) {
+				this.logger.info('Transcription workflow cancelled after processing began');
+			}
 			throw error;
 		} finally {
 			this.cleanup();
@@ -212,7 +212,7 @@ export class TranscriptionWorkflow {
 		return {
 			language: options.language || 'auto',
 			timestamps: true,
-			signal: this.abortController!.signal
+			signal: this.abortController.signal
 		};
 	}
 
@@ -238,7 +238,7 @@ export class TranscriptionWorkflow {
 	/**
 	 * Validate workflow inputs
 	 */
-	async validate(
+	validate(
 		file: TFile,
 		audioBuffer: ArrayBuffer
 	): Promise<{ valid: boolean; errors: string[]; warnings?: string[] }> {
@@ -263,16 +263,16 @@ export class TranscriptionWorkflow {
 		}
 
 		// Check file extension
-               const supportedExtensions = SUPPORTED_FORMATS.EXTENSIONS;
-               if (!supportedExtensions.includes(file.extension.toLowerCase())) {
+		const supportedExtensions = SUPPORTED_FORMATS.EXTENSIONS;
+		if (!supportedExtensions.includes(file.extension.toLowerCase())) {
 			errors.push(`Unsupported file format: ${file.extension}`);
 		}
 
-		return {
+		return Promise.resolve({
 			valid: errors.length === 0,
 			errors,
 			...(warnings.length > 0 && { warnings })
-		};
+		});
 	}
 
 	/**
@@ -282,7 +282,7 @@ export class TranscriptionWorkflow {
 		modelType: string;
 		processingMode: string;
 		chunkingEnabled: boolean;
-	} {
+		} {
 		return {
 			modelType: this.strategy.strategyName,
 			processingMode: this.strategy.processingMode,

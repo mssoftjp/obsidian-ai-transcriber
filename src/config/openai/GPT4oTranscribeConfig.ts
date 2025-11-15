@@ -1,7 +1,7 @@
 /**
  * OpenAI GPT-4o Transcribe API Configuration
  * Models: gpt-4o-transcribe, gpt-4o-mini-transcribe
- * 
+ *
  * Reference: https://platform.openai.com/docs/guides/speech-to-text
  */
 
@@ -10,35 +10,35 @@ import { PROMPT_CONSTANTS } from '../constants';
 export interface GPT4oTranscribeParams {
 	/** Model to use */
 	model: 'gpt-4o-transcribe' | 'gpt-4o-mini-transcribe';
-	
+
 	/** The audio file to transcribe */
 	file: File | Blob;
-	
+
 	/** Response format (limited compared to Whisper) */
 	response_format?: 'json' | 'text';
-	
+
 	/** Language of the audio (ISO-639-1) */
 	language?: string;
-	
+
 	/** Optional prompt to guide the model */
 	prompt?: string;
-	
+
 	/** Previous context for continuation chunks */
 	previousContext?: string;
-	
+
 	/** Sampling temperature (0.0-1.0) */
 	temperature?: number;
-	
+
 	/** Enable streaming response */
 	stream?: boolean;
-	
+
 	/** Include log probabilities (streaming only) */
 	include?: ('logprobs')[];
 }
 
 export interface GPT4oTranscribeConfig {
 	endpoint: string;
-	
+
 	models: {
 		'gpt-4o-transcribe': {
 			costPerMinute: number;
@@ -49,7 +49,7 @@ export interface GPT4oTranscribeConfig {
 			displayName: string;
 		};
 	};
-	
+
 	limitations: {
 		maxFileSizeMB: number;
 		supportedFormats: string[];
@@ -58,14 +58,14 @@ export interface GPT4oTranscribeConfig {
 		supportsTimestamps: boolean;
 		supportsStreaming: boolean;
 	};
-	
+
 	defaults: {
 		response_format: 'json' | 'text';
 		temperature: number;
 		language: string;
 		stream: boolean;
 	};
-	
+
 	prompts: {
 		firstChunk: Record<string, string>;
 		continuation: Record<string, string>;
@@ -74,7 +74,7 @@ export interface GPT4oTranscribeConfig {
 
 export const GPT4O_TRANSCRIBE_CONFIG: GPT4oTranscribeConfig = {
 	endpoint: 'https://api.openai.com/v1/audio/transcriptions',
-	
+
 	models: {
 		'gpt-4o-transcribe': {
 			costPerMinute: 0.006,
@@ -85,7 +85,7 @@ export const GPT4O_TRANSCRIBE_CONFIG: GPT4oTranscribeConfig = {
 			displayName: 'GPT-4o Mini Transcribe'
 		}
 	},
-	
+
 	limitations: {
 		maxFileSizeMB: 25, // Same as Whisper
 		supportedFormats: ['mp3', 'mp4', 'mpeg', 'mpga', 'm4a', 'wav', 'webm'],
@@ -94,14 +94,14 @@ export const GPT4O_TRANSCRIBE_CONFIG: GPT4oTranscribeConfig = {
 		supportsTimestamps: false, // No timestamp_granularities support
 		supportsStreaming: true
 	},
-	
+
 	defaults: {
 		response_format: 'json',
 		temperature: 0.0, // Fixed to 0.0 for deterministic output
 		language: 'ja',
 		stream: false
 	},
-	
+
 	prompts: {
 		// 初回チャンク用のプロンプト（明確な指示で汚染を防ぐ）
 		firstChunk: {
@@ -147,50 +147,50 @@ export function buildGPT4oTranscribeRequest(
 		model: params.model,
 		temperature: config.defaults.temperature
 	};
-	
+
 	// Required parameter
 	// Optional parameters
 	if (params.response_format && params.response_format !== config.defaults.response_format) {
 		result.response_format = params.response_format;
 	}
-	
+
 	// Always use the fixed temperature from config
 	// Always include language parameter if specified (not 'auto')
 	if (params.language && params.language !== 'auto') {
 		result.language = params.language;
 	}
-	
+
 	// Prompt handling
 	if (params.prompt) {
 		result.prompt = params.prompt;
 	} else if (params.language) {
 		const prompts = isFirstChunk ? config.prompts.firstChunk : config.prompts.continuation;
 		let prompt = prompts[params.language] || prompts.auto;
-		
+
 		// Replace {previousTail} placeholder if we have previous context and it's a continuation chunk
 		if (!isFirstChunk && params.previousContext) {
 			// Extract last characters from previous context based on config
 			const tailLength = PROMPT_CONSTANTS.CONTEXT_TAIL_LENGTH;
-			const previousTail = params.previousContext.length > tailLength 
+			const previousTail = params.previousContext.length > tailLength
 				? params.previousContext.slice(-tailLength).trim()
 				: params.previousContext.trim();
-			
+
 			prompt = prompt.replace('{previousTail}', previousTail);
 		}
-		
+
 		result.prompt = prompt;
 	}
-	
+
 	// Streaming support
 	if (params.stream !== undefined && params.stream !== config.defaults.stream) {
 		result.stream = params.stream;
-		
+
 		// Include logprobs if requested (streaming only)
 		if (params.stream && params.include?.includes('logprobs')) {
 			result.include = params.include;
 		}
 	}
-	
+
 	return result;
 }
 
@@ -202,7 +202,7 @@ export function validateGPT4oTranscribeFile(
 	duration?: number
 ): { valid: boolean; error?: string } {
 	const config = GPT4O_TRANSCRIBE_CONFIG;
-	
+
 	// Check file size
 	if (file.size > config.limitations.maxFileSizeMB * 1024 * 1024) {
 		return {
@@ -210,7 +210,7 @@ export function validateGPT4oTranscribeFile(
 			error: `File size (${(file.size / 1024 / 1024).toFixed(1)}MB) exceeds limit of ${config.limitations.maxFileSizeMB}MB`
 		};
 	}
-	
+
 	// Check file format
 	const extension = file.name.split('.').pop()?.toLowerCase() || '';
 	if (!config.limitations.supportedFormats.includes(extension)) {
@@ -219,7 +219,7 @@ export function validateGPT4oTranscribeFile(
 			error: `Format '${extension}' not supported. Supported: ${config.limitations.supportedFormats.join(', ')}`
 		};
 	}
-	
+
 	// Check duration if provided
 	if (duration && duration > config.limitations.maxDurationMinutes * 60) {
 		return {
@@ -227,7 +227,7 @@ export function validateGPT4oTranscribeFile(
 			error: `Duration (${(duration / 60).toFixed(1)}min) exceeds limit of ${config.limitations.maxDurationMinutes}min`
 		};
 	}
-	
+
 	return { valid: true };
 }
 

@@ -9,7 +9,7 @@ import { BUY_ME_A_COFFEE_DEFAULT_BUTTON } from './assets/supportImages';
 export class APISettingsTab extends PluginSettingTab {
 	plugin: AITranscriberPlugin;
 	private updateDictionaryDesc?: () => void;
-	
+
 	private static readonly SUPPORT_CONFIG = {
 		fundingUrl: 'https://buymeacoffee.com/mssoft',
 		imageSrc: BUY_ME_A_COFFEE_DEFAULT_BUTTON,
@@ -29,18 +29,18 @@ export class APISettingsTab extends PluginSettingTab {
 		// Remove the main title as requested
 
 		// API settings (unified for all models)
-		SettingsUIBuilder.displayAPISettings(containerEl, this.plugin.settings, () => {
-			void this.plugin.saveSettings();
+		SettingsUIBuilder.displayAPISettings(containerEl, this.plugin.settings, async () => {
+			await this.plugin.saveSettings();
 		}, this.app);
 
 		// Transcription settings - no heading needed
 
 		// Show current Obsidian language if available
 		const obsidianLang = this.plugin.getObsidianLanguage();
-		const languageDesc = obsidianLang && obsidianLang !== 'auto' 
+		const languageDesc = obsidianLang && obsidianLang !== 'auto'
 			? `${t('settings.language.desc')} (${t('settings.language.useObsidianLang')}: ${obsidianLang})`
 			: t('settings.language.desc');
-		
+
 		new Setting(containerEl)
 			.setName(t('settings.language.name'))
 			.setDesc(languageDesc)
@@ -82,7 +82,7 @@ export class APISettingsTab extends PluginSettingTab {
 				.onChange(async (value) => {
 					this.plugin.settings.outputFormat = value;
 					await this.plugin.saveSettings();
-                                }));
+				}));
 
 		// Store toggle reference for later use
 		let dictionaryToggle: ToggleComponent | undefined;
@@ -97,7 +97,7 @@ export class APISettingsTab extends PluginSettingTab {
 					this.plugin.settings.postProcessingEnabled = value;
 					await this.plugin.saveSettings();
 					// Update dictionary toggle disabled state
-					if (dictionaryToggle) {
+					if (dictionaryToggle !== undefined) {
 						dictionaryToggle.setDisabled(!value);
 					}
 				}));
@@ -142,10 +142,10 @@ export class APISettingsTab extends PluginSettingTab {
 				}));
 
 		// Advanced settings
-		SettingsUIBuilder.displayAdvancedSettings(containerEl, this.plugin.settings, () => {
-			void this.plugin.saveSettings();
+		SettingsUIBuilder.displayAdvancedSettings(containerEl, this.plugin.settings, async () => {
+			await this.plugin.saveSettings();
 		}, () => this.display());
-		
+
 		// Dictionary management button
 		const dictionarySetting = new Setting(containerEl)
 			.setName(t('settings.dictionary.manageDictionary'))
@@ -155,7 +155,7 @@ export class APISettingsTab extends PluginSettingTab {
 					const modal = new DictionaryManagementModal(this.app, this.plugin.settings, this.plugin);
 					modal.open();
 				}));
-		
+
 		// Function to update dictionary description
 		const updateDictionaryDesc = () => {
 			const desc = this.plugin.settings.language === 'auto'
@@ -163,48 +163,48 @@ export class APISettingsTab extends PluginSettingTab {
 				: t('settings.dictionary.languageModeDesc', { lang: this.plugin.settings.language });
 			dictionarySetting.setDesc(desc);
 		};
-		
+
 		// Set initial description
 		updateDictionaryDesc();
-		
+
 		// Store the update function for language change
 		this.updateDictionaryDesc = updateDictionaryDesc;
-		
+
 		// Progress UI settings
-		SettingsUIBuilder.displayProgressUISettings(containerEl, this.plugin.settings, () => {
-			void this.plugin.saveSettings();
+		SettingsUIBuilder.displayProgressUISettings(containerEl, this.plugin.settings, async () => {
+			await this.plugin.saveSettings();
 		});
-		
+
 		// Debug settings - commented out for production release
 		// SettingsUIBuilder.displayDebugSettings(containerEl, this.plugin.settings, () => {
 		// 	void this.plugin.saveSettings();
 		// });
-		
+
 		// Buy Me a Coffee banner
 		this.displaySupportBanner(containerEl);
 	}
-	
+
 	private displaySupportBanner(containerEl: HTMLElement): void {
 		try {
 			// Add some spacing before the banner
 			containerEl.createEl('div', { cls: 'bmc-spacer' });
-			
+
 			// Create support section
 			const supportSection = containerEl.createDiv('bmc-support-section');
-			
+
 			// Add support message
 			supportSection.createEl('p', {
 				text: t('support.message'),
 				cls: 'bmc-support-message'
 			});
-			
+
 			// Buy Me a Coffee banner
 			const banner = supportSection.createEl('a', {
 				href: APISettingsTab.SUPPORT_CONFIG.fundingUrl,
 				attr: { target: '_blank', rel: 'noopener' },
 				cls: 'bmc-banner'
 			});
-			
+
 			banner.createEl('img', {
 				attr: {
 					src: APISettingsTab.SUPPORT_CONFIG.imageSrc,

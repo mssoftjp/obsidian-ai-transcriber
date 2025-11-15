@@ -23,11 +23,11 @@ export class APITranscriber {
 	private controller: TranscriptionController;
 	private progressTracker: ProgressTracker | null = null;
 	private logger = Logger.getLogger('APITranscriber');
-	
+
 	// Cancellation support
 	private abortController: AbortController | null = null;
 	private isCancelled: boolean = false;
-	
+
 	// For compatibility
 	private currentTaskId: string | null = null;
 
@@ -35,10 +35,10 @@ export class APITranscriber {
 		this.app = app;
 		this.settings = settings;
 		this.progressTracker = progressTracker || null;
-		
+
 		// Create new controller
 		this.controller = new TranscriptionController(app, settings, progressTracker);
-		
+
 	}
 
 	/**
@@ -50,13 +50,13 @@ export class APITranscriber {
 		this.abortController = new AbortController();
 		this.isCancelled = false;
 		const partialMarker = this.getPartialResultMarker();
-		
+
 		// Create task in progress tracker if available
 		if (this.progressTracker) {
 			// Get provider name and estimate cost
 			const provider = this.getProviderDisplayName();
 			const costEstimate = await this.estimateCost(audioFile);
-			
+
 			this.currentTaskId = this.progressTracker.startTask(
 				audioFile,
 				1, // We don't know chunk count yet
@@ -64,79 +64,79 @@ export class APITranscriber {
 				costEstimate.cost
 			);
 		}
-		
+
 		try {
 			const transcriptionStartTime = performance.now();
-			
+
 			// Validate audio file
 			this.validateAudioFile(audioFile);
-			
+
 			// Delegate to new controller with abort signal
 			this.logger.debug('Delegating to TranscriptionController');
 			const result = await this.controller.transcribe(
-				audioFile, 
-				startTime, 
+				audioFile,
+				startTime,
 				endTime,
 				this.abortController.signal
 			);
-			
+
 			// Extract text for progress tracker
 			const resultText = typeof result === 'string' ? result : result.text;
-			
+
 			// Don't mark as complete here - let the modal handle completion after post-processing
 			// This keeps the task in 'processing' state at 70%
-			
+
 			const elapsedTime = performance.now() - transcriptionStartTime;
 			this.logger.info('Transcription completed', {
 				file: audioFile.name,
 				elapsedTime: `${(elapsedTime / 1000).toFixed(2)}s`,
 				textLength: resultText.length
 			});
-			
+
 			return result;
-			
+
 		} catch (error) {
 			// Check if this is a partial result error
 			if (error instanceof Error && error.message.includes(partialMarker)) {
 				// Extract the partial result text and return it
 				const partialText = error.message;
-				
+
 				// Don't mark as complete here - let the modal handle completion
-				
+
 				return partialText;
 			}
-			
+
 			// Handle cancellation - but first check if we have partial results
 			if (this.isCancelled || (error instanceof Error && error.message.includes('cancelled'))) {
-				
+
 				// If the error is a cancellation but includes partial results, return them
 				if (error instanceof Error && error.message.includes(partialMarker)) {
 					const partialText = error.message;
-					
+
 					// Mark as partial, not complete
 					if (this.progressTracker && this.currentTaskId) {
 						this.progressTracker.updateTaskStatus(this.currentTaskId, 'partial');
 					}
-					
+
 					return partialText;
 				}
-				
+
 				// Only show notice and return empty if no partial results
 				new Notice(t('notices.transcriptionCancelled'));
-				
+
 				// Mark task as cancelled in progress tracker
 				if (this.progressTracker && this.currentTaskId) {
 					this.progressTracker.cancelTask(this.currentTaskId);
 				}
-				
+
 				return '';
 			}
-			
+
 			// Handle other errors
 			const userError = ErrorHandler.handleError(error as Error, 'transcription');
 			ErrorHandler.displayError(userError);
 			throw error;
-			
+
 		} finally {
 			// Clean up
 			this.abortController = null;
@@ -149,11 +149,11 @@ export class APITranscriber {
 	 */
 	cancelTranscription(): Promise<void> {
 		this.isCancelled = true;
-		
+
 		if (this.abortController) {
 			this.abortController.abort();
 		}
-		
+
 		// Cancel current task in progress tracker
 		if (this.progressTracker && this.currentTaskId) {
 			this.progressTracker.cancelTask(this.currentTaskId);
@@ -177,7 +177,7 @@ export class APITranscriber {
 		try {
 			// Cancel any ongoing operations
 			await this.cancelTranscription();
-			
+
 			// Controller handles its own cleanup internally
 		} catch (error) {
 			this.logger.warn('Cleanup error', error);
@@ -202,7 +202,7 @@ export class APITranscriber {
 	private validateAudioFile(audioFile: TFile): void {
 		const supportedExtensions = SUPPORTED_FORMATS.EXTENSIONS;
 		const fileExtension = audioFile.extension.toLowerCase();
-		
+
 		if (!supportedExtensions.includes(fileExtension)) {
 			throw new Error(t('errors.unsupportedAudioFormat', {
 				extension: fileExtension,
@@ -212,7 +212,7 @@ export class APITranscriber {
 	}
 
 	// ===== Compatibility methods for gradual migration =====
-	
+
 	/**
 	 * Get transcriber instance (for compatibility)
 	 * @deprecated Use TranscriptionController directly
@@ -265,17 +265,17 @@ export class APITranscriber {
 	getProviderDisplayName(): string {
 		const model = this.settings.model as string; // Cast to string to avoid type errors
 		switch (model) {
-			case 'whisper-1':
-				return t('providers.whisper');
-			case 'whisper-1-ts':
-				return t('providers.whisperTs');
-			case 'gpt-4o-transcribe':
-				return t('providers.gpt4o');
-			case 'gpt-4o-mini-transcribe':
-				return t('providers.gpt4oMini');
-			default:
-				// Fallback to model name with proper formatting
-				return model.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+		case 'whisper-1':
+			return t('providers.whisper');
+		case 'whisper-1-ts':
+			return t('providers.whisperTs');
+		case 'gpt-4o-transcribe':
+			return t('providers.gpt4o');
+		case 'gpt-4o-mini-transcribe':
+			return t('providers.gpt4oMini');
+		default:
+			// Fallback to model name with proper formatting
+			return model.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
 		}
 	}
 
@@ -285,7 +285,7 @@ export class APITranscriber {
 	getProviderLimits(): { maxFileSize: number; supportedFormats: string[] } {
 		const supportedFormats = SUPPORTED_FORMATS.EXTENSIONS;
 		const modelConfig = getModelConfig(this.settings.model);
-		
+
 		return {
 			maxFileSize: modelConfig.maxFileSizeMB,
 			supportedFormats
@@ -301,10 +301,10 @@ export class APITranscriber {
 			// Get audio duration (rough estimate based on file size)
 			const audioBuffer = await this.app.vault.readBinary(audioFile);
 			const sizeMB = audioBuffer.byteLength / (1024 * 1024);
-			
+
 			// Rough estimate: 1MB ≈ 1 minute for compressed audio
 			const estimatedMinutes = sizeMB * 1.2; // Conservative estimate
-			
+
 			// Cost per minute based on model configuration
 			const model = this.settings.model as string; // Cast to string to avoid type errors
 			const modelConfig = getModelConfig(model);
@@ -312,7 +312,7 @@ export class APITranscriber {
 			const currency = modelConfig.pricing.currency;
 			const totalCost = estimatedMinutes * costPerMinute;
 			const rateDisplay = this.formatCostRate(currency, costPerMinute);
-			
+
 			// Return format that supports both old and new interface
 			return {
 				cost: Math.round(totalCost * 100) / 100,
@@ -350,7 +350,7 @@ export class APITranscriber {
 	/**
 	 * Set progress callback (for compatibility)
 	 */
-	setProgressCallback(callback: (current: number, total: number, message: string) => void): void {
+	setProgressCallback(_callback: (current: number, total: number, message: string) => void): void {
 		// This is now handled internally by TranscriptionController
 	}
 

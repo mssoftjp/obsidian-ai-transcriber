@@ -99,12 +99,12 @@ export abstract class TranscriptionStrategy {
 		} catch (error) {
 			processingError = error as Error;
 			isCancelled = processingError.message.includes('cancelled') || processingError.message.includes('aborted') || processingError.name === 'AbortError';
-			
-				// Log the interruption
-				if (!isCancelled) {
-					this.logger.warn(`Processing interrupted: ${processingError.message}`);
-				}
-			
+
+			// Log the interruption
+			if (!isCancelled) {
+				this.logger.warn(`Processing interrupted: ${processingError.message}`);
+			}
+
 			// If no results at all and not cancelled, re-throw the error
 			if (results.length === 0 && !isCancelled) {
 				throw processingError;
@@ -145,44 +145,44 @@ export abstract class TranscriptionStrategy {
 				// Report completion or partial completion
 				const successfulResults = results.filter(r => r.success);
 				const isPartial = successfulResults.length < chunks.length || processingError !== null;
-				
-			this.reportProgress({
-				currentChunk: results.length,
-				totalChunks: chunks.length,
-				percentage: 100,
-				operation: isPartial ? t('modal.transcription.partialResult') : t('modal.transcription.completed'),
-				cancellable: false
-			});
+
+				this.reportProgress({
+					currentChunk: results.length,
+					totalChunks: chunks.length,
+					percentage: 100,
+					operation: isPartial ? t('modal.transcription.partialResult') : t('modal.transcription.completed'),
+					cancellable: false
+				});
 
 				const result: TranscriptionExecutionResult = {
 					text: mergedText,
 					segments: allSegments
 				};
 
-			if (isPartial) {
-				result.partial = true;
-				const processedCount = successfulResults.length.toString();
-				const totalCount = chunks.length.toString();
-				const partialHeader = t('modal.transcription.partialResult');
-				const summary = t('modal.transcription.partialSummary', {
-					processed: processedCount,
-					total: totalCount
-				});
-				result.text = `${partialHeader}\n${summary}\n\n${mergedText}`;
-				if (isCancelled) {
-					result.error = t('modal.transcription.partialCancelled', {
+				if (isPartial) {
+					result.partial = true;
+					const processedCount = successfulResults.length.toString();
+					const totalCount = chunks.length.toString();
+					const partialHeader = t('modal.transcription.partialResult');
+					const summary = t('modal.transcription.partialSummary', {
 						processed: processedCount,
 						total: totalCount
 					});
-				} else if (processingError) {
-					const errorMessage = processingError.message || t('errors.general');
-					result.error = t('modal.transcription.partialError', {
-						error: errorMessage,
-						processed: processedCount,
-						total: totalCount
-					});
+					result.text = `${partialHeader}\n${summary}\n\n${mergedText}`;
+					if (isCancelled) {
+						result.error = t('modal.transcription.partialCancelled', {
+							processed: processedCount,
+							total: totalCount
+						});
+					} else if (processingError) {
+						const errorMessage = processingError.message || t('errors.general');
+						result.error = t('modal.transcription.partialError', {
+							error: errorMessage,
+							processed: processedCount,
+							total: totalCount
+						});
+					}
 				}
-			}
 
 				return result;
 
@@ -190,17 +190,17 @@ export abstract class TranscriptionStrategy {
 				this.logger.error('Merge failed', mergeError);
 				// Even if merge fails, try to return something
 				const successfulResults = results.filter(r => r.success && r.text);
-			if (successfulResults.length > 0) {
-				const fallbackText = successfulResults.map(r => r.text).join('\n\n');
-				return {
-					text: fallbackText,
-					partial: true,
-					error: `${t('modal.transcription.partialFailedChunks', { chunks: successfulResults.length.toString() })} ${(mergeError as Error).message}`
-				};
+				if (successfulResults.length > 0) {
+					const fallbackText = successfulResults.map(r => r.text).join('\n\n');
+					return {
+						text: fallbackText,
+						partial: true,
+						error: `${t('modal.transcription.partialFailedChunks', { chunks: successfulResults.length.toString() })} ${(mergeError as Error).message}`
+					};
+				}
+				throw mergeError;
 			}
-			throw mergeError;
-		}
-	} else {
+		} else {
 			// No results at all
 			if (isCancelled) {
 				// Return empty result with cancellation message
@@ -244,7 +244,7 @@ export abstract class TranscriptionStrategy {
 		previousContext?: string
 	): Promise<TranscriptionResult> {
 		try {
-			const modelOptions = previousContext 
+			const modelOptions = previousContext
 				? { gpt4o: { previousContext, responseFormat: 'json' as const } }
 				: undefined;
 
@@ -278,20 +278,20 @@ export abstract class TranscriptionStrategy {
 	protected delay(ms: number): Promise<void> {
 		return new Promise((resolve, reject) => {
 			const timeoutId = setTimeout(resolve, ms);
-			
+
 			// Check if already aborted
 			if (this.abortSignal?.aborted) {
 				clearTimeout(timeoutId);
 				reject(new Error(t('errors.cancelled')));
 				return;
 			}
-			
+
 			// Listen for abort
 			const abortHandler = () => {
 				clearTimeout(timeoutId);
 				reject(new Error(t('errors.cancelled')));
 			};
-			
+
 			this.abortSignal?.addEventListener('abort', abortHandler, { once: true });
 		});
 	}
@@ -304,7 +304,9 @@ export abstract class TranscriptionStrategy {
 		totalChunks: number,
 		startTime: number
 	): number {
-		if (processedChunks === 0) return 0;
+		if (processedChunks === 0) {
+			return 0;
+		}
 
 		const elapsedSeconds = (Date.now() - startTime) / 1000;
 		const averageTimePerChunk = elapsedSeconds / processedChunks;
@@ -324,7 +326,7 @@ export abstract class TranscriptionStrategy {
 		const failed = results.filter(r => !r.success);
 
 		if (failed.length > 0) {
-			this.logger.warn(`[${this.strategyName}] ${failed.length} chunks failed:`, 
+			this.logger.warn(`[${this.strategyName}] ${failed.length} chunks failed:`,
 				failed.map(f => ({ id: f.id, error: f.error }))
 			);
 		}

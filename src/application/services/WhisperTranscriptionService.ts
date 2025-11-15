@@ -21,7 +21,7 @@ import { Logger } from '../../utils/Logger';
 export class WhisperTranscriptionService extends TranscriptionService {
 	readonly modelId: string;
 	readonly modelName = 'OpenAI Whisper';
-	
+
 	readonly capabilities: {
 		supportsTimestamps: boolean;
 		supportsWordLevel: boolean;
@@ -35,9 +35,9 @@ export class WhisperTranscriptionService extends TranscriptionService {
 
 	constructor(apiKey: string, modelId: string = 'whisper-1', dictionaryCorrector?: DictionaryCorrector) {
 		super();
-		
+
 		this.modelId = modelId;
-		
+
 		// Initialize capabilities based on model
 		const config = getModelConfig(this.modelId);
 		const includeTimestamps = this.modelId === 'whisper-1-ts';
@@ -56,10 +56,10 @@ export class WhisperTranscriptionService extends TranscriptionService {
 			maxFileSizeMB: config.maxFileSizeMB,
 			maxDurationSeconds: config.maxDurationSeconds
 		};
-		
+
 		// Dictionary corrector is now handled at the controller level
 		this.dictionaryCorrector = dictionaryCorrector;
-		
+
 		this.client = new WhisperClient(apiKey);
 		this.logger = Logger.getLogger('WhisperTranscriptionService');
 		this.logger.debug('WhisperTranscriptionService initialized', {
@@ -75,12 +75,12 @@ export class WhisperTranscriptionService extends TranscriptionService {
 	/**
 	 * Validate transcription request
 	 */
-	async validate(request: TranscriptionRequest): Promise<TranscriptionValidation> {
+	validate(request: TranscriptionRequest): Promise<TranscriptionValidation> {
 		this.logger.debug('Validating transcription request', {
 			chunkId: request.chunk.id,
 			language: request.options.language
 		});
-		
+
 		const errors: string[] = [];
 		const warnings: string[] = [];
 
@@ -108,12 +108,12 @@ export class WhisperTranscriptionService extends TranscriptionService {
 		const duration = request.chunk.endTime - request.chunk.startTime;
 		const cost = this.estimateCost(duration);
 
-		return {
+		return Promise.resolve({
 			isValid: errors.length === 0,
 			errors,
 			warnings,
 			estimatedCost: cost
-		};
+		});
 	}
 
 	/**
@@ -130,10 +130,10 @@ export class WhisperTranscriptionService extends TranscriptionService {
 			chunkDuration: `${(chunk.endTime - chunk.startTime).toFixed(2)}s`,
 			language: options.language
 		});
-		
+
 		// Determine if timestamps should be included based on model
 		const includeTimestamps = this.modelId === 'whisper-1-ts';
-		
+
 		// Whisper-specific model options
 		const whisperOptions: ModelSpecificOptions = {
 			whisper: {
@@ -147,7 +147,7 @@ export class WhisperTranscriptionService extends TranscriptionService {
 
 		try {
 			const result = await this.client.transcribe(chunk, options, whisperOptions);
-			
+
 			const transcriptionTime = performance.now() - startTime;
 			this.logger.info('Transcription completed', {
 				chunkId: chunk.id,
@@ -155,7 +155,7 @@ export class WhisperTranscriptionService extends TranscriptionService {
 				resultLength: result.text.length,
 				detectedLanguage: result.language
 			});
-			
+
 			return result;
 		} catch (error) {
 			this.logger.error('Transcription failed', {
@@ -231,7 +231,7 @@ export class WhisperTranscriptionService extends TranscriptionService {
 		const config = getModelConfig(this.modelId);
 		const perMinute = config.pricing.costPerMinute;
 		const currency = config.pricing.currency;
-		
+
 		const minutes = durationSeconds / 60;
 		const amount = minutes * perMinute;
 

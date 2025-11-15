@@ -5,7 +5,7 @@ export class LoadingAnimation {
 	private loadingDotsCount = 0;
 	private animationInterval: number | null = null;
 	private isAnimating = false;
-	
+
 	/**
 	 * Get the current loading dots pattern
 	 */
@@ -15,7 +15,7 @@ export class LoadingAnimation {
 		this.loadingDotsCount = (this.loadingDotsCount + 1) % patterns.length;
 		return patterns[this.loadingDotsCount];
 	}
-	
+
 	/**
 	 * Start the animation with a callback
 	 */
@@ -23,18 +23,18 @@ export class LoadingAnimation {
 		if (this.isAnimating) {
 			return;
 		}
-		
+
 		this.isAnimating = true;
 		this.loadingDotsCount = 0;
-		
+
 		// Clear any existing interval
 		if (this.animationInterval !== null) {
 			window.clearInterval(this.animationInterval);
 		}
-		
+
 		// Initial call
 		callback();
-		
+
 		// Set up interval
 		this.animationInterval = window.setInterval(() => {
 			if (this.isAnimating) {
@@ -42,35 +42,35 @@ export class LoadingAnimation {
 			}
 		}, interval);
 	}
-	
+
 	/**
 	 * Stop the animation
 	 */
 	stop(): void {
 		this.isAnimating = false;
-		
+
 		if (this.animationInterval !== null) {
 			window.clearInterval(this.animationInterval);
 			this.animationInterval = null;
 		}
-		
+
 		this.loadingDotsCount = 0;
 	}
-	
+
 	/**
 	 * Check if animation is running
 	 */
 	isRunning(): boolean {
 		return this.isAnimating;
 	}
-	
+
 	/**
 	 * Reset the animation state
 	 */
 	reset(): void {
 		this.stop();
 	}
-	
+
 	/**
 	 * Clean up resources
 	 */

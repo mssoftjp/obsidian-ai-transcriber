@@ -48,15 +48,15 @@ export class PostProcessingService {
 		});
 
 		try {
-			
+
 			// Step 1: Extract and reduce meta information
 			this.logger.debug('Step 1: Reducing meta information');
 			const reducedMeta = await this.reduceMetaInfo(metaInfo, signal);
-			
+
 			// Step 2: Check if segmentation is needed
 			this.logger.debug('Step 2: Checking segmentation requirements');
 			const language = this.detectLanguage(transcription);
-			const maxChars = POST_PROCESSING_CONFIG.segmentation.maxSegmentChars[language] || 
+			const maxChars = POST_PROCESSING_CONFIG.segmentation.maxSegmentChars[language] ||
 			                POST_PROCESSING_CONFIG.segmentation.maxSegmentChars.ja;
 			this.logger.debug('Segmentation check', {
 				language,
@@ -64,8 +64,8 @@ export class PostProcessingService {
 				maxChars,
 				needsSegmentation: transcription.length > maxChars
 			});
-			
-			
+
+
 			if (transcription.length <= maxChars) {
 				// Process as single segment
 				this.logger.debug('Processing as single segment');
@@ -97,39 +97,39 @@ export class PostProcessingService {
 				this.logger.debug('Text segmented', {
 					segmentCount: segments.length
 				});
-				
+
 				const processedSegments: string[] = [];
-				
+
 				for (let i = 0; i < segments.length; i++) {
 					const segmentStartTime = Date.now();
 					this.logger.trace(`Processing segment ${i + 1}/${segments.length}`, {
 						segmentLength: segments[i].length
 					});
-					
+
 					const segmentResult = await this.client.processTranscription(
 						segments[i],
 						reducedMeta.context,
 						reducedMeta.keywords,
 						signal
 					);
-					
+
 					processedSegments.push(segmentResult.processedText);
 					const segmentDuration = (Date.now() - segmentStartTime) / 1000;
 					this.logger.trace(`Segment ${i + 1} processed`, {
 						duration: `${segmentDuration.toFixed(2)}s`
 					});
 				}
-				
+
 				const processedText = processedSegments.join('');
 				const duration = (Date.now() - startTime) / 1000;
-				
+
 				this.logger.info('Segmented post-processing completed', {
 					duration: `${duration.toFixed(2)}s`,
 					segmentCount: segments.length,
 					originalLength: transcription.length,
 					processedLength: processedText.length
 				});
-				
+
 				return {
 					originalText: transcription,
 					processedText,
@@ -150,7 +150,7 @@ export class PostProcessingService {
 			}
 
 			this.logger.error('Processing failed', error);
-			
+
 			// Return original transcription on error
 			return {
 				originalText: transcription,
@@ -208,10 +208,19 @@ export class PostProcessingService {
 
 			// Parse JSON response
 			try {
-				const reduced = JSON.parse(content);
+				const reduced = JSON.parse(content) as {
+					keywords?: string[] | string;
+					context?: string;
+				};
+				const keywords = Array.isArray(reduced.keywords)
+					? reduced.keywords
+					: typeof reduced.keywords === 'string'
+						? [reduced.keywords]
+						: [];
+				const context = typeof reduced.context === 'string' ? reduced.context : '';
 				return {
-					keywords: reduced.keywords || [],
-					context: reduced.context || ''
+					keywords,
+					context
 				};
 			} catch (parseError) {
 				this.logger.error('Failed to parse meta reduction response', parseError);
@@ -254,7 +263,9 @@ export class PostProcessingService {
 		// Parse each line
 		for (const line of lines) {
 			const trimmedLine = line.trim();
-			if (!trimmedLine) continue;
+			if (!trimmedLine) {
+				continue;
+			}
 
 			// Check if line matches any label pattern
 			let matched = false;
@@ -310,7 +321,7 @@ export class PostProcessingService {
 
 		// Build context from parsed information
 		const contextElements: string[] = [];
-		
+
 		// Add structured information to context
 		if (parsedInfo.speakers) {
 			contextElements.push(`話者: ${parsedInfo.speakers}`);
@@ -366,7 +377,7 @@ export class PostProcessingService {
 		enabled: boolean;
 		maxInputTokens: number;
 		maxOutputTokens: number;
-	} {
+		} {
 		return {
 			model: POST_PROCESSING_CONFIG.model,
 			enabled: this.settings.postProcessingEnabled ?? false,
@@ -374,40 +385,40 @@ export class PostProcessingService {
 			maxOutputTokens: POST_PROCESSING_CONFIG.limitations.maxOutputTokens
 		};
 	}
-	
+
 	/**
 	 * Detect language from text
 	 */
 	private detectLanguage(text: string): 'ja' | 'en' | 'zh' | 'ko' {
 		return LanguageDetector.detectLanguage(text);
 	}
-	
+
 	/**
 	 * Segment transcription into manageable chunks
 	 */
 	private segmentTranscription(text: string, language: 'ja' | 'en' | 'zh' | 'ko'): string[] {
 		const maxChars = POST_PROCESSING_CONFIG.segmentation.maxSegmentChars[language];
 		const segments: string[] = [];
-		
+
 		// 文末パターン（優先順位順）
 		const sentenceEndPatterns = [
 			/[。！？]\s*$/,     // 日本語の文末
 			/[.!?]\s*$/,        // 英語の文末
-			/[。！？.!?]\s*$/,  // 混在
+			/[。！？.!?]\s*$/  // 混在
 		];
-		
+
 		// 読点パターン
 		const commaPattern = /[、,]\s*$/;
-		
+
 		let currentSegment = '';
 		let currentLength = 0;
-		
+
 		// 改行で分割して処理
 		const lines = text.split('\n');
-		
+
 		for (const line of lines) {
 			const lineLength = line.length + 1; // +1 for newline
-			
+
 			// 現在のセグメントに追加しても制限内の場合
 			if (currentLength + lineLength <= maxChars) {
 				currentSegment += (currentSegment ? '\n' : '') + line;
@@ -417,7 +428,7 @@ export class PostProcessingService {
 				if (currentSegment) {
 					segments.push(currentSegment);
 				}
-				
+
 				// 単一行が制限を超える場合は、文末で分割を試みる
 				if (lineLength > maxChars) {
 					const subSegments = this.splitLongLine(line, maxChars, sentenceEndPatterns, commaPattern);
@@ -430,66 +441,66 @@ export class PostProcessingService {
 				}
 			}
 		}
-		
+
 		// 最後のセグメントを追加
 		if (currentSegment) {
 			segments.push(currentSegment);
 		}
-		
+
 		return segments;
 	}
-	
+
 	/**
 	 * Split a long line into smaller segments
 	 */
 	private splitLongLine(
-		line: string, 
-		maxChars: number, 
-		sentenceEndPatterns: RegExp[], 
+		line: string,
+		maxChars: number,
+		sentenceEndPatterns: RegExp[],
 		commaPattern: RegExp
 	): string[] {
 		const segments: string[] = [];
 		let remaining = line;
-		
+
 		while (remaining.length > maxChars) {
 			let splitPoint = -1;
-			
+
 			// 文末を探す
 			for (const pattern of sentenceEndPatterns) {
 				const searchText = remaining.substring(0, maxChars);
 				const matches = Array.from(searchText.matchAll(new RegExp(pattern.source.replace(/\$$/, ''), 'g')));
-				
+
 				if (matches.length > 0) {
 					const lastMatch = matches[matches.length - 1];
-					splitPoint = lastMatch.index! + lastMatch[0].length;
+					splitPoint = lastMatch.index + lastMatch[0].length;
 					break;
 				}
 			}
-			
+
 			// 文末が見つからない場合、読点を探す
 			if (splitPoint === -1) {
 				const searchText = remaining.substring(0, maxChars);
 				const matches = Array.from(searchText.matchAll(new RegExp(commaPattern.source.replace(/\$$/, ''), 'g')));
-				
+
 				if (matches.length > 0) {
 					const lastMatch = matches[matches.length - 1];
-					splitPoint = lastMatch.index! + lastMatch[0].length;
+					splitPoint = lastMatch.index + lastMatch[0].length;
 				}
 			}
-			
+
 			// それでも見つからない場合は、強制的に分割
 			if (splitPoint === -1) {
 				splitPoint = maxChars;
 			}
-			
+
 			segments.push(remaining.substring(0, splitPoint));
 			remaining = remaining.substring(splitPoint).trim();
 		}
-		
+
 		if (remaining) {
 			segments.push(remaining);
 		}
-		
+
 		return segments;
 	}
 }

@@ -85,7 +85,7 @@ export class AudioPipeline {
 			chunks = await this.chunkingService.createChunks(trimmedAudio, strategy);
 		} else {
 			this.logger.debug('Creating single chunk (no chunking needed)');
-			chunks = [await this.createSingleChunk(trimmedAudio)];
+			chunks = [this.createSingleChunk(trimmedAudio)];
 		}
 
 		const processingTime = performance.now() - startTimestamp;
@@ -117,7 +117,7 @@ export class AudioPipeline {
 
 		const sampleRate = audio.sampleRate;
 		const startSample = startTime ? Math.floor(startTime * sampleRate) : 0;
-		const endSample = endTime 
+		const endSample = endTime
 			? Math.min(Math.floor(endTime * sampleRate), audio.pcmData.length)
 			: audio.pcmData.length;
 
@@ -142,9 +142,9 @@ export class AudioPipeline {
 	/**
 	 * Create a single chunk from processed audio
 	 */
-	private async createSingleChunk(audio: ProcessedAudio): Promise<AudioChunk> {
+	private createSingleChunk(audio: ProcessedAudio): AudioChunk {
 		this.logger.trace('Creating single chunk from audio');
-		
+
 		// Convert to WAV format
 		const wavData = this.audioProcessor['pcmToWav'](audio.pcmData, audio.sampleRate);
 
@@ -170,15 +170,15 @@ export class AudioPipeline {
 	 */
 	validateConfiguration(): void {
 		// Validate audio processing config
-                if (this.config.targetSampleRate !== AUDIO_CONSTANTS.SAMPLE_RATE) {
+		if (this.config.targetSampleRate !== AUDIO_CONSTANTS.SAMPLE_RATE) {
 			this.logger.warn('Target sample rate is not 16kHz, which is optimal for transcription APIs');
 		}
 
-                if (this.config.targetChannels !== AUDIO_CONSTANTS.CHANNELS) {
+		if (this.config.targetChannels !== AUDIO_CONSTANTS.CHANNELS) {
 			this.logger.warn('Target channels is not mono, which is required for transcription APIs');
 		}
 
-                if (this.config.targetBitDepth !== AUDIO_CONSTANTS.BIT_DEPTH) {
+		if (this.config.targetBitDepth !== AUDIO_CONSTANTS.BIT_DEPTH) {
 			this.logger.warn('Target bit depth is not 16-bit, which is standard for transcription APIs');
 		}
 	}

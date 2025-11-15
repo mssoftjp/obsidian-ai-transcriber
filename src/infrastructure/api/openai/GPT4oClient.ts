@@ -5,12 +5,12 @@
 
 import { ApiClient } from '../ApiClient';
 import { AudioChunk } from '../../../core/audio/AudioTypes';
-import { 
-	TranscriptionResult, 
+import {
+	TranscriptionResult,
 	TranscriptionOptions,
-	ModelSpecificOptions 
+	ModelSpecificOptions
 } from '../../../core/transcription/TranscriptionTypes';
-import { 
+import {
 	GPT4O_TRANSCRIBE_CONFIG,
 	buildGPT4oTranscribeRequest
 } from '../../../config/openai/GPT4oTranscribeConfig';
@@ -24,7 +24,7 @@ interface GPT4oResponse {
 
 export class GPT4oClient extends ApiClient {
 	private readonly supportedModels = Object.keys(GPT4O_TRANSCRIBE_CONFIG.models);
-	
+
 	// Model name mapping
 	private readonly modelMapping: Record<string, string> = {
 		'gpt-4o-transcribe': 'gpt-4o-transcribe',
@@ -67,7 +67,7 @@ export class GPT4oClient extends ApiClient {
 
 		// Use custom prompt if provided, otherwise let buildGPT4oTranscribeRequest handle it
 		const customPrompt = modelOptions?.gpt4o?.customPrompt;
-		
+
 
 		// Build request parameters using the new config
 		const requestParams = buildGPT4oTranscribeRequest({
@@ -88,19 +88,19 @@ export class GPT4oClient extends ApiClient {
 
 		try {
 			const startTime = performance.now();
-			this.logger.debug('Sending request to GPT-4o API', { 
+			this.logger.debug('Sending request to GPT-4o API', {
 				chunkId: chunk.id,
 				model: this.model,
 				hasCustomPrompt: !!customPrompt
 			});
-			
+
 			const response = await this.post<GPT4oResponse>(
 				'/audio/transcriptions',
 				formData,
 				{},
 				options.signal
 			);
-			
+
 			const elapsedTime = performance.now() - startTime;
 			this.logger.debug('GPT-4o API response received', {
 				chunkId: chunk.id,
@@ -114,7 +114,7 @@ export class GPT4oClient extends ApiClient {
 				chunkId: chunk.id,
 				error: error instanceof Error ? error.message : 'Unknown error'
 			});
-			
+
 			return {
 				id: chunk.id,
 				text: '',
@@ -132,14 +132,14 @@ export class GPT4oClient extends ApiClient {
 	 */
 	private parseResponse(response: GPT4oResponse, chunk: AudioChunk): TranscriptionResult {
 		let text = response.text || '';
-		
+
 		// Extract content from <TRANSCRIPT> tags if present
 		const transcriptMatch = text.match(/<TRANSCRIPT>([\s\S]*?)<\/TRANSCRIPT>/);
 		if (transcriptMatch) {
 			this.logger.trace('Extracted text from TRANSCRIPT tags', { chunkId: chunk.id });
 			text = transcriptMatch[1].trim();
 		}
-		
+
 		const result = {
 			id: chunk.id,
 			text: text,
@@ -148,13 +148,13 @@ export class GPT4oClient extends ApiClient {
 			success: true
 			// GPT-4o doesn't provide segments in basic JSON format
 		};
-		
+
 		this.logger.debug('GPT-4o response parsed', {
 			chunkId: chunk.id,
 			textLength: result.text.length,
 			hasTranscriptTags: !!transcriptMatch
 		});
-		
+
 		return result;
 	}
 

@@ -21,14 +21,14 @@ export class PatternCompiler {
 			const [, patternBody, flags] = regexMatch;
 			return new RegExp(patternBody, flags || defaultFlags);
 		}
-		
+
 		// Check if pattern contains regex special characters
 		const hasRegexChars = /[\^$\\.*+?[\]{}()|]/.test(pattern);
-		
+
 		if (hasRegexChars) {
 			// Pattern likely contains regex syntax, compile with intelligent flag detection
 			const flags = PatternCompiler.detectFlags(pattern, defaultFlags);
-			
+
 			try {
 				return new RegExp(pattern, flags);
 			} catch (e) {
@@ -38,42 +38,42 @@ export class PatternCompiler {
 				return PatternCompiler.compileLiteral(pattern, defaultFlags);
 			}
 		}
-		
+
 		// Treat as literal string
 		return PatternCompiler.compileLiteral(pattern, defaultFlags);
 	}
-	
+
 	/**
 	 * Compile an array of patterns
 	 */
 	static compileMany(patterns: string[], defaultFlags: string = 'g'): RegExp[] {
 		return patterns.map(pattern => PatternCompiler.compile(pattern, defaultFlags));
 	}
-	
+
 	/**
 	 * Detect appropriate flags based on pattern content
 	 */
 	private static detectFlags(pattern: string, defaultFlags: string): string {
 		let flags = '';
-		
+
 		// Add multiline flag if pattern uses line anchors or \n
 		if (pattern.includes('^') || pattern.includes('$') || pattern.includes('\\n')) {
 			flags += 'm';
 		}
-		
+
 		// Add case-insensitive flag if pattern has mixed case letters
 		if (/[a-z]/.test(pattern) && /[A-Z]/.test(pattern)) {
 			flags += 'i';
 		}
-		
+
 		// Always include global flag unless explicitly excluded
 		if (!flags.includes('g') && defaultFlags.includes('g')) {
 			flags += 'g';
 		}
-		
+
 		return flags || defaultFlags;
 	}
-	
+
 	/**
 	 * Compile a literal string by escaping regex special characters
 	 */
@@ -81,7 +81,7 @@ export class PatternCompiler {
 		const escaped = literal.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 		return new RegExp(escaped, flags);
 	}
-	
+
 	/**
 	 * Compile language-specific patterns with appropriate modifications
 	 */

@@ -5,10 +5,10 @@
 
 import { TextCleaner, CleaningResult, CleaningContext } from './interfaces/TextCleaner';
 import { DictionaryCorrector } from '../DictionaryCorrector';
-import { 
-	ModelCleaningStrategy, 
-	HallucinationPatterns, 
-	RepetitionThresholds 
+import {
+	ModelCleaningStrategy,
+	HallucinationPatterns,
+	RepetitionThresholds
 } from '../../../config/ModelCleaningConfig';
 import { PatternCompiler, META_BRACKET } from './utils/PatternCompiler';
 import { Logger } from '../../../utils/Logger';
@@ -47,7 +47,7 @@ export class BaseHallucinationCleaner implements TextCleaner {
 		this.dictionaryCorrector = dictionaryCorrector;
 		this.strategy = strategy;
 		this.logger = Logger.getLogger('BaseHallucinationCleaner');
-		
+
 		// Load patterns from strategy if provided
 		if (strategy?.hallucinationPatterns) {
 			this.hallucinationPatterns = this.compilePatterns(strategy.hallucinationPatterns);
@@ -59,7 +59,7 @@ export class BaseHallucinationCleaner implements TextCleaner {
 				}, {} as Record<string, number>)
 			});
 		}
-		
+
 		// Load thresholds from strategy if provided
 		if (strategy?.repetitionThresholds) {
 			this.repetitionThresholds = strategy.repetitionThresholds;
@@ -77,12 +77,16 @@ export class BaseHallucinationCleaner implements TextCleaner {
 		const compiled: Record<string, RegExp[]> = {
 			japanese: [],
 			english: [],
-			chinese: []
+			chinese: [],
+			korean: []
 		};
 
 		// Compile each pattern string into RegExp using the common utility
-		for (const [lang, patternStrings] of Object.entries(patterns)) {
-			compiled[lang] = PatternCompiler.compileMany(patternStrings);
+		for (const language of Object.keys(patterns) as Array<keyof HallucinationPatterns>) {
+			const patternStrings = patterns[language];
+			if (Array.isArray(patternStrings)) {
+				compiled[language] = PatternCompiler.compileMany(patternStrings);
+			}
 		}
 
 		// Add dynamic patterns for each supported language
@@ -96,19 +100,19 @@ export class BaseHallucinationCleaner implements TextCleaner {
 	/**
 	 * Clean text by removing hallucinations
 	 */
-	async clean(text: string, language: string = 'auto', context?: CleaningContext): Promise<CleaningResult> {
+	clean(text: string, language: string = 'auto', context?: CleaningContext): Promise<CleaningResult> {
 		const originalLength = text.length;
 		const patternsMatched: string[] = [];
 		const issues: string[] = [];
 		const removedSections: Array<{type: string, content: string, reason: string}> = [];
 		const enableDetailedLogging = context?.enableDetailedLogging || this.strategy?.enableDetailedLogging || false;
-		
+
 		this.logger.debug('Starting hallucination cleaning', {
 			originalLength,
 			language,
 			enableDetailedLogging
 		});
-		
+
 		if (enableDetailedLogging) {
 			this.logger.trace('Initial input length', { length: text.length });
 		}
@@ -130,7 +134,7 @@ export class BaseHallucinationCleaner implements TextCleaner {
 
 		// Determine language-specific patterns to apply
 		let patterns: RegExp[];
-		
+
 		if (language === 'auto') {
 			// For auto-detection, combine all patterns (prioritize Japanese)
 			patterns = [
@@ -156,9 +160,9 @@ export class BaseHallucinationCleaner implements TextCleaner {
 		const maxIterations = this.strategy?.safetyThresholds?.maxCleaningIterations || 3;
 		let iteration = 0;
 		let previousLength = cleanedText.length;
-		
+
 		while (iteration < maxIterations) {
-			
+
 			// Stage 1: Apply hallucination removal patterns with improved logic
 			cleanedText = this.applyImprovedPatternRemoval(cleanedText, patterns, originalLength, patternsMatched, removedSections, enableDetailedLogging);
 
@@ -166,30 +170,30 @@ export class BaseHallucinationCleaner implements TextCleaner {
 			// This catches patterns like "そういうのがあるというのが" repeated multiple times
 			// Now also handles enumeration patterns through delegation
 			cleanedText = this.removeMediumLengthRepetitions(cleanedText, enableDetailedLogging, removedSections);
-			
+
 			// Check if text length changed
 			const currentLength = cleanedText.length;
 			if (currentLength === previousLength) {
 				// No more changes, exit loop
 				break;
 			}
-			
+
 			// Safety check: prevent excessive reduction in a single iteration
-			// For mechanical repetitions (like medium-length phrases), 
+			// For mechanical repetitions (like medium-length phrases),
 			// we allow up to configured limit (default 99.9%)
 			const iterationReductionLimit = this.strategy?.safetyThresholds?.iterationReductionLimit || 0.999;
 			const iterationReduction = (previousLength - currentLength) / previousLength;
-				if (iterationReduction > iterationReductionLimit) {
-					if (enableDetailedLogging) {
-						this.logger.warn('Iteration reduction exceeded threshold', {
-							iteration,
-							iterationReduction,
-							limit: iterationReductionLimit
-						});
-					}
-					break;
+			if (iterationReduction > iterationReductionLimit) {
+				if (enableDetailedLogging) {
+					this.logger.warn('Iteration reduction exceeded threshold', {
+						iteration,
+						iterationReduction,
+						limit: iterationReductionLimit
+					});
 				}
-			
+				break;
+			}
+
 			previousLength = currentLength;
 			iteration++;
 		}
@@ -201,7 +205,7 @@ export class BaseHallucinationCleaner implements TextCleaner {
 		// Clean up formatting while preserving Japanese text structure
 		const newlineLimit = this.repetitionThresholds.consecutiveNewlineLimit || 3;
 		const newlineRegex = new RegExp(`\\n{${newlineLimit},}`, 'g');
-		
+
 		if (language === 'ja' || language === 'auto') {
 			// For Japanese, be more careful with whitespace
 			cleanedText = cleanedText.replace(/[ \t]+/g, ' '); // Only collapse spaces/tabs
@@ -239,19 +243,19 @@ export class BaseHallucinationCleaner implements TextCleaner {
 		}
 
 		// Detailed logging if enabled
-			if (enableDetailedLogging) {
-				if (removedSections.length > 0) {
-					removedSections.forEach((removal, index) => {
-						this.logger.debug(`Removed section #${index + 1}`, removal);
-					});
-				} else {
-					this.logger.debug('No sections removed during hallucination cleaning');
-				}
+		if (enableDetailedLogging) {
+			if (removedSections.length > 0) {
+				removedSections.forEach((removal, index) => {
+					this.logger.debug(`Removed section #${index + 1}`, removal);
+				});
+			} else {
+				this.logger.debug('No sections removed during hallucination cleaning');
 			}
+		}
 
 		const significantChangeThreshold = this.strategy?.safetyThresholds?.significantChangeThreshold || 0.1;
-		
-		return {
+
+		return Promise.resolve({
 			cleanedText,
 			issues,
 			hasSignificantChanges: reductionRatio > significantChangeThreshold,
@@ -262,34 +266,34 @@ export class BaseHallucinationCleaner implements TextCleaner {
 				patternsMatched,
 				...(enableDetailedLogging && { removedSections })
 			}
-		};
+		});
 	}
 
 	/**
 	 * Apply improved pattern removal with context awareness and dynamic thresholds
 	 */
 	private applyImprovedPatternRemoval(
-		text: string, 
-		patterns: RegExp[], 
-		originalLength: number, 
+		text: string,
+		patterns: RegExp[],
+		originalLength: number,
 		patternsMatched: string[],
 		removedSections: Array<{type: string, content: string, reason: string}> = [],
 		enableDetailedLogging: boolean = false
 	): string {
 		let cleanedText = text;
 
-			for (const pattern of patterns) {
-				if (enableDetailedLogging) {
-					this.logger.trace('Evaluating hallucination pattern', { pattern: pattern.toString() });
-				}
-			
+		for (const pattern of patterns) {
+			if (enableDetailedLogging) {
+				this.logger.trace('Evaluating hallucination pattern', { pattern: pattern.toString() });
+			}
+
 			const beforeText = cleanedText;
 			const beforeLength = cleanedText.length;
-			
+
 			// Special handling for the problematic short character repetition pattern
 			if (pattern.toString().includes('[あ-んア-ン]{1,4}')) {
 				cleanedText = this.applyContextAwareShortCharRemoval(cleanedText, originalLength);
-				
+
 				if (beforeLength !== cleanedText.length && enableDetailedLogging) {
 					// Find what was removed
 					const removed = this.findRemovedText(beforeText, cleanedText);
@@ -302,35 +306,35 @@ export class BaseHallucinationCleaner implements TextCleaner {
 			} else {
 				// Determine if this is a repetition pattern or phrase pattern
 				const isRepetitionPattern = this.isRepetitionPattern(pattern);
-				
+
 				// Get appropriate maximum reduction threshold
 				const maxReduction = isRepetitionPattern
 					? (this.strategy?.safetyThresholds.repetitionPatternMaxReduction ?? 1.0)
-					: (this.strategy?.safetyThresholds.phrasePatternMaxReduction ?? 
+					: (this.strategy?.safetyThresholds.phrasePatternMaxReduction ??
 					   this.strategy?.safetyThresholds.singlePatternMaxReduction ?? 0.2);
-				
+
 				// Test the pattern replacement
 				const matches = cleanedText.match(pattern);
 				const afterReplace = cleanedText.replace(pattern, '');
 				const patternReduction = (beforeLength - afterReplace.length) / originalLength;
 
-					if (enableDetailedLogging && matches) {
-						this.logger.trace('Pattern match count', {
+				if (enableDetailedLogging && matches) {
+					this.logger.trace('Pattern match count', {
+						pattern: pattern.toString(),
+						matchCount: matches.length
+					});
+				}
+
+				// Apply pattern only if within safe reduction limit
+				if (patternReduction <= maxReduction) {
+					if (enableDetailedLogging) {
+						this.logger.debug('Pattern applied', {
 							pattern: pattern.toString(),
-							matchCount: matches.length
+							reduction: patternReduction
 						});
 					}
-					
-					// Apply pattern only if within safe reduction limit
-					if (patternReduction <= maxReduction) {
-						if (enableDetailedLogging) {
-							this.logger.debug('Pattern applied', {
-								pattern: pattern.toString(),
-								reduction: patternReduction
-							});
-						}
-						cleanedText = afterReplace;
-						
+					cleanedText = afterReplace;
+
 					if (beforeLength !== cleanedText.length && enableDetailedLogging) {
 						const matches = Array.from(beforeText.matchAll(pattern));
 						for (const match of matches) {
@@ -341,16 +345,16 @@ export class BaseHallucinationCleaner implements TextCleaner {
 							});
 						}
 					}
-					} else if (enableDetailedLogging) {
-						this.logger.debug('Skipped pattern due to reduction limit', {
-							pattern: pattern.toString(),
-							reduction: patternReduction,
-							maxReduction
-						});
-					}
+				} else if (enableDetailedLogging) {
+					this.logger.debug('Skipped pattern due to reduction limit', {
+						pattern: pattern.toString(),
+						reduction: patternReduction,
+						maxReduction
+					});
 				}
-				
-				if (beforeLength !== cleanedText.length) {
+			}
+
+			if (beforeLength !== cleanedText.length) {
 				patternsMatched.push(pattern.toString());
 			}
 		}
@@ -379,7 +383,7 @@ export class BaseHallucinationCleaner implements TextCleaner {
 
 		// Essential Japanese particles that should NEVER be mass-deleted
 		const essentialParticles = this.repetitionThresholds.essentialParticles;
-		
+
 		// Common conjunctions and expressions that are often repeated naturally
 		const commonExpressions = this.repetitionThresholds.commonExpressions;
 
@@ -392,7 +396,7 @@ export class BaseHallucinationCleaner implements TextCleaner {
 		// Find repetitive patterns but exclude essential elements
 		const words = text.split(/\s+/);
 		const wordCount = new Map<string, number>();
-		
+
 		// Count occurrences of each short character word
 		for (const word of words) {
 			const cleanWord = word.replace(/[。、！？\s]/g, '');
@@ -402,32 +406,32 @@ export class BaseHallucinationCleaner implements TextCleaner {
 		}
 
 		let result = text;
-		
+
 		// Remove only truly excessive repetitions, preserving essential particles
 		for (const [word, count] of wordCount.entries()) {
 			let keepCount: number;
 			let shouldReduce = false;
-			
+
 			if (essentialParticles.includes(word)) {
 				// Handle particles based on mode
 				switch (particleMode) {
-					case 'preserve':
-						// Never reduce particles
-						continue;
-					case 'limit':
-						// Limit to maxConsecutiveParticles
-						if (count > maxConsecutiveParticles) {
-							keepCount = maxConsecutiveParticles;
-							shouldReduce = true;
-						}
-						break;
-					case 'reduce':
-						// Apply normal reduction but with higher threshold
-						if (count >= dynamicThreshold * 2) {
-							keepCount = Math.max(maxConsecutiveParticles, Math.floor(count * 0.3));
-							shouldReduce = true;
-						}
-						break;
+				case 'preserve':
+					// Never reduce particles
+					continue;
+				case 'limit':
+					// Limit to maxConsecutiveParticles
+					if (count > maxConsecutiveParticles) {
+						keepCount = maxConsecutiveParticles;
+						shouldReduce = true;
+					}
+					break;
+				case 'reduce':
+					// Apply normal reduction but with higher threshold
+					if (count >= dynamicThreshold * 2) {
+						keepCount = Math.max(maxConsecutiveParticles, Math.floor(count * 0.3));
+						shouldReduce = true;
+					}
+					break;
 				}
 			} else if (commonExpressions.includes(word)) {
 				// Common expressions need higher threshold
@@ -442,13 +446,13 @@ export class BaseHallucinationCleaner implements TextCleaner {
 				keepCount = Math.max(1, Math.floor(count * keepRatio));
 				shouldReduce = true;
 			}
-			
+
 			if (shouldReduce) {
 				// Create regex to match the word with optional punctuation
 				const wordRegex = new RegExp(`${word}[。、]?\\s*`, 'g');
 				const matches = result.match(wordRegex) || [];
-				const removeCount = count - keepCount!;
-				
+				const removeCount = count - keepCount;
+
 				if (matches.length >= removeCount) {
 					// Remove excessive occurrences from the end
 					for (let i = 0; i < removeCount; i++) {
@@ -474,9 +478,9 @@ export class BaseHallucinationCleaner implements TextCleaner {
 		for (const sentence of sentences) {
 			const currentSentence = sentence.trim();
 			const previousSentence = previous.trim();
-			
+
 			// Check for exact match or high similarity (for hallucination detection)
-			if (currentSentence.length > 0 && 
+			if (currentSentence.length > 0 &&
 				(currentSentence === previousSentence || this.isSimilarSentence(currentSentence, previousSentence))) {
 				count++;
 			} else {
@@ -508,12 +512,12 @@ export class BaseHallucinationCleaner implements TextCleaner {
 		}
 
 		let collapsedText = result.join('');
-		
+
 		// Remove extreme trailing repetitions
 		const trailingRepCount = this.repetitionThresholds.extremeTrailingRepetitionCount || 10;
 		const trailingRegex = new RegExp(`(\\s*[・。、]\\s*){${trailingRepCount},}$`, 'g');
 		collapsedText = collapsedText.replace(trailingRegex, '。');
-		
+
 		return collapsedText.trim();
 	}
 
@@ -543,7 +547,7 @@ export class BaseHallucinationCleaner implements TextCleaner {
 
 		// Calculate character-level similarity using Levenshtein distance
 		const similarity = this.calculateSimilarity(norm1, norm2);
-		
+
 		// Consider similar if threshold% or more characters match (configurable threshold)
 		return similarity >= this.repetitionThresholds.similarityThreshold;
 	}
@@ -554,7 +558,7 @@ export class BaseHallucinationCleaner implements TextCleaner {
 	private calculateSimilarity(str1: string, str2: string): number {
 		const longer = str1.length > str2.length ? str1 : str2;
 		const shorter = str1.length > str2.length ? str2 : str1;
-		
+
 		if (longer.length === 0) {
 			return 1.0;
 		}
@@ -562,7 +566,7 @@ export class BaseHallucinationCleaner implements TextCleaner {
 		// Simple character matching for efficiency
 		let matches = 0;
 		const shorterLen = shorter.length;
-		
+
 		for (let i = 0; i < shorterLen; i++) {
 			if (longer.includes(shorter[i])) {
 				matches++;
@@ -577,30 +581,30 @@ export class BaseHallucinationCleaner implements TextCleaner {
 	 * Targets patterns like "そういうのがあるというのが" repeated multiple times
 	 */
 	private removeMediumLengthRepetitions(
-		text: string, 
+		text: string,
 		enableDetailedLogging: boolean = false,
 		removedSections: Array<{type: string, content: string, reason: string}> = []
 	): string {
 		let cleanedText = text;
-		
-		
+
+
 		// Get configuration from strategy, with fallback to default
 		const lengthRanges = this.repetitionThresholds.mediumLengthRanges || [
 			{ min: 5, max: 10, threshold: 3 },    // Default: Short phrases repeated 3+ times
 			{ min: 10, max: 20, threshold: 2 },   // Default: Medium phrases repeated 2+ times
 			{ min: 20, max: 30, threshold: 2 }    // Default: Longer phrases repeated 2+ times
 		];
-		
+
 		for (const range of lengthRanges) {
 			const pattern = new RegExp(`(.{${range.min},${range.max}}?)\\1{${range.threshold - 1},}`, 'g');
-			
-			cleanedText = cleanedText.replace(pattern, (match, repeatedUnit) => {
+
+			cleanedText = cleanedText.replace(pattern, (match: string, repeatedUnit: string) => {
 				// Check if this match segment is an enumeration pattern
 				if (this.repetitionThresholds.enumerationDetection?.enabled &&
 				    this.isEnumerationSegment(match)) {
 					// Delegate to enumeration-specific compression
 					const compressed = this.collapseRepeatingEnumerations(match);
-					
+
 					if (enableDetailedLogging && match !== compressed) {
 						removedSections.push({
 							type: 'enumeration_repetition',
@@ -610,7 +614,7 @@ export class BaseHallucinationCleaner implements TextCleaner {
 					}
 					return compressed;
 				}
-				
+
 				// Normal phrase compression
 				if (enableDetailedLogging) {
 					removedSections.push({
@@ -622,7 +626,7 @@ export class BaseHallucinationCleaner implements TextCleaner {
 				return repeatedUnit; // Keep only one instance
 			});
 		}
-		
+
 		// Additional pass for exact duplicates with flexible spacing
 		// This catches patterns with slight variations in whitespace
 		// Use the min/max from configuration to stay consistent
@@ -630,7 +634,7 @@ export class BaseHallucinationCleaner implements TextCleaner {
 		const maxLength = Math.max(...lengthRanges.map(r => r.max));
 		const flexiblePattern = new RegExp(`(.{${minLength},${maxLength}})\\s*\\1+`, 'g');
 		cleanedText = cleanedText.replace(flexiblePattern, '$1');
-		
+
 		return cleanedText;
 	}
 
@@ -643,7 +647,7 @@ export class BaseHallucinationCleaner implements TextCleaner {
 		// Get prompt patterns from strategy configuration
 		if (this.strategy?.contaminationPatterns?.instructionPatterns) {
 			const prompts = this.strategy.contaminationPatterns.instructionPatterns;
-			
+
 			// Language-specific sentence endings
 			const sentenceEndings: Record<string, string> = {
 				'ja': '[。、]',
@@ -651,10 +655,10 @@ export class BaseHallucinationCleaner implements TextCleaner {
 				'zh': '[。，！？]',
 				'ko': '[.!?]'
 			};
-			
+
 			// Get appropriate sentence ending pattern for the language
 			const endingPattern = sentenceEndings[language] || sentenceEndings['en']; // Default to English
-			
+
 			// Convert prompt phrases to regex patterns for any language
 			for (const prompt of prompts) {
 				// Escape special regex characters and create exact match pattern
@@ -671,7 +675,7 @@ export class BaseHallucinationCleaner implements TextCleaner {
 	 * Detects repeated sentences based on their beginning characters
 	 */
 	private removeParagraphRepeats(
-		text: string, 
+		text: string,
 		enableDetailedLogging: boolean = false,
 		removedSections: Array<{type: string, content: string, reason: string}> = []
 	): string {
@@ -688,11 +692,13 @@ export class BaseHallucinationCleaner implements TextCleaner {
 		// Single pass: skip sentences with duplicate fingerprints
 		for (let i = 0; i < sentences.length; i++) {
 			const s = sentences[i];
-			if (!s.trim()) continue;
+			if (!s.trim()) {
+				continue;
+			}
 
 			// Create fingerprint from the beginning of the sentence
 			const fp = s.slice(0, headChars).toLowerCase().replace(/\s+/g, '');
-			
+
 			if (seen.has(fp)) {
 				// Skip this sentence as it has a duplicate fingerprint
 				if (enableDetailedLogging) {
@@ -704,13 +710,13 @@ export class BaseHallucinationCleaner implements TextCleaner {
 				}
 				continue;
 			}
-			
+
 			seen.add(fp);
 			keep.push(s);
-			
-				if (enableDetailedLogging) {
-					this.logger.trace('Keeping unique sentence fingerprint', { fingerprint: fp });
-				}
+
+			if (enableDetailedLogging) {
+				this.logger.trace('Keeping unique sentence fingerprint', { fingerprint: fp });
+			}
 		}
 
 		return keep.join('');
@@ -723,35 +729,35 @@ export class BaseHallucinationCleaner implements TextCleaner {
 		// Simple diff approach - find common prefix and suffix
 		let commonPrefix = 0;
 		let commonSuffix = 0;
-		
+
 		const minLength = Math.min(before.length, after.length);
-		
+
 		// Find common prefix
 		while (commonPrefix < minLength && before[commonPrefix] === after[commonPrefix]) {
 			commonPrefix++;
 		}
-		
+
 		// Find common suffix
-		while (commonSuffix < minLength - commonPrefix && 
+		while (commonSuffix < minLength - commonPrefix &&
 			   before[before.length - 1 - commonSuffix] === after[after.length - 1 - commonSuffix]) {
 			commonSuffix++;
 		}
-		
+
 		// Extract the removed part
 		const removedStart = commonPrefix;
 		const removedEnd = before.length - commonSuffix;
-		
+
 		if (removedEnd > removedStart) {
 			return before.substring(removedStart, removedEnd);
 		}
-		
+
 		return ''; // No clear removal detected
 	}
-	
+
 	/**
 	 * Collapse repeating enumeration patterns within sentences
 	 * Example: "A、B、C、A、B、C、A、B、C" → "A、B、C"
-	 * 
+	 *
 	 * This handles AI hallucinations where lists (e.g., country names) are repeated multiple times
 	 * within a single sentence. Designed to be language-agnostic and work with both Japanese and Western commas.
 	 */
@@ -760,80 +766,86 @@ export class BaseHallucinationCleaner implements TextCleaner {
 		if (!this.repetitionThresholds.enumerationDetection?.enabled) {
 			return text;
 		}
-		
+
 		const minRepeatCount = this.repetitionThresholds.enumerationDetection?.minRepeatCount || 3;
 		const sentences = text.split(/(?<=[。.!?！？])\s*/);
-		
+
 		return sentences.map(sentence => {
 			// Detect separator - find the actual separator character used
 			const commaMatch = sentence.match(/[、,]/);
-			if (!commaMatch) return sentence;
-			
+			if (!commaMatch) {
+				return sentence;
+			}
+
 			const separator = commaMatch[0]; // Use the actual separator found
 			const elements = sentence.split(new RegExp(`\\s*${separator.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*`));
-			
+
 			// Skip if too few elements to form meaningful patterns
-			if (elements.length < minRepeatCount * 2) return sentence;
-			
+			if (elements.length < minRepeatCount * 2) {
+				return sentence;
+			}
+
 			// Extract punctuation from last element
 			const lastElement = elements[elements.length - 1];
 			const punctuation = lastElement.match(/[。.!?！？]+$/)?.[0] || '';
 			if (punctuation) {
 				elements[elements.length - 1] = lastElement.slice(0, -punctuation.length).trim();
 			}
-			
+
 			// Debug log
 			if (this.strategy?.enableDetailedLogging) {
 				this.logger.debug(`[EnumerationDebug] Sentence: ${sentence}`);
 				this.logger.debug(`[EnumerationDebug] Elements: ${JSON.stringify(elements)}`);
 				this.logger.debug(`[EnumerationDebug] Elements length: ${elements.length}`);
 			}
-			
+
 			// Try to find repeating patterns
 			// Skip patternLength = 1 (single word repetition) and start from 2
 			for (let patternLength = 2; patternLength <= Math.floor(elements.length / minRepeatCount); patternLength++) {
 				// Early termination check - calculate max possible repeats
 				const maxPossibleRepeats = Math.floor((elements.length - patternLength) / patternLength) + 1;
-				if (maxPossibleRepeats < minRepeatCount) break;
-				
+				if (maxPossibleRepeats < minRepeatCount) {
+					break;
+				}
+
 				if (this.isRepeatingPattern(elements, patternLength, minRepeatCount)) {
 					const compressed = elements.slice(0, patternLength);
-					
+
 					// Reconstruct with original separator and punctuation
 					const result = compressed.join(separator === '、' ? '、' : ', ') + punctuation;
-					
+
 					if (this.strategy?.enableDetailedLogging) {
 						this.logger.debug(`[EnumerationDebug] Pattern found! patternLength=${patternLength}`);
 						this.logger.debug(`[EnumerationDebug] Compressed: ${elements.length} → ${compressed.length}`);
 					}
-					
+
 					// Log if we actually compressed something
 					if (this.strategy?.enableDetailedLogging && elements.length > compressed.length) {
 						this.logger.debug(`Compressed enumeration: ${elements.length} → ${compressed.length} elements`);
 					}
-					
+
 					return result;
 				}
 			}
-			
+
 			return sentence;
 		}).join(' ').trim();
 	}
-	
+
 	/**
 	 * Check if elements form a repeating pattern
 	 */
 	private isRepeatingPattern(elements: string[], patternLength: number, minRepeatCount: number): boolean {
 		const pattern = elements.slice(0, patternLength);
 		let consecutiveRepeats = 1;
-		
+
 		for (let i = patternLength; i < elements.length; i += patternLength) {
 			// Check if we have enough elements left for a full pattern
 			if (i + patternLength > elements.length) {
 				// Allow partial match at the end only if we already have enough full repeats
 				return consecutiveRepeats >= minRepeatCount;
 			}
-			
+
 			const candidate = elements.slice(i, i + patternLength);
 			if (this.arePatternsSimilar(pattern, candidate)) {
 				consecutiveRepeats++;
@@ -842,29 +854,33 @@ export class BaseHallucinationCleaner implements TextCleaner {
 				break;
 			}
 		}
-		
+
 		return consecutiveRepeats >= minRepeatCount;
 	}
-	
+
 	/**
 	 * Compare two patterns with normalization
 	 * Uses NFKC normalization to handle full-width/half-width differences
 	 */
 	private arePatternsSimilar(pattern1: string[], pattern2: string[]): boolean {
-		if (pattern1.length !== pattern2.length) return false;
-		
+		if (pattern1.length !== pattern2.length) {
+			return false;
+		}
+
 		for (let i = 0; i < pattern1.length; i++) {
 			// Normalize: trim whitespace and apply NFKC normalization
 			const norm1 = pattern1[i].trim().normalize('NFKC');
 			const norm2 = pattern2[i].trim().normalize('NFKC');
-			
+
 			// Exact match after normalization
-			if (norm1 !== norm2) return false;
+			if (norm1 !== norm2) {
+				return false;
+			}
 		}
-		
+
 		return true;
 	}
-	
+
 	/**
 	 * Lightweight check to determine if text looks like an enumeration pattern
 	 * Based on presence of separators (commas/読点) and element count
@@ -872,17 +888,19 @@ export class BaseHallucinationCleaner implements TextCleaner {
 	private looksLikeEnumeration(text: string): boolean {
 		// Look for comma/読点 separators
 		const sepMatches = text.match(/[、,]/g);
-		if (!sepMatches) return false;
-		
+		if (!sepMatches) {
+			return false;
+		}
+
 		// Get minimum repetition count from config
 		const minRep = this.repetitionThresholds.enumerationDetection?.minRepeatCount ?? 3;
-		
+
 		// Element count = separator count + 1
 		// We need at least minRep * 2 elements to potentially have minRep repetitions
 		const elementCount = sepMatches.length + 1;
 		return elementCount >= minRep * 2;
 	}
-	
+
 	/**
 	 * Check if a text segment contains repeating enumeration pattern
 	 * This is more thorough than looksLikeEnumeration - it verifies actual periodicity
@@ -890,27 +908,33 @@ export class BaseHallucinationCleaner implements TextCleaner {
 	private isEnumerationSegment(segment: string): boolean {
 		// Detect separator type
 		const sep = segment.includes('、') ? '、' : (segment.includes(',') ? ',' : '');
-		if (!sep) return false;
-		
+		if (!sep) {
+			return false;
+		}
+
 		// Split by separator and filter empty parts
 		const parts = segment.split(new RegExp(`\\s*${sep.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*`))
 		                    .filter(p => p.trim().length > 0);
-		
+
 		// Need at least 4 parts to have meaningful repetition
-		if (parts.length < 4) return false;
-		
+		if (parts.length < 4) {
+			return false;
+		}
+
 		// Try to find repeating pattern of length 2 to n/2
 		for (let patternLen = 2; patternLen <= Math.floor(parts.length / 2); patternLen++) {
 			// Check if we can have enough repetitions with this pattern length
 			const repetitions = Math.floor(parts.length / patternLen);
 			const minRep = this.repetitionThresholds.enumerationDetection?.minRepeatCount ?? 3;
-			
-			if (repetitions < minRep) continue;
-			
+
+			if (repetitions < minRep) {
+				continue;
+			}
+
 			// Extract the pattern
 			const pattern = parts.slice(0, patternLen);
 			let isRepeating = true;
-			
+
 			// Check if the pattern repeats throughout
 			for (let i = 0; i < repetitions; i++) {
 				for (let j = 0; j < patternLen; j++) {
@@ -920,14 +944,16 @@ export class BaseHallucinationCleaner implements TextCleaner {
 						break;
 					}
 				}
-				if (!isRepeating) break;
+				if (!isRepeating) {
+					break;
+				}
 			}
-			
+
 			if (isRepeating) {
 				return true;
 			}
 		}
-		
+
 		return false;
 	}
 }

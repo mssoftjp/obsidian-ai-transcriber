@@ -55,7 +55,7 @@ export abstract class AudioProcessor {
 
 		// 2. Log warnings if any
 		if (validation.warnings && validation.warnings.length > 0) {
-			validation.warnings.forEach(warning => 
+			validation.warnings.forEach(warning =>
 				this.logger.warn(`Audio validation warning: ${warning}`)
 			);
 		}
@@ -91,7 +91,7 @@ export abstract class AudioProcessor {
 			this.logger.debug('Preprocessing completed', {
 				preprocessTime: `${(performance.now() - preprocessStart).toFixed(2)}ms`
 			});
-			
+
 			const totalTime = performance.now() - startTime;
 			this.logger.info('Audio processing completed', {
 				totalTime: `${totalTime.toFixed(2)}ms`,
@@ -173,8 +173,8 @@ export abstract class AudioProcessor {
 	 * Resample audio to target sample rate
 	 */
 	protected resample(
-		input: Float32Array, 
-		inputRate: number, 
+		input: Float32Array,
+		inputRate: number,
 		outputRate: number
 	): Float32Array {
 		if (inputRate === outputRate) {
@@ -192,7 +192,7 @@ export abstract class AudioProcessor {
 			const fraction = inputIndex - inputIndexFloor;
 
 			// Linear interpolation
-			output[i] = input[inputIndexFloor] * (1 - fraction) + 
+			output[i] = input[inputIndexFloor] * (1 - fraction) +
 			           input[inputIndexCeil] * fraction;
 		}
 

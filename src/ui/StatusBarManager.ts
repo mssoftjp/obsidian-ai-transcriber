@@ -128,28 +128,28 @@ export class StatusBarManager {
 
 	private setIdleState(): void {
 		// Hide status bar when idle
-		this.statusBarItem!.addClass('ait-hidden');
-		this.statusBarItem!.setAttribute('aria-label', t('ribbon.tooltip'));
-		this.statusBarItem!.removeClass('is-processing', 'is-error', 'is-completed');
+		this.statusBarItem.addClass('ait-hidden');
+		this.statusBarItem.setAttribute('aria-label', t('ribbon.tooltip'));
+		this.statusBarItem.removeClass('is-processing', 'is-error', 'is-completed');
 	}
 
 	private setProcessingState(task: TranscriptionTask): void {
 		const percentage = this.progressTracker.getProgressPercentage();
 		const elapsed = this.progressTracker.getElapsedTime();
 
-		const text = this.statusBarItem!.createSpan({ cls: 'status-bar-text' });
+		const text = this.statusBarItem.createSpan({ cls: 'status-bar-text' });
 		// Use specific "文字起こし中" instead of generic "処理中"
 		text.setText(`${t('statusBar.processing')}${this.loadingAnimation.getLoadingDots()}: ${percentage}% - ${elapsed}`);
 
 		// Progress bar
-		const progressContainer = this.statusBarItem!.createSpan({ cls: 'status-bar-progress' });
+		const progressContainer = this.statusBarItem.createSpan({ cls: 'status-bar-progress' });
 		const progressBar = progressContainer.createSpan({ cls: 'status-bar-progress-bar' });
 		this.updateProgressWidth(progressBar, percentage);
 
 		const fileName = task.inputFileName || '';
-		this.statusBarItem!.setAttribute('aria-label', `${t('statusBar.processing')} ${fileName}: ${percentage}%`);
-		this.statusBarItem!.addClass('is-processing');
-		this.statusBarItem!.removeClass('is-error', 'is-completed');
+		this.statusBarItem.setAttribute('aria-label', `${t('statusBar.processing')} ${fileName}: ${percentage}%`);
+		this.statusBarItem.addClass('is-processing');
+		this.statusBarItem.removeClass('is-error', 'is-completed');
 
 		// Start animation if not already running
 		if (!this.loadingAnimation.isRunning()) {
@@ -162,49 +162,49 @@ export class StatusBarManager {
 	private setCompletedState(task: TranscriptionTask): void {
 		// Stop animation when completed
 		this.loadingAnimation.stop();
-		const text = this.statusBarItem!.createSpan({ cls: 'status-bar-text' });
+		const text = this.statusBarItem.createSpan({ cls: 'status-bar-text' });
 		const charCount = task.result ? task.result.length : 0;
 		text.setText(`${t('statusBar.completed')}: ${charCount.toLocaleString()}`);
 
 		const fileName = task.inputFileName || '';
-		this.statusBarItem!.setAttribute('aria-label', `${t('statusBar.completed')}: ${fileName}`);
-		this.statusBarItem!.addClass('is-completed');
-		this.statusBarItem!.removeClass('is-processing', 'is-error');
+		this.statusBarItem.setAttribute('aria-label', `${t('statusBar.completed')}: ${fileName}`);
+		this.statusBarItem.addClass('is-completed');
+		this.statusBarItem.removeClass('is-processing', 'is-error');
 	}
 
 	private setPartialState(task: TranscriptionTask): void {
 		// Stop animation when partial
 		this.loadingAnimation.stop();
-		const text = this.statusBarItem!.createSpan({ cls: 'status-bar-text' });
+		const text = this.statusBarItem.createSpan({ cls: 'status-bar-text' });
 		const percentage = Math.round((task.completedChunks / task.totalChunks) * 100);
 		text.setText(`${t('modal.transcription.partialResult')}: ${percentage}%`);
 
 		const fileName = task.inputFileName || '';
-		this.statusBarItem!.setAttribute('aria-label', `${t('modal.transcription.partialResult')}: ${fileName}`);
-		this.statusBarItem!.addClass('is-partial');
-		this.statusBarItem!.removeClass('is-processing', 'is-completed');
+		this.statusBarItem.setAttribute('aria-label', `${t('modal.transcription.partialResult')}: ${fileName}`);
+		this.statusBarItem.addClass('is-partial');
+		this.statusBarItem.removeClass('is-processing', 'is-completed');
 	}
 
 	private setErrorState(task: TranscriptionTask): void {
 		// Stop animation when error
 		this.loadingAnimation.stop();
-		const text = this.statusBarItem!.createSpan({ cls: 'status-bar-text' });
+		const text = this.statusBarItem.createSpan({ cls: 'status-bar-text' });
 		const fileName = task.inputFileName || '';
 		text.setText(`${t('statusBar.failed')}: ${fileName}`);
 
-		this.statusBarItem!.setAttribute('aria-label', `${t('statusBar.failed')}: ${task.error || t('errors.general')}`);
-		this.statusBarItem!.addClass('is-error');
-		this.statusBarItem!.removeClass('is-processing', 'is-completed');
+		this.statusBarItem.setAttribute('aria-label', `${t('statusBar.failed')}: ${task.error || t('errors.general')}`);
+		this.statusBarItem.addClass('is-error');
+		this.statusBarItem.removeClass('is-processing', 'is-completed');
 	}
 
 	private setCancelledState(task: TranscriptionTask): void {
 		// Stop animation when cancelled
 		this.loadingAnimation.stop();
-		const text = this.statusBarItem!.createSpan({ cls: 'status-bar-text' });
+		const text = this.statusBarItem.createSpan({ cls: 'status-bar-text' });
 		const fileName = task.inputFileName || '';
 		text.setText(`${t('statusBar.cancelled')}: ${fileName}`);
 
-		this.statusBarItem!.setAttribute('aria-label', `${t('statusBar.cancelled')}: ${fileName}`);
-		this.statusBarItem!.removeClass('is-processing', 'is-completed', 'is-error');
+		this.statusBarItem.setAttribute('aria-label', `${t('statusBar.cancelled')}: ${fileName}`);
+		this.statusBarItem.removeClass('is-processing', 'is-completed', 'is-error');
 	}
 }

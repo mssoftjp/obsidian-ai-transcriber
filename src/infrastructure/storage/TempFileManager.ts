@@ -25,7 +25,7 @@ export class TempFileManager {
 		this.logger.trace('Ensuring temporary directory exists', { dir: TempFileManager.TEMP_DIR });
 		// フォルダの存在を確認
 		const existingItem = this.app.vault.getAbstractFileByPath(TempFileManager.TEMP_DIR);
-		
+
 		if (existingItem instanceof TFolder) {
 			// フォルダが既に存在する
 			this.logger.trace('Temporary directory already exists');
@@ -39,7 +39,7 @@ export class TempFileManager {
 		// フォルダが存在しない場合は作成を試みる
 		try {
 			await this.app.vault.createFolder(TempFileManager.TEMP_DIR);
-			
+
 			// 作成後に再度取得
 			const newFolder = this.app.vault.getAbstractFileByPath(TempFileManager.TEMP_DIR);
 			if (newFolder instanceof TFolder) {
@@ -49,16 +49,16 @@ export class TempFileManager {
 			}
 		} catch (error) {
 			// "Folder already exists"エラーの場合は、フォルダを再取得
-			if (error.message && error.message.toLowerCase().includes('already exist')) {
+			if (error instanceof Error && error.message.toLowerCase().includes('already exist')) {
 				const folder = this.app.vault.getAbstractFileByPath(TempFileManager.TEMP_DIR);
 				if (folder instanceof TFolder) {
 					return folder;
 				}
 			}
-			
+
 			// エラーを再スロー
-			this.logger.error('Failed to create temporary directory', { error: error.message });
-			throw error;
+			this.logger.error('Failed to create temporary directory', { error: this.formatError(error) });
+			throw error instanceof Error ? error : new Error(this.formatError(error));
 		}
 	}
 
@@ -66,7 +66,7 @@ export class TempFileManager {
 	 * ユニークなIDを生成
 	 */
 	private generateId(): string {
-		return Date.now().toString(36) + Math.random().toString(36).substr(2);
+		return Date.now().toString(36) + Math.random().toString(36).slice(2);
 	}
 
 	/**
@@ -92,7 +92,7 @@ export class TempFileManager {
 		const sessionId = this.generateId();
 		const sessionPath = `${TempFileManager.TEMP_DIR}/${sessionId}`;
 		this.logger.debug('Session created', { sessionId, sessionPath });
-		
+
 		// セッション用サブフォルダを作成
 		await this.app.vault.createFolder(sessionPath);
 
@@ -100,7 +100,7 @@ export class TempFileManager {
 		const sanitizedFileName = file.name
 			.replace(/[<>:"|?*\\]/g, '_')
 			.replace(/^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])$/i, '_$1');
-		
+
 		// シンプルなファイルパス（サブフォルダ内に元のファイル名で保存）
 		const tempPath = `${sessionPath}/${sanitizedFileName}`;
 
@@ -116,12 +116,12 @@ export class TempFileManager {
 			this.logger.error('Failed to retrieve file after creation', { tempPath });
 			throw new Error(t('errors.createFileFailed', { error: 'File not found after creation' }));
 		}
-		
+
 		if (!(abstractFile instanceof TFile)) {
 			this.logger.error('Retrieved item is not a file', { tempPath, type: abstractFile.constructor.name });
 			throw new Error(t('errors.createFileFailed', { error: 'Retrieved item is not a file' }));
 		}
-		
+
 		const tFile = abstractFile;
 
 		const elapsedTime = performance.now() - startTime;
@@ -178,7 +178,7 @@ export class TempFileManager {
 		try {
 			const sessionPath = `${TempFileManager.TEMP_DIR}/${sessionId}`;
 			const sessionFolder = this.app.vault.getAbstractFileByPath(sessionPath);
-			
+
 			if (sessionFolder instanceof TFolder) {
 				// セッションフォルダを削除
 				await this.app.fileManager.trashFile(sessionFolder);
@@ -186,7 +186,10 @@ export class TempFileManager {
 			}
 		} catch (error) {
 			// クリーンアップエラーはログのみ（処理は継続）
-			this.logger.warn('Cleanup session error', { sessionId, error: error.message });
+			this.logger.warn('Cleanup session error', {
+				sessionId,
+				error: this.formatError(error)
+			});
 		}
 	}
 
@@ -213,7 +216,7 @@ export class TempFileManager {
 			}
 		} catch (error) {
 			// エラーは無視（処理は継続）
-			this.logger.warn('Cleanup error', { error: error.message });
+			this.logger.warn('Cleanup error', { error: this.formatError(error) });
 		}
 	}
 
@@ -261,8 +264,22 @@ export class TempFileManager {
 			return { available: true };
 		} catch (error) {
 			// エラーが発生した場合は、とりあえず続行可能とする
-			this.logger.warn('Failed to estimate storage', { error: error.message });
+			this.logger.warn('Failed to estimate storage', { error: this.formatError(error) });
 			return { available: true };
+		}
+	}
+
+	private formatError(error: unknown): string {
+		if (error instanceof Error) {
+			return error.message;
+		}
+		if (typeof error === 'string') {
+			return error;
+		}
+		try {
+			return JSON.stringify(error);
+		} catch {
+			return 'Unknown error';
 		}
 	}
 }

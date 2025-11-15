@@ -4,10 +4,10 @@
  */
 
 import { TextCleaner, CleaningResult, CleaningContext } from './interfaces/TextCleaner';
-import { 
+import {
 	getModelCleaningStrategy,
 	ModelCleaningStrategy,
-	ContaminationPatterns 
+	ContaminationPatterns
 } from '../../../config/ModelCleaningConfig';
 import { PatternCompiler, GENERIC_XML_TAG } from './utils/PatternCompiler';
 import { Logger } from '../../../utils/Logger';
@@ -110,7 +110,7 @@ export class PromptContaminationCleaner implements TextCleaner {
 	/**
 	 * Clean text by removing prompt contamination
 	 */
-	clean(text: string, language: string = 'auto', context?: CleaningContext): CleaningResult {
+	clean(text: string, _language: string = 'auto', context?: CleaningContext): CleaningResult {
 		const originalLength = text.length;
 		const patternsMatched: string[] = [];
 		const issues: string[] = [];
@@ -177,14 +177,14 @@ export class PromptContaminationCleaner implements TextCleaner {
 		const reductionRatio = originalLength > 0 ? (originalLength - cleanedLength) / originalLength : 0;
 
 		// Apply safety thresholds from configuration
-		const strategy = getModelCleaningStrategy(this.config.modelId!);
+		const strategy = getModelCleaningStrategy(this.config.modelId);
 		const thresholds = strategy.safetyThresholds;
-		
+
 		// Detect potential issues with configured thresholds
 		if (reductionRatio > thresholds.warningThreshold) {
 			issues.push(`Text reduction warning: ${Math.round(reductionRatio * 100)}% removed (threshold: ${Math.round(thresholds.warningThreshold * 100)}%)`);
 		}
-		
+
 		// Emergency fallback: preserve original text if reduction is too extreme
 		if (reductionRatio > thresholds.emergencyFallbackThreshold) {
 			issues.push(`Emergency fallback: preserving original text due to ${Math.round(reductionRatio * 100)}% reduction (threshold: ${Math.round(thresholds.emergencyFallbackThreshold * 100)}%)`);
@@ -272,15 +272,15 @@ export class PromptContaminationCleaner implements TextCleaner {
 	 * Process XML patterns with priority-based approach to prevent conflicts
 	 */
 	private processXmlPatterns(
-		text: string, 
-		originalLength: number, 
-		patternsMatched: string[], 
-		issues: string[]
+		text: string,
+		originalLength: number,
+		patternsMatched: string[],
+		_issues: string[]
 	): string {
 		let cleaned = text;
-		const strategy = getModelCleaningStrategy(this.config.modelId!);
+		const strategy = getModelCleaningStrategy(this.config.modelId);
 		const maxReduction = strategy.safetyThresholds.singlePatternMaxReduction;
-		
+
 		// Process pattern groups in priority order
 		const groups = [
 			{ name: 'Complete XML tags', patterns: this.xmlPatternGroups.completeXmlTags },
@@ -288,12 +288,12 @@ export class PromptContaminationCleaner implements TextCleaner {
 			{ name: 'Line-bounded tags', patterns: this.xmlPatternGroups.lineBoundedTags },
 			{ name: 'Standalone tags', patterns: this.xmlPatternGroups.standaloneTags }
 		];
-		
+
 		for (const group of groups) {
 			for (const pattern of group.patterns) {
 				const before = cleaned.length;
 				const afterReplace = cleaned.replace(pattern, '');
-				
+
 				// Check if this pattern causes excessive reduction
 				const patternReduction = (before - afterReplace.length) / originalLength;
 				if (patternReduction > maxReduction) {
@@ -301,7 +301,7 @@ export class PromptContaminationCleaner implements TextCleaner {
 					patternsMatched.push(`${group.name} (skipped: ${Math.round(patternReduction * 100)}% > ${Math.round(maxReduction * 100)}%)`);
 					continue;
 				}
-				
+
 				// Apply the pattern if safe
 				cleaned = afterReplace;
 				if (before !== cleaned.length) {
@@ -309,7 +309,7 @@ export class PromptContaminationCleaner implements TextCleaner {
 				}
 			}
 		}
-		
+
 		// Finally, remove any generic XML tags that weren't caught by specific patterns
 		// This catches custom tags like <短いタグ> without needing specific configuration
 		const beforeGeneric = cleaned.length;
@@ -317,10 +317,10 @@ export class PromptContaminationCleaner implements TextCleaner {
 		if (beforeGeneric !== cleaned.length) {
 			patternsMatched.push('Generic XML tags');
 		}
-		
+
 		return cleaned;
 	}
-	
+
 	/**
 	 * Update configuration
 	 */

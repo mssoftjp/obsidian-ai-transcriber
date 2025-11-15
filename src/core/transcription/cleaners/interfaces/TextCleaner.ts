@@ -25,10 +25,10 @@ export interface CleaningResult {
 export interface TextCleaner {
 	/** Name of the cleaner for logging/debugging */
 	readonly name: string;
-	
+
 	/** Whether this cleaner is enabled */
 	readonly enabled: boolean;
-	
+
 	/**
 	 * Clean the provided text
 	 * @param text - Original text to clean

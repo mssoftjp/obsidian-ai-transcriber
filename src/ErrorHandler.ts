@@ -17,14 +17,14 @@ export interface UserFriendlyError {
 
 export class ErrorHandler {
 	private static logger = Logger.getLogger('ErrorHandler');
-	
+
 	/**
 	 * Convert technical errors to user-friendly messages
 	 */
 	static handleError(error: Error | string, context?: string): UserFriendlyError {
 		const errorMessage = typeof error === 'string' ? error : error.message;
 		const errorName = typeof error === 'string' ? 'Error' : error.name;
-		
+
 		// Log the error
 		this.logger.error(`${context || 'Unknown context'}: ${errorMessage}`, error);
 
@@ -63,12 +63,12 @@ export class ErrorHandler {
 	static displayError(userError: UserFriendlyError): void {
 		// Construct full error message for notice
 		const noticeMessage = `${userError.title}: ${userError.message}`;
-		
+
 		// Always log the user-facing error message that appears in the notice
 		this.logger.error('Notice displayed', { message: noticeMessage });
-		
+
 		// Show main error notice with softer tone
-                new Notice(noticeMessage, UI_CONSTANTS.NOTICE_DURATION);
+		new Notice(noticeMessage, UI_CONSTANTS.NOTICE_DURATION);
 
 		// Log technical details for developers
 		if (userError.technicalDetails) {
@@ -88,7 +88,7 @@ export class ErrorHandler {
 
 	private static isApiError(message: string): boolean {
 		const apiKeywords = [
-			'api key', 'apikey', 'unauthorized', '401', '403', 
+			'api key', 'apikey', 'unauthorized', '401', '403',
 			'invalid_api_key', 'authentication', 'quota', 'rate limit'
 		];
 		return apiKeywords.some(keyword => message.toLowerCase().includes(keyword));
@@ -112,7 +112,7 @@ export class ErrorHandler {
 
 	private static isAudioError(message: string): boolean {
 		const audioKeywords = [
-			'audio', 'decode', 'web audio', 'audiocontext', 
+			'audio', 'decode', 'web audio', 'audiocontext',
 			'unsupported audio', 'media'
 		];
 		return audioKeywords.some(keyword => message.toLowerCase().includes(keyword));

@@ -68,7 +68,7 @@ export class Logger {
 			});
 			mainLogger.moduleLoggers.set(moduleName, moduleLogger);
 		}
-		return mainLogger.moduleLoggers.get(moduleName)!;
+		return mainLogger.moduleLoggers.get(moduleName);
 	}
 
 	/**

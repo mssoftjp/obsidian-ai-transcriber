@@ -25,7 +25,7 @@ export interface GPT4oPipelineOptions {
 }
 
 export class GPT4oCleaningPipeline extends StandardCleaningPipeline {
-	
+
 	constructor(dictionaryCorrector?: DictionaryCorrector, options: GPT4oPipelineOptions = {}) {
 		const {
 			modelId = 'gpt-4o-mini-transcribe', // Default fallback
@@ -37,7 +37,7 @@ export class GPT4oCleaningPipeline extends StandardCleaningPipeline {
 
 		// Get cleaning strategy from configuration
 		const strategy = getModelCleaningStrategy(modelId);
-		
+
 		// Configure pipeline for GPT-4o using strategy settings
 		const config: PipelineConfig = {
 			name: 'GPT4oCleaningPipeline',
@@ -50,10 +50,10 @@ export class GPT4oCleaningPipeline extends StandardCleaningPipeline {
 					aggressiveMatching: strategy.promptContamination?.aggressiveMatching ?? aggressivePromptCleaning,
 					modelId
 				}, strategy),
-				
+
 				// 2. Remove general hallucinations
 				new BaseHallucinationCleaner(dictionaryCorrector, strategy),
-				
+
 				// 3. Validate Japanese text quality (if enabled)
 				...(enableJapaneseValidation && strategy.japaneseValidation ? [
 					new JapaneseTextValidator({
@@ -129,13 +129,21 @@ export class GPT4oCleaningPipeline extends StandardCleaningPipeline {
 
 		// Estimate contamination level
 		let contaminationScore = 0;
-		if (issues.hasXmlTags) contaminationScore += 2;
-		if (issues.hasPromptContamination) contaminationScore += 1;
-		if (issues.hasContextMarkers) contaminationScore += 2;
+		if (issues.hasXmlTags) {
+			contaminationScore += 2;
+		}
+		if (issues.hasPromptContamination) {
+			contaminationScore += 1;
+		}
+		if (issues.hasContextMarkers) {
+			contaminationScore += 2;
+		}
 
 		// Check for heavy prompt contamination
 		const promptPatterns = text.match(/(?:音声内容|文字起こし|してください)/g);
-		if (promptPatterns && promptPatterns.length > 3) contaminationScore += 2;
+		if (promptPatterns && promptPatterns.length > 3) {
+			contaminationScore += 2;
+		}
 
 		if (contaminationScore >= 4) {
 			issues.estimatedContaminationLevel = 'high';
@@ -167,9 +175,9 @@ export class GPT4oCleaningPipeline extends StandardCleaningPipeline {
 	 */
 	getGPT4oSummary(text: string): string {
 		const analysis = this.analyzeGPT4oIssues(text);
-		
+
 		return [
-			`GPT-4o Pipeline Ready`,
+			'GPT-4o Pipeline Ready',
 			`Contamination: ${analysis.estimatedContaminationLevel}`,
 			`XML tags: ${analysis.hasXmlTags ? 'Yes' : 'No'}`,
 			`Prompt contamination: ${analysis.hasPromptContamination ? 'Yes' : 'No'}`,

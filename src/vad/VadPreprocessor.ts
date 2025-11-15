@@ -322,7 +322,7 @@ export class VADPreprocessor {
 		// キャッシュにある場合は返す
 		if (this.audioBufferCache.has(cacheKey)) {
 			this.logger.trace('Audio buffer found in cache', { fileName: audioFile.name });
-			return this.audioBufferCache.get(cacheKey)!;
+			return this.audioBufferCache.get(cacheKey);
 		}
 
 		// ファイルを読み込み

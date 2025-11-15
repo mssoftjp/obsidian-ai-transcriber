@@ -151,7 +151,7 @@ export class AudioFileSelectionModal extends Modal {
 	}
 
 	private renderFileList(container?: HTMLElement) {
-		const listContainer = container || this.contentEl.querySelector('.audio-file-list-container') as HTMLElement;
+		const listContainer = container || this.contentEl.querySelector('.audio-file-list-container');
 		if (!listContainer) {
 			return;
 		}

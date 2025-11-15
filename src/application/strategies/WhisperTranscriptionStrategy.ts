@@ -28,7 +28,7 @@ export class WhisperTranscriptionStrategy extends TranscriptionStrategy {
 		// Pass model name to merger for model-specific merge config
 		this.merger = new TranscriptionMerger(transcriptionService.modelId);
 		this.logger = Logger.getLogger('WhisperTranscriptionStrategy');
-		
+
 		// Get rate limit delay from config based on model
 		const config = getModelConfig(transcriptionService.modelId);
 		this.rateLimitDelay = config.rateLimitDelayMs;
@@ -106,11 +106,11 @@ export class WhisperTranscriptionStrategy extends TranscriptionStrategy {
 	/**
 	 * Merge results using timestamp-based algorithm
 	 */
-	async mergeResults(results: TranscriptionResult[]): Promise<string> {
+	mergeResults(results: TranscriptionResult[]): Promise<string> {
 		const { valid, failed } = this.filterResults(results);
 
 		if (valid.length === 0 && failed.length === 0) {
-			return '';
+			return Promise.resolve('');
 		}
 
 		// Log statistics
@@ -131,23 +131,23 @@ export class WhisperTranscriptionStrategy extends TranscriptionStrategy {
 			).join('\n');
 			const failedChunks = failed.map(f => f.id).join(', ') || failed.length.toString();
 			const notice = t('modal.transcription.partialFailedChunks', { chunks: failedChunks });
-			return `${notice}\n${errorInfo}`;
+			return Promise.resolve(`${notice}\n${errorInfo}`);
 		}
 
 		// Use timestamp-based merging if available
 		const hasTimestamps = valid.some(r => r.segments && r.segments.length > 0);
-		
+
 		let mergedText: string;
 		if (hasTimestamps) {
 			// Use formatted merge for whisper-1-ts model to include timestamps in output
 			const isTimestampModel = this.transcriptionService.modelId === 'whisper-1-ts';
 			if (isTimestampModel) {
-				mergedText = await this.merger.mergeWithTimestampsFormatted(results, {
+				mergedText = this.merger.mergeWithTimestampsFormatted(results, {
 					includeFailures: true,
 					useTimestamps: true
 				});
 			} else {
-				mergedText = await this.merger.mergeWithTimestamps(results, {
+				mergedText = this.merger.mergeWithTimestamps(results, {
 					includeFailures: true,
 					useTimestamps: true
 				});
@@ -156,23 +156,23 @@ export class WhisperTranscriptionStrategy extends TranscriptionStrategy {
 			// Get model-specific merge config
 			const modelConfig = getModelConfig(this.transcriptionService.modelId);
 			const mergeConfig = modelConfig.merging || {};
-			
-			mergedText = await this.merger.mergeWithOverlapRemoval(results, {
+
+			mergedText = this.merger.mergeWithOverlapRemoval(results, {
 				removeOverlaps: true,
 				minMatchLength: mergeConfig.minMatchLength || 20,
 				separator: '\n\n',
 				includeFailures: true
 			});
 		}
-		
+
 		// If we have partial results, prepend a notice
 		if (failed.length > 0) {
 			const failedChunks = failed.map(f => f.id).join(', ') || failed.length.toString();
 			const notice = t('modal.transcription.partialFailedChunks', { chunks: failedChunks });
-			return `${notice}\n\n${mergedText}`;
+			return Promise.resolve(`${notice}\n\n${mergedText}`);
 		}
-		
-		return mergedText;
+
+		return Promise.resolve(mergedText);
 	}
 
 	/**
@@ -182,10 +182,10 @@ export class WhisperTranscriptionStrategy extends TranscriptionStrategy {
 		chunkDuration: number;
 		overlapDuration: number;
 		responseFormat: string;
-	} {
+		} {
 		// Get chunk duration from model configuration instead of hardcoding
 		const modelConfig = getModelConfig('whisper-1');
-		
+
 		return {
 			chunkDuration: modelConfig.chunkDurationSeconds,
 			overlapDuration: modelConfig.vadChunking.overlapDurationSeconds,
@@ -198,17 +198,17 @@ export class WhisperTranscriptionStrategy extends TranscriptionStrategy {
 	 */
 	estimateProcessingTime(chunks: AudioChunk[]): number {
 		// Whisper typically processes at ~10-20x realtime speed
-		const totalDuration = chunks.reduce((sum, chunk) => 
+		const totalDuration = chunks.reduce((sum, chunk) =>
 			sum + (chunk.endTime - chunk.startTime), 0
 		);
-		
+
 		const processingSpeed = 15; // 15x realtime (conservative estimate)
 		const baseTime = totalDuration / processingSpeed;
-		
+
 		// Add overhead for batching and rate limiting
 		const batches = Math.ceil(chunks.length / this.maxConcurrency);
 		const rateLimitOverhead = (batches - 1) * (this.rateLimitDelay / 1000);
-		
+
 		return baseTime + rateLimitOverhead;
 	}
 }

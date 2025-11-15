@@ -54,13 +54,13 @@ export const POST_PROCESSING_CONFIG: PostProcessingConfig = {
 	endpoint: '/v1/chat/completions',
 	model: 'gpt-4.1-mini-2025-04-14', // GPT-4.1 configuration
 	// model: 'o4-mini-2025-04-16', // O4-mini configuration (reasoning model)
-	
+
 	defaults: {
 		temperature: 0.0, // Fixed to 0.0 for deterministic output
 		maxTokens: 500,
 		topP: 0.95
 	},
-	
+
 	prompts: {
 		metaReduction: {
 			system: {
@@ -262,7 +262,7 @@ Output Format:
 			}
 		}
 	},
-	
+
 	limitations: {
 		maxInputTokens: 1047576, // GPT-4.1-miniの実際の入力制限
 		maxOutputTokens: 32768, // GPT-4.1-miniの最大出力トークン数
@@ -270,7 +270,7 @@ Output Format:
 		maxKeywords: 30,
 		contextTokenLimit: 150
 	},
-	
+
 	segmentation: {
 		maxSegmentChars: {
 			ja: 15000,  // より保守的に（タイムアウト対策）
@@ -280,7 +280,7 @@ Output Format:
 			auto: 40000 // 言語混在の場合は英語と同等に
 		}
 	},
-	
+
 	metaInfoTemplate: {
 		ja: `話者：
 トピック・議題：
@@ -338,11 +338,11 @@ export function buildPostProcessingMetaRequest(
 	metaInfo: string,
 	language: string = 'ja'
 ): OpenAIChatRequest {
-	
+
 	// Use prompts from config directly instead of i18n
 	const systemPrompt = getPrompt(POST_PROCESSING_CONFIG.prompts.metaReduction.system, language);
 	const userTemplate = getPrompt(POST_PROCESSING_CONFIG.prompts.metaReduction.userTemplate, language);
-	
+
 	// Replace parameters in the user template
 	const prompt = replacePromptParams(userTemplate, {
 		metaInfo: metaInfo,
@@ -350,8 +350,8 @@ export function buildPostProcessingMetaRequest(
 		maxKeywords: POST_PROCESSING_CONFIG.limitations.maxKeywords.toString(),
 		contextTokenLimit: POST_PROCESSING_CONFIG.limitations.contextTokenLimit.toString()
 	});
-	
-	
+
+
 	// O4-mini reasoning model configuration (currently not in use)
 	// For o4-mini: only max_completion_tokens is supported, temperature/top_p are not
 	// if (POST_PROCESSING_CONFIG.model.includes('o4-mini')) {
@@ -371,7 +371,7 @@ export function buildPostProcessingMetaRequest(
 	// 		response_format: { type: 'json_object' }
 	// 	};
 	// }
-	
+
 	// For GPT-4.1 and other standard OpenAI models
 	return {
 		model: POST_PROCESSING_CONFIG.model,
@@ -401,22 +401,22 @@ export function buildPostProcessingRequest(
 	keywords: string[],
 	language: string = 'ja'
 ): OpenAIChatRequest {
-	
+
 	// Use prompts from config directly instead of i18n
 	const systemPrompt = getPrompt(POST_PROCESSING_CONFIG.prompts.postProcessing.system, language);
 	const userTemplate = getPrompt(POST_PROCESSING_CONFIG.prompts.postProcessing.userTemplate, language);
-	
+
 	// Replace parameters in the user template
 	const prompt = replacePromptParams(userTemplate, {
 		context: context,
 		keywords: keywords.join(', '),
 		transcription: transcription
 	});
-	
-	
+
+
 	// 言語別の安全なmax_tokens計算
 	const safeMaxTokens = calculateSafeMaxTokens(transcription, language);
-	
+
 	// O4-mini reasoning model configuration (currently not in use)
 	// For o4-mini: only max_completion_tokens is supported, temperature/top_p are not
 	// if (POST_PROCESSING_CONFIG.model.includes('o4-mini')) {
@@ -435,7 +435,7 @@ export function buildPostProcessingRequest(
 	// 		max_completion_tokens: safeMaxTokens
 	// 	};
 	// }
-	
+
 	// For GPT-4.1 and other standard OpenAI models
 	return {
 		model: POST_PROCESSING_CONFIG.model,
@@ -470,31 +470,31 @@ export function estimateTokenCount(text: string, language: string = 'ja'): numbe
  */
 export function calculateSafeMaxTokens(text: string, language: string = 'ja'): number {
 	const estimatedTokens = estimateTokenCount(text, language);
-	
+
 	// 言語別の安全係数
 	// 日本語：校正で文が長くなることがあるため1.5倍
 	// 英語：比較的安定しているため1.3倍
 	// 中国語：日本語と同様1.5倍
 	// 韓国語：日本語と同様1.5倍
 	// auto：言語混在の可能性を考慮して1.4倍
-	const safetyFactor = language === 'ja' ? 1.5 : 
-	                     language === 'en' ? 1.3 : 
-	                     language === 'zh' ? 1.5 : 
+	const safetyFactor = language === 'ja' ? 1.5 :
+	                     language === 'en' ? 1.3 :
+	                     language === 'zh' ? 1.5 :
 	                     language === 'ko' ? 1.5 :
 	                     language === 'auto' ? 1.4 :
 	                     1.4;
-	
+
 	// 最低保証トークン数（言語別）
-	const minTokens = language === 'ja' ? 8192 : 
-	                  language === 'en' ? 4096 : 
-	                  language === 'zh' ? 8192 : 
+	const minTokens = language === 'ja' ? 8192 :
+	                  language === 'en' ? 4096 :
+	                  language === 'zh' ? 8192 :
 	                  language === 'ko' ? 8192 :
 	                  language === 'auto' ? 6144 :
 	                  6144;
-	
+
 	// 安全係数を適用した必要トークン数
 	const requiredTokens = Math.ceil(estimatedTokens * safetyFactor);
-	
+
 	// 最低保証と計算値の大きい方を採用し、上限でキャップ
 	return Math.min(
 		Math.max(requiredTokens, minTokens),

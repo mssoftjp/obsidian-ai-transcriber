@@ -32,7 +32,7 @@ export class VADChunkingProcessor extends WebRTCVADProcessor {
 	private minSilenceForSplit: number;
 	private forceSplitAfterExtra: number;
 	private minChunkSize: number;
-	
+
 	constructor(
 		app: App,
 		vadConfig: VADConfig,
@@ -41,31 +41,31 @@ export class VADChunkingProcessor extends WebRTCVADProcessor {
 	) {
 		super(app, vadConfig, pluginId);
 		this.chunkingConfig = chunkingConfig;
-		
+
 		// Get model name from chunking config
 		const modelName = chunkingConfig.modelName;
 		if (!modelName) {
 			throw new Error('[VADChunkingProcessor] Model name is required in chunkingConfig');
 		}
 		const modelConfig = getModelConfig(modelName);
-		
+
 		// Use model-specific VAD settings (required)
 		const vadChunkingConfig = modelConfig.vadChunking;
 		if (!vadChunkingConfig) {
 			throw new Error(`[VADChunkingProcessor] Model "${modelName}" does not have vadChunking configuration`);
 		}
-		
+
 		// Set chunk duration parameters
 		this.minChunkDuration = vadChunkingConfig.minChunkDuration;
 		this.maxChunkDuration = vadChunkingConfig.maxChunkDuration;
 		this.preferredChunkDuration = chunkingConfig.constraints.chunkDurationSeconds;
 		this.overlapDuration = chunkingConfig.constraints.recommendedOverlapSeconds;
-		
+
 		// Set VAD chunking parameters
 		this.minSilenceForSplit = vadChunkingConfig.minSilenceForSplit;
 		this.forceSplitAfterExtra = vadChunkingConfig.forceSplitAfterExtra;
 		this.minChunkSize = vadChunkingConfig.minChunkSize;
-		
+
 		// Log configuration for debugging
 	}
 
@@ -73,7 +73,7 @@ export class VADChunkingProcessor extends WebRTCVADProcessor {
 	 * Process audio and create chunks in a single pass
 	 */
 	async processAudioWithChunking(
-		audioData: Float32Array, 
+		audioData: Float32Array,
 		sampleRate: number
 	): Promise<{ vadResult: VADResult; chunks: AudioChunk[] }> {
 		if (!this.available || !this.vadInstance || !this.bufferPtr) {
@@ -96,9 +96,9 @@ export class VADChunkingProcessor extends WebRTCVADProcessor {
 
 			// 3. Process with VAD and create chunks simultaneously
 			const { segments, chunks } = this.detectVoiceSegmentsAndChunks(
-				int16Data, 
-				audioData, 
-				vadSampleRate, 
+				int16Data,
+				audioData,
+				vadSampleRate,
 				sampleRate
 			);
 
@@ -138,38 +138,38 @@ export class VADChunkingProcessor extends WebRTCVADProcessor {
 	): { segments: SpeechSegment[]; chunks: AudioChunk[] } {
 		const segments: SpeechSegment[] = [];
 		const chunks: AudioChunk[] = [];
-		
+
 		let currentSegment: SpeechSegment | null = null;
 		let currentChunk: ChunkInfo | null = null;
-		
+
 		// Frame processing variables
 		const totalFrames = Math.floor(int16Data.length / this.frameSize);
 		const frameDuration = this.frameSize / vadSampleRate; // 30ms per frame
-		
+
 		// Chunk management variables
 		let lastChunkEndTime = 0;
 		let consecutiveSilenceTime = 0;
-		
+
 		for (let frameIndex = 0; frameIndex < totalFrames; frameIndex++) {
 			const offset = frameIndex * this.frameSize;
 			const frameTime = offset / vadSampleRate;
-			
+
 			// Copy frame data to WASM memory
 			const frame = int16Data.subarray(offset, offset + this.frameSize);
 			this.fvadModule.HEAP16.set(frame, this.bufferPtr >> 1);
-			
+
 			// VAD processing
 			const isSpeech = this.fvadModule._fvad_process(
 				this.vadInstance,
 				this.bufferPtr,
 				this.frameSize
 			);
-			
+
 			if (isSpeech < 0) {
 				this.logger.warn('Frame processing error', { frameIndex });
 				continue;
 			}
-			
+
 			// Update speech segments (existing logic)
 			if (isSpeech === 1) {
 				consecutiveSilenceTime = 0;
@@ -188,22 +188,22 @@ export class VADChunkingProcessor extends WebRTCVADProcessor {
 					currentSegment = null;
 				}
 			}
-			
+
 			// Chunk creation logic
 			if (!currentChunk) {
 				// Start new chunk
 				currentChunk = this.createNewChunk(frameTime, frameIndex, lastChunkEndTime);
 			}
-			
+
 			// Add frame data to current chunk
 			const originalFrameStart = Math.floor((frameTime * originalSampleRate) / vadSampleRate * originalSampleRate);
 			const originalFrameEnd = Math.floor(((frameTime + frameDuration) * originalSampleRate) / vadSampleRate * originalSampleRate);
 			const originalFrameData = originalAudio.slice(originalFrameStart, originalFrameEnd);
-			
+
 			currentChunk.audioData.push(originalFrameData);
 			currentChunk.isSpeech.push(isSpeech === 1);
 			currentChunk.endTime = frameTime + frameDuration;
-			
+
 			// Check if we should finalize the chunk
 			const chunkDuration = currentChunk.endTime - currentChunk.startTime;
 			const shouldSplit = this.shouldSplitChunk(
@@ -212,37 +212,37 @@ export class VADChunkingProcessor extends WebRTCVADProcessor {
 				isSpeech === 1,
 				frameIndex === totalFrames - 1
 			);
-			
+
 			if (shouldSplit) {
 				// Finalize current chunk
 				const finalizedChunk = this.finalizeChunk(
-					currentChunk, 
-					chunks.length, 
-					originalAudio, 
+					currentChunk,
+					chunks.length,
+					originalAudio,
 					originalSampleRate,
 					lastChunkEndTime
 				);
-				
+
 				if (finalizedChunk) {
 					chunks.push(finalizedChunk);
 					lastChunkEndTime = currentChunk.endTime - this.overlapDuration;
 				}
-				
+
 				currentChunk = null;
 			}
 		}
-		
+
 		// Handle last segment
 		if (currentSegment) {
 			segments.push(currentSegment);
 		}
-		
+
 		// Handle last chunk
 		if (currentChunk && currentChunk.audioData.length > 0) {
 			const finalizedChunk = this.finalizeChunk(
-				currentChunk, 
-				chunks.length, 
-				originalAudio, 
+				currentChunk,
+				chunks.length,
+				originalAudio,
 				originalSampleRate,
 				lastChunkEndTime
 			);
@@ -250,7 +250,7 @@ export class VADChunkingProcessor extends WebRTCVADProcessor {
 				chunks.push(finalizedChunk);
 			}
 		}
-		
+
 		return { segments, chunks };
 	}
 
@@ -267,31 +267,31 @@ export class VADChunkingProcessor extends WebRTCVADProcessor {
 		if (isLastFrame) {
 			return true;
 		}
-		
+
 		// Must split if we've reached maximum duration
 		if (currentDuration >= this.maxChunkDuration) {
 			return true;
 		}
-		
+
 		// Don't split if we haven't reached minimum duration
 		if (currentDuration < this.minChunkDuration) {
 			return false;
 		}
-		
+
 		// If we're past preferred duration and found significant silence, split
-		if (currentDuration >= this.preferredChunkDuration && 
-		    consecutiveSilenceTime >= this.minSilenceForSplit && 
+		if (currentDuration >= this.preferredChunkDuration &&
+		    consecutiveSilenceTime >= this.minSilenceForSplit &&
 		    !isCurrentFrameSpeech) {
 			return true;
 		}
-		
+
 		// If we're way past preferred duration and found any silence, split
-		if (currentDuration >= this.preferredChunkDuration + this.forceSplitAfterExtra && 
+		if (currentDuration >= this.preferredChunkDuration + this.forceSplitAfterExtra &&
 		    consecutiveSilenceTime > this.minSilenceForSplit / 5 && // 20% of minSilenceForSplit
 		    !isCurrentFrameSpeech) {
 			return true;
 		}
-		
+
 		return false;
 	}
 
@@ -301,7 +301,7 @@ export class VADChunkingProcessor extends WebRTCVADProcessor {
 	private createNewChunk(startTime: number, frameIndex: number, lastChunkEndTime: number): ChunkInfo {
 		// Add overlap from previous chunk if not the first chunk
 		const actualStartTime = frameIndex === 0 ? startTime : lastChunkEndTime;
-		
+
 		return {
 			startTime: actualStartTime,
 			endTime: startTime,
@@ -328,21 +328,21 @@ export class VADChunkingProcessor extends WebRTCVADProcessor {
 			originalAudio.length,
 			Math.floor(chunkInfo.endTime * sampleRate)
 		);
-		
+
 		// Extract chunk audio
 		const chunkAudio = originalAudio.slice(startSample, endSample);
-		
+
 		// Skip if too small
 		if (chunkAudio.length < sampleRate * this.minChunkSize) {
 			return null;
 		}
-		
+
 		// Convert to WAV
 		const wavData = this.pcmToWav(chunkAudio, sampleRate);
-		
+
 		// Determine if this chunk has overlap with next
 		const hasOverlap = chunkInfo.endTime > lastChunkEndTime + this.overlapDuration;
-		
+
 		return {
 			id: chunkId,
 			data: wavData,

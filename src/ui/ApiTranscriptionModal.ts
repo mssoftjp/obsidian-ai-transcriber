@@ -83,7 +83,7 @@ export class APITranscriptionModal extends Modal {
 			this.progressListenerUnsubscribe = this.progressTracker.addListener((task) => {
 				if (task && task.status === 'processing') {
 					// Use unified percentage from progress tracker
-					const percentage = this.progressTracker!.getProgressPercentage();
+					const percentage = this.progressTracker.getProgressPercentage();
 					this.updateProgress(percentage);
 				}
 			});
@@ -103,7 +103,7 @@ export class APITranscriptionModal extends Modal {
 		});
 
 		// Model dropdown
-		const modelSelect = providerRow.createEl('select', { cls: 'model-select' }) as HTMLSelectElement;
+		const modelSelect = providerRow.createEl('select', { cls: 'model-select' });
 		MODEL_OPTIONS.forEach(opt => {
 			// Generate label from translation keys
 			let label: string;
@@ -144,7 +144,7 @@ export class APITranscriptionModal extends Modal {
 			} else {
 				// Fallback: try to get plugin instance with proper typing
 				const obsidianApp = this.app as ObsidianApp;
-				const plugin = obsidianApp.plugins?.plugins?.[PathUtils.getCurrentPluginId()] as ObsidianPlugin | undefined;
+				const plugin = obsidianApp.plugins?.plugins?.[PathUtils.getCurrentPluginId()];
 				if (plugin?.saveSettings && typeof plugin.saveSettings === 'function') {
 					await plugin.saveSettings();
 				} else {
@@ -1311,7 +1311,7 @@ export class APITranscriptionModal extends Modal {
 				this.endTimeInput.value = this.formatTime(end);
 
 				this.enableTimeRange = true;
-				const checkbox = this.timeRangeEl.querySelector('.enable-time-range') as HTMLInputElement;
+				const checkbox = this.timeRangeEl.querySelector('.enable-time-range');
 				if (checkbox) {
 					checkbox.checked = true;
 				}
@@ -1441,7 +1441,7 @@ export class APITranscriptionModal extends Modal {
 			// Automatically enable time range when user edits fields
 			if (!this.enableTimeRange) {
 				this.enableTimeRange = true;
-				const checkbox = this.timeRangeEl.querySelector('.enable-time-range') as HTMLInputElement;
+				const checkbox = this.timeRangeEl.querySelector('.enable-time-range');
 				if (checkbox) {
 					checkbox.checked = true;
 				}
@@ -1468,7 +1468,7 @@ export class APITranscriptionModal extends Modal {
 					nextInput.select();
 				} else {
 					// Focus transcribe button
-					const transcribeBtn = this.contentEl.querySelector('button.mod-cta') as HTMLButtonElement;
+					const transcribeBtn = this.contentEl.querySelector('button.mod-cta');
 					if (transcribeBtn) {
 						transcribeBtn.focus();
 					}

@@ -25,6 +25,7 @@ export class ResourceManager {
 
 	// Private constructor for singleton pattern
 	private constructor() {
+		this.logger.debug('ResourceManager singleton created');
 	}
 
 	/**
@@ -40,12 +41,12 @@ export class ResourceManager {
 	/**
 	 * Get or create an AudioContext
 	 */
-	async getAudioContext(id: string, config?: AudioContextOptions): Promise<AudioContext> {
+	getAudioContext(id: string, config?: AudioContextOptions): Promise<AudioContext> {
 		// Check for existing context
 		if (this.audioContexts.has(id)) {
-			const existing = this.audioContexts.get(id)!;
+			const existing = this.audioContexts.get(id);
 			if (existing.state !== 'closed') {
-				return existing;
+				return Promise.resolve(existing);
 			}
 			// Remove closed context
 			this.audioContexts.delete(id);
@@ -54,7 +55,7 @@ export class ResourceManager {
 		// Create new context
 		const context = new (window.AudioContext || (window as WindowWithWebKit).webkitAudioContext)(config);
 		this.audioContexts.set(id, context);
-		
+
 		// Store metadata
 		this.resourceMetadata.set(id, {
 			id,
@@ -62,7 +63,7 @@ export class ResourceManager {
 			metadata: { created: new Date().toISOString(), config }
 		});
 
-		return context;
+		return Promise.resolve(context);
 	}
 
 	/**
@@ -87,11 +88,11 @@ export class ResourceManager {
 	getAbortController(id: string): AbortController {
 		// Clean up any existing controller with this ID
 		this.cleanupAbortController(id);
-		
+
 		// Create new controller
 		const controller = new AbortController();
 		this.abortControllers.set(id, controller);
-		
+
 		// Store metadata
 		this.resourceMetadata.set(id, {
 			id,
@@ -108,7 +109,7 @@ export class ResourceManager {
 	cleanupAbortController(id: string): void {
 		const controller = this.abortControllers.get(id);
 		if (controller) {
-			
+
 			// Execute cleanup handlers
 			const handlers = this.cleanupHandlers.get(id) || [];
 			for (const handler of handlers) {
@@ -124,7 +125,7 @@ export class ResourceManager {
 					this.logger.error(`Error in cleanup handler for ${id}`, error);
 				}
 			}
-			
+
 			// Remove from maps
 			this.cleanupHandlers.delete(id);
 			this.abortControllers.delete(id);
@@ -139,7 +140,7 @@ export class ResourceManager {
 		if (!this.cleanupHandlers.has(id)) {
 			this.cleanupHandlers.set(id, []);
 		}
-		this.cleanupHandlers.get(id)!.push(handler);
+		this.cleanupHandlers.get(id).push(handler);
 	}
 
 	/**
@@ -167,7 +168,7 @@ export class ResourceManager {
 	 * Clean up all resources
 	 */
 	async cleanupAll(): Promise<void> {
-		
+
 		// Close all AudioContexts
 		const audioContextPromises: Promise<void>[] = [];
 		for (const [id, context] of this.audioContexts) {
@@ -175,24 +176,24 @@ export class ResourceManager {
 				audioContextPromises.push(this.closeAudioContext(id));
 			}
 		}
-		
+
 		// Wait for all audio contexts to close
 		if (audioContextPromises.length > 0) {
 			await Promise.all(audioContextPromises);
 		}
-		
+
 		// Clean up all AbortControllers
 		const controllerIds = Array.from(this.abortControllers.keys());
 		for (const id of controllerIds) {
 			this.cleanupAbortController(id);
 		}
-		
+
 		// Clear all maps
 		this.audioContexts.clear();
 		this.abortControllers.clear();
 		this.cleanupHandlers.clear();
 		this.resourceMetadata.clear();
-		
+
 	}
 
 	/**
@@ -203,7 +204,7 @@ export class ResourceManager {
 		abortControllers: number;
 		cleanupHandlers: number;
 		totalResources: number;
-	} {
+		} {
 		return {
 			audioContexts: this.audioContexts.size,
 			abortControllers: this.abortControllers.size,

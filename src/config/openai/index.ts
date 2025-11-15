@@ -50,7 +50,7 @@ export function getAvailableModels(): OpenAIModel[] {
 			displayName: 'GPT-4o Mini Transcribe',
 			endpoint: 'https://api.openai.com/v1/audio/transcriptions',
 			costPerMinute: 0.003
-		},
+		}
 	];
 }
 
@@ -59,13 +59,13 @@ export function getAvailableModels(): OpenAIModel[] {
  */
 export function getOpenAIModelConfig(modelId: string) {
 	switch (modelId) {
-		case 'whisper-1':
-			return { type: 'whisper', module: 'whisper.config' };
-		case 'gpt-4o-transcribe':
-		case 'gpt-4o-mini-transcribe':
-			return { type: 'gpt4o-transcribe', module: 'gpt4o-transcribe.config' };
-		default:
-			throw new Error(`Unknown model: ${modelId}`);
+	case 'whisper-1':
+		return { type: 'whisper', module: 'whisper.config' };
+	case 'gpt-4o-transcribe':
+	case 'gpt-4o-mini-transcribe':
+		return { type: 'gpt4o-transcribe', module: 'gpt4o-transcribe.config' };
+	default:
+		throw new Error(`Unknown model: ${modelId}`);
 	}
 }
 

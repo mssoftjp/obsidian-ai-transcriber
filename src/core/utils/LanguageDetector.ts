@@ -17,34 +17,34 @@ export class LanguageDetector {
 		const chineseOnlyRegex = /[\u4E00-\u9FFF]/g;
 		const englishRegex = /[a-zA-Z]/g;
 		const koreanRegex = /[\uAC00-\uD7AF\u1100-\u11FF\u3130-\u318F]/g; // Hangul
-		
+
 		const japaneseMatches = (text.match(japaneseRegex) || []).length;
 		const chineseMatches = (text.match(chineseOnlyRegex) || []).length;
 		const englishMatches = (text.match(englishRegex) || []).length;
 		const koreanMatches = (text.match(koreanRegex) || []).length;
-		
+
 		const textLength = text.length;
-		
+
 		// 韓国語文字（ハングル）があれば韓国語
 		if (koreanMatches > textLength * 0.1) {
 			return 'ko';
 		}
-		
+
 		// 日本語特有の文字（ひらがな・カタカナ）があれば日本語
 		if (japaneseMatches > textLength * 0.1) {
 			return 'ja';
 		}
-		
+
 		// 英語の比率が高ければ英語
 		if (englishMatches > textLength * 0.5) {
 			return 'en';
 		}
-		
+
 		// 漢字のみが多ければ中国語
 		if (chineseMatches > textLength * 0.3) {
 			return 'zh';
 		}
-		
+
 		// デフォルトは日本語
 		return 'ja';
 	}
@@ -71,12 +71,12 @@ export class LanguageDetector {
 	static containsChinese(text: string): boolean {
 		const chineseOnlyRegex = /[\u4E00-\u9FFF]/;
 		const hiraganaKatakanaRegex = /[\u3040-\u309F\u30A0-\u30FF]/;
-		
+
 		// If it contains hiragana/katakana, it's likely Japanese
 		if (hiraganaKatakanaRegex.test(text)) {
 			return false;
 		}
-		
+
 		return chineseOnlyRegex.test(text);
 	}
 
@@ -102,14 +102,14 @@ export class LanguageDetector {
 		const chineseOnlyRegex = /[\u4E00-\u9FFF]/g;
 		const englishRegex = /[a-zA-Z]/g;
 		const koreanRegex = /[\uAC00-\uD7AF\u1100-\u11FF\u3130-\u318F]/g;
-		
+
 		const japaneseMatches = (text.match(japaneseRegex) || []).length;
 		const chineseMatches = (text.match(chineseOnlyRegex) || []).length;
 		const englishMatches = (text.match(englishRegex) || []).length;
 		const koreanMatches = (text.match(koreanRegex) || []).length;
-		
+
 		const textLength = text.length;
-		
+
 		return {
 			japanese: japaneseMatches / textLength,
 			english: englishMatches / textLength,

@@ -54,10 +54,10 @@ export interface PipelineConfig {
 export interface CleaningPipeline {
 	/** Name of the pipeline */
 	readonly name: string;
-	
+
 	/** Configuration for this pipeline */
 	readonly config: PipelineConfig;
-	
+
 	/**
 	 * Execute the full cleaning pipeline
 	 * @param text - Original text to clean
@@ -66,17 +66,17 @@ export interface CleaningPipeline {
 	 * @returns Complete pipeline result
 	 */
 	execute(text: string, language: string, context?: CleaningContext): Promise<PipelineResult>;
-	
+
 	/**
 	 * Get list of cleaners in execution order
 	 */
 	getCleaners(): TextCleaner[];
-	
+
 	/**
 	 * Add a cleaner to the pipeline
 	 */
 	addCleaner(cleaner: TextCleaner): void;
-	
+
 	/**
 	 * Remove a cleaner from the pipeline
 	 */

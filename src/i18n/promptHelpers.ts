@@ -5,6 +5,23 @@
 
 import { t } from './index';
 
+function formatParamValue(value: unknown): string {
+	if (value === null || value === undefined) {
+		return '';
+	}
+	if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+		return String(value);
+	}
+	if (value instanceof Date) {
+		return value.toISOString();
+	}
+	try {
+		return JSON.stringify(value);
+	} catch {
+		return '';
+	}
+}
+
 /**
  * Replace parameters in a prompt template
  * Supports both single value and object parameter replacement
@@ -27,7 +44,7 @@ export function replacePromptParams(
 	for (const [key, value] of Object.entries(params)) {
 		// Support both {key} and {key:default} patterns
 		const regex = new RegExp(`\\{${key}(?::[^}]*)?\\}`, 'g');
-		result = result.replace(regex, String(value));
+		result = result.replace(regex, formatParamValue(value));
 	}
 
 	// Handle any remaining placeholders with defaults

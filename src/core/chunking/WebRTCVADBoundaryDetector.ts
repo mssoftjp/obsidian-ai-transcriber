@@ -16,41 +16,41 @@ export function createWebRTCVADBoundaryDetector(vadProcessor: VADProcessor) {
 	 * Returns positions (in seconds) where chunks can be split
 	 */
 	return async function detectBoundaries(audio: ProcessedAudio): Promise<number[]> {
-		
+
 		try {
 			// Process audio with VAD to find speech segments
 			const vadResult = await vadProcessor.processAudio(audio.pcmData, audio.sampleRate);
-			
-			
+
+
 			// If no segments or only one segment, return default boundaries
 			if (vadResult.segments.length <= 1) {
 				return [];
 			}
-			
+
 			// Find silence gaps between segments as potential boundaries
 			const boundaries: number[] = [];
 			const MIN_SILENCE_DURATION = 0.5; // Minimum 0.5s silence for a boundary
-			
+
 			for (let i = 0; i < vadResult.segments.length - 1; i++) {
 				const currentSegment = vadResult.segments[i];
 				const nextSegment = vadResult.segments[i + 1];
-				
+
 				// Calculate silence duration between segments
 				const silenceStart = currentSegment.end;
 				const silenceEnd = nextSegment.start;
 				const silenceDuration = silenceEnd - silenceStart;
-				
+
 				// Only consider significant silence gaps
 				if (silenceDuration >= MIN_SILENCE_DURATION) {
 					// Use the middle of the silence gap as boundary
 					const boundaryTime = (silenceStart + silenceEnd) / 2;
 					boundaries.push(boundaryTime);
-					
+
 				}
 			}
-			
+
 			return boundaries;
-			
+
 		} catch (error) {
 			Logger.getLogger('WebRTCVADBoundaryDetector').error('Error detecting boundaries:', error);
 			// Return empty array on error to fall back to default chunking
@@ -71,10 +71,10 @@ export function findNearestBoundary(
 	if (boundaries.length === 0) {
 		return targetPosition;
 	}
-	
+
 	let nearestBoundary = targetPosition;
 	let minDistance = maxDistance;
-	
+
 	for (const boundary of boundaries) {
 		const distance = Math.abs(boundary - targetPosition);
 		if (distance < minDistance) {
@@ -82,7 +82,7 @@ export function findNearestBoundary(
 			nearestBoundary = boundary;
 		}
 	}
-	
+
 	// If no boundary within maxDistance, return original position
 	return minDistance < maxDistance ? nearestBoundary : targetPosition;
 }

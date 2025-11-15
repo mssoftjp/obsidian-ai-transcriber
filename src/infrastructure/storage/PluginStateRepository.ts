@@ -41,12 +41,19 @@ const SETTINGS_VERSION = 1;
 const DICTIONARIES_VERSION = 1;
 const HISTORY_VERSION = 1;
 
+function deepClone<T>(value: T): T {
+	if (typeof structuredClone === 'function') {
+		return structuredClone(value);
+	}
+	return JSON.parse(JSON.stringify(value)) as T;
+}
+
 function cloneStoredSettings(settings: StoredSettings): StoredSettings {
-	return JSON.parse(JSON.stringify(settings));
+	return deepClone(settings);
 }
 
 function cloneDictionaries(dictionaries: LanguageDictionaries): LanguageDictionaries {
-	return JSON.parse(JSON.stringify(dictionaries));
+	return deepClone(dictionaries);
 }
 
 function createEmptyDictionary(): UserDictionary {
@@ -116,7 +123,7 @@ export class PluginStateRepository {
 
 	getHistory(): TranscriptionTask[] {
 		this.ensureInitialized();
-		return JSON.parse(JSON.stringify(this.state.history.items));
+		return deepClone(this.state.history.items);
 	}
 
 	async saveSettings(settings: APITranscriptionSettings): Promise<void> {
@@ -134,13 +141,15 @@ export class PluginStateRepository {
 	async saveHistory(history: TranscriptionTask[]): Promise<void> {
 		this.ensureInitialized();
 		const trimmed = [...history].slice(0, UI_CONSTANTS.MAX_HISTORY_ITEMS);
-		this.state.history.items = JSON.parse(JSON.stringify(trimmed));
+		this.state.history.items = deepClone(trimmed);
 		await this.persistState();
 	}
 
 	private ensureAllLanguages(dictionaries: LanguageDictionaries | Partial<LanguageDictionaries>): LanguageDictionaries {
 		const ensure = (dict?: UserDictionary): UserDictionary => {
-			if (!dict) return createEmptyDictionary();
+			if (!dict) {
+				return createEmptyDictionary();
+			}
 			return {
 				definiteCorrections: dict.definiteCorrections || [],
 				contextualCorrections: dict.contextualCorrections || []

@@ -18,14 +18,14 @@ export class OverlapAnalyzer {
 		modelConfig: ModelConfig
 	): void {
 		this.logger.debug('=== Analyzing Overlap Problem ===');
-		
+
 		// Time analysis
 		this.logger.debug('Time Analysis:', {
 			previousEndTime,
 			currentStartTime,
 			overlap: previousEndTime - currentStartTime
 		});
-		
+
 		// If there's a time gap instead of overlap
 		if (currentStartTime > previousEndTime) {
 			this.logger.debug('Time gap detected (no overlap expected)', {
@@ -36,7 +36,7 @@ export class OverlapAnalyzer {
 				overlap: previousEndTime - currentStartTime
 			});
 		}
-		
+
 		// Text analysis
 		this.logger.debug('Text Analysis:', {
 			previousTextLength: previousText.length,
@@ -44,10 +44,10 @@ export class OverlapAnalyzer {
 			previousTextEnd: previousText.slice(-100),
 			currentTextStart: currentText.slice(0, 100)
 		});
-		
+
 		// Configuration analysis
 		this.logger.debug('Configuration:', modelConfig);
-		
+
 		// Find exact duplicates
 		const exactDuplicate = this.findExactDuplicate(previousText, currentText);
 		if (exactDuplicate) {
@@ -55,10 +55,10 @@ export class OverlapAnalyzer {
 		} else {
 			this.logger.debug('No exact duplicate found');
 		}
-		
+
 		this.logger.debug('=== Analysis Complete ===');
 	}
-	
+
 	/**
 	 * Find exact duplicate text between two strings
 	 */
@@ -70,11 +70,11 @@ export class OverlapAnalyzer {
 		// Look for the longest common substring
 		let bestMatch = null;
 		let maxLength = 0;
-		
+
 		// Search in the last part of text1 and first part of text2
 		const searchStart1 = Math.max(0, text1.length - 500);
 		const searchEnd2 = Math.min(text2.length, 500);
-		
+
 		for (let i = searchStart1; i < text1.length; i++) {
 			for (let j = 0; j < searchEnd2; j++) {
 				let k = 0;
@@ -85,7 +85,7 @@ export class OverlapAnalyzer {
 				) {
 					k++;
 				}
-				
+
 				if (k > maxLength && k >= minLength) {
 					maxLength = k;
 					bestMatch = {
@@ -97,7 +97,7 @@ export class OverlapAnalyzer {
 				}
 			}
 		}
-		
+
 		return bestMatch;
 	}
 }

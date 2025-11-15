@@ -20,7 +20,7 @@ import { Logger } from '../../utils/Logger';
 export class GPT4oTranscriptionService extends TranscriptionService {
 	readonly modelId: string;
 	readonly modelName: string;
-	
+
 	readonly capabilities = {
 		supportsTimestamps: false, // Basic JSON format doesn't include timestamps
 		supportsWordLevel: false,
@@ -44,10 +44,10 @@ export class GPT4oTranscriptionService extends TranscriptionService {
 			'gpt-4o-mini-transcribe': 'GPT-4o Mini Transcribe'
 		};
 		this.modelName = modelNameMap[model] || model;
-		
+
 		// Dictionary corrector is now handled at the controller level
 		this.dictionaryCorrector = dictionaryCorrector;
-		
+
 		this.client = new GPT4oClient(apiKey, model);
 		this.logger = Logger.getLogger('GPT4oTranscriptionService');
 		this.logger.debug('GPT4oTranscriptionService initialized', {
@@ -64,12 +64,12 @@ export class GPT4oTranscriptionService extends TranscriptionService {
 	/**
 	 * Validate transcription request
 	 */
-	async validate(request: TranscriptionRequest): Promise<TranscriptionValidation> {
+	validate(request: TranscriptionRequest): Promise<TranscriptionValidation> {
 		this.logger.debug('Validating transcription request', {
 			chunkId: request.chunk.id,
 			language: request.options.language
 		});
-		
+
 		const errors: string[] = [];
 		const warnings: string[] = [];
 
@@ -108,12 +108,12 @@ export class GPT4oTranscriptionService extends TranscriptionService {
 		// Estimate cost
 		const cost = this.estimateCost(duration);
 
-		return {
+		return Promise.resolve({
 			isValid: errors.length === 0,
 			errors,
 			warnings,
 			estimatedCost: cost
-		};
+		});
 	}
 
 	/**
@@ -131,7 +131,7 @@ export class GPT4oTranscriptionService extends TranscriptionService {
 			language: options.language,
 			model: this.modelId
 		});
-		
+
 		// GPT-4o specific options (mainly previousContext)
 		const gpt4oOptions: ModelSpecificOptions = {
 			gpt4o: {
@@ -142,7 +142,7 @@ export class GPT4oTranscriptionService extends TranscriptionService {
 
 		try {
 			const result = await this.client.transcribe(chunk, options, gpt4oOptions);
-			
+
 			const transcriptionTime = performance.now() - startTime;
 			this.logger.info('GPT-4o transcription completed', {
 				chunkId: chunk.id,
@@ -150,7 +150,7 @@ export class GPT4oTranscriptionService extends TranscriptionService {
 				resultLength: result.text.length,
 				detectedLanguage: result.language
 			});
-			
+
 			return result;
 		} catch (error) {
 			this.logger.error('GPT-4o transcription failed', {
@@ -170,9 +170,9 @@ export class GPT4oTranscriptionService extends TranscriptionService {
 		try {
 			const testClient = new GPT4oClient(apiKey, this.modelId);
 			const result = await testClient.testConnection();
-			this.logger.info('GPT-4o connection test completed', { 
+			this.logger.info('GPT-4o connection test completed', {
 				success: result,
-				model: this.modelId 
+				model: this.modelId
 			});
 			return result;
 		} catch (error) {
@@ -190,7 +190,7 @@ export class GPT4oTranscriptionService extends TranscriptionService {
 	async formatResult(result: TranscriptionResult): Promise<TranscriptionResult> {
 		// CLEANER_DEBUG_START - Remove this block after confirming new cleaner system works
 		// CLEANER_DEBUG_END
-		
+
 		if (!result.success || !result.text) {
 			return result;
 		}
@@ -225,7 +225,7 @@ export class GPT4oTranscriptionService extends TranscriptionService {
 		const config = getModelConfig(this.modelId);
 		const perMinute = config.pricing.costPerMinute;
 		const currency = config.pricing.currency;
-		
+
 		const minutes = durationSeconds / 60;
 		const amount = minutes * perMinute;
 
@@ -250,5 +250,5 @@ export class GPT4oTranscriptionService extends TranscriptionService {
 	isMiniModel(): boolean {
 		return this.modelId === 'gpt-4o-mini-transcribe';
 	}
-	
+
 }

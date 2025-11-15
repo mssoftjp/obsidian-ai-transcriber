@@ -10,11 +10,11 @@ declare module '@echogarden/fvad-wasm' {
   }
 
   export class VAD {
-    constructor(mode: number, rate: number);
-    processFrame(frame: Int16Array): VADEvent;
-    processBuffer(buffer: Int16Array): VADEvent;
-    destroy(): void;
-    static floatTo16BitPCM(buffer: Float32Array): Int16Array;
+  	constructor(mode: number, rate: number);
+  	processFrame(frame: Int16Array): VADEvent;
+  	processBuffer(buffer: Int16Array): VADEvent;
+  	destroy(): void;
+  	static floatTo16BitPCM(buffer: Float32Array): Int16Array;
   }
 
   export const VAD_FRAME: number;
@@ -28,11 +28,11 @@ declare module 'libfvad-wasm' {
   }
 
   export class VAD {
-    constructor(mode: number, rate: number);
-    processFrame(frame: Int16Array): VADEvent;
-    processBuffer(buffer: Int16Array): VADEvent;
-    destroy(): void;
-    static floatTo16BitPCM(buffer: Float32Array): Int16Array;
+  	constructor(mode: number, rate: number);
+  	processFrame(frame: Int16Array): VADEvent;
+  	processBuffer(buffer: Int16Array): VADEvent;
+  	destroy(): void;
+  	static floatTo16BitPCM(buffer: Float32Array): Int16Array;
   }
 
   export const VAD_FRAME: number;

@@ -40,7 +40,7 @@ export class GPTDictionaryCorrectionService extends ApiClient implements IGPTCor
 		});
 
 		const systemPrompt = this.buildSystemPrompt(language, hints);
-		
+
 		// Dictionary correction is not a post-processing task, so using direct prompts
 		const userPrompt = this.getUserPrompt(language, text);
 
@@ -51,7 +51,7 @@ export class GPTDictionaryCorrectionService extends ApiClient implements IGPTCor
 				{ role: 'user', content: userPrompt }
 			],
 			temperature: DICTIONARY_CORRECTION_CONFIG.gpt.temperature,
-			max_tokens: DICTIONARY_CORRECTION_CONFIG.gpt.maxTokens,
+			max_tokens: DICTIONARY_CORRECTION_CONFIG.gpt.maxTokens
 		};
 
 		// Create abort controller for timeout
@@ -85,7 +85,7 @@ export class GPTDictionaryCorrectionService extends ApiClient implements IGPTCor
 			if (error.name === 'AbortError') {
 				this.logger.error('Request timeout', { timeout: DICTIONARY_CORRECTION_CONFIG.gpt.timeout });
 			} else {
-				this.logger.error('Correction failed', { 
+				this.logger.error('Correction failed', {
 					error: error instanceof Error ? error.message : 'Unknown error',
 					language,
 					textLength: text.length

@@ -3,8 +3,8 @@
  * Handles text variations and minor differences in overlapping regions
  */
 
-import { 
-	calculateNGramSimilarity, 
+import {
+	calculateNGramSimilarity,
 	generateNGrams,
 	getOptimalNGramSize
 } from './utils/TextSimilarity';
@@ -55,11 +55,11 @@ export class FuzzyOverlapDetector {
 		searchEnd: number
 	): FuzzyMatchResult | null {
 		const opts = { ...this.defaultOptions, ...this.options };
-		
+
 		// Extract search regions
 		const searchRegion = previousText.slice(searchStart);
 		const targetRegion = currentText.slice(0, searchEnd);
-		
+
 		if (searchRegion.length < opts.minMatchLength || targetRegion.length < opts.minMatchLength) {
 			return null;
 		}
@@ -70,7 +70,7 @@ export class FuzzyOverlapDetector {
 			if (candidates.length === 0) {
 				return null;
 			}
-			
+
 			// Find best match among candidates
 			return this.findBestMatch(searchRegion, targetRegion, candidates, searchStart, opts);
 		} else {
@@ -86,10 +86,10 @@ export class FuzzyOverlapDetector {
 	private findCandidateRegions(source: string, target: string, nGramSize: number): Array<{sourcePos: number, targetPos: number}> {
 		const sourceNGrams = generateNGrams(source, nGramSize);
 		const targetNGrams = generateNGrams(target, nGramSize);
-		
+
 		const candidates: Array<{sourcePos: number, targetPos: number}> = [];
 		const positionPairs = new Set<string>();
-		
+
 		// Find matching N-grams
 		for (const [gram, sourcePositions] of sourceNGrams) {
 			const targetPositions = targetNGrams.get(gram);
@@ -105,23 +105,23 @@ export class FuzzyOverlapDetector {
 				}
 			}
 		}
-		
+
 		// Sort by source position
 		candidates.sort((a, b) => a.sourcePos - b.sourcePos);
-		
+
 		// Cluster nearby candidates
 		const clusters: Array<{sourcePos: number, targetPos: number}> = [];
 		let lastCluster: {sourcePos: number, targetPos: number} | null = null;
-		
+
 		for (const candidate of candidates) {
-			if (!lastCluster || 
+			if (!lastCluster ||
 				Math.abs(candidate.sourcePos - lastCluster.sourcePos) > 50 ||
 				Math.abs(candidate.targetPos - lastCluster.targetPos) > 50) {
 				clusters.push(candidate);
 				lastCluster = candidate;
 			}
 		}
-		
+
 		return clusters;
 	}
 
@@ -137,20 +137,20 @@ export class FuzzyOverlapDetector {
 	): FuzzyMatchResult | null {
 		let bestMatch: FuzzyMatchResult | null = null;
 		let bestScore = 0;
-		
+
 		for (const candidate of candidates) {
 			// Extend match in both directions
 			const match = this.extendMatch(source, target, candidate.sourcePos, candidate.targetPos);
-			
+
 			if (match.length >= options.minMatchLength) {
 				const sourceText = source.slice(match.sourceStart, match.sourceStart + match.length);
 				const targetText = target.slice(match.targetStart, match.targetStart + match.length);
-				
+
 				const similarity = calculateNGramSimilarity(sourceText, targetText, options.nGramSize);
-				
+
 				if (similarity >= options.minSimilarity) {
 					const score = similarity * match.length; // Prefer longer matches with high similarity
-					
+
 					if (score > bestScore) {
 						bestScore = score;
 						bestMatch = {
@@ -164,7 +164,7 @@ export class FuzzyOverlapDetector {
 				}
 			}
 		}
-		
+
 		return bestMatch;
 	}
 
@@ -179,20 +179,20 @@ export class FuzzyOverlapDetector {
 	): {sourceStart: number, targetStart: number, length: number} {
 		// Extend backwards
 		let startOffset = 0;
-		while (sourcePos - startOffset > 0 && 
-			   targetPos - startOffset > 0 && 
+		while (sourcePos - startOffset > 0 &&
+			   targetPos - startOffset > 0 &&
 			   this.isSimilarChar(source[sourcePos - startOffset - 1], target[targetPos - startOffset - 1])) {
 			startOffset++;
 		}
-		
+
 		// Extend forwards
 		let endOffset = 0;
-		while (sourcePos + endOffset < source.length && 
-			   targetPos + endOffset < target.length && 
+		while (sourcePos + endOffset < source.length &&
+			   targetPos + endOffset < target.length &&
 			   this.isSimilarChar(source[sourcePos + endOffset], target[targetPos + endOffset])) {
 			endOffset++;
 		}
-		
+
 		return {
 			sourceStart: sourcePos - startOffset,
 			targetStart: targetPos - startOffset,
@@ -204,22 +204,24 @@ export class FuzzyOverlapDetector {
 	 * Check if two characters are similar (handles Japanese variations)
 	 */
 	private isSimilarChar(char1: string, char2: string): boolean {
-		if (char1 === char2) return true;
-		
+		if (char1 === char2) {
+			return true;
+		}
+
 		// Handle hiragana/katakana conversion
 		const code1 = char1.charCodeAt(0);
 		const code2 = char2.charCodeAt(0);
-		
+
 		// Hiragana to Katakana
 		if (code1 >= 0x3040 && code1 <= 0x309F && code2 >= 0x30A0 && code2 <= 0x30FF) {
 			return code1 + 0x60 === code2;
 		}
-		
+
 		// Katakana to Hiragana
 		if (code2 >= 0x3040 && code2 <= 0x309F && code1 >= 0x30A0 && code1 <= 0x30FF) {
 			return code2 + 0x60 === code1;
 		}
-		
+
 		// Common variations
 		const variations: Record<string, string[]> = {
 			'ー': ['〜', '～', '―'],
@@ -227,14 +229,14 @@ export class FuzzyOverlapDetector {
 			'。': ['．', '.'],
 			' ': ['　', '\t']
 		};
-		
+
 		for (const [base, vars] of Object.entries(variations)) {
-			if ((char1 === base && vars.includes(char2)) || 
+			if ((char1 === base && vars.includes(char2)) ||
 				(char2 === base && vars.includes(char1))) {
 				return true;
 			}
 		}
-		
+
 		return false;
 	}
 
@@ -249,29 +251,31 @@ export class FuzzyOverlapDetector {
 	): FuzzyMatchResult | null {
 		let bestMatch: FuzzyMatchResult | null = null;
 		let bestScore = 0;
-		
+
 		// Sliding window approach
 		const windowSize = Math.min(source.length, 200); // Max 200 chars for performance
-		
+
 		for (let i = 0; i <= source.length - options.minMatchLength; i++) {
 			for (let j = 0; j <= target.length - options.minMatchLength; j++) {
 				const sourceWindow = source.slice(i, i + windowSize);
 				const targetWindow = target.slice(j, j + windowSize);
-				
+
 				// Quick similarity check on smaller window
 				const quickSim = this.quickSimilarity(
 					sourceWindow.slice(0, options.minMatchLength),
 					targetWindow.slice(0, options.minMatchLength)
 				);
-				
-				if (quickSim < options.minSimilarity * 0.8) continue; // Skip if too different
-				
+
+				if (quickSim < options.minSimilarity * 0.8) {
+					continue;
+				} // Skip if too different
+
 				// Find optimal alignment within windows
 				const alignment = this.findOptimalAlignment(sourceWindow, targetWindow, options.minMatchLength);
-				
+
 				if (alignment && alignment.similarity >= options.minSimilarity) {
 					const score = alignment.similarity * alignment.length;
-					
+
 					if (score > bestScore) {
 						bestScore = score;
 						bestMatch = {
@@ -285,7 +289,7 @@ export class FuzzyOverlapDetector {
 				}
 			}
 		}
-		
+
 		return bestMatch;
 	}
 
@@ -295,22 +299,22 @@ export class FuzzyOverlapDetector {
 	private quickSimilarity(text1: string, text2: string): number {
 		const freq1 = this.getCharFrequency(text1);
 		const freq2 = this.getCharFrequency(text2);
-		
+
 		let common = 0;
 		let total = 0;
-		
+
 		for (const [char, count1] of freq1) {
 			const count2 = freq2.get(char) || 0;
 			common += Math.min(count1, count2);
 			total += count1;
 		}
-		
+
 		for (const [char, count2] of freq2) {
 			if (!freq1.has(char)) {
 				total += count2;
 			}
 		}
-		
+
 		return total > 0 ? common / total : 0;
 	}
 
@@ -319,11 +323,11 @@ export class FuzzyOverlapDetector {
 	 */
 	private getCharFrequency(text: string): Map<string, number> {
 		const freq = new Map<string, number>();
-		
+
 		for (const char of text) {
 			freq.set(char, (freq.get(char) || 0) + 1);
 		}
-		
+
 		return freq;
 	}
 
@@ -337,25 +341,25 @@ export class FuzzyOverlapDetector {
 	): {sourceStart: number, targetStart: number, length: number, similarity: number} | null {
 		let bestAlignment = null;
 		let bestScore = 0;
-		
+
 		// Try different alignments
 		for (let i = 0; i <= source.length - minLength; i++) {
 			for (let j = 0; j <= target.length - minLength; j++) {
 				// Determine match length
 				let length = 0;
 				let matches = 0;
-				
+
 				while (i + length < source.length && j + length < target.length) {
 					if (this.isSimilarChar(source[i + length], target[j + length])) {
 						matches++;
 					}
 					length++;
-					
+
 					// Check if we have enough similarity
 					if (length >= minLength) {
 						const similarity = matches / length;
 						const score = similarity * length;
-						
+
 						if (score > bestScore && similarity >= 0.8) {
 							bestScore = score;
 							bestAlignment = {
@@ -369,7 +373,7 @@ export class FuzzyOverlapDetector {
 				}
 			}
 		}
-		
+
 		return bestAlignment;
 	}
 
