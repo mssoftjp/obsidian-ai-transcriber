@@ -145,7 +145,7 @@ export class PostProcessingService {
 
 		} catch (error) {
 			this.logger.error('Post-processing failed', error);
-			if (error.name === 'AbortError') {
+			if (error instanceof Error && error.name === 'AbortError') {
 				throw error;
 			}
 

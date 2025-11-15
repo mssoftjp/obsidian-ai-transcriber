@@ -308,7 +308,12 @@ export class AudioFileSelectionModal extends Modal {
 					this.close();
 				} catch (error) {
 					this.logger.error('Failed to copy external file:', error);
-					new Notice(t('errors.general') + ': ' + error.message);
+					const errorMessage = error instanceof Error
+						? error.message
+						: typeof error === 'string'
+							? error
+							: 'Unknown error';
+					new Notice(`${t('errors.general')}: ${errorMessage}`);
 					this.close();
 				}
 			}

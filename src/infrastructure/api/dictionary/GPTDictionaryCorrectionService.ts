@@ -82,7 +82,7 @@ export class GPTDictionaryCorrectionService extends ApiClient implements IGPTCor
 			return correctedText;
 		} catch (error) {
 			clearTimeout(timeoutId);
-			if (error.name === 'AbortError') {
+			if (error instanceof Error && error.name === 'AbortError') {
 				this.logger.error('Request timeout', { timeout: DICTIONARY_CORRECTION_CONFIG.gpt.timeout });
 			} else {
 				this.logger.error('Correction failed', {

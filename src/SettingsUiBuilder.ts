@@ -91,7 +91,7 @@ export class SettingsUIBuilder {
 						await saveSettings();
 						// Removed Notice - clear action is obvious from UI
 						// Clear the input field
-						const input = button.extraSettingsEl.parentElement?.querySelector('input[type="text"]');
+						const input = button.extraSettingsEl.parentElement?.querySelector<HTMLInputElement>('input[type="text"]');
 						if (input) {
 							input.value = '';
 						}

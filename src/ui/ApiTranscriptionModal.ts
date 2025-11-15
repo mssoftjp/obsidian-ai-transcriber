@@ -1316,7 +1316,7 @@ export class APITranscriptionModal extends Modal {
 				this.endTimeInput.value = this.formatTime(end);
 
 				this.enableTimeRange = true;
-				const checkbox = this.timeRangeEl.querySelector('.enable-time-range');
+				const checkbox = this.timeRangeEl.querySelector<HTMLInputElement>('.enable-time-range');
 				if (checkbox) {
 					checkbox.checked = true;
 				}
@@ -1446,7 +1446,7 @@ export class APITranscriptionModal extends Modal {
 			// Automatically enable time range when user edits fields
 			if (!this.enableTimeRange) {
 				this.enableTimeRange = true;
-				const checkbox = this.timeRangeEl.querySelector('.enable-time-range');
+				const checkbox = this.timeRangeEl.querySelector<HTMLInputElement>('.enable-time-range');
 				if (checkbox) {
 					checkbox.checked = true;
 				}
