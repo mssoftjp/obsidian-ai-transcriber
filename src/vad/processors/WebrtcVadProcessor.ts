@@ -15,7 +15,7 @@ export class WebRTCVADProcessor implements VADProcessor {
 	protected available = false;
 	protected bufferPtr: number | null = null;
 	protected frameSize = AUDIO_CONSTANTS.VAD_FRAME_SIZE; // 30ms @ 16kHz (WebRTC VAD technical requirement)
-	protected pluginId = PathUtils.getCurrentPluginId(); // Default plugin ID from manifest
+	protected pluginDir: string;
 	protected logger = Logger.getLogger('WebRTCVADProcessor');
 
 	constructor(
@@ -23,9 +23,7 @@ export class WebRTCVADProcessor implements VADProcessor {
     private config: VADConfig,
     pluginId?: string
 	) {
-		if (pluginId) {
-			this.pluginId = pluginId;
-		}
+		this.pluginDir = PathUtils.getPluginDir(app, pluginId);
 	}
 
 	async initialize(): Promise<void> {
@@ -138,18 +136,9 @@ export class WebRTCVADProcessor implements VADProcessor {
 
 		// WASMファイルのパスを構築
 		let wasmPath: string | null = null;
-		const pluginsDir = `${this.app.vault.configDir}/plugins`;
 
 		try {
-			// プラグインディレクトリを動的に検索
-			// まず、manifest.jsonのIDで試す
-			const wasmPaths: string[] = [
-				`${pluginsDir}/${this.pluginId}/node_modules/@echogarden/fvad-wasm/fvad.wasm`,
-				`${pluginsDir}/${this.pluginId}/fvad.wasm`,
-				// フォルダ名がリポジトリ名の場合も試す
-				`${pluginsDir}/${this.pluginId}/node_modules/@echogarden/fvad-wasm/fvad.wasm`,
-				`${pluginsDir}/${this.pluginId}/fvad.wasm`
-			];
+			const wasmPaths = PathUtils.getWasmFilePathsFromDir(this.pluginDir, 'fvad.wasm');
 
 			// ファイルの存在確認（優先順位順）
 			for (const path of wasmPaths) {

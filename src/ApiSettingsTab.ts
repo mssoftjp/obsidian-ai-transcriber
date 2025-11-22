@@ -1,10 +1,12 @@
-import { App, PluginSettingTab, Setting, Notice, ToggleComponent } from 'obsidian';
+import { App, PluginSettingTab, Setting, Notice, ToggleComponent, TextComponent } from 'obsidian';
 import { t } from './i18n';
 import { SettingsUIBuilder } from './SettingsUiBuilder';
 import { FolderSuggestModal } from './ui/FolderSuggestModal';
 import { DictionaryManagementModal } from './ui/DictionaryManagementModal';
 import AITranscriberPlugin from './main-api';
 import { BUY_ME_A_COFFEE_DEFAULT_BUTTON } from './assets/supportImages';
+import { FolderInputSuggest } from './ui/FolderInputSuggest';
+import { PathUtils } from './utils/PathUtils';
 
 export class APISettingsTab extends PluginSettingTab {
 	plugin: AITranscriberPlugin;
@@ -117,29 +119,45 @@ export class APISettingsTab extends PluginSettingTab {
 					});
 			});
 
-		// Output folder setting
+		// Output folder setting with typeahead suggestions
+		let outputFolderText: TextComponent | null = null;
 		new Setting(containerEl)
 			.setName(t('settings.outputFolder.name'))
 			.setDesc(t('settings.outputFolder.desc'))
-			.addText(text => text
-				.setPlaceholder(t('settings.outputFolder.placeholder'))
-				.setValue(this.plugin.settings.transcriptionOutputFolder)
-				.onChange(async (value) => {
-					this.plugin.settings.transcriptionOutputFolder = value;
-					await this.plugin.saveSettings();
-				}))
+			.addText(text => {
+				outputFolderText = text;
+				return text
+					.setPlaceholder(t('settings.outputFolder.placeholder'))
+					.setValue(PathUtils.normalizeUserPath(this.plugin.settings.transcriptionOutputFolder))
+					.onChange(async (value) => {
+						this.plugin.settings.transcriptionOutputFolder = PathUtils.normalizeUserPath(value);
+						await this.plugin.saveSettings();
+					});
+			})
 			.addExtraButton(button => button
 				.setIcon('folder')
 				.setTooltip(t('settings.outputFolder.select'))
 				.onClick(() => {
-					const modal = new FolderSuggestModal(this.app, this.plugin.settings.transcriptionOutputFolder);
+					const currentFolder = PathUtils.normalizeUserPath(this.plugin.settings.transcriptionOutputFolder);
+					const modal = new FolderSuggestModal(this.app, currentFolder);
 					modal.onChooseFolderPath = (folder: string) => {
-						this.plugin.settings.transcriptionOutputFolder = folder;
+						const normalizedFolder = PathUtils.normalizeUserPath(folder);
+						this.plugin.settings.transcriptionOutputFolder = normalizedFolder;
 						void this.plugin.saveSettings();
-						this.display();
+						outputFolderText?.setValue(normalizedFolder);
 					};
 					modal.open();
 				}));
+
+		const outputFolderInput = outputFolderText?.inputEl;
+		if (outputFolderInput) {
+			new FolderInputSuggest(this.app, outputFolderInput, (folderPath) => {
+				const normalized = PathUtils.normalizeUserPath(folderPath);
+				this.plugin.settings.transcriptionOutputFolder = normalized;
+				void this.plugin.saveSettings();
+				outputFolderText?.setValue(normalized);
+			});
+		}
 
 		// Advanced settings
 		SettingsUIBuilder.displayAdvancedSettings(containerEl, this.plugin.settings, async () => {

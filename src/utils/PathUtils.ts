@@ -49,6 +49,10 @@ export class PathUtils {
 		return `${this.getPluginDir(app, pluginId)}/${filename}`;
 	}
 
+	static getPluginDirFromManifestDir(manifestDir: string): string {
+		return normalizePath(manifestDir);
+	}
+
 	/**
 	 * Normalize user-provided paths consistently before storage or use.
 	 */
@@ -87,9 +91,14 @@ export class PathUtils {
 	 */
 	static getWasmFilePaths(app: App, filename: string, pluginId?: string): string[] {
 		const pluginDir = this.getPluginDir(app, pluginId);
+		return this.getWasmFilePathsFromDir(pluginDir, filename);
+	}
+
+	static getWasmFilePathsFromDir(pluginDir: string, filename: string): string[] {
+		const base = this.getPluginDirFromManifestDir(pluginDir);
 		return [
-			`${pluginDir}/node_modules/@echogarden/fvad-wasm/${filename}`,
-			`${pluginDir}/${filename}`
+			`${base}/node_modules/@echogarden/fvad-wasm/${filename}`,
+			`${base}/${filename}`
 		];
 	}
 

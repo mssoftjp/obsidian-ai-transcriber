@@ -1454,15 +1454,15 @@ export class APITranscriptionModal extends Modal {
 			// Update hidden inputs and waveform
 			this.updateTimeFromFields();
 
-				// Automatically enable time range when user edits fields
-				if (!this.enableTimeRange) {
-					this.enableTimeRange = true;
-					const checkbox = this.timeRangeEl.querySelector<HTMLInputElement>('.ait-enable-time-range');
-					if (checkbox) {
-						checkbox.checked = true;
-					}
-					this.updateTimeRangeControls();
+			// Automatically enable time range when user edits fields
+			if (!this.enableTimeRange) {
+				this.enableTimeRange = true;
+				const checkbox = this.timeRangeEl.querySelector<HTMLInputElement>('.ait-enable-time-range');
+				if (checkbox) {
+					checkbox.checked = true;
 				}
+				this.updateTimeRangeControls();
+			}
 
 			// Auto-advance to next field when maxLength reached
 			if (value.length === maxLength && (e as InputEvent).inputType !== 'deleteContentBackward') {
