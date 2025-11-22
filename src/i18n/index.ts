@@ -2,7 +2,7 @@
  * Internationalization (i18n) helper functions
  */
 
-import { moment, getLanguage } from 'obsidian';
+import { getLanguage } from 'obsidian';
 import { TranslationKeys, SupportedLocale } from './locales';
 import { Logger } from '../utils/Logger';
 
@@ -24,11 +24,8 @@ export function initializeTranslations(translationData: Record<SupportedLocale, 
  * Initialize i18n with app instance and detect locale
  */
 export function initializeI18n(): void {
-	// Get Obsidian's language preference via API with graceful fallbacks
-	const locale = (typeof getLanguage === 'function' ? getLanguage() : undefined) ||
-		moment.locale() ||
-		navigator.language ||
-		'en';
+	// Get Obsidian's language preference via API
+	const locale = typeof getLanguage === 'function' ? getLanguage() : 'en';
 
 	// Extract language code (e.g., 'en-US' -> 'en')
 	const langCode = locale.split('-')[0].toLowerCase();
