@@ -1,4 +1,4 @@
-import { Setting, Notice, Platform, App } from 'obsidian';
+import { Setting, Notice, Platform, App, ButtonComponent } from 'obsidian';
 import { APITranscriptionSettings, VADMode } from './ApiSettings';
 import { MODEL_OPTIONS, getModelOption } from './config/ModelOptions';
 import { MODEL_NAMES } from './config/constants';
@@ -209,61 +209,66 @@ export class SettingsUIBuilder {
 			? infoEl.createDiv({ cls: 'ai-vad-inline-helper ait-hidden' })
 			: null;
 		const helperNote = helperContainer?.createDiv({ cls: 'setting-item-description' }) ?? null;
-		const helperBtn = helperContainer?.createEl('button', { text: t('settings.vadMode.installWasm.button') }) ?? null;
-		helperBtn?.classList.add('mod-cta');
+		let helperBtn: ButtonComponent | null = null;
 
-		helperBtn?.addEventListener('click', () => {
-			try {
-				const input = document.createElement('input');
-				input.type = 'file';
-				input.accept = '.wasm,application/wasm';
-				input.onchange = () => {
-					void (async () => {
-						const file = input.files?.[0];
-						if (!file) {
-							return;
-						}
-						if (file.name !== 'fvad.wasm') {
-							new Notice(t('settings.vadMode.installWasm.invalidName'));
-							return;
-						}
-						const buffer = await file.arrayBuffer();
-						const bytes = new Uint8Array(buffer);
-						const isWasm = bytes.length >= 4 &&
-							bytes[0] === 0x00 &&
-							bytes[1] === 0x61 &&
-							bytes[2] === 0x73 &&
-							bytes[3] === 0x6d;
-						if (!isWasm) {
-							new Notice(t('settings.vadMode.installWasm.invalidType'));
-							return;
-						}
+		if (helperContainer) {
+			helperBtn = new ButtonComponent(helperContainer)
+				.setButtonText(t('settings.vadMode.installWasm.button'))
+				.setCta();
 
-						try {
-							const adapter = app.vault.adapter;
-							const pluginDir = PathUtils.getPluginDir(app);
-							if (!(await adapter.exists(pluginDir))) {
-								await adapter.mkdir(pluginDir);
+			helperBtn.onClick(() => {
+				try {
+					const input = document.createElement('input');
+					input.type = 'file';
+					input.accept = '.wasm,application/wasm';
+					input.onchange = () => {
+						void (async () => {
+							const file = input.files?.[0];
+							if (!file) {
+								return;
 							}
-							const targetPath = PathUtils.getPluginFilePath(app, 'fvad.wasm');
-							await adapter.writeBinary(targetPath, bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength));
-							new Notice(t('settings.vadMode.installWasm.success'));
-							// Reflect installed state for local mode
-							vadModeSetting.setDesc(this.createVADDescription(t('settings.vadMode.desc'), false, true));
-							// Hide helper after successful installation
-							this.setHelperVisibility(helperContainer, helperNote, false);
-						} catch (error) {
-							const errorMessage = SettingsUIBuilder.formatErrorMessage(error);
-							new Notice(t('settings.vadMode.installWasm.writeError', { error: errorMessage }));
-						}
-					})();
-				};
-				input.click();
-			} catch (error) {
-				const errorMessage = SettingsUIBuilder.formatErrorMessage(error);
-				new Notice(t('settings.vadMode.installWasm.writeError', { error: errorMessage }));
-			}
-		});
+							if (file.name !== 'fvad.wasm') {
+								new Notice(t('settings.vadMode.installWasm.invalidName'));
+								return;
+							}
+							const buffer = await file.arrayBuffer();
+							const bytes = new Uint8Array(buffer);
+							const isWasm = bytes.length >= 4 &&
+								bytes[0] === 0x00 &&
+								bytes[1] === 0x61 &&
+								bytes[2] === 0x73 &&
+								bytes[3] === 0x6d;
+							if (!isWasm) {
+								new Notice(t('settings.vadMode.installWasm.invalidType'));
+								return;
+							}
+
+							try {
+								const adapter = app.vault.adapter;
+								const pluginDir = PathUtils.getPluginDir(app);
+								if (!(await adapter.exists(pluginDir))) {
+									await adapter.mkdir(pluginDir);
+								}
+								const targetPath = PathUtils.getPluginFilePath(app, 'fvad.wasm');
+								await adapter.writeBinary(targetPath, bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength));
+								new Notice(t('settings.vadMode.installWasm.success'));
+								// Reflect installed state for local mode
+								vadModeSetting.setDesc(this.createVADDescription(t('settings.vadMode.desc'), false, true));
+								// Hide helper after successful installation
+								this.setHelperVisibility(helperContainer, helperNote, false);
+							} catch (error) {
+								const errorMessage = SettingsUIBuilder.formatErrorMessage(error);
+								new Notice(t('settings.vadMode.installWasm.writeError', { error: errorMessage }));
+							}
+						})();
+					};
+					input.click();
+				} catch (error) {
+					const errorMessage = SettingsUIBuilder.formatErrorMessage(error);
+					new Notice(t('settings.vadMode.installWasm.writeError', { error: errorMessage }));
+				}
+			});
+		}
 
 		// If current mode is local but wasm is missing (e.g., manual config edit), show the inline note
 		this.checkLocalWasm(app).then((exists) => {

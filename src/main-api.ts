@@ -1,4 +1,4 @@
-import { Notice, Plugin, TFile, Menu, Platform, moment, getLanguage } from 'obsidian';
+import { Notice, Plugin, TFile, Menu, Platform, getLanguage } from 'obsidian';
 import { APITranscriber } from './ApiTranscriber';
 import { APITranscriptionSettings, DEFAULT_API_SETTINGS } from './ApiSettings';
 import { APISettingsTab } from './ApiSettingsTab';
@@ -17,6 +17,7 @@ import zh from './i18n/translations/zh';
 import ko from './i18n/translations/ko';
 import { Logger, LogLevel } from './utils/Logger';
 import { PluginStateRepository } from './infrastructure/storage/PluginStateRepository';
+import { PathUtils } from './utils/PathUtils';
 
 export default class AITranscriberPlugin extends Plugin {
 	settings: APITranscriptionSettings;
@@ -36,6 +37,9 @@ export default class AITranscriberPlugin extends Plugin {
 		// Initialize i18n BEFORE loading settings
 		initializeTranslations({ en, ja, zh, ko });
 		initializeI18n();
+
+		// Cache plugin directory from manifest for consistent path resolution
+		PathUtils.setPluginDir(this.manifest?.dir);
 
 		await this.loadSettings();
 
@@ -170,6 +174,7 @@ export default class AITranscriberPlugin extends Plugin {
 		const storedSettings = this.stateRepo.getSettings();
 		this.settings = Object.assign({}, DEFAULT_API_SETTINGS, storedSettings);
 		this.settings.userDictionaries = this.stateRepo.getDictionaries();
+		this.normalizeSettingsPaths();
 		if (!this.settings.vadMode) {
 			this.settings.vadMode = DEFAULT_API_SETTINGS.vadMode;
 		}
@@ -218,10 +223,7 @@ export default class AITranscriberPlugin extends Plugin {
 	 * Get Obsidian's language setting and map to our supported languages
 	 */
 	getObsidianLanguage(): string {
-		const locale = (typeof getLanguage === 'function' ? getLanguage() : undefined) ||
-			(typeof moment.locale === 'function' ? moment.locale() : '') ||
-			navigator.language ||
-			'en';
+		const locale = typeof getLanguage === 'function' ? getLanguage() : 'en';
 
 		// Map common locale codes to our supported languages
 		const localeMap: Record<string, string> = {
@@ -246,9 +248,14 @@ export default class AITranscriberPlugin extends Plugin {
 		       'auto';
 	}
 
+	private normalizeSettingsPaths(): void {
+		this.settings.transcriptionOutputFolder = PathUtils.normalizeUserPath(this.settings.transcriptionOutputFolder);
+	}
+
 	async saveSettings() {
 		const startTime = performance.now();
 		this.logger.debug('Saving settings...');
+		this.normalizeSettingsPaths();
 		await this.stateRepo.saveSettings(this.settings);
 
 		// Update logger configuration if debugMode changed

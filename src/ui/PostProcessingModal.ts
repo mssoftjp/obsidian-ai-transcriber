@@ -3,7 +3,7 @@
  * This is for Phase 3 implementation - adding meta information after transcription
  */
 
-import { App, Modal, Notice, TextAreaComponent } from 'obsidian';
+import { App, Modal, Notice, TextAreaComponent, ButtonComponent } from 'obsidian';
 import { APITranscriptionSettings } from '../ApiSettings';
 import { TranscriptionMetaInfo } from '../core/transcription/TranscriptionTypes';
 import { ErrorHandler } from '../ErrorHandler';
@@ -90,10 +90,10 @@ export class PostProcessingModal extends Modal {
 	}
 
 	private createMetaInputSection(containerEl: HTMLElement): void {
-		const section = containerEl.createEl('div', { cls: 'meta-input-section' });
+		const section = containerEl.createEl('div', { cls: 'ait-meta-input-section' });
 
 		// Single unified meta info input (no additional description needed)
-		const metaContainer = section.createEl('div', { cls: 'meta-input-container' });
+		const metaContainer = section.createEl('div', { cls: 'ait-meta-input-container' });
 
 		this.metaInfoInput = new TextAreaComponent(metaContainer);
 
@@ -103,7 +103,7 @@ export class PostProcessingModal extends Modal {
 
 		this.metaInfoInput.setValue(template);
 		this.metaInfoInput.setPlaceholder(t('modal.postProcessing.metaInfoPlaceholder'));
-		this.metaInfoInput.inputEl.addClass('meta-input-textarea');
+		this.metaInfoInput.inputEl.addClass('ait-meta-input-textarea');
 		this.metaInfoInput.inputEl.rows = 10;
 	}
 
@@ -116,17 +116,15 @@ export class PostProcessingModal extends Modal {
 
 		// Save button
 		const isPreTranscription = !this.transcription || this.transcription.length === 0;
-		const saveBtn = buttonContainer.createEl('button', {
-			text: isPreTranscription ? t('common.save') : t('modal.postProcessing.processButton'),
-			cls: 'mod-cta'
-		});
-		saveBtn.addEventListener('click', () => this.handleSave());
+		new ButtonComponent(buttonContainer)
+			.setButtonText(isPreTranscription ? t('common.save') : t('modal.postProcessing.processButton'))
+			.setCta()
+			.onClick(() => this.handleSave());
 
 		// Cancel button
-		const cancelBtn = buttonContainer.createEl('button', {
-			text: t('common.cancel')
-		});
-		cancelBtn.addEventListener('click', () => this.handleCancel());
+		new ButtonComponent(buttonContainer)
+			.setButtonText(t('common.cancel'))
+			.onClick(() => this.handleCancel());
 	}
 
 	private handleSave(): void {

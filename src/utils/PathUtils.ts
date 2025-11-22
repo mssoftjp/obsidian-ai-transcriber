@@ -1,10 +1,11 @@
-import { App } from 'obsidian';
+import { App, normalizePath } from 'obsidian';
 
 /**
  * Utility functions for dynamic path resolution
  * Replaces hardcoded .obsidian paths with dynamic resolution
  */
 export class PathUtils {
+	private static cachedPluginDir: string | null = null;
 	/**
 	 * Get the plugin directory path dynamically
 	 * @param app Obsidian App instance
@@ -12,8 +13,29 @@ export class PathUtils {
 	 * @returns Plugin directory path
 	 */
 	static getPluginDir(app: App, pluginId?: string): string {
+		if (this.cachedPluginDir) {
+			return this.cachedPluginDir;
+		}
+
 		const id = pluginId || PathUtils.getCurrentPluginId(); // Use manifest ID as default
-		return `${app.vault.configDir}/plugins/${id}`;
+		const manifestDir = this.getManifestDir(app, id);
+		if (manifestDir) {
+			this.cachedPluginDir = manifestDir;
+			return manifestDir;
+		}
+
+		throw new Error(`Plugin manifest directory not available for plugin id: ${id}`);
+	}
+
+	/**
+	 * Cache plugin directory using manifest.dir to avoid fragile configDir concatenation.
+	 * Safe to call multiple times; the first non-empty value wins.
+	 */
+	static setPluginDir(manifestDir?: string | null): void {
+		if (this.cachedPluginDir || !manifestDir) {
+			return;
+		}
+		this.cachedPluginDir = normalizePath(manifestDir);
 	}
 
 	/**
@@ -25,6 +47,17 @@ export class PathUtils {
 	 */
 	static getPluginFilePath(app: App, filename: string, pluginId?: string): string {
 		return `${this.getPluginDir(app, pluginId)}/${filename}`;
+	}
+
+	/**
+	 * Normalize user-provided paths consistently before storage or use.
+	 */
+	static normalizeUserPath(path?: string | null): string {
+		const trimmed = path?.trim();
+		if (!trimmed) {
+			return '';
+		}
+		return normalizePath(trimmed);
 	}
 
 	/**
@@ -66,5 +99,28 @@ export class PathUtils {
 	 */
 	static getCurrentPluginId(): string {
 		return 'ai-transcriber';
+	}
+
+	private static getManifestDir(app: App, pluginId: string): string | null {
+		const obsidianApp = app as unknown as {
+			plugins?: {
+				plugins?: Record<string, { manifest?: { dir?: string } }>;
+				manifests?: Record<string, { dir?: string }>;
+				getPlugin?: (id: string) => { manifest?: { dir?: string } };
+			};
+		};
+
+		const candidates = [
+			obsidianApp.plugins?.getPlugin?.(pluginId)?.manifest?.dir,
+			obsidianApp.plugins?.plugins?.[pluginId]?.manifest?.dir,
+			obsidianApp.plugins?.manifests?.[pluginId]?.dir
+		];
+
+		for (const dir of candidates) {
+			if (dir) {
+				return normalizePath(dir);
+			}
+		}
+		return null;
 	}
 }

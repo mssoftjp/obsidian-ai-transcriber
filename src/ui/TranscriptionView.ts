@@ -1,4 +1,4 @@
-import { ItemView, WorkspaceLeaf, TFile, Notice, Modal, App, CachedMetadata } from 'obsidian';
+import { ItemView, WorkspaceLeaf, TFile, Notice, Modal, App, CachedMetadata, ButtonComponent } from 'obsidian';
 import { ProgressTracker, TranscriptionTask } from './ProgressTracker';
 import { t } from '../i18n';
 import { LoadingAnimation } from '../core/utils/LoadingAnimation';
@@ -571,18 +571,17 @@ class ConfirmModal extends Modal {
 
 		const buttonContainer = contentEl.createDiv({ cls: 'modal-button-container ai-transcriber-modal-buttons' });
 
-		buttonContainer.createEl('button', {
-			text: t('common.cancel'),
-			cls: 'mod-secondary'
-		}).addEventListener('click', () => this.close());
+		new ButtonComponent(buttonContainer)
+			.setButtonText(t('common.cancel'))
+			.onClick(() => this.close());
 
-		buttonContainer.createEl('button', {
-			text: this.confirmText,
-			cls: 'mod-cta'
-		}).addEventListener('click', () => {
-			this.onConfirm();
-			this.close();
-		});
+		new ButtonComponent(buttonContainer)
+			.setButtonText(this.confirmText)
+			.setCta()
+			.onClick(() => {
+				this.onConfirm();
+				this.close();
+			});
 	}
 
 	onClose() {

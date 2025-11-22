@@ -1,4 +1,4 @@
-import { App, Modal, TFile, Setting, Notice } from 'obsidian';
+import { App, Modal, TFile, Setting, Notice, ButtonComponent } from 'obsidian';
 import { SUPPORTED_FORMATS } from '../config/constants';
 import { t } from '../i18n';
 import { TempFileManager } from '../infrastructure/storage/TempFileManager';
@@ -13,7 +13,7 @@ export class AudioFileSelectionModal extends Modal {
 	private selectedFile: TFile | null = null;
 	private onFileSelect: (file: TFile | File, isExternal: boolean) => void;
 	private tempFileManager: TempFileManager;
-	private okButton: HTMLButtonElement | null = null;
+	private okButton: ButtonComponent | null = null;
 	private logger = Logger.getLogger('AudioFileSelectionModal');
 
 	constructor(
@@ -134,20 +134,16 @@ export class AudioFileSelectionModal extends Modal {
 		});
 
 		// OK button
-		this.okButton = buttonContainer.createEl('button', {
-			text: t('modal.button.ok'),
-			cls: 'mod-cta'
-		});
-		this.okButton.disabled = !this.selectedFile;
-		this.okButton.addEventListener('click', () => {
-			if (this.selectedFile) {
-				this.onFileSelect(this.selectedFile, false);
-				this.close();
-			}
-		});
-		cancelButton.addEventListener('click', () => {
-			this.close();
-		});
+		this.okButton = new ButtonComponent(buttonContainer)
+			.setButtonText(t('modal.button.ok'))
+			.setCta()
+			.onClick(() => {
+				if (this.selectedFile) {
+					this.onFileSelect(this.selectedFile, false);
+					this.close();
+				}
+			});
+		this.okButton.setDisabled(!this.selectedFile);
 	}
 
 	private renderFileList(container?: HTMLElement) {
@@ -192,9 +188,7 @@ export class AudioFileSelectionModal extends Modal {
 				this.selectedFile = file;
 
 				// Enable OK button
-				if (this.okButton) {
-					this.okButton.disabled = false;
-				}
+				this.okButton?.setDisabled(false);
 			});
 
 			// Double click to select and close

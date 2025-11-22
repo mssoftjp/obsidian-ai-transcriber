@@ -1,4 +1,4 @@
-import { App, Modal, Notice, TFile, MarkdownView, Platform, Setting, moment, TextComponent } from 'obsidian';
+import { App, Modal, Notice, TFile, MarkdownView, Platform, Setting, getLanguage, TextComponent, ButtonComponent, normalizePath } from 'obsidian';
 import { APITranscriber } from '../ApiTranscriber';
 import { APITranscriptionSettings } from '../ApiSettings';
 import { MODEL_OPTIONS, getModelOption } from '../config/ModelOptions';
@@ -17,6 +17,7 @@ import { ObsidianApp, isNavigatorWithWakeLock, WakeLockSentinel } from '../types
 import { FileTypeUtils } from '../config/constants';
 import { Logger } from '../utils/Logger';
 import { PathUtils } from '../utils/PathUtils';
+import { FolderInputSuggest } from './FolderInputSuggest';
 
 export class APITranscriptionModal extends Modal {
 	private transcriber: APITranscriber;
@@ -42,7 +43,7 @@ export class APITranscriptionModal extends Modal {
 	private wakeLock: WakeLockSentinel | null = null;
 	private normalCancelBtn: HTMLButtonElement | null = null;
 	private cancelBtn: HTMLButtonElement | null = null;
-	private transcribeBtn: HTMLButtonElement | null = null;
+	private transcribeBtn: ButtonComponent | null = null;
 	private metaInfoBtn: HTMLButtonElement | null = null;
 	private modalAudioContext: AudioContext | null = null;
 	private metaInfo: TranscriptionMetaInfo | null = null;
@@ -174,12 +175,12 @@ export class APITranscriptionModal extends Modal {
 		this.createProcessingOptions(contentEl);
 
 		// Time range selection with pre-allocated space
-		this.timeRangeEl = contentEl.createEl('div', { cls: 'transcription-time-range' });
+		this.timeRangeEl = contentEl.createEl('div', { cls: 'ait-transcription-time-range' });
 		// Pre-allocate space to prevent layout shift
 		this.timeRangeEl.classList.add('ait-min-height-280');
 		// Add loading indicator
 		const loadingEl = this.timeRangeEl.createEl('div', {
-			cls: 'time-range-loading',
+			cls: 'ait-time-range-loading',
 			text: t('common.loading')
 		});
 		// Load time range controls asynchronously
@@ -210,11 +211,10 @@ export class APITranscriptionModal extends Modal {
 		}
 
 		// 文字起こし開始ボタン（右側）
-		this.transcribeBtn = buttonContainer.createEl('button', {
-			text: t('modal.transcription.startButton'),
-			cls: 'mod-cta'
-		});
-		this.transcribeBtn.onclick = () => this.startTranscription();
+		this.transcribeBtn = new ButtonComponent(buttonContainer)
+			.setButtonText(t('modal.transcription.startButton'))
+			.setCta()
+			.onClick(() => this.startTranscription());
 	}
 
 	private openMetaInfoModal(): void {
@@ -349,9 +349,9 @@ export class APITranscriptionModal extends Modal {
 
 			// Reset button states
 			this.isTranscribing = false;
-			if (this.transcribeBtn) {
-				this.transcribeBtn.disabled = false;
-				this.transcribeBtn.classList.remove('ait-hidden');
+			if (this.transcribeBtn !== null) {
+				this.transcribeBtn.setDisabled(false);
+				this.transcribeBtn.buttonEl.removeClass('ait-hidden');
 			}
 			// normalCancelBtn is always visible on desktop
 			if (this.cancelBtn) {
@@ -397,9 +397,9 @@ export class APITranscriptionModal extends Modal {
 		this.isTranscribing = true;
 
 		// Update button states
-		if (this.transcribeBtn) {
-			this.transcribeBtn.disabled = true;
-			this.transcribeBtn.classList.add('ait-hidden');
+		if (this.transcribeBtn !== null) {
+			this.transcribeBtn.setDisabled(true);
+			this.transcribeBtn.buttonEl.addClass('ait-hidden');
 		}
 		// normalCancelBtn is always visible on desktop
 		if (this.cancelBtn) {
@@ -436,9 +436,9 @@ export class APITranscriptionModal extends Modal {
 			this.releaseWakeLock();
 
 			// Reset button states
-			if (this.transcribeBtn) {
-				this.transcribeBtn.disabled = false;
-				this.transcribeBtn.classList.remove('ait-hidden');
+			if (this.transcribeBtn !== null) {
+				this.transcribeBtn.setDisabled(false);
+				this.transcribeBtn.buttonEl.removeClass('ait-hidden');
 			}
 			// normalCancelBtn is always visible on desktop
 			if (this.cancelBtn) {
@@ -762,24 +762,21 @@ export class APITranscriptionModal extends Modal {
 		this.logger.debug('Generated filename', { fileName });
 
 		// Determine the full path including output folder
-		let filePath = fileName;
-		if (this.settings.transcriptionOutputFolder && this.settings.transcriptionOutputFolder.trim() !== '') {
-			// Ensure folder path doesn't end with a slash
-			const folder = this.settings.transcriptionOutputFolder.trim().replace(/\/$/, '');
-			filePath = `${folder}/${fileName}`;
-			this.logger.debug('Using output folder', { folder, filePath });
+		const outputFolder = this.getNormalizedOutputFolder();
+		const filePath = normalizePath(outputFolder ? `${outputFolder}/${fileName}` : fileName);
+		if (outputFolder) {
+			this.logger.debug('Using output folder', { folder: outputFolder, filePath });
 		}
 
 		let activeView: MarkdownView;
 		try {
 			// Ensure the folder exists if specified
-			if (this.settings.transcriptionOutputFolder && this.settings.transcriptionOutputFolder.trim() !== '') {
-				const folder = this.settings.transcriptionOutputFolder.trim().replace(/\/$/, '');
-				const folderExists = await this.app.vault.adapter.exists(folder);
+			if (outputFolder) {
+				const folderExists = await this.app.vault.adapter.exists(outputFolder);
 				if (!folderExists) {
-					this.logger.debug('Creating output folder structure', { folder });
+					this.logger.debug('Creating output folder structure', { folder: outputFolder });
 					// Create nested folders if necessary
-					const parts = folder.split('/');
+					const parts = outputFolder.split('/');
 					let currentPath = '';
 					for (const part of parts) {
 						if (part) {
@@ -828,9 +825,7 @@ export class APITranscriptionModal extends Modal {
 
 		// Format transcription based on settings
 		let formattedTranscription = '';
-		// Use the user's locale or fallback to system default
-		const userLocale = (typeof moment.locale === 'function' ? moment.locale() : '') || navigator.language || 'en-US';
-		const timestamp = new Date().toLocaleString(userLocale);
+		const timestamp = this.getLocalTimestamp();
 		// Use the actual model used if available, otherwise fall back to current settings
 		const providerName = modelUsed ? this.getModelDisplayName(modelUsed) : this.transcriber.getProviderDisplayName();
 
@@ -1072,8 +1067,22 @@ export class APITranscriptionModal extends Modal {
 		// Progress bar removed from modal
 	}
 
+	private getNormalizedOutputFolder(): string {
+		const normalized = PathUtils.normalizeUserPath(this.settings.transcriptionOutputFolder);
+		this.settings.transcriptionOutputFolder = normalized;
+		return normalized;
+	}
+
 	private createProcessingOptions(containerEl: HTMLElement): void {
 		const optionsSection = containerEl.createEl('div', { cls: 'processing-options-section' });
+		const updateOutputFolder = async (value: string) => {
+			const normalized = PathUtils.normalizeUserPath(value);
+			this.settings.transcriptionOutputFolder = normalized;
+			this.transcriber.updateSettings(this.settings);
+			if (this.saveSettings) {
+				await this.saveSettings();
+			}
+		};
 
 		// Header
 		optionsSection.createEl('h4', { text: t('modal.transcription.processingOptions.title') });
@@ -1104,13 +1113,9 @@ export class APITranscriptionModal extends Modal {
 				folderTextComponent = text;
 				return text
 					.setPlaceholder(t('settings.outputFolder.placeholder'))
-					.setValue(this.settings.transcriptionOutputFolder)
+					.setValue(this.getNormalizedOutputFolder())
 					.onChange(async (value) => {
-						this.settings.transcriptionOutputFolder = value;
-						this.transcriber.updateSettings(this.settings);
-						if (this.saveSettings) {
-							await this.saveSettings();
-						}
+						await updateOutputFolder(value);
 					});
 			})
 			.addExtraButton(button => button
@@ -1118,18 +1123,24 @@ export class APITranscriptionModal extends Modal {
 				.setTooltip(t('settings.outputFolder.select'))
 				.onClick(async () => {
 					const { FolderSuggestModal } = await import('./FolderSuggestModal');
-					const modal = new FolderSuggestModal(this.app, this.settings.transcriptionOutputFolder || '');
+					const modal = new FolderSuggestModal(this.app, this.getNormalizedOutputFolder());
 					modal.onChooseFolderPath = (folderPath: string) => {
-						this.settings.transcriptionOutputFolder = folderPath;
-						void this.transcriber.updateSettings(this.settings);
-						if (this.saveSettings) {
-							void this.saveSettings();
-						}
+						const normalizedFolderPath = PathUtils.normalizeUserPath(folderPath);
+						void updateOutputFolder(normalizedFolderPath);
 						// Update the text input
-						folderTextComponent?.setValue(folderPath);
+						folderTextComponent?.setValue(normalizedFolderPath);
 					};
 					modal.open();
 				}));
+
+		const folderInput = folderTextComponent?.inputEl;
+		if (folderInput) {
+			new FolderInputSuggest(this.app, folderInput, (folderPath) => {
+				const normalizedFolderPath = PathUtils.normalizeUserPath(folderPath);
+				void updateOutputFolder(normalizedFolderPath);
+				folderTextComponent?.setValue(normalizedFolderPath);
+			});
+		}
 
 		const aiDependentContainer = document.createElement('div');
 		if (!this.settings.postProcessingEnabled) {
@@ -1316,7 +1327,7 @@ export class APITranscriptionModal extends Modal {
 				this.endTimeInput.value = this.formatTime(end);
 
 				this.enableTimeRange = true;
-				const checkbox = this.timeRangeEl.querySelector<HTMLInputElement>('.enable-time-range');
+				const checkbox = this.timeRangeEl.querySelector<HTMLInputElement>('.ait-enable-time-range');
 				if (checkbox) {
 					checkbox.checked = true;
 				}
@@ -1349,11 +1360,11 @@ export class APITranscriptionModal extends Modal {
 		}
 
 		// Enable checkbox
-		const checkboxContainer = this.timeRangeEl.createEl('div', { cls: 'time-range-checkbox-container' });
+		const checkboxContainer = this.timeRangeEl.createEl('div', { cls: 'ait-time-range-checkbox-container' });
 		const checkboxLabel = checkboxContainer.createEl('label', { cls: 'checkbox-label' });
 		const enableCheckbox = checkboxLabel.createEl('input', {
 			type: 'checkbox',
-			cls: 'enable-time-range'
+			cls: 'ait-enable-time-range'
 		});
 		checkboxLabel.createSpan({ text: t('audioRange.enableSelection') });
 
@@ -1365,17 +1376,17 @@ export class APITranscriptionModal extends Modal {
 		});
 
 		// Time inputs with separate fields for better UX
-		const timeContainer = this.timeRangeEl.createEl('div', { cls: 'time-range-controls' });
+		const timeContainer = this.timeRangeEl.createEl('div', { cls: 'ait-time-range-controls' });
 
 		// Start time inputs
-		const startContainer = timeContainer.createEl('div', { cls: 'time-input-group' });
+		const startContainer = timeContainer.createEl('div', { cls: 'ait-time-input-group' });
 		startContainer.createEl('label', { text: t('modal.transcription.startTime') + ':' });
 
-		const startInputs = startContainer.createEl('div', { cls: 'time-inputs' });
+		const startInputs = startContainer.createEl('div', { cls: 'ait-time-inputs' });
 		this.startHourInput = this.createTimeInput(startInputs, 'H', 2, true);
-		startInputs.createEl('span', { text: ':', cls: 'time-separator' });
+		startInputs.createEl('span', { text: ':', cls: 'ait-time-separator' });
 		this.startMinInput = this.createTimeInput(startInputs, 'M', 2);
-		startInputs.createEl('span', { text: ':', cls: 'time-separator' });
+		startInputs.createEl('span', { text: ':', cls: 'ait-time-separator' });
 		this.startSecInput = this.createTimeInput(startInputs, 'S', 2);
 
 		// Set initial values to 0
@@ -1384,14 +1395,14 @@ export class APITranscriptionModal extends Modal {
 		this.startSecInput.value = '0';
 
 		// End time inputs
-		const endContainer = timeContainer.createEl('div', { cls: 'time-input-group' });
+		const endContainer = timeContainer.createEl('div', { cls: 'ait-time-input-group' });
 		endContainer.createEl('label', { text: t('modal.transcription.endTime') + ':' });
 
-		const endInputs = endContainer.createEl('div', { cls: 'time-inputs' });
+		const endInputs = endContainer.createEl('div', { cls: 'ait-time-inputs' });
 		this.endHourInput = this.createTimeInput(endInputs, 'H', 2, true);
-		endInputs.createEl('span', { text: ':', cls: 'time-separator' });
+		endInputs.createEl('span', { text: ':', cls: 'ait-time-separator' });
 		this.endMinInput = this.createTimeInput(endInputs, 'M', 2);
-		endInputs.createEl('span', { text: ':', cls: 'time-separator' });
+		endInputs.createEl('span', { text: ':', cls: 'ait-time-separator' });
 		this.endSecInput = this.createTimeInput(endInputs, 'S', 2);
 
 		// Set default end time if duration is known
@@ -1408,11 +1419,11 @@ export class APITranscriptionModal extends Modal {
 		// Hidden inputs for compatibility with existing code
 		this.startTimeInput = timeContainer.createEl('input', {
 			type: 'hidden',
-			cls: 'time-input-hidden'
+			cls: 'ait-time-input-hidden'
 		});
 		this.endTimeInput = timeContainer.createEl('input', {
 			type: 'hidden',
-			cls: 'time-input-hidden'
+			cls: 'ait-time-input-hidden'
 		});
 
 		this.updateTimeRangeControls();
@@ -1421,7 +1432,7 @@ export class APITranscriptionModal extends Modal {
 	private createTimeInput(container: HTMLElement, placeholder: string, maxLength: number, optional = false): HTMLInputElement {
 		const input = container.createEl('input', {
 			type: 'text',
-			cls: 'time-field',
+			cls: 'ait-time-field',
 			placeholder: optional ? '' : placeholder,
 			attr: {
 				'maxlength': maxLength.toString(),
@@ -1443,15 +1454,15 @@ export class APITranscriptionModal extends Modal {
 			// Update hidden inputs and waveform
 			this.updateTimeFromFields();
 
-			// Automatically enable time range when user edits fields
-			if (!this.enableTimeRange) {
-				this.enableTimeRange = true;
-				const checkbox = this.timeRangeEl.querySelector<HTMLInputElement>('.enable-time-range');
-				if (checkbox) {
-					checkbox.checked = true;
+				// Automatically enable time range when user edits fields
+				if (!this.enableTimeRange) {
+					this.enableTimeRange = true;
+					const checkbox = this.timeRangeEl.querySelector<HTMLInputElement>('.ait-enable-time-range');
+					if (checkbox) {
+						checkbox.checked = true;
+					}
+					this.updateTimeRangeControls();
 				}
-				this.updateTimeRangeControls();
-			}
 
 			// Auto-advance to next field when maxLength reached
 			if (value.length === maxLength && (e as InputEvent).inputType !== 'deleteContentBackward') {
@@ -1473,10 +1484,7 @@ export class APITranscriptionModal extends Modal {
 					nextInput.select();
 				} else {
 					// Focus transcribe button
-					const transcribeBtn = this.contentEl.querySelector<HTMLButtonElement>('button.mod-cta');
-					if (transcribeBtn) {
-						transcribeBtn.focus();
-					}
+					this.transcribeBtn?.buttonEl.focus();
 				}
 			} else if (e.key === 'Tab' && e.shiftKey) {
 				e.preventDefault();
@@ -1545,7 +1553,7 @@ export class APITranscriptionModal extends Modal {
 	}
 
 	private updateTimeRangeControls() {
-		const timeInputs = this.timeRangeEl.querySelectorAll('.time-field');
+		const timeInputs = this.timeRangeEl.querySelectorAll('.ait-time-field');
 		timeInputs.forEach(input => {
 			(input as HTMLInputElement).disabled = !this.enableTimeRange;
 			if (this.enableTimeRange) {
@@ -1684,8 +1692,8 @@ export class APITranscriptionModal extends Modal {
 	 * Get localized timestamp
 	 */
 	private getLocalTimestamp(): string {
-		const userLocale = (typeof moment.locale === 'function' ? moment.locale() : '') || navigator.language || 'en-US';
-		return new Date().toLocaleString(userLocale);
+		const userLocale = typeof getLanguage === 'function' ? getLanguage() : 'en';
+		return new Date().toLocaleString(userLocale || 'en');
 	}
 
 	private async loadTimeRangeControls(loadingEl: HTMLElement) {
