@@ -521,41 +521,41 @@
 	font-size: var(--font-ui-smaller);
 }
 
-.transcription-time-range {
+.ait-transcription-time-range {
 	margin-bottom: var(--ait-spacing-2xl);
 }
 
-.time-range-loading {
+.ait-time-range-loading {
 	text-align: center;
 	padding: var(--ait-spacing-5xl);
 	color: var(--text-muted);
 }
 
-.time-range-controls {
+.ait-time-range-controls {
 	display: flex;
 	gap: 24px;
 	align-items: center;
 	margin-top: 12px;
 }
 
-.time-input-group {
+.ait-time-input-group {
 	display: flex;
 	align-items: center;
 	gap: var(--ait-spacing-md);
 }
 
-.time-input-group label {
+.ait-time-input-group label {
 	font-weight: var(--ait-font-weight-medium);
 	white-space: nowrap;
 }
 
-.time-inputs {
+.ait-time-inputs {
 	display: flex;
 	align-items: center;
 	gap: 4px;
 }
 
-.time-inputs input {
+.ait-time-inputs input {
 	width: var(--ait-input-height-small);
 	padding: 4px;
 	text-align: center;
@@ -565,7 +565,7 @@
 	color: var(--text-normal);
 }
 
-.time-separator {
+.ait-time-separator {
 	color: var(--text-muted);
 	font-weight: var(--ait-font-weight-medium);
 }
@@ -766,52 +766,52 @@
 }
 
 /* Audio Range Selection Styles */
-.audio-range-section {
+.ait-audio-range-section {
 	margin: 20px 0;
 	padding: var(--ait-spacing-xl);
 	background-color: var(--background-secondary);
 	border-radius: var(--ait-radius-lg);
 }
 
-.audio-range-header {
+.ait-audio-range-header {
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
 	margin-bottom: var(--ait-spacing-lg);
 }
 
-.audio-range-toggle {
+.ait-audio-range-toggle {
 	display: flex;
 	align-items: center;
 	gap: var(--ait-spacing-md);
 }
 
-.audio-range-toggle label {
+.ait-audio-range-toggle label {
 	margin: 0;
 	font-weight: normal;
 	cursor: pointer;
 }
 
-.audio-range-inputs {
+.ait-audio-range-inputs {
 	display: grid;
 	grid-template-columns: 1fr 1fr;
 	gap: var(--ait-spacing-xl);
 	margin-top: 12px;
 }
 
-.audio-range-input-group {
+.ait-audio-range-input-group {
 	display: flex;
 	flex-direction: column;
 	gap: var(--ait-spacing-md);
 }
 
-.audio-range-input-group label {
+.ait-audio-range-input-group label {
 	font-size: var(--font-ui-smaller);
 	font-weight: var(--ait-font-weight-medium);
 	color: var(--text-muted);
 }
 
-.audio-range-input-group input {
+.ait-audio-range-input-group input {
 	padding: 6px 10px;
 	border: 1px solid var(--background-modifier-border);
 	border-radius: var(--ait-radius-sm);
@@ -819,17 +819,17 @@
 	color: var(--text-normal);
 }
 
-.audio-range-input-group input:focus {
+.ait-audio-range-input-group input:focus {
 	border-color: var(--interactive-accent);
 	outline: none;
 }
 
-.audio-range-input-group input:disabled {
+.ait-audio-range-input-group input:disabled {
 	background-color: var(--background-modifier-border);
 	color: var(--text-muted);
 }
 
-.audio-range-info {
+.ait-audio-range-info {
 	margin-top: 12px;
 	font-size: var(--font-ui-smaller);
 	color: var(--text-muted);
@@ -839,7 +839,7 @@
 }
 
 /* Meta Info Button Styles */
-.meta-info-button {
+.ait-meta-info-button {
 	display: inline-flex;
 	align-items: center;
 	gap: var(--ait-spacing-md);
@@ -853,18 +853,18 @@
 	color: var(--text-normal);
 }
 
-.meta-info-button:hover {
+.ait-meta-info-button:hover {
 	background-color: var(--background-secondary-alt);
 	border-color: var(--interactive-accent);
 }
 
-.meta-info-button.filled {
+.ait-meta-info-button.filled {
 	background-color: var(--interactive-accent);
 	color: var(--text-on-accent);
 	border-color: var(--interactive-accent);
 }
 
-.meta-info-button.filled:hover {
+.ait-meta-info-button.filled:hover {
 	background-color: var(--interactive-accent-hover);
 }
 
@@ -894,26 +894,26 @@
 	color: var(--text-muted);
 }
 
-.meta-input-section {
+.ait-meta-input-section {
 	margin-bottom: var(--ait-spacing-2xl);
 }
 
-.meta-input-section h3 {
+.ait-meta-input-section h3 {
 	margin-bottom: var(--ait-spacing-lg);
 	font-size: var(--font-ui-medium);
 }
 
-.meta-input-container {
+.ait-meta-input-container {
 	margin-bottom: var(--ait-spacing-xl);
 }
 
-.meta-input-description {
+.ait-meta-input-description {
 	margin-bottom: var(--ait-spacing-md);
 	font-size: var(--font-ui-smaller);
 	color: var(--text-muted);
 }
 
-.meta-input-textarea {
+.ait-meta-input-textarea {
 	width: 100%;
 	min-height: var(--ait-textarea-large-height);
 	padding: var(--ait-spacing-lg);

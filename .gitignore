@@ -33,6 +33,7 @@ models/
 tmp/
 temp/
 *.tmp
+obsidian-developer-docs/
 
 # Logs
 logs/
