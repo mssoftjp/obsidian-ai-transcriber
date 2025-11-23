@@ -1692,7 +1692,7 @@ export class APITranscriptionModal extends Modal {
 	 * Get localized timestamp
 	 */
 	private getLocalTimestamp(): string {
-		const userLocale = typeof getLanguage === 'function' ? getLanguage() : 'en';
+		const userLocale = getLanguage();
 		return new Date().toLocaleString(userLocale || 'en');
 	}
 

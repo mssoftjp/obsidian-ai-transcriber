@@ -223,7 +223,7 @@ export default class AITranscriberPlugin extends Plugin {
 	 * Get Obsidian's language setting and map to our supported languages
 	 */
 	getObsidianLanguage(): string {
-		const locale = typeof getLanguage === 'function' ? getLanguage() : 'en';
+		const locale = getLanguage();
 
 		// Map common locale codes to our supported languages
 		const localeMap: Record<string, string> = {

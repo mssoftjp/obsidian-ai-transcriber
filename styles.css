@@ -136,7 +136,7 @@
 .ai-transcription-progress-bar,
 .api-transcription-progress-bar,
 .ai-transcriber-progress-wrapper .ai-transcriber-progress-bar,
-.copy-progress-container .ai-transcriber-progress-bar {
+.ai-transcriber-modal .copy-progress-container .ai-transcriber-progress-bar {
 	width: 100%;
 	height: var(--ait-progress-height);
 	background-color: var(--background-modifier-border);
@@ -149,7 +149,7 @@
 .ai-transcription-progress-fill,
 .api-transcription-progress-fill,
 .ai-transcriber-progress-wrapper .ai-transcriber-progress-fill,
-.copy-progress-container .ai-transcriber-progress-fill {
+.ai-transcriber-modal .copy-progress-container .ai-transcriber-progress-fill {
 	height: 100%;
 	background-color: var(--interactive-accent);
 	transition: width var(--ait-transition-normal);
@@ -447,25 +447,25 @@
 }
 
 /* Modal Content Structure */
-.transcription-provider-info {
+.ai-transcriber-modal .transcription-provider-info {
 	margin-bottom: var(--ait-spacing-xl);
 	padding: var(--ait-spacing-lg);
 	background-color: var(--background-secondary);
 	border-radius: var(--ait-radius-md);
 }
 
-.ai-transcriber-provider-row {
+.ai-transcriber-modal .ai-transcriber-provider-row {
 	display: flex;
 	align-items: center;
 	gap: var(--ait-spacing-lg);
 }
 
-.ai-transcriber-provider-label {
+.ai-transcriber-modal .ai-transcriber-provider-label {
 	font-weight: var(--ait-font-weight-medium);
 	color: var(--text-normal);
 }
 
-.model-select {
+.ai-transcriber-modal .model-select {
 	flex: 1;
 	padding: 6px 12px;
 	border: 1px solid var(--background-modifier-border);
@@ -476,43 +476,43 @@
 	height: 32px;
 }
 
-.transcription-file-info {
+.ai-transcriber-modal .transcription-file-info {
 	margin-bottom: var(--ait-spacing-2xl);
 	padding: var(--ait-spacing-xl);
 	background-color: var(--background-secondary);
 	border-radius: var(--ait-radius-lg);
 }
 
-.file-info-row {
+.ai-transcriber-modal .file-info-row {
 	margin-bottom: var(--ait-spacing-md);
 }
 
-.file-info-row:last-child {
+.ai-transcriber-modal .file-info-row:last-child {
 	margin-bottom: 0;
 }
 
-.file-name {
+.ai-transcriber-modal .file-name {
 	font-weight: var(--ait-font-weight-semibold);
 	color: var(--text-normal);
 }
 
-.file-details {
+.ai-transcriber-modal .file-details {
 	font-size: var(--font-ui-smaller);
 	color: var(--text-muted);
 }
 
-.cost-row {
+.ai-transcriber-modal .cost-row {
 	padding-top: var(--ait-spacing-md);
 	border-top: 1px solid var(--background-modifier-border);
 }
 
-.cost-info {
+.ai-transcriber-modal .cost-info {
 	display: flex;
 	align-items: center;
 	gap: var(--ait-spacing-md);
 }
 
-.file-size-warning {
+.ai-transcriber-modal .file-size-warning {
 	margin-top: var(--ait-spacing-md);
 	padding: 8px 12px;
 	background-color: var(--background-modifier-warning);
@@ -570,11 +570,11 @@
 	font-weight: var(--ait-font-weight-medium);
 }
 
-.transcription-progress {
+.ai-transcriber-modal .transcription-progress {
 	margin-bottom: var(--ait-spacing-2xl);
 }
 
-.transcription-progress p {
+.ai-transcriber-modal .transcription-progress p {
 	margin-bottom: var(--ait-spacing-md);
 	color: var(--text-muted);
 	font-size: var(--font-ui-smaller);
@@ -582,7 +582,7 @@
 
 /* Progress bar styles are defined in Common Components section 3.2 */
 
-.transcription-buttons {
+.ai-transcriber-modal .transcription-buttons {
 	display: flex;
 	gap: var(--ait-spacing-lg);
 	justify-content: flex-end;
@@ -592,23 +592,23 @@
 
 /* mod-cta button styles are defined in Common Components section 3.1 */
 
-.transcription-buttons button.mod-warning {
+.ai-transcriber-modal .transcription-buttons button.mod-warning {
 	background-color: var(--background-modifier-warning);
 	color: var(--text-warning);
 	border: 1px solid var(--text-warning);
 }
 
-.transcription-buttons button.mod-warning:hover {
+.ai-transcriber-modal .transcription-buttons button.mod-warning:hover {
 	background-color: var(--text-warning);
 	color: var(--text-on-accent);
 }
 
-.transcription-buttons button:not(.mod-cta):not(.mod-warning) {
+.ai-transcriber-modal .transcription-buttons button:not(.mod-cta):not(.mod-warning) {
 	background-color: var(--background-primary);
 	border: 1px solid var(--background-modifier-border);
 }
 
-.transcription-buttons button:not(.mod-cta):not(.mod-warning):hover {
+.ai-transcriber-modal .transcription-buttons button:not(.mod-cta):not(.mod-warning):hover {
 	background-color: var(--background-secondary);
 }
 
@@ -869,11 +869,11 @@
 }
 
 /* Post-processing Modal Styles */
-.post-processing-modal {
+.ai-transcriber-modal .post-processing-modal {
 	max-width: 800px;
 }
 
-.post-processing-modal .modal-content {
+.ai-transcriber-modal .post-processing-modal .modal-content {
 	padding: 0;
 	display: flex;
 	flex-direction: column;
@@ -881,15 +881,15 @@
 }
 
 /* Transcription Meta Modal Styles */
-.transcription-meta-modal {
+.ai-transcriber-modal .transcription-meta-modal {
 	padding: var(--ait-spacing-2xl);
 }
 
-.transcription-meta-modal h2 {
+.ai-transcriber-modal .transcription-meta-modal h2 {
 	margin-bottom: var(--ait-spacing-xl);
 }
 
-.transcription-meta-modal .setting-item-description {
+.ai-transcriber-modal .transcription-meta-modal .setting-item-description {
 	margin-bottom: var(--ait-spacing-2xl);
 	color: var(--text-muted);
 }
@@ -926,37 +926,37 @@
 	font-size: var(--font-ui-small);
 }
 
-.post-processing-modal-header {
+.ai-transcriber-modal .post-processing-modal-header {
 	padding: var(--ait-spacing-2xl);
 	border-bottom: 1px solid var(--background-modifier-border);
 }
 
-.post-processing-modal-header h2 {
+.ai-transcriber-modal .post-processing-modal-header h2 {
 	margin: 0 0 8px 0;
 }
 
-.post-processing-modal-header p {
+.ai-transcriber-modal .post-processing-modal-header p {
 	margin: 0;
 	color: var(--text-muted);
 	font-size: var(--font-ui-small);
 }
 
-.post-processing-modal-body {
+.ai-transcriber-modal .post-processing-modal-body {
 	flex: 1;
 	overflow-y: auto;
 	padding: var(--ait-spacing-2xl);
 }
 
-.post-processing-preview {
+.ai-transcriber-modal .post-processing-preview {
 	margin-bottom: var(--ait-spacing-2xl);
 }
 
-.post-processing-preview h3 {
+.ai-transcriber-modal .post-processing-preview h3 {
 	margin: 0 0 12px 0;
 	font-size: var(--font-ui-medium);
 }
 
-.post-processing-preview-content {
+.ai-transcriber-modal .post-processing-preview-content {
 	padding: var(--ait-spacing-lg);
 	background-color: var(--background-secondary);
 	border-radius: var(--ait-radius-md);
@@ -967,16 +967,16 @@
 	white-space: pre-wrap;
 }
 
-.post-processing-input {
+.ai-transcriber-modal .post-processing-input {
 	margin-bottom: var(--ait-spacing-2xl);
 }
 
-.post-processing-input h3 {
+.ai-transcriber-modal .post-processing-input h3 {
 	margin: 0 0 12px 0;
 	font-size: var(--font-ui-medium);
 }
 
-.post-processing-input textarea {
+.ai-transcriber-modal .post-processing-input textarea {
 	width: 100%;
 	min-height: var(--ait-textarea-min-height);
 	padding: var(--ait-spacing-lg);
@@ -989,46 +989,46 @@
 	font-size: var(--font-ui-small);
 }
 
-.post-processing-input textarea:focus {
+.ai-transcriber-modal .post-processing-input textarea:focus {
 	border-color: var(--interactive-accent);
 	outline: none;
 }
 
-.post-processing-input-description {
+.ai-transcriber-modal .post-processing-input-description {
 	margin-top: var(--ait-spacing-md);
 	font-size: var(--font-ui-smaller);
 	color: var(--text-muted);
 }
 
-.post-processing-options {
+.ai-transcriber-modal .post-processing-options {
 	margin-bottom: var(--ait-spacing-2xl);
 	padding: var(--ait-spacing-xl);
 	background-color: var(--background-secondary);
 	border-radius: var(--ait-radius-lg);
 }
 
-.post-processing-options h3 {
+.ai-transcriber-modal .post-processing-options h3 {
 	margin: 0 0 12px 0;
 	font-size: var(--font-ui-medium);
 }
 
-.post-processing-option {
+.ai-transcriber-modal .post-processing-option {
 	display: flex;
 	align-items: center;
 	gap: var(--ait-spacing-md);
 	margin-bottom: var(--ait-spacing-md);
 }
 
-.post-processing-option:last-child {
+.ai-transcriber-modal .post-processing-option:last-child {
 	margin-bottom: 0;
 }
 
-.post-processing-option label {
+.ai-transcriber-modal .post-processing-option label {
 	flex: 1;
 	cursor: pointer;
 }
 
-.post-processing-modal-footer {
+.ai-transcriber-modal .post-processing-modal-footer {
 	padding: 16px 20px;
 	border-top: 1px solid var(--background-modifier-border);
 	display: flex;
@@ -1036,7 +1036,7 @@
 	gap: var(--ait-spacing-lg);
 }
 
-.post-processing-modal-footer button {
+.ai-transcriber-modal .post-processing-modal-footer button {
 	padding: 8px 16px;
 	border-radius: var(--ait-radius-sm);
 	font-weight: var(--ait-font-weight-medium);
@@ -1044,55 +1044,55 @@
 	transition: background-color var(--ait-transition-fast);
 }
 
-.post-processing-modal-footer button.mod-cta {
+.ai-transcriber-modal .post-processing-modal-footer button.mod-cta {
 	background-color: var(--interactive-accent);
 	color: var(--text-on-accent);
 	border: none;
 }
 
-.post-processing-modal-footer button.mod-cta:hover {
+.ai-transcriber-modal .post-processing-modal-footer button.mod-cta:hover {
 	background-color: var(--interactive-accent-hover);
 }
 
-.post-processing-modal-footer button.mod-cta:disabled {
+.ai-transcriber-modal .post-processing-modal-footer button.mod-cta:disabled {
 	background-color: var(--background-modifier-border);
 	color: var(--text-muted);
 	cursor: not-allowed;
 }
 
-.post-processing-modal-footer button:not(.mod-cta) {
+.ai-transcriber-modal .post-processing-modal-footer button:not(.mod-cta) {
 	background-color: var(--background-primary);
 	border: 1px solid var(--background-modifier-border);
 }
 
-.post-processing-modal-footer button:not(.mod-cta):hover {
+.ai-transcriber-modal .post-processing-modal-footer button:not(.mod-cta):hover {
 	background-color: var(--background-secondary);
 }
 
 /* Dictionary Settings Styles */
-.dictionary-table-container {
+.ai-transcriber-modal .dictionary-table-container {
 	margin: var(--ait-spacing-xl) 0;
 }
 
-.dictionary-table {
+.ai-transcriber-modal .dictionary-table {
 	width: 100%;
 	border-collapse: collapse;
 	margin-bottom: var(--ait-spacing-lg);
 }
 
-.dictionary-table th {
+.ai-transcriber-modal .dictionary-table th {
 	text-align: left;
 	padding: 8px;
 	border-bottom: 2px solid var(--background-modifier-border);
 	font-weight: var(--ait-font-weight-semibold);
 }
 
-.dictionary-table td {
+.ai-transcriber-modal .dictionary-table td {
 	padding: 4px 8px;
 	border-bottom: 1px solid var(--background-modifier-border);
 }
 
-.dictionary-table td input {
+.ai-transcriber-modal .dictionary-table td input {
 	width: 100%;
 	padding: 4px 8px;
 	border: 1px solid var(--background-modifier-border);
@@ -1101,8 +1101,8 @@
 	color: var(--text-normal);
 }
 
-.dictionary-table td select,
-.dictionary-table td .dropdown {
+.ai-transcriber-modal .dictionary-table td select,
+.ai-transcriber-modal .dictionary-table td .dropdown {
 	width: 100%;
 	padding: 4px 8px;
 	border: 1px solid var(--background-modifier-border);
@@ -1111,26 +1111,26 @@
 	color: var(--text-normal);
 }
 
-.dictionary-table td:nth-child(3),
-.dictionary-table td:nth-child(4) {
+.ai-transcriber-modal .dictionary-table td:nth-child(3),
+.ai-transcriber-modal .dictionary-table td:nth-child(4) {
 	width: var(--ait-table-width-large);
 }
 
-.dictionary-table td:nth-child(5) {
+.ai-transcriber-modal .dictionary-table td:nth-child(5) {
 	width: var(--ait-table-width-xlarge);
 }
 
-.dictionary-table td input:focus {
+.ai-transcriber-modal .dictionary-table td input:focus {
 	border-color: var(--interactive-accent);
 	outline: none;
 }
 
-.dictionary-table .action-column {
+.ai-transcriber-modal .dictionary-table .action-column {
 	width: var(--ait-table-width-small);
 	text-align: center;
 }
 
-.dictionary-delete-button {
+.ai-transcriber-modal .dictionary-delete-button {
 	background: none;
 	border: none;
 	color: var(--text-error);
@@ -1142,11 +1142,11 @@
 	transition: background-color var(--ait-transition-fast);
 }
 
-.dictionary-delete-button:hover {
+.ai-transcriber-modal .dictionary-delete-button:hover {
 	background-color: var(--background-modifier-error);
 }
 
-.dictionary-add-button {
+.ai-transcriber-modal .dictionary-add-button {
 	margin-top: var(--ait-spacing-md);
 	padding: 6px 12px;
 	background-color: var(--interactive-accent);
@@ -1158,74 +1158,74 @@
 	transition: background-color var(--ait-transition-fast);
 }
 
-.dictionary-add-button:hover {
+.ai-transcriber-modal .dictionary-add-button:hover {
 	background-color: var(--interactive-accent-hover);
 }
 
 /* Dictionary section headers */
-.dictionary-section-header {
+.ai-transcriber-modal .dictionary-section-header {
 	display: flex;
 	align-items: baseline;
 	gap: var(--ait-spacing-sm);
 	margin-bottom: var(--ait-spacing-lg);
 }
 
-.dictionary-section-header h3 {
+.ai-transcriber-modal .dictionary-section-header h3 {
 	margin: 0;
 	display: inline-block;
 }
 
-.dictionary-limit-info {
+.ai-transcriber-modal .dictionary-limit-info {
 	color: var(--text-muted);
 	font-size: var(--font-smaller);
 	font-weight: normal;
 }
 
 /* Processing Options Section */
-.processing-options-section {
+.ai-transcriber-modal .processing-options-section {
 	margin: var(--ait-spacing-xl) 0;
 	padding: var(--ait-spacing-xl);
 	background-color: var(--background-secondary);
 	border-radius: var(--ait-radius-lg);
 }
 
-.setting-item-separator {
+.ai-transcriber-modal .setting-item-separator {
 	height: 1px;
 	background-color: var(--background-modifier-border);
 	margin: 8px 0;
 }
 
-.processing-options-section h3 {
+.ai-transcriber-modal .processing-options-section h3 {
 	margin: 0 0 12px 0;
 	font-size: var(--font-ui-medium);
 	font-weight: var(--ait-font-weight-semibold);
 }
 
-.processing-options-section .setting-item {
+.ai-transcriber-modal .processing-options-section .setting-item {
 	margin-bottom: var(--ait-spacing-lg);
 }
 
-.processing-options-section .setting-item:last-child {
+.ai-transcriber-modal .processing-options-section .setting-item:last-child {
 	margin-bottom: 0;
 }
 
-.processing-options-section .setting-item-control {
+.ai-transcriber-modal .processing-options-section .setting-item-control {
 	display: flex;
 	align-items: center;
 	gap: var(--ait-spacing-md);
 }
 
-.processing-options-section input[type="checkbox"].toggle {
+.ai-transcriber-modal .processing-options-section input[type="checkbox"].toggle {
 	margin: 0;
 }
 
-.processing-options-section .folder-input-container {
+.ai-transcriber-modal .processing-options-section .folder-input-container {
 	display: flex;
 	gap: var(--ait-spacing-md);
 	align-items: center;
 }
 
-.processing-options-section .folder-input-container input {
+.ai-transcriber-modal .processing-options-section .folder-input-container input {
 	flex: 1;
 	padding: 4px 8px;
 	border: 1px solid var(--background-modifier-border);
@@ -1234,13 +1234,13 @@
 	color: var(--text-normal);
 }
 
-.processing-options-section .folder-input-container button {
+.ai-transcriber-modal .processing-options-section .folder-input-container button {
 	padding: 4px 12px;
 	font-size: var(--font-ui-smaller);
 }
 
 /* Dictionary Tab Bar Container */
-.dictionary-tab-bar {
+.ai-transcriber-modal .dictionary-tab-bar {
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
@@ -1249,12 +1249,12 @@
 }
 
 /* Dictionary Language Tabs Styles - Obsidian Style */
-.dictionary-language-tabs {
+.ai-transcriber-modal .dictionary-language-tabs {
 	display: flex;
 	gap: 0;
 }
 
-.dictionary-tab {
+.ai-transcriber-modal .dictionary-tab {
 	padding: 8px 16px;
 	background: none;
 	border: none;
@@ -1266,40 +1266,30 @@
 	position: relative;
 }
 
-.dictionary-tab:hover {
+.ai-transcriber-modal .dictionary-tab:hover {
 	color: var(--text-normal);
 }
 
-.dictionary-tab.active {
+.ai-transcriber-modal .dictionary-tab.active {
 	color: var(--interactive-accent);
 	border-bottom-color: var(--interactive-accent);
 }
 
-.dictionary-tab.active:hover {
+.ai-transcriber-modal .dictionary-tab.active:hover {
 	color: var(--interactive-accent-hover);
 }
 
 /* Dictionary Management Modal Styles */
 /* Override CSS variables to match settings modal size */
-.modal.dictionary-management-modal {
+.ai-transcriber-modal.modal.dictionary-management-modal {
 	--dialog-width: 80vw;
 	--dialog-max-width: 900px;
 	--dialog-height: 70vh;
 	--dialog-max-height: 700px;
 }
 
-/* Target the modal background wrapper */
-.modal-bg:has(.modal.dictionary-management-modal) {
-	.modal-container {
-		width: 80vw;
-		max-width: 900px;
-		height: 70vh;
-		max-height: 700px;
-	}
-}
-
 /* Legacy support for browsers without :has() */
-.modal.dictionary-management-modal .modal-container {
+.ai-transcriber-modal.modal.dictionary-management-modal .modal-container {
 	width: 80vw !important;
 	max-width: 900px !important;
 	height: 70vh !important;
@@ -1307,37 +1297,37 @@
 }
 
 /* Ensure the modal itself also has the correct size */
-.modal.dictionary-management-modal {
+.ai-transcriber-modal.modal.dictionary-management-modal {
 	width: 100% !important;
 	height: 100% !important;
 }
 
 /* Ensure modal content fills the container */
-.dictionary-management-modal .modal-content {
+.ai-transcriber-modal.dictionary-management-modal .modal-content {
 	height: 100%;
 	display: flex;
 	flex-direction: column;
 }
 
-.dictionary-management-modal .modal-content {
+.ai-transcriber-modal.dictionary-management-modal .modal-content {
 	padding: var(--ait-spacing-2xl);
 	overflow-y: auto;
 	max-height: calc(100% - 40px); /* Allow for modal padding */
 	box-sizing: border-box;
 }
 
-.dictionary-management-modal h2 {
+.ai-transcriber-modal.dictionary-management-modal h2 {
 	margin-bottom: var(--ait-spacing-xl);
 }
 
-.dictionary-import-export {
+.ai-transcriber-modal .dictionary-import-export {
 	display: flex;
 	gap: var(--ait-spacing-sm);
 	padding-bottom: 2px;
 }
 
-.dictionary-export-button,
-.dictionary-import-button {
+.ai-transcriber-modal .dictionary-export-button,
+.ai-transcriber-modal .dictionary-import-button {
 	padding: 4px 8px;
 	background: none;
 	border: none;
@@ -1348,21 +1338,21 @@
 	transition: color var(--ait-transition-fast), background-color var(--ait-transition-fast);
 }
 
-.dictionary-export-button:hover,
-.dictionary-import-button:hover {
+.ai-transcriber-modal .dictionary-export-button:hover,
+.ai-transcriber-modal .dictionary-import-button:hover {
 	color: var(--text-normal);
 	background-color: var(--background-modifier-hover);
 }
 
-.dictionary-content {
+.ai-transcriber-modal .dictionary-content {
 	margin-bottom: var(--ait-spacing-2xl);
 }
 
-.dictionary-section {
+.ai-transcriber-modal .dictionary-section {
 	margin-bottom: var(--ait-spacing-3xl);
 }
 
-.dictionary-section h3 {
+.ai-transcriber-modal .dictionary-section h3 {
 	margin-bottom: var(--ait-spacing-lg);
 	font-size: var(--font-ui-medium);
 	font-weight: var(--ait-font-weight-semibold);
@@ -1370,24 +1360,24 @@
 
 /* Transcription View Panel Styles */
 /* Progress Section */
-.transcription-progress-section {
+.ai-transcriber-view .transcription-progress-section {
 	margin-bottom: var(--ait-spacing-3xl);
 	padding-bottom: 20px;
 	border-bottom: 1px solid var(--background-modifier-border);
 }
 
-.progress-container .no-task-message,
-.history-container .no-history-message {
+.ai-transcriber-view .progress-container .no-task-message,
+.ai-transcriber-view .history-container .no-history-message {
 	color: var(--text-muted);
 	font-style: italic;
 	padding: 16px 0;
 }
 
-.task-file-info {
+.ai-transcriber-view .task-file-info {
 	margin-bottom: var(--ait-spacing-lg);
 }
 
-.task-file-info .file-name {
+.ai-transcriber-view .task-file-info .file-name {
 	font-weight: var(--ait-font-weight-semibold);
 	color: var(--text-normal);
 }
@@ -1416,17 +1406,17 @@
 	color: var(--text-muted);
 }
 
-.task-status {
+.ai-transcriber-view .task-status {
 	margin: 8px 0;
 	font-size: var(--font-ui-small);
 }
 
-.task-time {
+.ai-transcriber-view .task-time {
 	font-size: var(--font-ui-smaller);
 	color: var(--text-muted);
 }
 
-.task-error {
+.ai-transcriber-view .task-error {
 	margin-top: 12px;
 	padding: 8px;
 	background-color: var(--background-modifier-error);
@@ -1435,38 +1425,38 @@
 	font-size: var(--font-ui-smaller);
 }
 
-.cancel-task-button {
+.ai-transcriber-view .cancel-task-button {
 	margin-top: 12px;
 }
 
 /* History Section */
-.transcription-history-section {
+.ai-transcriber-view .transcription-history-section {
 	margin-bottom: var(--ait-spacing-3xl);
 }
 
-.history-list {
+.ai-transcriber-view .history-list {
 	display: flex;
 	flex-direction: column;
 	gap: var(--ait-spacing-md);
 }
 
-.history-item {
+.ai-transcriber-view .history-item {
 	padding: var(--ait-spacing-lg);
 	background-color: var(--background-secondary);
 	border-radius: var(--ait-radius-md);
 	border: 1px solid var(--background-modifier-border);
 }
 
-.history-item.clickable {
+.ai-transcriber-view .history-item.clickable {
 	cursor: pointer;
 }
 
-.history-item.clickable:hover {
+.ai-transcriber-view .history-item.clickable:hover {
 	background-color: var(--background-secondary-alt);
 	border-color: var(--interactive-accent);
 }
 
-.history-item-header {
+.ai-transcriber-view .history-item-header {
 	display: flex;
 	justify-content: space-between;
 	align-items: flex-start;
@@ -1474,40 +1464,40 @@
 	gap: var(--ait-spacing-lg);
 }
 
-.history-item-header > span:first-child {
+.ai-transcriber-view .history-item-header > span:first-child {
 	flex: 1;
 	word-break: break-word;
 }
 
-.history-item-time {
+.ai-transcriber-view .history-item-time {
 	font-size: var(--font-ui-smaller);
 	color: var(--text-muted);
 	white-space: nowrap;
 	flex-shrink: 0;
 }
 
-.history-item-source {
+.ai-transcriber-view .history-item-source {
 	margin: 4px 0;
 	font-size: var(--font-ui-smaller);
 	color: var(--text-muted);
 }
 
-.source-file-info {
+.ai-transcriber-view .source-file-info {
 	display: inline-block;
 }
 
-.history-item-details {
+.ai-transcriber-view .history-item-details {
 	display: flex;
 	gap: var(--ait-spacing-lg);
 	font-size: var(--font-ui-smaller);
 	color: var(--text-muted);
 }
 
-.partial-info {
+.ai-transcriber-view .partial-info {
 	color: var(--text-warning);
 }
 
-.transcription-preview {
+.ai-transcriber-view .transcription-preview {
 	color: var(--text-muted);
 	font-style: italic;
 	white-space: nowrap;
@@ -1517,29 +1507,29 @@
 }
 
 /* Controls Section */
-.transcription-controls-section {
+.ai-transcriber-view .transcription-controls-section {
 	padding-top: 20px;
 }
 
-.controls-container {
+.ai-transcriber-view .controls-container {
 	display: flex;
 	justify-content: space-between;
 	gap: var(--ait-spacing-md);
 }
 
 /* Audio File Selection Modal Styles */
-.audio-file-selection-controls {
+.ai-transcriber-modal .audio-file-selection-controls {
 	display: flex;
 	gap: var(--ait-spacing-xl);
 	margin-bottom: var(--ait-spacing-xl);
 	align-items: center;
 }
 
-.search-input-container {
+.ai-transcriber-modal .search-input-container {
 	flex: 1;
 }
 
-.search-input-container .audio-file-search {
+.ai-transcriber-modal .search-input-container .audio-file-search {
 	width: 100%;
 	padding: 6px 12px;
 	border: 1px solid var(--background-modifier-border);
@@ -1548,28 +1538,28 @@
 	color: var(--text-normal);
 }
 
-.search-input-container .audio-file-search:focus {
+.ai-transcriber-modal .search-input-container .audio-file-search:focus {
 	border-color: var(--interactive-accent);
 	outline: none;
 }
 
-.sort-container {
+.ai-transcriber-modal .sort-container {
 	min-width: 200px;
 }
 
-.sort-container .setting-item-control {
+.ai-transcriber-modal .sort-container .setting-item-control {
 	display: flex;
 	gap: var(--ait-spacing-md);
 	align-items: center;
 }
 
-.sort-container .setting-item-control button {
+.ai-transcriber-modal .sort-container .setting-item-control button {
 	min-width: 32px;
 	padding: 4px 8px;
 	font-weight: bold;
 }
 
-.audio-file-list-container {
+.ai-transcriber-modal .audio-file-list-container {
 	height: var(--ait-file-list-height);
 	overflow-y: auto;
 	border: 1px solid var(--background-modifier-border);
@@ -1577,18 +1567,18 @@
 	margin-bottom: var(--ait-spacing-xl);
 }
 
-.no-files-message {
+.ai-transcriber-modal .no-files-message {
 	text-align: center;
 	padding: var(--ait-spacing-5xl);
 	color: var(--text-muted);
 }
 
-.audio-file-table {
+.ai-transcriber-modal .audio-file-table {
 	width: 100%;
 	border-collapse: collapse;
 }
 
-.audio-file-table th {
+.ai-transcriber-modal .audio-file-table th {
 	text-align: left;
 	padding: 8px 12px;
 	background-color: var(--background-secondary);
@@ -1599,40 +1589,40 @@
 	z-index: 1;
 }
 
-.audio-file-table td {
+.ai-transcriber-modal .audio-file-table td {
 	padding: 8px 12px;
 	border-bottom: 1px solid var(--background-modifier-border-hover);
 }
 
-.audio-file-table tr {
+.ai-transcriber-modal .audio-file-table tr {
 	cursor: pointer;
 	transition: background-color var(--ait-transition-fast);
 }
 
-.audio-file-table tr:hover {
+.ai-transcriber-modal .audio-file-table tr:hover {
 	background-color: var(--background-modifier-hover);
 }
 
-.audio-file-table tr.selected {
+.ai-transcriber-modal .audio-file-table tr.selected {
 	background-color: var(--interactive-accent);
 }
 
-.audio-file-table tr.selected td {
+.ai-transcriber-modal .audio-file-table tr.selected td {
 	color: var(--text-on-accent);
 }
 
 /* File Copy Progress */
-.copy-progress-container {
+.ai-transcriber-modal .copy-progress-container {
 	padding: var(--ait-spacing-5xl);
 	text-align: center;
 }
 
-.copy-progress-container h3 {
+.ai-transcriber-modal .copy-progress-container h3 {
 	margin-bottom: var(--ait-spacing-2xl);
 	color: var(--text-normal);
 }
 
-.copy-progress-container .ai-transcriber-progress-bar {
+.ai-transcriber-modal .copy-progress-container .ai-transcriber-progress-bar {
 	width: 100%;
 	height: 8px;
 	background-color: var(--background-modifier-border);
@@ -1641,20 +1631,20 @@
 	margin-bottom: var(--ait-spacing-lg);
 }
 
-.copy-progress-container .ai-transcriber-progress-fill {
+.ai-transcriber-modal .copy-progress-container .ai-transcriber-progress-fill {
 	height: 100%;
 	background-color: var(--interactive-accent);
 	transition: width var(--ait-transition-normal);
 	width: 0%;
 }
 
-.copy-progress-container .ai-transcriber-progress-text {
+.ai-transcriber-modal .copy-progress-container .ai-transcriber-progress-text {
 	font-size: var(--font-ui-small);
 	color: var(--text-muted);
 }
 
 /* External file notice styles */
-.external-file-notice {
+.ai-transcriber-modal .external-file-notice {
 	margin: var(--ait-spacing-xl) 0;
 	padding: var(--ait-spacing-lg);
 	background-color: var(--background-secondary);
@@ -1662,14 +1652,14 @@
 	border: 1px solid var(--background-modifier-border);
 }
 
-.external-file-notice-text {
+.ai-transcriber-modal .external-file-notice-text {
 	margin: 0;
 	font-size: 0.9em;
 	color: var(--text-muted);
 	line-height: 1.4;
 }
 
-.audio-file-table .file-path {
+.ai-transcriber-modal .audio-file-table .file-path {
 	color: var(--text-muted);
 }
 

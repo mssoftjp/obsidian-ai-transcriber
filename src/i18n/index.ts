@@ -25,7 +25,7 @@ export function initializeTranslations(translationData: Record<SupportedLocale, 
  */
 export function initializeI18n(): void {
 	// Get Obsidian's language preference via API
-	const locale = typeof getLanguage === 'function' ? getLanguage() : 'en';
+	const locale = getLanguage();
 
 	// Extract language code (e.g., 'en-US' -> 'en')
 	const langCode = locale.split('-')[0].toLowerCase();
