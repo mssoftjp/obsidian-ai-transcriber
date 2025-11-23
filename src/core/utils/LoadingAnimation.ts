@@ -5,6 +5,11 @@ export class LoadingAnimation {
 	private loadingDotsCount = 0;
 	private animationInterval: number | null = null;
 	private isAnimating = false;
+	private registerInterval?: (intervalId: number) => number;
+
+	constructor(registerInterval?: (intervalId: number) => number) {
+		this.registerInterval = registerInterval;
+	}
 
 	/**
 	 * Get the current loading dots pattern
@@ -36,11 +41,15 @@ export class LoadingAnimation {
 		callback();
 
 		// Set up interval
-		this.animationInterval = window.setInterval(() => {
+		const intervalId = window.setInterval(() => {
 			if (this.isAnimating) {
 				callback();
 			}
 		}, interval);
+
+		this.animationInterval = this.registerInterval
+			? this.registerInterval(intervalId)
+			: intervalId;
 	}
 
 	/**

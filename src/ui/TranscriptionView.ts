@@ -11,6 +11,7 @@ interface TranscriptionPlugin {
 	transcriber?: {
 		cancelTranscription?: () => Promise<void>;
 	};
+	registerInterval: (intervalId: number) => number;
 }
 
 export class TranscriptionView extends ItemView {
@@ -34,7 +35,7 @@ export class TranscriptionView extends ItemView {
 		super(leaf);
 		this.plugin = plugin;
 		this.progressTracker = progressTracker;
-		this.loadingAnimation = new LoadingAnimation();
+		this.loadingAnimation = new LoadingAnimation((intervalId) => this.plugin.registerInterval(intervalId));
 	}
 
 	getViewType() {
@@ -66,9 +67,11 @@ export class TranscriptionView extends ItemView {
 		this.unsubscribeProgress = this.progressTracker.addListener(this.handleProgressUpdate);
 
 		// Start update interval
-		this.updateInterval = window.setInterval(() => {
-			this.updateView();
-		}, 1000);
+		this.updateInterval = this.plugin.registerInterval(
+			window.setInterval(() => {
+				this.updateView();
+			}, 1000)
+		);
 
 		// Initial update - force history display
 		this.updateView();

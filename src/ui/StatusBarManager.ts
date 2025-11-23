@@ -18,7 +18,7 @@ export class StatusBarManager {
 		this.app = app;
 		this.plugin = plugin;
 		this.progressTracker = progressTracker;
-		this.loadingAnimation = new LoadingAnimation();
+		this.loadingAnimation = new LoadingAnimation((intervalId) => this.plugin.registerInterval(intervalId));
 	}
 
 	/**
@@ -46,11 +46,13 @@ export class StatusBarManager {
 		});
 
 		// Start update interval for elapsed time and animation
-		this.updateInterval = window.setInterval(() => {
-			if (this.currentTask && this.currentTask.status === 'processing') {
-				this.updateDisplay(this.currentTask);
-			}
-		}, 1000);
+		this.updateInterval = this.plugin.registerInterval(
+			window.setInterval(() => {
+				if (this.currentTask && this.currentTask.status === 'processing') {
+					this.updateDisplay(this.currentTask);
+				}
+			}, 1000)
+		);
 	}
 
 	/**

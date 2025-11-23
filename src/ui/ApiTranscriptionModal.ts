@@ -1,4 +1,4 @@
-import { App, Modal, Notice, TFile, MarkdownView, Platform, Setting, getLanguage, TextComponent, ButtonComponent, normalizePath } from 'obsidian';
+import { App, Modal, Notice, TFile, TFolder, MarkdownView, Platform, Setting, getLanguage, TextComponent, ButtonComponent, normalizePath } from 'obsidian';
 import { APITranscriber } from '../ApiTranscriber';
 import { APITranscriptionSettings } from '../ApiSettings';
 import { MODEL_OPTIONS, getModelOption } from '../config/ModelOptions';
@@ -768,39 +768,30 @@ export class APITranscriptionModal extends Modal {
 			this.logger.debug('Using output folder', { folder: outputFolder, filePath });
 		}
 
-		let activeView: MarkdownView;
+		let createdFile: TFile | null = null;
+		let markdownView: MarkdownView | null = null;
 		try {
 			// Ensure the folder exists if specified
 			if (outputFolder) {
-				const folderExists = await this.app.vault.adapter.exists(outputFolder);
-				if (!folderExists) {
-					this.logger.debug('Creating output folder structure', { folder: outputFolder });
-					// Create nested folders if necessary
-					const parts = outputFolder.split('/');
-					let currentPath = '';
-					for (const part of parts) {
-						if (part) {
-							currentPath = currentPath ? `${currentPath}/${part}` : part;
-							if (!(await this.app.vault.adapter.exists(currentPath))) {
-								await this.app.vault.createFolder(currentPath);
-								this.logger.trace('Created folder', { path: currentPath });
-							}
-						}
-					}
-				}
+				await this.ensureFolderPath(outputFolder);
 			}
 
 			// Create the new file
 			this.logger.debug('Creating new file', { filePath });
-			const newFile = await this.app.vault.create(filePath, '');
+			createdFile = await this.app.vault.create(filePath, '');
 
 			// Wait a moment for Obsidian to process the file creation
 			// This helps avoid Dataview indexing errors
 			await this.delay(50);
 			const leaf = this.app.workspace.getLeaf(false);
-			await leaf.openFile(newFile);
-			activeView = leaf.view as MarkdownView;
-			this.logger.info('File created and opened', { filePath });
+			await leaf.openFile(createdFile);
+			markdownView = leaf.view instanceof MarkdownView ? leaf.view : null;
+			if (!markdownView) {
+				this.logger.warn('Opened leaf is not a MarkdownView. Falling back to Vault writes.', {
+					viewType: leaf.view?.getViewType?.()
+				});
+			}
+			this.logger.info('File created and opened', { filePath, viewType: leaf.view?.getViewType?.() });
 
 			// Save the output file path to progress tracker
 			if (this.progressTracker) {
@@ -815,12 +806,12 @@ export class APITranscriptionModal extends Modal {
 			throw new Error(t('errors.createFileFailed', { error: err.message }));
 		}
 
-		if (!activeView) {
+		if (!createdFile) {
 			throw new Error(t('errors.messages.unableToOpenFile'));
 		}
 
-		const editor = activeView.editor;
-		const cursor = editor.getCursor();
+		const editor = markdownView?.editor ?? null;
+		const cursor = editor?.getCursor();
 
 
 		// Format transcription based on settings
@@ -843,60 +834,29 @@ export class APITranscriptionModal extends Modal {
 
 
 		try {
-			// Platform-specific insertion logic
-			if (Platform.isMobile || Platform.isWin) {
+			if (editor && cursor) {
+				const currentContent = editor.getValue();
+				const offset = editor.posToOffset(cursor);
 
-				// Method 1: Use Vault API to modify the file directly
-				if (activeView.file) {
-					const currentContent = await this.app.vault.read(activeView.file);
-					const offset = editor.posToOffset(cursor);
+				const newContent = currentContent.slice(0, offset) +
+					formattedTranscription +
+					currentContent.slice(offset);
 
-
-					// Insert transcription at cursor position
-					const newContent = currentContent.slice(0, offset) +
-						formattedTranscription +
-						currentContent.slice(offset);
-
-					// Save using Vault API
-					await this.app.vault.modify(activeView.file, newContent);
-
-					// Update editor display
-					editor.setValue(newContent);
-
-					// Set cursor after inserted text
-					const newOffset = offset + formattedTranscription.length;
-					const newCursor = editor.offsetToPos(newOffset);
-					editor.setCursor(newCursor);
-
-				} else {
-					// Fallback for new files without a file reference
-					editor.replaceRange(formattedTranscription, cursor);
-
-					// Add a small delay before saving on problematic platforms
-					await this.delay(100);
-
-					if (activeView.file) {
-						await this.app.vault.modify(activeView.file, editor.getValue());
-					}
-				}
+				editor.setValue(newContent);
+				editor.setCursor(editor.offsetToPos(offset + formattedTranscription.length));
 			} else {
-				// Desktop (macOS/Linux) - use standard method
-				editor.replaceRange(formattedTranscription, cursor);
-
-				// Save the file
-				if (activeView.file) {
-					await this.app.vault.modify(activeView.file, editor.getValue());
-				}
+				await this.app.vault.modify(createdFile, formattedTranscription);
 			}
 
 
 
 			// Emit completion event for external plugins
 			const localTimestamp = this.getLocalTimestamp();
+			const targetFile = markdownView?.file ?? createdFile;
 
 			this.logger.debug('Emitting transcription:completed event');
 			this.app.workspace.trigger('transcription:completed', {
-				file: activeView.file,
+				file: targetFile,
 				transcription: transcription,
 				audioFile: this.audioFile,
 				modelUsed: modelUsed || this.settings.model,
@@ -906,13 +866,10 @@ export class APITranscriptionModal extends Modal {
 
 
 			// Add completion metadata to frontmatter
-			if (activeView.file) {
+			if (targetFile) {
 				try {
-					const fileCache = this.app.metadataCache.getFileCache(activeView.file);
+					const fileCache = this.app.metadataCache.getFileCache(targetFile);
 					const frontmatter = fileCache?.frontmatter || {};
-
-					// Add transcription metadata
-					const localTimestamp = this.getLocalTimestamp();
 
 					const metadata = {
 						...frontmatter,
@@ -924,7 +881,7 @@ export class APITranscriptionModal extends Modal {
 					};
 
 					// Update frontmatter
-					await this.app.fileManager.processFrontMatter(activeView.file, (fm) => {
+					await this.app.fileManager.processFrontMatter(targetFile, (fm) => {
 						Object.assign(fm, metadata);
 					});
 					this.logger.trace('Frontmatter metadata updated');
@@ -932,7 +889,6 @@ export class APITranscriptionModal extends Modal {
 				} catch (metadataError) {
 					const err = metadataError instanceof Error ? metadataError : new Error(this.formatUnknownError(metadataError));
 					this.logger.warn('Failed to add frontmatter metadata', { error: err.message });
-					// Don't fail the whole operation for metadata errors
 				}
 			}
 
@@ -944,7 +900,7 @@ export class APITranscriptionModal extends Modal {
 			);
 
 			this.app.workspace.trigger('transcription:ready-for-translation', {
-				file: activeView.file,
+				file: targetFile,
 				textLength: transcription.length,
 				estimatedTokens: translationMeta.estimatedTokens,
 				language: this.settings.language || 'auto',
@@ -961,22 +917,25 @@ export class APITranscriptionModal extends Modal {
 			// Enhanced fallback: Try alternative insertion methods
 			try {
 
-				if (activeView.file) {
+				const targetFile = markdownView?.file ?? createdFile;
+				if (targetFile) {
 					// Fallback 1: Append to file
-					const currentContent = await this.app.vault.read(activeView.file);
+					const currentContent = await this.app.vault.read(targetFile);
 					const newContent = currentContent + '\n\n' + formattedTranscription;
-					await this.app.vault.modify(activeView.file, newContent);
+					await this.app.vault.modify(targetFile, newContent);
 					this.logger.trace('Fallback: Appended transcription to file');
 
 					// Update editor
-					editor.setValue(newContent);
-					editor.setCursor(editor.offsetToPos(newContent.length));
+					if (editor) {
+						editor.setValue(newContent);
+						editor.setCursor(editor.offsetToPos(newContent.length));
+					}
 
 					new Notice(t('notices.transcriptionAppendedFallback'));
 
 					// Emit completion events for fallback insertion
 					this.app.workspace.trigger('transcription:completed', {
-						file: activeView.file,
+						file: targetFile,
 						transcription: transcription,
 						audioFile: this.audioFile,
 						modelUsed: modelUsed || this.settings.model,
@@ -1065,6 +1024,28 @@ export class APITranscriptionModal extends Modal {
 
 	private updateProgress(_percentage: number) {
 		// Progress bar removed from modal
+	}
+
+	private async ensureFolderPath(folderPath: string): Promise<void> {
+		const normalizedPath = normalizePath(folderPath);
+		if (!normalizedPath) {
+			return;
+		}
+
+		const parts = normalizedPath.split('/').filter(Boolean);
+		let currentPath = '';
+		for (const part of parts) {
+			currentPath = currentPath ? `${currentPath}/${part}` : part;
+			const existing = this.app.vault.getAbstractFileByPath(currentPath);
+			if (existing) {
+				if (!(existing instanceof TFolder)) {
+					throw new Error(t('errors.createFileFailed', { error: `${currentPath} is not a folder` }));
+				}
+				continue;
+			}
+			await this.app.vault.createFolder(currentPath);
+			this.logger.trace('Created folder', { path: currentPath });
+		}
 	}
 
 	private getNormalizedOutputFolder(): string {
