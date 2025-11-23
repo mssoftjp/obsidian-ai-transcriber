@@ -175,7 +175,7 @@
 }
 
 .ai-transcriber-status .status-bar-icon {
-	margin-right: var(--ait-spacing-sm);
+	margin-inline-end: var(--ait-spacing-sm);
 	display: inline-flex;
 	align-items: center;
 }
@@ -194,7 +194,7 @@
 	height: var(--ait-status-bar-progress-height);
 	background-color: var(--background-modifier-border);
 	border-radius: var(--ait-radius-xs);
-	margin-left: var(--ait-spacing-md);
+	margin-inline-start: var(--ait-spacing-md);
 	overflow: hidden;
 }
 
@@ -285,7 +285,7 @@
 	font-weight: var(--ait-font-weight-semibold);
 	word-break: break-word;
 	flex: 1;
-	margin-right: var(--ait-spacing-lg);
+	margin-inline-end: var(--ait-spacing-lg);
 	color: var(--text-normal);
 }
 
@@ -1081,7 +1081,7 @@
 }
 
 .ai-transcriber-modal .dictionary-table th {
-	text-align: left;
+	text-align: start;
 	padding: 8px;
 	border-bottom: 2px solid var(--background-modifier-border);
 	font-weight: var(--ait-font-weight-semibold);
@@ -1579,7 +1579,7 @@
 }
 
 .ai-transcriber-modal .audio-file-table th {
-	text-align: left;
+	text-align: start;
 	padding: 8px 12px;
 	background-color: var(--background-secondary);
 	border-bottom: 1px solid var(--background-modifier-border);

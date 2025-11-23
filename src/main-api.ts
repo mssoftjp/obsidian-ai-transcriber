@@ -151,6 +151,9 @@ export default class AITranscriberPlugin extends Plugin {
 	private async disposePlugin(): Promise<void> {
 		this.logger.info('Unloading AI Transcriber plugin...');
 
+		// Close any open transcription view leaves to prevent orphaned views after unload
+		this.app.workspace.detachLeavesOfType(VIEW_TYPE_TRANSCRIPTION);
+
 		// Clean up status bar
 		if (this.statusBarManager) {
 			this.statusBarManager.destroy();
