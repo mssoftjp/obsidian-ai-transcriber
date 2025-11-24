@@ -1666,33 +1666,33 @@
 /* ====================================
    Buy Me a Coffee Banner
    ==================================== */
-.bmc-spacer {
+.ai-transcriber-settings .bmc-spacer {
 	height: var(--ait-spacing-5xl);
 }
 
-.bmc-support-section {
+.ai-transcriber-settings .bmc-support-section {
 	margin-top: var(--ait-spacing-5xl);
 	text-align: center;
 }
 
-.bmc-support-message {
+.ai-transcriber-settings .bmc-support-message {
 	margin-bottom: var(--ait-spacing-2xl);
 	font-size: var(--font-ui-small);
 	color: var(--text-muted);
 	line-height: 1.5;
 }
 
-.bmc-banner {
+.ai-transcriber-settings .bmc-banner {
 	display: inline-block;
 	transition: transform 0.3s ease, opacity 0.3s ease;
 }
 
-.bmc-banner:hover {
+.ai-transcriber-settings .bmc-banner:hover {
 	transform: translateY(-2px);
 	opacity: 0.9;
 }
 
-.bmc-banner img {
+.ai-transcriber-settings .bmc-banner img {
 	display: block;
 	border-radius: 8px;
 }

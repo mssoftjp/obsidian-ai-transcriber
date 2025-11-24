@@ -27,6 +27,7 @@ export class APISettingsTab extends PluginSettingTab {
 	display(): void {
 		const { containerEl } = this;
 		containerEl.empty();
+		containerEl.addClass('ai-transcriber-settings');
 
 		// Remove the main title as requested
 

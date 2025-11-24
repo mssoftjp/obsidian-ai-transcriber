@@ -1,4 +1,4 @@
-import { App, FileSystemAdapter } from 'obsidian';
+import { App, FileSystemAdapter, TFile } from 'obsidian';
 import { VADProcessor, VADResult, VADConfig, VADError, SpeechSegment } from '../VadTypes';
 import { AUDIO_CONSTANTS } from '../../config/constants';
 import { Logger } from '../../utils/Logger';
@@ -128,33 +128,33 @@ export class WebRTCVADProcessor implements VADProcessor {
    * WASMファイルを読み込む
    */
 	private async loadWasmFile(): Promise<ArrayBuffer> {
-		const adapter = this.app.vault.adapter;
-
-		if (!(adapter instanceof FileSystemAdapter)) {
+		const vault = this.app.vault;
+		if (!(vault.adapter instanceof FileSystemAdapter)) {
 			throw new Error('WebRTC VAD requires FileSystemAdapter (desktop version)');
 		}
 
 		// WASMファイルのパスを構築
-		let wasmPath: string | null = null;
+		let wasmFile: TFile | null = null;
 
 		try {
 			const wasmPaths = PathUtils.getWasmFilePathsFromDir(this.pluginDir, 'fvad.wasm');
 
 			// ファイルの存在確認（優先順位順）
 			for (const path of wasmPaths) {
-				if (await adapter.exists(path)) {
-					wasmPath = path;
+				const abstract = vault.getAbstractFileByPath(path);
+				if (abstract instanceof TFile) {
+					wasmFile = abstract;
 					this.logger.debug('WASM file found at:', path);
 					break;
 				}
 			}
 
-			if (!wasmPath) {
+			if (!wasmFile) {
 				throw new Error(`WASM file not found in any of the expected locations: ${wasmPaths.join(', ')}`);
 			}
 
 			// バイナリとして読み込む
-			const wasmBuffer = await adapter.readBinary(wasmPath);
+			const wasmBuffer = await vault.readBinary(wasmFile);
 
 			return wasmBuffer;
 		} catch (error: unknown) {

@@ -1,4 +1,4 @@
-import { Setting, Notice, Platform, App, ButtonComponent } from 'obsidian';
+import { Setting, Notice, Platform, App, ButtonComponent, TFile } from 'obsidian';
 import { APITranscriptionSettings, VADMode } from './ApiSettings';
 import { MODEL_OPTIONS, getModelOption } from './config/ModelOptions';
 import { MODEL_NAMES } from './config/constants';
@@ -244,13 +244,21 @@ export class SettingsUIBuilder {
 							}
 
 							try {
-								const adapter = app.vault.adapter;
 								const pluginDir = PathUtils.getPluginDir(app);
-								if (!(await adapter.exists(pluginDir))) {
-									await adapter.mkdir(pluginDir);
+								const pluginFolder = app.vault.getFolderByPath(pluginDir);
+								if (!pluginFolder) {
+									await app.vault.createFolder(pluginDir);
 								}
+
 								const targetPath = PathUtils.getPluginFilePath(app, 'fvad.wasm');
-								await adapter.writeBinary(targetPath, bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength));
+								const wasmData = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
+
+								const existing = app.vault.getAbstractFileByPath(targetPath);
+								if (existing instanceof TFile) {
+									await app.vault.modifyBinary(existing, wasmData);
+								} else {
+									await app.vault.createBinary(targetPath, wasmData);
+								}
 								new Notice(t('settings.vadMode.installWasm.success'));
 								// Reflect installed state for local mode
 								vadModeSetting.setDesc(this.createVADDescription(t('settings.vadMode.desc'), false, true));
@@ -397,8 +405,8 @@ export class SettingsUIBuilder {
 		const possiblePaths = PathUtils.getWasmFilePaths(app, 'fvad.wasm');
 		for (const path of possiblePaths) {
 			try {
-				const exists = await app.vault.adapter.exists(path);
-				if (exists) {
+				const file = app.vault.getAbstractFileByPath(path);
+				if (file instanceof TFile) {
 					return true;
 				}
 			} catch (error) {
