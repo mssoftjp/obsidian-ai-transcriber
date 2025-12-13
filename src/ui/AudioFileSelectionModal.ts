@@ -381,11 +381,13 @@ export class AudioFileSelectionModal extends Modal {
 class AudioFileSuggest extends AbstractInputSuggest<TFile> {
 	private readonly getFiles: () => TFile[];
 	private readonly onChooseFile: (file: TFile) => void;
+	private readonly inputElRef: HTMLInputElement;
 
 	constructor(app: App, inputEl: HTMLInputElement, getFiles: () => TFile[], onChooseFile: (file: TFile) => void) {
 		super(app, inputEl);
 		this.getFiles = getFiles;
 		this.onChooseFile = onChooseFile;
+		this.inputElRef = inputEl;
 	}
 
 	getSuggestions(query: string): TFile[] {
@@ -413,7 +415,7 @@ class AudioFileSuggest extends AbstractInputSuggest<TFile> {
 	}
 
 	selectSuggestion(file: TFile): void {
-		this.inputEl.value = `${file.basename}.${file.extension}`;
+		this.inputElRef.value = `${file.basename}.${file.extension}`;
 		this.onChooseFile(file);
 		this.close();
 	}
