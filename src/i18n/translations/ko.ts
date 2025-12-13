@@ -195,7 +195,7 @@ const ko: TranslationKeys = {
 	// Commands
 	commands: {
 		transcribeAudio: '오디오 파일 전사 (API)',
-		openPanel: 'AI 전사 패널 열기',
+		openPanel: '전사 패널 열기',
 		contextMenu: 'AI로 전사'
 	},
 

@@ -195,7 +195,7 @@ const en: TranslationKeys = {
 	// Commands
 	commands: {
 		transcribeAudio: 'Transcribe audio file (API)',
-		openPanel: 'Open AI transcriber panel',
+		openPanel: 'Open transcription panel',
 		contextMenu: 'Transcribe with AI'
 	},
 

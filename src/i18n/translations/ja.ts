@@ -195,7 +195,7 @@ const ja: TranslationKeys = {
 	// Commands
 	commands: {
 		transcribeAudio: '音声ファイルを文字起こし (API)',
-		openPanel: 'AI Transcriberパネルを開く',
+		openPanel: '文字起こしパネルを開く',
 		contextMenu: 'AIで文字起こし'
 	},
 

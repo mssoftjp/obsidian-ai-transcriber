@@ -50,24 +50,56 @@ export default class AITranscriberPlugin extends Plugin {
 		});
 		this.logger.info('Plugin loading...');
 
-		// Crypto initialization removed - using BetterEncryptionService directly
-
-		// Clean up temporary files from previous sessions once the workspace layout is ready
-		this.app.workspace.onLayoutReady(async () => {
-			try {
-				const tempFileManager = new TempFileManager(this.app);
-				await tempFileManager.cleanup();
-				this.logger.debug('Temporary files cleaned up');
-			} catch (error) {
-				this.logger.error('Failed to clean up temporary files', error);
-			}
-		});
-
 		// Initialize progress tracking system
 		this.progressTracker = new ProgressTracker(this.stateRepo);
 
 		// Initialize the API transcriber with progress tracker
 		this.transcriber = new APITranscriber(this.app, this.settings, this.progressTracker);
+
+		// Run UI setup after workspace is ready
+		this.app.workspace.onLayoutReady(async () => {
+			await this.handleLayoutReady();
+		});
+
+		// Add command to transcribe selected audio file
+		this.addCommand({
+			id: 'api-transcribe-audio',
+			name: t('commands.transcribeAudio'),
+			callback: () => {
+				void this.transcribeCurrentAudio();
+			}
+		});
+
+		// Add command to open transcription view
+		this.addCommand({
+			id: 'open-transcription-view',
+			name: t('commands.openPanel'),
+			callback: () => {
+				void this.activateTranscriptionView();
+			}
+		});
+
+		// Add settings tab
+		this.addSettingTab(new APISettingsTab(this.app, this));
+
+		this.logger.info('AI Transcriber plugin loaded successfully');
+	}
+
+	onunload(): void {
+		void this.disposePlugin().catch(error => {
+			this.logger.error('Failed to unload AI Transcriber plugin', error);
+		});
+	}
+
+	private async handleLayoutReady(): Promise<void> {
+		// Clean up temporary files from previous sessions
+		try {
+			const tempFileManager = new TempFileManager(this.app);
+			await tempFileManager.cleanup();
+			this.logger.debug('Temporary files cleaned up');
+		} catch (error) {
+			this.logger.error('Failed to clean up temporary files', error);
+		}
 
 		// Register the transcription view
 		try {
@@ -91,24 +123,6 @@ export default class AITranscriberPlugin extends Plugin {
 				void this.activateTranscriptionView();
 			});
 		}
-
-		// Add command to transcribe selected audio file
-		this.addCommand({
-			id: 'api-transcribe-audio',
-			name: t('commands.transcribeAudio'),
-			callback: () => {
-				void this.transcribeCurrentAudio();
-			}
-		});
-
-		// Add command to open transcription view
-		this.addCommand({
-			id: 'open-transcription-view',
-			name: t('commands.openPanel'),
-			callback: () => {
-				void this.activateTranscriptionView();
-			}
-		});
 
 		// Add ribbon icon
 		this.addRibbonIcon('file-audio', t('ribbon.tooltip'), () => {
@@ -135,17 +149,6 @@ export default class AITranscriberPlugin extends Plugin {
 				}
 			})
 		);
-
-		// Add settings tab
-		this.addSettingTab(new APISettingsTab(this.app, this));
-
-		this.logger.info('AI Transcriber plugin loaded successfully');
-	}
-
-	onunload(): void {
-		void this.disposePlugin().catch(error => {
-			this.logger.error('Failed to unload AI Transcriber plugin', error);
-		});
 	}
 
 	private async disposePlugin(): Promise<void> {
