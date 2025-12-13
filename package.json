@@ -1,6 +1,6 @@
 {
   "name": "obsidian-ai-transcriber",
-  "version": "0.9.3",
+  "version": "0.9.4",
   "description": "AI-powered speech-to-text transcription using OpenAI GPT-4o and Whisper APIs",
   "main": "main.js",
   "scripts": {

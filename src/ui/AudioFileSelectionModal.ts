@@ -27,10 +27,15 @@ export class AudioFileSelectionModal extends Modal {
 	}
 
 	private loadAudioFilesFromCache(): void {
-		const cachedFilesGetter = (this.app.metadataCache as { getCachedFiles?: () => string[] }).getCachedFiles;
-		const cachedFiles: unknown = typeof cachedFilesGetter === 'function'
-			? cachedFilesGetter()
+		const metadataCache = this.app.metadataCache as { getCachedFiles?: () => string[]; fileCache?: unknown };
+		const cacheReady = Boolean(metadataCache?.fileCache);
+		const cachedFiles: unknown = cacheReady && typeof metadataCache.getCachedFiles === 'function'
+			? metadataCache.getCachedFiles()
 			: [];
+
+		if (!cacheReady) {
+			this.logger.debug('Metadata cache not ready; falling back to vault.getFiles()');
+		}
 		const cachedPaths = Array.isArray(cachedFiles)
 			? cachedFiles.filter((path): path is string => typeof path === 'string')
 			: [];
@@ -130,6 +135,9 @@ export class AudioFileSelectionModal extends Modal {
 			this.renderFileList();
 		});
 		this.buildSuggest(searchInput);
+		// Prevent auto-focus stealing when the modal opens (especially on ribbon click)
+		this.modalEl.tabIndex = -1;
+		requestAnimationFrame(() => this.modalEl.focus({ preventScroll: true }));
 
 		// Sort dropdown
 		const sortDiv = controlsDiv.createDiv({ cls: 'sort-container' });

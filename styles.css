@@ -1542,7 +1542,7 @@
 
 .ai-transcriber-modal .search-input-container .audio-file-search {
 	width: 100%;
-	padding: 6px 12px;
+	padding: 6px 12px 6px 32px; /* leave room for the search icon */
 	border: 1px solid var(--background-modifier-border);
 	border-radius: var(--ait-radius-sm);
 	background: var(--background-primary);

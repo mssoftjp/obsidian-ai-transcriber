@@ -137,7 +137,12 @@ export class WebRTCVADProcessor implements VADProcessor {
 		let wasmFile: TFile | null = null;
 
 		try {
-			const wasmPaths = PathUtils.getWasmFilePathsFromDir(this.pluginDir, 'fvad.wasm');
+			const wasmPaths = PathUtils.getWasmFilePathsFromDir(
+				this.pluginDir,
+				'fvad.wasm',
+				`${this.app.vault.configDir}/plugins/${PathUtils.getCurrentPluginId()}`,
+				this.app
+			);
 
 			// ファイルの存在確認（優先順位順）
 			for (const path of wasmPaths) {
@@ -146,6 +151,24 @@ export class WebRTCVADProcessor implements VADProcessor {
 					wasmFile = abstract;
 					this.logger.debug('WASM file found at:', path);
 					break;
+				}
+
+				// Fallback: adapter lookup (relative first, then absolute for build/<version>/ releases)
+				const adapter = vault.adapter as FileSystemAdapter & { exists?: (p: string) => Promise<boolean>; readBinary?: (p: string) => Promise<ArrayBuffer> };
+				const normalizedPath = PathUtils.normalizeUserPath(path);
+
+				// First try vault-relative path (required by FileSystemAdapter.exists)
+				if (adapter.exists && await adapter.exists(normalizedPath)) {
+					this.logger.debug('WASM file found via adapter at:', normalizedPath);
+					const buffer = adapter.readBinary ? await adapter.readBinary(normalizedPath) : await vault.adapter.readBinary(normalizedPath);
+					return buffer;
+				}
+
+				const absolutePath = adapter.getFullPath?.(normalizedPath) ?? normalizedPath;
+				if (adapter.exists && await adapter.exists(absolutePath)) {
+					this.logger.debug('WASM file found via adapter at:', absolutePath);
+					const buffer = adapter.readBinary ? await adapter.readBinary(absolutePath) : await vault.adapter.readBinary(path);
+					return buffer;
 				}
 			}
 

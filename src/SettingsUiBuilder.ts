@@ -413,6 +413,13 @@ export class SettingsUIBuilder {
 				this.logger.warn('Error checking fvad.wasm path', { path, error });
 			}
 		}
+
+		// Fallback: check existence via adapter for absolute or normalized paths
+		const adapter = app.vault.adapter as { exists?: (p: string) => Promise<boolean> };
+		if (adapter?.exists) {
+			return adapter.exists(possiblePaths[0]).catch(() => false);
+		}
+
 		return Promise.resolve(false);
 	}
 

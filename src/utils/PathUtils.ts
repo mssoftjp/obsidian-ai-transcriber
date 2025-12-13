@@ -91,15 +91,37 @@ export class PathUtils {
 	 */
 	static getWasmFilePaths(app: App, filename: string, pluginId?: string): string[] {
 		const pluginDir = this.getPluginDir(app, pluginId);
-		return this.getWasmFilePathsFromDir(pluginDir, filename);
+		const configRelativeDir = `${app.vault.configDir}/plugins/${pluginId || this.getCurrentPluginId()}`;
+		return this.getWasmFilePathsFromDir(pluginDir, filename, configRelativeDir, app);
 	}
 
-	static getWasmFilePathsFromDir(pluginDir: string, filename: string): string[] {
+	static getWasmFilePathsFromDir(pluginDir: string, filename: string, configRelativeDir?: string, app?: App): string[] {
 		const base = this.getPluginDirFromManifestDir(pluginDir);
-		return [
+		const version = this.getPluginVersion(app);
+		const candidates = [
 			`${base}/node_modules/@echogarden/fvad-wasm/${filename}`,
-			`${base}/${filename}`
+			`${base}/${filename}`,
+			`${base}/build/${filename}`,
+			version ? `${base}/build/${version}/${filename}` : null
 		];
+
+		if (configRelativeDir) {
+			candidates.push(
+				`${normalizePath(configRelativeDir)}/node_modules/@echogarden/fvad-wasm/${filename}`,
+				`${normalizePath(configRelativeDir)}/${filename}`,
+				`${normalizePath(configRelativeDir)}/build/${filename}`,
+				version ? `${normalizePath(configRelativeDir)}/build/${version}/${filename}` : null
+			);
+		}
+
+		// Remove duplicates while preserving order
+		return Array.from(new Set(candidates.filter(Boolean) as string[]));
+	}
+
+	private static getPluginVersion(app?: App): string | null {
+		if (!app) return null;
+		const manifest = (app as unknown as { plugins?: { manifests?: Record<string, { version?: string }> } }).plugins?.manifests?.[this.getCurrentPluginId()];
+		return manifest?.version || null;
 	}
 
 	/**

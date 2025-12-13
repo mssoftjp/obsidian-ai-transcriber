@@ -242,14 +242,29 @@ export class Logger {
 	}
 
 	private recordLog(level: LogLevel, message: string, data?: unknown): void {
-		if (typeof window === 'undefined') {
-			return;
+		// Keep lightweight in production; only mirror to console when debugMode is on
+		if (this.config.debugMode) {
+			const logFn =
+				level === LogLevel.TRACE || level === LogLevel.DEBUG
+					? console.debug
+					: level === LogLevel.INFO
+						? console.info
+						: console.log;
+			if (data !== undefined) {
+				logFn(message, data);
+			} else {
+				logFn(message);
+			}
 		}
-		const globalObj = window as Window & { __aiTranscriberLogs?: Array<{ level: LogLevel; message: string; data?: unknown }> };
-		if (!globalObj.__aiTranscriberLogs) {
-			globalObj.__aiTranscriberLogs = [];
+
+		// Always buffer logs for in-app inspection
+		if (typeof window !== 'undefined') {
+			const globalObj = window as Window & { __aiTranscriberLogs?: Array<{ level: LogLevel; message: string; data?: unknown }> };
+			if (!globalObj.__aiTranscriberLogs) {
+				globalObj.__aiTranscriberLogs = [];
+			}
+			globalObj.__aiTranscriberLogs.push({ level, message, data });
 		}
-		globalObj.__aiTranscriberLogs.push({ level, message, data });
 	}
 
 	private getTimestamp(): number {

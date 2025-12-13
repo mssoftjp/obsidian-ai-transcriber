@@ -842,8 +842,12 @@ export class APITranscriptionModal extends Modal {
 					formattedTranscription +
 					currentContent.slice(offset);
 
+				// Update editor view
 				editor.setValue(newContent);
 				editor.setCursor(editor.offsetToPos(offset + formattedTranscription.length));
+
+				// Persist to disk immediately to avoid relying on auto-save timing
+				await this.app.vault.modify(createdFile, newContent);
 			} else {
 				await this.app.vault.modify(createdFile, formattedTranscription);
 			}
@@ -910,6 +914,24 @@ export class APITranscriptionModal extends Modal {
 				translationMetadata: translationMeta
 			});
 
+			// Verify that the body actually persisted (some environments drop initial write)
+			try {
+				const savedContent = await this.app.vault.read(createdFile);
+				if (!savedContent || savedContent.trim().length === 0) {
+					this.logger.warn('Transcription body missing after write; reapplying content');
+					await this.app.vault.modify(createdFile, formattedTranscription);
+				}
+			} catch (verifyError) {
+				this.logger.warn('Failed to verify transcription write', { error: verifyError });
+			}
+
+			// Final safeguard: ensure editor view shows the same content if open
+			if (markdownView?.editor) {
+				const current = markdownView.editor.getValue();
+				if (!current || current.trim().length === 0) {
+					markdownView.editor.setValue(formattedTranscription);
+				}
+			}
 
 		} catch (editorError) {
 			this.logger.error('Editor operation failed', editorError);
