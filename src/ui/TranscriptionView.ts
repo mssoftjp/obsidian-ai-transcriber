@@ -1,4 +1,4 @@
-import { ItemView, WorkspaceLeaf, TFile, Notice, Modal, App, CachedMetadata, ButtonComponent } from 'obsidian';
+import { ItemView, WorkspaceLeaf, TFile, Notice, Modal, App, CachedMetadata, ButtonComponent, getLanguage } from 'obsidian';
 import { ProgressTracker, TranscriptionTask } from './ProgressTracker';
 import { t } from '../i18n';
 import { LoadingAnimation } from '../core/utils/LoadingAnimation';
@@ -421,7 +421,7 @@ export class TranscriptionView extends ItemView {
 	 */
 	private handleMissingFile(task: TranscriptionTask): void {
 		const searchQuery = task.transcriptionTimestamp ||
-			new Date(task.endTime || task.startTime).toLocaleString('ja-JP');
+			new Date(task.endTime || task.startTime).toLocaleString(getLanguage());
 
 		new Notice(t('errors.fileNotFound'));
 

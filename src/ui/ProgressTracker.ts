@@ -1,4 +1,4 @@
-import { TFile } from 'obsidian';
+import { TFile, getLanguage } from 'obsidian';
 import { UI_CONSTANTS } from '../config/constants';
 import { Logger } from '../utils/Logger';
 import { PluginStateRepository } from '../infrastructure/storage/PluginStateRepository';
@@ -118,7 +118,7 @@ export class ProgressTracker {
 		this.currentTask.endTime = Date.now();
 		this.currentTask.completedChunks = this.currentTask.totalChunks;
 		// 文字起こし実行日時を記録（ファイル検索用）
-		this.currentTask.transcriptionTimestamp = new Date().toLocaleString('ja-JP');
+		this.currentTask.transcriptionTimestamp = new Date().toLocaleString(getLanguage());
 
 		// プレビュー用に最初の50文字を保存（改行を除去）
 		if (result) {

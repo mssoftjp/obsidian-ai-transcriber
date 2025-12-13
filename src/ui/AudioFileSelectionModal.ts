@@ -1,4 +1,4 @@
-import { App, Modal, TFile, Setting, Notice, ButtonComponent } from 'obsidian';
+import { App, Modal, TFile, Setting, Notice, ButtonComponent, getLanguage, AbstractInputSuggest } from 'obsidian';
 import { SUPPORTED_FORMATS } from '../config/constants';
 import { t } from '../i18n';
 import { TempFileManager } from '../infrastructure/storage/TempFileManager';
@@ -14,6 +14,7 @@ export class AudioFileSelectionModal extends Modal {
 	private onFileSelect: (file: TFile | File, isExternal: boolean) => void;
 	private tempFileManager: TempFileManager;
 	private okButton: ButtonComponent | null = null;
+	private fileSuggest: AudioFileSuggest | null = null;
 	private logger = Logger.getLogger('AudioFileSelectionModal');
 
 	constructor(
@@ -25,16 +26,72 @@ export class AudioFileSelectionModal extends Modal {
 		this.tempFileManager = new TempFileManager(app);
 	}
 
+	private loadAudioFilesFromCache(): void {
+		const cachedFilesGetter = (this.app.metadataCache as { getCachedFiles?: () => string[] }).getCachedFiles;
+		const cachedFiles: unknown = typeof cachedFilesGetter === 'function'
+			? cachedFilesGetter()
+			: [];
+		const cachedPaths = Array.isArray(cachedFiles)
+			? cachedFiles.filter((path): path is string => typeof path === 'string')
+			: [];
+		const allowedExtensions = SUPPORTED_FORMATS.EXTENSIONS.map((ext) => ext.toLowerCase());
+		const audioFiles: TFile[] = [];
+
+		for (const path of cachedPaths) {
+			const abstract = this.app.vault.getAbstractFileByPath(path);
+			if (abstract instanceof TFile && allowedExtensions.includes(abstract.extension.toLowerCase())) {
+				audioFiles.push(abstract);
+			}
+		}
+
+		if (audioFiles.length === 0) {
+			audioFiles.push(
+				...this.app.vault.getFiles().filter((file) =>
+					allowedExtensions.includes(file.extension.toLowerCase())
+				)
+			);
+		}
+
+		this.files = audioFiles;
+	}
+
+	private setSelectedFile(file: TFile): void {
+		this.selectedFile = file;
+		this.okButton?.setDisabled(false);
+	}
+
+	private confirmSelection(file?: TFile, isExternal = false): void {
+		const target = file ?? this.selectedFile;
+		if (!target) {
+			return;
+		}
+		this.setSelectedFile(target);
+		this.onFileSelect(target, isExternal);
+		this.close();
+	}
+
+	private buildSuggest(input: HTMLInputElement): void {
+		this.fileSuggest?.close();
+		this.fileSuggest = new AudioFileSuggest(
+			this.app,
+			input,
+			() => this.files,
+			(file) => {
+				this.searchQuery = file.basename;
+				this.setSelectedFile(file);
+				this.filterFiles();
+				this.renderFileList();
+				this.confirmSelection(file, false);
+			}
+		);
+	}
+
 	onOpen() {
 		const { contentEl } = this;
 		contentEl.empty();
 		this.modalEl.addClass('ai-transcriber-modal');
 
-		// Get all audio files in vault
-		this.files = this.app.vault.getFiles()
-			.filter(file => SUPPORTED_FORMATS.EXTENSIONS.some(format =>
-				file.extension.toLowerCase() === format.toLowerCase()
-			));
+		this.loadAudioFilesFromCache();
 
 		// Debug: Log file count for edge case testing
 		if (this.files.length > 100) {
@@ -72,6 +129,7 @@ export class AudioFileSelectionModal extends Modal {
 			this.filterFiles();
 			this.renderFileList();
 		});
+		this.buildSuggest(searchInput);
 
 		// Sort dropdown
 		const sortDiv = controlsDiv.createDiv({ cls: 'sort-container' });
@@ -138,10 +196,7 @@ export class AudioFileSelectionModal extends Modal {
 			.setButtonText(t('modal.button.ok'))
 			.setCta()
 			.onClick(() => {
-				if (this.selectedFile) {
-					this.onFileSelect(this.selectedFile, false);
-					this.close();
-				}
+				this.confirmSelection();
 			});
 		this.okButton.setDisabled(!this.selectedFile);
 	}
@@ -185,17 +240,12 @@ export class AudioFileSelectionModal extends Modal {
 				tbody.querySelectorAll('tr').forEach(tr => tr.removeClass('selected'));
 				// Add selection to current row
 				row.addClass('selected');
-				this.selectedFile = file;
-
-				// Enable OK button
-				this.okButton?.setDisabled(false);
+				this.setSelectedFile(file);
 			});
 
 			// Double click to select and close
 			row.addEventListener('dblclick', () => {
-				this.selectedFile = file;
-				this.onFileSelect(this.selectedFile, false);
-				this.close();
+				this.confirmSelection(file);
 			});
 
 			// File name cell (with extension)
@@ -203,7 +253,7 @@ export class AudioFileSelectionModal extends Modal {
 
 			// Creation date cell
 			const createdDate = new Date(file.stat.ctime);
-			const dateStr = createdDate.toLocaleDateString(undefined, {
+			const dateStr = createdDate.toLocaleDateString(getLanguage(), {
 				year: 'numeric',
 				month: '2-digit',
 				day: '2-digit',
@@ -266,65 +316,105 @@ export class AudioFileSelectionModal extends Modal {
 
 		input.onchange = async (e) => {
 			const file = (e.target as HTMLInputElement).files?.[0];
-			if (file) {
-				// ファイルサイズチェック
-				const tempFileManager = new TempFileManager(this.app);
-				if (!tempFileManager.checkFileSize(file, 500)) {
-					new Notice(t('errors.fileSizeExceeded'));
-					return;
-				}
+			if (!file) {
+				return;
+			}
 
-				// ディスク容量チェック
-				const spaceCheck = await tempFileManager.estimateAvailableSpace();
-				if (!spaceCheck.available) {
-					new Notice(spaceCheck.message || t('errors.diskSpaceLow', { available: '0' }));
-					return;
-				}
+			if (!this.tempFileManager.checkFileSize(file, 500)) {
+				new Notice(t('errors.fileSizeExceeded'));
+				return;
+			}
 
-				// プログレス表示の準備
-				this.contentEl.empty();
-				const progressContainer = this.contentEl.createDiv({ cls: 'copy-progress-container' });
-				progressContainer.createEl('h3', { text: t('modal.audioFileSelection.copying') });
+			const spaceCheck = await this.tempFileManager.estimateAvailableSpace();
+			if (!spaceCheck.available) {
+				new Notice(spaceCheck.message || t('errors.diskSpaceLow', { available: '0' }));
+				return;
+			}
 
-				const progressBar = progressContainer.createDiv({ cls: 'ai-transcriber-progress-bar' });
-				const progressFill = progressBar.createDiv({ cls: 'ai-transcriber-progress-fill' });
-				const progressText = progressContainer.createDiv({ cls: 'ai-transcriber-progress-text' });
+			this.contentEl.empty();
+			const progressContainer = this.contentEl.createDiv({ cls: 'copy-progress-container' });
+			progressContainer.createEl('h3', { text: t('modal.audioFileSelection.copying') });
 
-				try {
-					// 外部ファイルをvault内に一時コピー
-					const result = await this.tempFileManager.copyExternalFile(file, (progress) => {
-						this.updateProgressFill(progressFill, progress);
-						progressText.setText(`${Math.round(progress)}%`);
-					});
+			const progressBar = progressContainer.createEl('progress', {
+				cls: 'ai-transcriber-progress',
+				attr: { max: '100', value: '0' }
+			});
+			const progressText = progressContainer.createDiv({ cls: 'ai-transcriber-progress-text' });
 
-					// コピー完了後、TFileとして処理
-					this.onFileSelect(result.tFile, true);
-					this.close();
-				} catch (error) {
-					this.logger.error('Failed to copy external file:', error);
-					const errorMessage = error instanceof Error
-						? error.message
-						: typeof error === 'string'
-							? error
-							: 'Unknown error';
-					new Notice(`${t('errors.general')}: ${errorMessage}`);
-					this.close();
-				}
+			try {
+				const result = await this.tempFileManager.copyExternalFile(file, (progress) => {
+					this.updateProgress(progressBar, progress);
+					progressText.setText(`${Math.round(progress)}%`);
+				});
+
+				this.confirmSelection(result.tFile, true);
+			} catch (error) {
+				this.logger.error('Failed to copy external file:', error);
+				const errorMessage = error instanceof Error
+					? error.message
+					: typeof error === 'string'
+						? error
+						: 'Unknown error';
+				new Notice(`${t('errors.general')}: ${errorMessage}`);
+				this.close();
 			}
 		};
 
 		input.click();
 	}
 
-	private updateProgressFill(element: HTMLElement, percentage: number): void {
+	private updateProgress(element: HTMLProgressElement, percentage: number): void {
 		const clamped = Math.max(0, Math.min(percentage, 100));
-		element.style.setProperty('width', `${clamped}%`);
+		element.value = clamped;
 	}
 
 	onClose() {
 		const { contentEl } = this;
 		contentEl.empty();
+		this.fileSuggest?.close();
+		this.fileSuggest = null;
 
 		// クリーンアップはプラグイン起動時に一括で行うため、ここでは何もしない
+	}
+}
+
+class AudioFileSuggest extends AbstractInputSuggest<TFile> {
+	private readonly getFiles: () => TFile[];
+	private readonly onChooseFile: (file: TFile) => void;
+
+	constructor(app: App, inputEl: HTMLInputElement, getFiles: () => TFile[], onChooseFile: (file: TFile) => void) {
+		super(app, inputEl);
+		this.getFiles = getFiles;
+		this.onChooseFile = onChooseFile;
+	}
+
+	getSuggestions(query: string): TFile[] {
+		const files = this.getFiles();
+		const normalized = query.trim().toLowerCase();
+		const candidates = normalized
+			? files.filter((file) =>
+				file.basename.toLowerCase().includes(normalized) ||
+				file.path.toLowerCase().includes(normalized)
+			)
+			: files;
+		return candidates.slice(0, 50);
+	}
+
+	renderSuggestion(file: TFile, el: HTMLElement): void {
+		el.addClass('ai-transcriber-audio-suggest');
+		el.createDiv({
+			text: `${file.basename}.${file.extension}`,
+			cls: 'ai-transcriber-audio-suggest-name'
+		});
+		el.createDiv({
+			text: file.parent?.path || '/',
+			cls: 'ai-transcriber-audio-suggest-path'
+		});
+	}
+
+	selectSuggestion(file: TFile): void {
+		this.inputEl.value = `${file.basename}.${file.extension}`;
+		this.onChooseFile(file);
+		this.close();
 	}
 }

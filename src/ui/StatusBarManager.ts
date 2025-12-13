@@ -1,4 +1,4 @@
-import { App, Plugin } from 'obsidian';
+import { App, Plugin, getLanguage } from 'obsidian';
 import { ProgressTracker, TranscriptionTask } from './ProgressTracker';
 import { t } from '../i18n';
 import { LoadingAnimation } from '../core/utils/LoadingAnimation';
@@ -82,11 +82,6 @@ export class StatusBarManager {
 		this.clickHandler = handler;
 	}
 
-	private updateProgressWidth(element: HTMLElement, percentage: number): void {
-		const clamped = Math.max(0, Math.min(percentage, 100));
-		element.style.setProperty('width', `${clamped}%`);
-	}
-
 	/**
 	 * Update status bar display based on current task
 	 */
@@ -139,14 +134,16 @@ export class StatusBarManager {
 		const percentage = this.progressTracker.getProgressPercentage();
 		const elapsed = this.progressTracker.getElapsedTime();
 
-		const text = this.statusBarItem.createSpan({ cls: 'status-bar-text' });
+		const text = this.statusBarItem.createSpan({ cls: 'ai-transcriber-status-text' });
 		// Use specific "文字起こし中" instead of generic "処理中"
 		text.setText(`${t('statusBar.processing')}${this.loadingAnimation.getLoadingDots()}: ${percentage}% - ${elapsed}`);
 
 		// Progress bar
-		const progressContainer = this.statusBarItem.createSpan({ cls: 'status-bar-progress' });
-		const progressBar = progressContainer.createSpan({ cls: 'status-bar-progress-bar' });
-		this.updateProgressWidth(progressBar, percentage);
+		const progressContainer = this.statusBarItem.createSpan({ cls: 'ai-transcriber-status-progress' });
+		progressContainer.createEl('progress', {
+			cls: 'ait-progress',
+			attr: { max: '100', value: String(percentage) }
+		});
 
 		const fileName = task.inputFileName || '';
 		this.statusBarItem.setAttribute('aria-label', `${t('statusBar.processing')} ${fileName}: ${percentage}%`);
@@ -164,9 +161,9 @@ export class StatusBarManager {
 	private setCompletedState(task: TranscriptionTask): void {
 		// Stop animation when completed
 		this.loadingAnimation.stop();
-		const text = this.statusBarItem.createSpan({ cls: 'status-bar-text' });
+		const text = this.statusBarItem.createSpan({ cls: 'ai-transcriber-status-text' });
 		const charCount = task.result ? task.result.length : 0;
-		text.setText(`${t('statusBar.completed')}: ${charCount.toLocaleString()}`);
+		text.setText(`${t('statusBar.completed')}: ${charCount.toLocaleString(getLanguage())}`);
 
 		const fileName = task.inputFileName || '';
 		this.statusBarItem.setAttribute('aria-label', `${t('statusBar.completed')}: ${fileName}`);
@@ -177,7 +174,7 @@ export class StatusBarManager {
 	private setPartialState(task: TranscriptionTask): void {
 		// Stop animation when partial
 		this.loadingAnimation.stop();
-		const text = this.statusBarItem.createSpan({ cls: 'status-bar-text' });
+		const text = this.statusBarItem.createSpan({ cls: 'ai-transcriber-status-text' });
 		const percentage = Math.round((task.completedChunks / task.totalChunks) * 100);
 		text.setText(`${t('modal.transcription.partialResult')}: ${percentage}%`);
 
@@ -190,7 +187,7 @@ export class StatusBarManager {
 	private setErrorState(task: TranscriptionTask): void {
 		// Stop animation when error
 		this.loadingAnimation.stop();
-		const text = this.statusBarItem.createSpan({ cls: 'status-bar-text' });
+		const text = this.statusBarItem.createSpan({ cls: 'ai-transcriber-status-text' });
 		const fileName = task.inputFileName || '';
 		text.setText(`${t('statusBar.failed')}: ${fileName}`);
 
@@ -202,7 +199,7 @@ export class StatusBarManager {
 	private setCancelledState(task: TranscriptionTask): void {
 		// Stop animation when cancelled
 		this.loadingAnimation.stop();
-		const text = this.statusBarItem.createSpan({ cls: 'status-bar-text' });
+		const text = this.statusBarItem.createSpan({ cls: 'ai-transcriber-status-text' });
 		const fileName = task.inputFileName || '';
 		text.setText(`${t('statusBar.cancelled')}: ${fileName}`);
 

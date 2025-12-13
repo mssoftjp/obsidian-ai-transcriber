@@ -132,28 +132,39 @@
    3.2 Progress Bars (Common Pattern)
    ==================================== */
 /* Base progress bar container */
-.ai-transcriber-progress-bar,
-.ai-transcription-progress-bar,
-.api-transcription-progress-bar,
-.ai-transcriber-progress-wrapper .ai-transcriber-progress-bar,
-.ai-transcriber-modal .copy-progress-container .ai-transcriber-progress-bar {
+.ai-transcriber-progress,
+.ait-progress {
 	width: 100%;
 	height: var(--ait-progress-height);
 	background-color: var(--background-modifier-border);
 	border-radius: var(--ait-radius-sm);
+	appearance: none;
+	border: none;
 	overflow: hidden;
 }
 
-/* Progress fill */
-.ai-transcriber-progress-fill,
-.ai-transcription-progress-fill,
-.api-transcription-progress-fill,
-.ai-transcriber-progress-wrapper .ai-transcriber-progress-fill,
-.ai-transcriber-modal .copy-progress-container .ai-transcriber-progress-fill {
-	height: 100%;
+.ai-transcriber-progress::-webkit-progress-bar,
+.ait-progress::-webkit-progress-bar {
+	background-color: var(--background-modifier-border);
+	border-radius: var(--ait-radius-sm);
+}
+
+.ai-transcriber-progress::-webkit-progress-value,
+.ait-progress::-webkit-progress-value {
 	background-color: var(--interactive-accent);
+	border-radius: var(--ait-radius-sm);
 	transition: width var(--ait-transition-normal);
-	width: 0%; /* Default width, will be overridden by dynamic stylesheet */
+}
+
+.ai-transcriber-progress::-moz-progress-bar,
+.ait-progress::-moz-progress-bar {
+	background-color: var(--interactive-accent);
+	border-radius: var(--ait-radius-sm);
+	transition: width var(--ait-transition-normal);
+}
+
+.ai-transcriber-status-progress .ait-progress {
+	height: var(--ait-status-bar-progress-height);
 }
 
 /* ====================================
@@ -174,21 +185,21 @@
 	opacity: 0.8;
 }
 
-.ai-transcriber-status .status-bar-icon {
+.ai-transcriber-status .ai-transcriber-status-icon {
 	margin-inline-end: var(--ait-spacing-sm);
 	display: inline-flex;
 	align-items: center;
 }
 
-.ai-transcriber-status .status-bar-icon.rotating {
+.ai-transcriber-status .ai-transcriber-status-icon.rotating {
 	animation: rotate var(--ait-animation-spin);
 }
 
-.ai-transcriber-status .status-bar-text {
+.ai-transcriber-status .ai-transcriber-status-text {
 	font-size: var(--font-ui-smaller);
 }
 
-.ai-transcriber-status .status-bar-progress {
+.ai-transcriber-status .ai-transcriber-status-progress {
 	display: inline-block;
 	width: var(--ait-status-bar-progress-width);
 	height: var(--ait-status-bar-progress-height);
@@ -198,7 +209,7 @@
 	overflow: hidden;
 }
 
-.ai-transcriber-status .status-bar-progress-bar {
+.ai-transcriber-status .ai-transcriber-status-progress-bar {
 	display: block;
 	height: 100%;
 	background-color: var(--interactive-accent);
@@ -1541,6 +1552,21 @@
 .ai-transcriber-modal .search-input-container .audio-file-search:focus {
 	border-color: var(--interactive-accent);
 	outline: none;
+}
+
+.ai-transcriber-audio-suggest {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+}
+
+.ai-transcriber-audio-suggest-name {
+	font-weight: var(--ait-font-weight-medium);
+}
+
+.ai-transcriber-audio-suggest-path {
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
 }
 
 .ai-transcriber-modal .sort-container {
