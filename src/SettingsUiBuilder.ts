@@ -401,19 +401,19 @@ export class SettingsUIBuilder {
 			return false;
 		}
 	}
-	private static async checkLocalWasm(app: App): Promise<boolean> {
+	private static checkLocalWasm(app: App): Promise<boolean> {
 		const possiblePaths = PathUtils.getWasmFilePaths(app, 'fvad.wasm');
 		for (const path of possiblePaths) {
 			try {
 				const file = app.vault.getAbstractFileByPath(path);
 				if (file instanceof TFile) {
-					return true;
+					return Promise.resolve(true);
 				}
 			} catch (error) {
 				this.logger.warn('Error checking fvad.wasm path', { path, error });
 			}
 		}
-		return false;
+		return Promise.resolve(false);
 	}
 
 
