@@ -3,7 +3,7 @@
  * Pipelines coordinate multiple cleaners in a specific order
  */
 
-import { TextCleaner, CleaningResult, CleaningContext } from './TextCleaner';
+import type { TextCleaner, CleaningResult, CleaningContext } from './TextCleaner';
 
 export interface PipelineResult {
 	/** Final cleaned text after all cleaners */
@@ -65,20 +65,20 @@ export interface CleaningPipeline {
 	 * @param context - Cleaning context
 	 * @returns Complete pipeline result
 	 */
-	execute(text: string, language: string, context?: CleaningContext): Promise<PipelineResult>;
+	execute: (text: string, language: string, context?: CleaningContext) => Promise<PipelineResult>;
 
 	/**
 	 * Get list of cleaners in execution order
 	 */
-	getCleaners(): TextCleaner[];
+	getCleaners: () => TextCleaner[];
 
 	/**
 	 * Add a cleaner to the pipeline
 	 */
-	addCleaner(cleaner: TextCleaner): void;
+	addCleaner: (cleaner: TextCleaner) => void;
 
 	/**
 	 * Remove a cleaner from the pipeline
 	 */
-	removeCleaner(cleanerName: string): boolean;
+	removeCleaner: (cleanerName: string) => boolean;
 }

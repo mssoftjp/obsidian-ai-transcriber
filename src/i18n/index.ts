@@ -3,8 +3,10 @@
  */
 
 import { getLanguage } from 'obsidian';
-import { TranslationKeys, SupportedLocale } from './locales';
+
 import { Logger } from '../utils/Logger';
+
+import type { TranslationKeys, SupportedLocale } from './locales';
 
 // Translations will be imported here
 let translations: Partial<Record<SupportedLocale, TranslationKeys>> = {};

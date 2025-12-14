@@ -1,8 +1,11 @@
-import { App, Modal, Notice } from 'obsidian';
-import { APITranscriptionSettings, UserDictionary, DictionaryEntry, ContextualCorrection, DictionaryCategory, LanguageDictionaries } from '../ApiSettings';
-import { t } from '../i18n';
+import { Modal, Notice } from 'obsidian';
+
 import { DICTIONARY_CONSTANTS } from '../config/constants';
+import { t } from '../i18n';
 import { Logger } from '../utils/Logger';
+
+import type { APITranscriptionSettings, UserDictionary, DictionaryEntry, ContextualCorrection, DictionaryCategory, LanguageDictionaries } from '../ApiSettings';
+import type { App } from 'obsidian';
 
 // Define minimal interface for plugin to avoid any type
 interface SettingsPlugin {

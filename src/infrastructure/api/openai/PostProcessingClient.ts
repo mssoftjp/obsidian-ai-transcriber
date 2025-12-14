@@ -3,13 +3,14 @@
  * Handles API communication with the configured AI model
  */
 
-import { ApiClient } from '../ApiClient';
-import { APITranscriptionSettings } from '../../../ApiSettings';
 import { buildPostProcessingRequest, POST_PROCESSING_CONFIG } from '../../../config/openai/PostProcessingConfig';
-import { SafeStorageService } from '../../storage/SafeStorageService';
 import { LanguageDetector } from '../../../core/utils/LanguageDetector';
 import { Logger } from '../../../utils/Logger';
-import { OpenAIChatResponse } from './OpenAIChatTypes';
+import { SafeStorageService } from '../../storage/SafeStorageService';
+import { ApiClient } from '../ApiClient';
+
+import type { OpenAIChatResponse } from './OpenAIChatTypes';
+import type { APITranscriptionSettings } from '../../../ApiSettings';
 
 export interface PostProcessingResult {
 	processedText: string;
@@ -47,7 +48,7 @@ export class PostProcessingClient extends ApiClient {
 		const startTime = performance.now();
 		this.logger.debug('Starting post-processing', {
 			textLength: transcription.length,
-			hasContext: !!context,
+			hasContext: Boolean(context),
 			keywordCount: keywords.length
 		});
 

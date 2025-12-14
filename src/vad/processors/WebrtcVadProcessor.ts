@@ -1,9 +1,13 @@
-import { App, FileSystemAdapter, TFile } from 'obsidian';
-import { VADProcessor, VADResult, VADConfig, VADError, SpeechSegment } from '../VadTypes';
+import { FileSystemAdapter, TFile } from 'obsidian';
+
 import { AUDIO_CONSTANTS } from '../../config/constants';
 import { Logger } from '../../utils/Logger';
 import { PathUtils } from '../../utils/PathUtils';
-import { FvadModule, FvadWasmInstance } from '../../types/global';
+import { VADError } from '../VadTypes';
+
+import type { FvadModule, FvadWasmInstance } from '../../types/global';
+import type { VADProcessor, VADResult, VADConfig, SpeechSegment } from '../VadTypes';
+import type { App } from 'obsidian';
 
 /**
  * WebRTC VADプロセッサー
@@ -151,26 +155,24 @@ export class WebRTCVADProcessor implements VADProcessor {
 					wasmFile = abstract;
 					this.logger.debug('WASM file found at:', path);
 					break;
-				}
+					}
 
-				// Fallback: adapter lookup (relative first, then absolute for build/<version>/ releases)
-				const adapter = vault.adapter as FileSystemAdapter & { exists?: (p: string) => Promise<boolean>; readBinary?: (p: string) => Promise<ArrayBuffer> };
-				const normalizedPath = PathUtils.normalizeUserPath(path);
+					// Fallback: adapter lookup (relative first, then absolute for build/<version>/ releases)
+					const adapter = vault.adapter;
+					const normalizedPath = PathUtils.normalizeUserPath(path);
 
-				// First try vault-relative path (required by FileSystemAdapter.exists)
-				if (adapter.exists && await adapter.exists(normalizedPath)) {
-					this.logger.debug('WASM file found via adapter at:', normalizedPath);
-					const buffer = adapter.readBinary ? await adapter.readBinary(normalizedPath) : await vault.adapter.readBinary(normalizedPath);
-					return buffer;
-				}
+					// First try vault-relative path (required by FileSystemAdapter.exists)
+					if (await adapter.exists(normalizedPath)) {
+						this.logger.debug('WASM file found via adapter at:', normalizedPath);
+						return await adapter.readBinary(normalizedPath);
+					}
 
-				const absolutePath = adapter.getFullPath?.(normalizedPath) ?? normalizedPath;
-				if (adapter.exists && await adapter.exists(absolutePath)) {
-					this.logger.debug('WASM file found via adapter at:', absolutePath);
-					const buffer = adapter.readBinary ? await adapter.readBinary(absolutePath) : await vault.adapter.readBinary(path);
-					return buffer;
+					const absolutePath = adapter.getFullPath(normalizedPath);
+					if (await adapter.exists(absolutePath)) {
+						this.logger.debug('WASM file found via adapter at:', absolutePath);
+						return await adapter.readBinary(absolutePath);
+					}
 				}
-			}
 
 			if (!wasmFile) {
 				throw new Error(`WASM file not found in any of the expected locations: ${wasmPaths.join(', ')}`);
@@ -246,11 +248,9 @@ export class WebRTCVADProcessor implements VADProcessor {
 			const index = Math.floor(sourceIndex);
 			const fraction = sourceIndex - index;
 
-			if (index + 1 < audioData.length) {
-				resampled[i] = audioData[index] * (1 - fraction) + audioData[index + 1] * fraction;
-			} else {
-				resampled[i] = audioData[index];
-			}
+			const current = audioData[index] ?? 0;
+			const next = audioData[index + 1] ?? current;
+			resampled[i] = current * (1 - fraction) + next * fraction;
 		}
 
 		return resampled;
@@ -259,16 +259,16 @@ export class WebRTCVADProcessor implements VADProcessor {
 	/**
    * Float32Array を Int16Array に変換
    */
-	protected convertFloat32ToInt16(float32Data: Float32Array): Int16Array {
-		const int16Data = new Int16Array(float32Data.length);
+		protected convertFloat32ToInt16(float32Data: Float32Array): Int16Array {
+			const int16Data = new Int16Array(float32Data.length);
 
-		for (let i = 0; i < float32Data.length; i++) {
-			// クリッピング: -1.0 〜 1.0 の範囲に制限
-			const sample = Math.max(-1, Math.min(1, float32Data[i]));
+			for (let i = 0; i < float32Data.length; i++) {
+				// クリッピング: -1.0 〜 1.0 の範囲に制限
+				const sample = Math.max(-1, Math.min(1, float32Data[i] ?? 0));
 
-			// -32768 〜 32767 にスケーリング
-			int16Data[i] = sample < 0 ? sample * 32768 : sample * 32767;
-		}
+				// -32768 〜 32767 にスケーリング
+				int16Data[i] = sample < 0 ? sample * 32768 : sample * 32767;
+			}
 
 		return int16Data;
 	}
@@ -277,6 +277,13 @@ export class WebRTCVADProcessor implements VADProcessor {
    * 音声セグメントを検出
    */
 	private detectVoiceSegments(int16Data: Int16Array): SpeechSegment[] {
+		const fvadModule = this.fvadModule;
+		const vadInstance = this.vadInstance;
+		const bufferPtr = this.bufferPtr;
+		if (!this.available || !fvadModule || !vadInstance || bufferPtr === null) {
+			throw new VADError('VAD not initialized', 'NOT_INITIALIZED');
+		}
+
 		const segments: SpeechSegment[] = [];
 		let currentSegment: SpeechSegment | null = null;
 
@@ -288,12 +295,12 @@ export class WebRTCVADProcessor implements VADProcessor {
 
 			// フレームデータをWASMメモリにコピー
 			const frame = int16Data.subarray(offset, offset + this.frameSize);
-			this.fvadModule.HEAP16.set(frame, this.bufferPtr >> 1);
+			fvadModule.HEAP16.set(frame, bufferPtr >> 1);
 
 			// VAD処理
-			const isSpeech = this.fvadModule._fvad_process(
-				this.vadInstance,
-				this.bufferPtr,
+			const isSpeech = fvadModule._fvad_process(
+				vadInstance,
+				bufferPtr,
 				this.frameSize
 			);
 
@@ -350,11 +357,18 @@ export class WebRTCVADProcessor implements VADProcessor {
 		const speechPadding = this.config.speechPadding;
 
 		for (let i = 0; i < segments.length; i++) {
-			const segment = { ...segments[i] };
+			const baseSegment = segments[i];
+			if (!baseSegment) {
+				continue;
+			}
+			const segment = { ...baseSegment };
 
 			// 次のセグメントとの間隔をチェック
 			while (i < segments.length - 1) {
 				const nextSegment = segments[i + 1];
+				if (!nextSegment) {
+					break;
+				}
 				const silenceDuration = nextSegment.start - segment.end;
 
 				// 短い無音で分離されたセグメントを結合
@@ -468,14 +482,17 @@ export class WebRTCVADProcessor implements VADProcessor {
 		}
 		if (typeof error === 'string') {
 			return error;
+			}
+			try {
+				const serialized: unknown = JSON.stringify(error);
+				if (typeof serialized === 'string') {
+					return serialized;
+				}
+				return 'Unknown error';
+			} catch {
+				return 'Unknown error';
+			}
 		}
-		try {
-			const serialized = JSON.stringify(error);
-			return serialized ?? 'Unknown error';
-		} catch {
-			return 'Unknown error';
-		}
-	}
 
 	isAvailable(): boolean {
 		return this.available;

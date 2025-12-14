@@ -1,5 +1,7 @@
 import { MODEL_NAMES } from './constants';
-import { TranscriptionModel } from '../ApiSettings';
+
+import type { TranscriptionModel } from '../ApiSettings';
+
 
 export interface ModelOption {
   /**

@@ -1,10 +1,13 @@
-import { App } from 'obsidian';
-import { WebRTCVADProcessor } from './WebrtcVadProcessor';
-import { VADConfig, VADResult, SpeechSegment } from '../VadTypes';
-import { AudioChunk } from '../../core/audio/AudioTypes';
-import { ChunkingConfig } from '../../core/chunking/ChunkingTypes';
+
 import { AUDIO_CONSTANTS } from '../../config/constants';
 import { getModelConfig } from '../../config/ModelProcessingConfig';
+
+import { WebRTCVADProcessor } from './WebrtcVadProcessor';
+
+import type { AudioChunk } from '../../core/audio/AudioTypes';
+import type { ChunkingConfig } from '../../core/chunking/ChunkingTypes';
+import type { VADConfig, VADResult, SpeechSegment } from '../VadTypes';
+import type { App } from 'obsidian';
 
 /**
  * Chunk information during VAD processing
@@ -23,7 +26,6 @@ interface ChunkInfo {
  * Integrates WebRTC VAD with chunk generation in a single pass
  */
 export class VADChunkingProcessor extends WebRTCVADProcessor {
-	private chunkingConfig: ChunkingConfig;
 	private minChunkDuration: number;
 	private maxChunkDuration: number;
 	private preferredChunkDuration: number;
@@ -39,7 +41,6 @@ export class VADChunkingProcessor extends WebRTCVADProcessor {
 		pluginId?: string
 	) {
 		super(app, vadConfig, pluginId);
-		this.chunkingConfig = chunkingConfig;
 
 		// Get model name from chunking config
 		const modelName = chunkingConfig.modelName;
@@ -50,9 +51,6 @@ export class VADChunkingProcessor extends WebRTCVADProcessor {
 
 		// Use model-specific VAD settings (required)
 		const vadChunkingConfig = modelConfig.vadChunking;
-		if (!vadChunkingConfig) {
-			throw new Error(`[VADChunkingProcessor] Model "${modelName}" does not have vadChunking configuration`);
-		}
 
 		// Set chunk duration parameters
 		this.minChunkDuration = vadChunkingConfig.minChunkDuration;
@@ -132,6 +130,13 @@ export class VADChunkingProcessor extends WebRTCVADProcessor {
 		vadSampleRate: number,
 		originalSampleRate: number
 	): { segments: SpeechSegment[]; chunks: AudioChunk[] } {
+		const fvadModule = this.fvadModule;
+		const vadInstance = this.vadInstance;
+		const bufferPtr = this.bufferPtr;
+		if (!this.available || !fvadModule || !vadInstance || bufferPtr === null) {
+			throw new Error('VAD not initialized');
+		}
+
 		const segments: SpeechSegment[] = [];
 		const chunks: AudioChunk[] = [];
 
@@ -152,12 +157,12 @@ export class VADChunkingProcessor extends WebRTCVADProcessor {
 
 			// Copy frame data to WASM memory
 			const frame = int16Data.subarray(offset, offset + this.frameSize);
-			this.fvadModule.HEAP16.set(frame, this.bufferPtr >> 1);
+			fvadModule.HEAP16.set(frame, bufferPtr >> 1);
 
 			// VAD processing
-			const isSpeech = this.fvadModule._fvad_process(
-				this.vadInstance,
-				this.bufferPtr,
+			const isSpeech = fvadModule._fvad_process(
+				vadInstance,
+				bufferPtr,
 				this.frameSize
 			);
 
@@ -186,10 +191,8 @@ export class VADChunkingProcessor extends WebRTCVADProcessor {
 			}
 
 			// Chunk creation logic
-			if (!currentChunk) {
-				// Start new chunk
-				currentChunk = this.createNewChunk(frameTime, frameIndex, lastChunkEndTime);
-			}
+			// Start new chunk (if needed)
+			currentChunk ??= this.createNewChunk(frameTime, frameIndex, lastChunkEndTime);
 
 			// Add frame data to current chunk
 			const originalFrameStart = Math.floor((frameTime * originalSampleRate) / vadSampleRate * originalSampleRate);
@@ -378,13 +381,13 @@ export class VADChunkingProcessor extends WebRTCVADProcessor {
 		writeString(36, 'data');
 		view.setUint32(40, length * 2, true);
 
-		// Convert float32 to int16
-		let offset = 44;
-		for (let i = 0; i < length; i++) {
-			const sample = Math.max(-1, Math.min(1, pcmData[i]));
-			view.setInt16(offset, sample < 0 ? sample * 0x8000 : sample * 0x7FFF, true);
-			offset += 2;
-		}
+			// Convert float32 to int16
+			let offset = 44;
+			for (let i = 0; i < length; i++) {
+				const sample = Math.max(-1, Math.min(1, pcmData[i] ?? 0));
+				view.setInt16(offset, sample < 0 ? sample * 0x8000 : sample * 0x7FFF, true);
+				offset += 2;
+			}
 
 		return arrayBuffer;
 	}

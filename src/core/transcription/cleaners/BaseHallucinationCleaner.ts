@@ -3,15 +3,19 @@
  * Removes common hallucinations and repetitive patterns from transcribed text
  */
 
-import { TextCleaner, CleaningResult, CleaningContext } from './interfaces/TextCleaner';
-import { DictionaryCorrector } from '../DictionaryCorrector';
-import {
+import { Logger } from '../../../utils/Logger';
+
+import { PatternCompiler, META_BRACKET } from './utils/PatternCompiler';
+
+import type { DictionaryCorrector } from '../DictionaryCorrector';
+import type { TextCleaner, CleaningResult, CleaningContext } from './interfaces/TextCleaner';
+import type {
 	ModelCleaningStrategy,
 	HallucinationPatterns,
 	RepetitionThresholds
 } from '../../../config/ModelCleaningConfig';
-import { PatternCompiler, META_BRACKET } from './utils/PatternCompiler';
-import { Logger } from '../../../utils/Logger';
+
+
 
 	export class BaseHallucinationCleaner implements TextCleaner {
 		readonly name = 'BaseHallucinationCleaner';

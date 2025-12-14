@@ -3,7 +3,7 @@
  * Handles the core logic of applying enhancements to transcribed text
  */
 
-import { TranscriptionResult } from './TranscriptionTypes';
+import type { TranscriptionResult } from './TranscriptionTypes';
 
 export interface PostProcessingOptions {
 	/** Apply speaker identification */
@@ -152,10 +152,8 @@ export class PostProcessor {
 		}
 
 		for (let j = 0; j <= str1.length; j++) {
-			if (!matrix[0]) {
-				matrix[0] = [];
-			}
-			matrix[0][j] = j;
+			const firstRow = (matrix[0] ??= []);
+			firstRow[j] = j;
 		}
 
 		for (let i = 1; i <= str2.length; i++) {

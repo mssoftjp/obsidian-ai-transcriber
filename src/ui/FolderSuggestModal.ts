@@ -1,4 +1,6 @@
-import { App, FuzzySuggestModal, TFolder } from 'obsidian';
+import { FuzzySuggestModal } from 'obsidian';
+
+import type { App, TFolder } from 'obsidian';
 
 export class FolderSuggestModal extends FuzzySuggestModal<TFolder> {
 	currentFolder: string;

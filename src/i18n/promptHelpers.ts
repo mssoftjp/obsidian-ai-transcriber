@@ -95,7 +95,7 @@ export function buildMultiPartPrompt(
 	separator = '\n\n'
 ): string {
 	return parts
-		.filter((part): part is string => !!part)
+		.filter((part): part is string => Boolean(part))
 		.join(separator)
 		.trim();
 }

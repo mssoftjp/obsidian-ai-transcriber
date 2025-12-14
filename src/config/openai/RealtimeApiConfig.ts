@@ -121,12 +121,12 @@ export function buildRealtimeSessionConfig(options: {
 
 	// Configure VAD if enabled
 	if (options.enableVAD !== false) { // Default to enabled
-		session.turn_detection = {
-			type: 'server_vad',
-			threshold: options.vadThreshold || config.vadDefaults.threshold,
-			prefix_padding_ms: config.vadDefaults.prefix_padding_ms,
-			silence_duration_ms: config.vadDefaults.silence_duration_ms
-		};
+			session.turn_detection = {
+				type: 'server_vad',
+				threshold: options.vadThreshold ?? config.vadDefaults.threshold,
+				prefix_padding_ms: config.vadDefaults.prefix_padding_ms,
+				silence_duration_ms: config.vadDefaults.silence_duration_ms
+			};
 	} else {
 		session.turn_detection = null;
 	}

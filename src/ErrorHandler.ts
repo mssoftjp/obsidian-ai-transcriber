@@ -1,4 +1,5 @@
 import { Notice } from 'obsidian';
+
 import { UI_CONSTANTS } from './config/constants';
 import { t } from './i18n';
 import { Logger } from './utils/Logger';
@@ -23,10 +24,10 @@ export class ErrorHandler {
 	 */
 	static handleError(error: Error | string, context?: string): UserFriendlyError {
 		const errorMessage = typeof error === 'string' ? error : error.message;
-		const errorName = typeof error === 'string' ? 'Error' : error.name;
+			const errorName = typeof error === 'string' ? 'Error' : error.name;
 
-		// Log the error
-		this.logger.error(`${context || 'Unknown context'}: ${errorMessage}`, error);
+			// Log the error
+			this.logger.error(`${context ?? 'Unknown context'}: ${errorMessage}`, error);
 
 		// API-related errors
 		if (this.isApiError(errorMessage)) {

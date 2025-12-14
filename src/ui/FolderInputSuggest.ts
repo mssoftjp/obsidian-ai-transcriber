@@ -1,4 +1,6 @@
-import { AbstractInputSuggest, App } from 'obsidian';
+import { AbstractInputSuggest } from 'obsidian';
+
+import type { App } from 'obsidian';
 
 /**
  * Folder path typeahead for text inputs.

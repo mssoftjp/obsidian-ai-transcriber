@@ -3,8 +3,9 @@
  * Defines the contract for converting various audio formats to standardized PCM
  */
 
-import { AudioInput, ProcessedAudio, AudioValidationResult, AudioProcessingConfig } from './AudioTypes';
 import { Logger } from '../../utils/Logger';
+
+import type { AudioInput, ProcessedAudio, AudioValidationResult, AudioProcessingConfig } from './AudioTypes';
 
 export abstract class AudioProcessor {
 	protected config: AudioProcessingConfig;
@@ -47,11 +48,11 @@ export abstract class AudioProcessor {
 
 		// 1. Validate input
 		this.logger.debug('Step 1: Validating audio input');
-		const validation = await this.validate(input);
-		if (!validation.isValid) {
-			this.logger.error('Audio validation failed', { error: validation.error });
-			throw new Error(`Audio validation failed: ${validation.error}`);
-		}
+			const validation = await this.validate(input);
+			if (!validation.isValid) {
+				this.logger.error('Audio validation failed', { error: validation.error });
+				throw new Error(`Audio validation failed: ${validation.error ?? 'Unknown error'}`);
+			}
 
 		// 2. Log warnings if any
 		if (validation.warnings && validation.warnings.length > 0) {

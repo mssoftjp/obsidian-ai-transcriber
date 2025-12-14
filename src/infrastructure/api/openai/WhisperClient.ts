@@ -3,22 +3,26 @@
  * Handles Whisper-specific API calls and response parsing
  */
 
-import { ApiClient } from '../ApiClient';
-import { AudioChunk } from '../../../core/audio/AudioTypes';
+import { DEFAULT_REQUEST_CONFIG } from '../../../config/openai/index';
 import {
+	WHISPER_CONFIG,
+	buildWhisperRequest
+} from '../../../config/openai/WhisperConfig';
+import { Logger } from '../../../utils/Logger';
+import { ApiClient } from '../ApiClient';
+
+import type {
+	WhisperTranscriptionParams,
+	WhisperRequestPayload
+} from '../../../config/openai/WhisperConfig';
+import type { AudioChunk } from '../../../core/audio/AudioTypes';
+import type {
 	TranscriptionResult,
 	TranscriptionSegment,
 	TranscriptionOptions,
 	ModelSpecificOptions
 } from '../../../core/transcription/TranscriptionTypes';
-import {
-	WHISPER_CONFIG,
-	buildWhisperRequest,
-	WhisperTranscriptionParams,
-	WhisperRequestPayload
-} from '../../../config/openai/WhisperConfig';
-import { DEFAULT_REQUEST_CONFIG } from '../../../config/openai/index';
-import { Logger } from '../../../utils/Logger';
+
 
 interface WhisperResponse {
 	text: string;
@@ -145,7 +149,7 @@ export class WhisperClient extends ApiClient {
 				chunkId: chunk.id,
 				elapsedTime: `${elapsedTime.toFixed(2)}ms`,
 				textLength: result.text.length,
-				hasSegments: !!result.segments,
+				hasSegments: Boolean(result.segments),
 				segmentsCount: result.segments?.length
 			});
 

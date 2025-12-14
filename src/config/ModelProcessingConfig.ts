@@ -18,8 +18,9 @@
  * - Concurrent processing limits
  * - Processing optimization settings
 */
-import { AUDIO_CONSTANTS } from './constants';
 import { Logger } from '../utils/Logger';
+
+import { AUDIO_CONSTANTS } from './constants';
 
 /**
  * Configuration for a specific AI model's audio processing parameters
@@ -367,10 +368,10 @@ export function getModelConfig(modelName: string): ModelConfig & {
 	// This ensures the context covers the entire overlap period
 	const calculatedContextWindowSize = baseConfig.contextWindowSize > 0
 		? Math.max(
-			baseConfig.contextWindowSize,
-			Math.ceil(baseConfig.vadChunking.overlapDurationSeconds * (baseConfig.merging.estimatedCharsPerSecond || 15))
-		)
-		: baseConfig.contextWindowSize;
+				baseConfig.contextWindowSize,
+				Math.ceil(baseConfig.vadChunking.overlapDurationSeconds * (baseConfig.merging.estimatedCharsPerSecond ?? 15))
+			)
+			: baseConfig.contextWindowSize;
 
 	// Create extended config with calculated values
 	const config = {

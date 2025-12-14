@@ -1,7 +1,9 @@
 import { Setting, Notice } from 'obsidian';
-import { APITranscriber } from './ApiTranscriber';
-import { APITranscriptionSettings } from './ApiSettings';
+
 import { t } from './i18n';
+
+import type { APITranscriptionSettings } from './ApiSettings';
+import type { APITranscriber } from './ApiTranscriber';
 
 export class SettingsConnectionTest {
 	/**

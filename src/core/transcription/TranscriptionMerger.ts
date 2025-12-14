@@ -3,17 +3,20 @@
  * Provides different strategies for combining chunk results
  */
 
-import { TranscriptionResult, TranscriptionSegment } from './TranscriptionTypes';
-import { getModelConfig, ModelConfig } from '../../config/ModelProcessingConfig';
-import { OverlapDebugger } from '../utils/OverlapDebugger';
+import { getModelConfig } from '../../config/ModelProcessingConfig';
+import { Logger } from '../../utils/Logger';
 import { OverlapAnalyzer } from '../utils/OverlapAnalyzer';
+import { OverlapDebugger } from '../utils/OverlapDebugger';
+
 import {
 	buildNGramIndex,
 	findPotentialMatches,
 	getOptimalNGramSize,
 	calculateNormalizedNGramSimilarity
 } from './utils/TextSimilarity';
-import { Logger } from '../../utils/Logger';
+
+import type { TranscriptionResult, TranscriptionSegment } from './TranscriptionTypes';
+import type { ModelConfig } from '../../config/ModelProcessingConfig';
 
 export interface MergeOptions {
 	/** Remove duplicate content from overlaps */
@@ -41,9 +44,6 @@ export class TranscriptionMerger {
 		const modelConfig = getModelConfig(modelName);
 		this.modelConfig = modelConfig;
 		this.mergingConfig = modelConfig.merging;
-		if (!this.mergingConfig) {
-			throw new Error(`[TranscriptionMerger] Model "${modelName}" does not have merging configuration`);
-		}
 
 		const minMatchLength = this.mergingConfig.minMatchLength ?? 20;
 		this.defaultOptions = {
@@ -56,7 +56,7 @@ export class TranscriptionMerger {
 
 		this.logger.debug('TranscriptionMerger initialized', {
 			modelName,
-			fuzzyMatchSimilarity: this.mergingConfig.fuzzyMatchSimilarity || 0.8,
+			fuzzyMatchSimilarity: this.mergingConfig.fuzzyMatchSimilarity ?? 0.8,
 			minMatchLength: this.mergingConfig.minMatchLength,
 			useNGramScreening: this.mergingConfig.useNGramScreening !== false
 		});
@@ -223,7 +223,7 @@ export class TranscriptionMerger {
 		minMatchLength: number
 	): { trimmedText: string; connector: string } {
 		// Get overlap detection settings from config
-		const overlapConfig = this.mergingConfig.overlapDetection || {
+		const overlapConfig = this.mergingConfig.overlapDetection ?? {
 			minOverlapLength: 150,
 			maxOverlapLength: 500,
 			searchRangeInNext: 2000,
@@ -248,7 +248,7 @@ export class TranscriptionMerger {
 			previousText,
 			currentText,
 			overlapDuration,
-			this.mergingConfig.estimatedCharsPerSecond || 15,
+			this.mergingConfig.estimatedCharsPerSecond ?? 15,
 			minMatchLength
 		);
 
@@ -341,18 +341,18 @@ export class TranscriptionMerger {
 			);
 
 			if (similarity >= similarityThreshold) {
-				matches.push({
-					position: pos,
-					length: candidateLength,
-					similarity: similarity
+					matches.push({
+						position: pos,
+						length: candidateLength,
+						similarity: similarity
 				});
 
-				// 次の検索は現在の一致の後から開始（重複を避ける）
-				// Skip forward by a configurable ratio to avoid overlapping matches
-				const skipRatio = this.mergingConfig.overlapDetection?.matchSkipRatio || 0.5;
-				pos += Math.floor(candidateLength * skipRatio);
+					// 次の検索は現在の一致の後から開始（重複を避ける）
+					// Skip forward by a configurable ratio to avoid overlapping matches
+					const skipRatio = this.mergingConfig.overlapDetection?.matchSkipRatio ?? 0.5;
+					pos += Math.floor(candidateLength * skipRatio);
+				}
 			}
-		}
 
 		return matches;
 	}
@@ -435,7 +435,7 @@ export class TranscriptionMerger {
 			: `**処理に失敗した${failures.length}個のチャンク:**`;
 
 		const details = failures.map(f =>
-			`- チャンク ${f.id} (${this.formatTime(f.startTime)} - ${this.formatTime(f.endTime)}): ${f.error}`
+			`- チャンク ${f.id} (${this.formatTime(f.startTime)} - ${this.formatTime(f.endTime)}): ${f.error ?? 'Unknown error'}`
 		).join('\n');
 
 		return `${header}\n${details}`;
@@ -459,7 +459,7 @@ export class TranscriptionMerger {
 
 		// Get duplicate removal settings from config
 		const duplicateRemovalConfig = this.mergingConfig.duplicateRemoval;
-		if (!duplicateRemovalConfig || !duplicateRemovalConfig.enabled) {
+		if (!duplicateRemovalConfig?.enabled) {
 			return text;
 		}
 

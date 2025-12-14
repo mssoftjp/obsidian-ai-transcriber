@@ -1,7 +1,10 @@
-import { TFile, getLanguage } from 'obsidian';
+import { getLanguage } from 'obsidian';
+
 import { UI_CONSTANTS } from '../config/constants';
 import { Logger } from '../utils/Logger';
-import { PluginStateRepository } from '../infrastructure/storage/PluginStateRepository';
+
+import type { PluginStateRepository } from '../infrastructure/storage/PluginStateRepository';
+import type { TFile } from 'obsidian';
 
 export interface TranscriptionTask {
 	id: string;
@@ -80,7 +83,7 @@ export class ProgressTracker {
 	 * Update progress of current task
 	 */
 	updateProgress(taskId: string, completedChunks: number, _message?: string, unifiedPercentage?: number): void {
-		if (!this.currentTask || this.currentTask.id !== taskId) {
+		if (this.currentTask?.id !== taskId) {
 			this.logger.warn(`No active task with ID: ${taskId}`);
 			return;
 		}
@@ -96,7 +99,7 @@ export class ProgressTracker {
 	 * Update total chunks of current task
 	 */
 	updateTotalChunks(taskId: string, totalChunks: number): void {
-		if (!this.currentTask || this.currentTask.id !== taskId) {
+		if (this.currentTask?.id !== taskId) {
 			this.logger.warn(`No active task with ID: ${taskId}`);
 			return;
 		}
@@ -111,7 +114,7 @@ export class ProgressTracker {
 	 * Complete the current task successfully
 	 */
 	completeTask(taskId: string, result: string): void {
-		if (!this.currentTask || this.currentTask.id !== taskId) {
+		if (this.currentTask?.id !== taskId) {
 			this.logger.warn(`No active task with ID: ${taskId}`);
 			return;
 		}
@@ -134,7 +137,7 @@ export class ProgressTracker {
 
 		// Clear current task after a delay
 		setTimeout(() => {
-			if (this.currentTask && this.currentTask.id === taskId) {
+			if (this.currentTask?.id === taskId) {
 				this.currentTask = null;
 				this.notifyListeners();
 			}
@@ -145,7 +148,7 @@ export class ProgressTracker {
 	 * Mark task as partially completed
 	 */
 	partialCompleteTask(taskId: string, result: string, completedChunks: number): void {
-		if (!this.currentTask || this.currentTask.id !== taskId) {
+		if (this.currentTask?.id !== taskId) {
 			this.logger.warn(`No active task with ID: ${taskId}`);
 			return;
 		}
@@ -166,7 +169,7 @@ export class ProgressTracker {
 
 		// Clear current task after a delay
 		setTimeout(() => {
-			if (this.currentTask && this.currentTask.id === taskId) {
+			if (this.currentTask?.id === taskId) {
 				this.currentTask = null;
 				this.notifyListeners();
 			}
@@ -177,7 +180,7 @@ export class ProgressTracker {
 	 * Mark task as failed
 	 */
 	failTask(taskId: string, error: string): void {
-		if (!this.currentTask || this.currentTask.id !== taskId) {
+		if (this.currentTask?.id !== taskId) {
 			this.logger.warn(`No active task with ID: ${taskId}`);
 			return;
 		}
@@ -191,7 +194,7 @@ export class ProgressTracker {
 
 		// Clear current task after a delay
 		setTimeout(() => {
-			if (this.currentTask && this.currentTask.id === taskId) {
+			if (this.currentTask?.id === taskId) {
 				this.currentTask = null;
 				this.notifyListeners();
 			}
@@ -202,7 +205,7 @@ export class ProgressTracker {
 	 * Cancel the current task
 	 */
 	cancelTask(taskId: string): void {
-		if (!this.currentTask || this.currentTask.id !== taskId) {
+		if (this.currentTask?.id !== taskId) {
 			this.logger.warn(`No active task with ID: ${taskId}`);
 			return;
 		}
@@ -221,7 +224,7 @@ export class ProgressTracker {
 	 * Set the output file path for the current task
 	 */
 	setOutputFilePath(taskId: string, filePath: string): void {
-		if (!this.currentTask || this.currentTask.id !== taskId) {
+		if (this.currentTask?.id !== taskId) {
 			this.logger.warn(`No active task with ID: ${taskId}`);
 			return;
 		}
@@ -236,7 +239,7 @@ export class ProgressTracker {
 	 * Update task status without completing it
 	 */
 	updateTaskStatus(taskId: string, status: 'idle' | 'processing' | 'completed' | 'error' | 'partial' | 'cancelled'): void {
-		if (!this.currentTask || this.currentTask.id !== taskId) {
+		if (this.currentTask?.id !== taskId) {
 			this.logger.warn(`No active task with ID: ${taskId}`);
 			return;
 		}

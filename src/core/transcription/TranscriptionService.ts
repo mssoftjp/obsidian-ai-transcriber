@@ -3,25 +3,29 @@
  * Defines the contract that all AI transcription services must implement
  */
 
-import { AudioChunk } from '../audio/AudioTypes';
 import { SUPPORTED_FORMATS } from '../../config/constants';
+import { getModelCleaningStrategy } from '../../config/ModelCleaningConfig';
+import { Logger } from '../../utils/Logger';
+
 import {
+	WhisperCleaningPipeline,
+	GPT4oCleaningPipeline,
+	StandardCleaningPipeline
+} from './cleaners';
+
+import type {
+	CleaningPipeline,
+	CleaningContext
+} from './cleaners';
+import type { DictionaryCorrector } from './DictionaryCorrector';
+import type {
 	TranscriptionResult,
 	TranscriptionOptions,
 	ModelSpecificOptions,
 	TranscriptionRequest,
 	TranscriptionValidation
 } from './TranscriptionTypes';
-import { DictionaryCorrector } from './DictionaryCorrector';
-import {
-	CleaningPipeline,
-	WhisperCleaningPipeline,
-	GPT4oCleaningPipeline,
-	StandardCleaningPipeline,
-	CleaningContext
-} from './cleaners';
-import { getModelCleaningStrategy } from '../../config/ModelCleaningConfig';
-import { Logger } from '../../utils/Logger';
+import type { AudioChunk } from '../audio/AudioTypes';
 
 export abstract class TranscriptionService {
 	/**
@@ -112,8 +116,9 @@ export abstract class TranscriptionService {
 	 */
 	protected getMimeType(extension: string): string {
 		const mimeTypes = SUPPORTED_FORMATS.MIME_TYPES;
-		const key = extension.toLowerCase() as keyof typeof mimeTypes;
-		return mimeTypes[key] || 'audio/mpeg';
+		const key = extension.toLowerCase();
+		const mimeType = (mimeTypes as Record<string, string | undefined>)[key];
+		return mimeType ?? 'audio/mpeg';
 	}
 
 	/**
@@ -127,29 +132,28 @@ export abstract class TranscriptionService {
 		//
 		// CLEANER_DEBUG_END
 
-		switch (strategy.pipelineType) {
-		case 'whisper':
-			this.cleaningPipeline = debugMode
-				? WhisperCleaningPipeline.createWithLogging(this.dictionaryCorrector)
-				: WhisperCleaningPipeline.createDefault(this.dictionaryCorrector);
-			break;
+			switch (strategy.pipelineType) {
+			case 'whisper':
+				this.cleaningPipeline = debugMode
+					? WhisperCleaningPipeline.createWithLogging(this.dictionaryCorrector)
+					: WhisperCleaningPipeline.createDefault(this.dictionaryCorrector);
+				break;
 
-		case 'gpt4o':
-			this.cleaningPipeline = debugMode
-				? GPT4oCleaningPipeline.createWithLogging(this.dictionaryCorrector, this.modelId)
-				: GPT4oCleaningPipeline.createDefault(this.dictionaryCorrector, this.modelId);
-			break;
+			case 'gpt4o':
+				this.cleaningPipeline = debugMode
+					? GPT4oCleaningPipeline.createWithLogging(this.dictionaryCorrector, this.modelId)
+					: GPT4oCleaningPipeline.createDefault(this.dictionaryCorrector, this.modelId);
+				break;
 
-		default:
-			// Fallback to standard pipeline
-			this.cleaningPipeline = new StandardCleaningPipeline({
-				name: 'StandardPipeline',
-				cleaners: [],
-				modelId: this.modelId,
-				enableDetailedLogging: debugMode
-			});
-			break;
-		}
+			case 'standard':
+				this.cleaningPipeline = new StandardCleaningPipeline({
+					name: 'StandardPipeline',
+					cleaners: [],
+					modelId: this.modelId,
+					enableDetailedLogging: debugMode
+				});
+				break;
+			}
 
 		// CLEANER_DEBUG_START - Remove this block after confirming new cleaner system works
 		//
@@ -188,12 +192,6 @@ export abstract class TranscriptionService {
 				...(context ?? {})
 			};
 			const result = await this.cleaningPipeline.execute(text, language, pipelineContext);
-
-			// Validate pipeline result
-			if (!result || typeof result.finalText !== 'string') {
-				this.logger.error(`[${this.modelId}] Invalid pipeline result, falling back to original text`);
-				return text;
-			}
 
 			// Log summary if there were significant changes or issues
 			if (result.metadata.totalIssuesFound > 0 || result.metadata.totalReductionRatio > 0.1) {
@@ -235,14 +233,14 @@ export abstract class TranscriptionService {
 	 * This method should be used during development or when investigating
 	 * text cleaning problems
 	 */
-	public enableCleaningDebugMode(): void {
+	enableCleaningDebugMode(): void {
 		this.setCleaningDebugMode(true);
 	}
 
 	/**
 	 * Disable detailed logging to reduce console noise in production
 	 */
-	public disableCleaningDebugMode(): void {
+	disableCleaningDebugMode(): void {
 		this.setCleaningDebugMode(false);
 	}
 

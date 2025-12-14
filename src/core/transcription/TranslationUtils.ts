@@ -152,7 +152,7 @@ export function getOptimalChunkSize(
 		'gemini-pro': 3000
 	};
 
-	const baseLimit = modelLimits[targetModel] || 3000;
+	const baseLimit = modelLimits[targetModel] ?? 3000;
 
 	// Adjust for language density
 	const languageAdjustments: Record<string, number> = {
@@ -163,7 +163,7 @@ export function getOptimalChunkSize(
 		'auto': 0.9 // Conservative default
 	};
 
-	const adjustment = languageAdjustments[language] || 0.9;
+	const adjustment = languageAdjustments[language] ?? 0.9;
 	return Math.floor(baseLimit * adjustment);
 }
 

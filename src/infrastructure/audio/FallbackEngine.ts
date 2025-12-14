@@ -3,14 +3,15 @@
  * Simple implementation that works with pre-chunked files
  */
 
+import { getModelConfig } from '../../config/ModelProcessingConfig';
 import { AudioProcessor } from '../../core/audio/AudioProcessor';
-import {
+
+import type {
 	AudioInput,
 	ProcessedAudio,
 	AudioValidationResult,
 	AudioProcessingConfig
 } from '../../core/audio/AudioTypes';
-import { getModelConfig } from '../../config/ModelProcessingConfig';
 
 export class FallbackEngine extends AudioProcessor {
 	constructor(config: AudioProcessingConfig) {

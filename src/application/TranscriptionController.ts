@@ -3,43 +3,41 @@
  * Entry point for the refactored transcription system
  */
 
-import { App, TFile, Notice } from 'obsidian';
-import { APITranscriptionSettings, DictionaryEntry, ContextualCorrection, UserDictionary, VADMode } from '../ApiSettings';
-import { t } from '../i18n';
+import { Notice } from 'obsidian';
 
-// Core
-import { AudioPipeline } from '../core/audio/AudioPipeline';
-import { AudioProcessingConfig } from '../core/audio/AudioTypes';
-import { ChunkingConfig } from '../core/chunking/ChunkingTypes';
-import { ChunkingService } from '../core/chunking/ChunkingService';
-import { getModelConfig, getTranscriptionConfig, logAllModelConfigs } from '../config/ModelProcessingConfig';
 import { AUDIO_CONSTANTS } from '../config/constants';
-import { DictionaryCorrector, DictionaryEntry as CorrectionDictionaryEntry } from '../core/transcription/DictionaryCorrector';
-import { GPTDictionaryCorrectionService } from '../infrastructure/api/dictionary/GPTDictionaryCorrectionService';
+import { getModelConfig, getTranscriptionConfig, logAllModelConfigs } from '../config/ModelProcessingConfig';
+import { AudioPipeline } from '../core/audio/AudioPipeline';
 import { ResourceManager } from '../core/resources/ResourceManager';
-
-// Infrastructure
-import { WebAudioEngine } from '../infrastructure/audio/WebAudioEngine';
+import { DictionaryCorrector } from '../core/transcription/DictionaryCorrector';
+import { SimpleProgressCalculator } from '../core/utils/SimpleProgressCalculator';
+import { t } from '../i18n';
+import { GPTDictionaryCorrectionService } from '../infrastructure/api/dictionary/GPTDictionaryCorrectionService';
 import { FallbackEngine } from '../infrastructure/audio/FallbackEngine';
 import { VADChunkingService } from '../infrastructure/audio/VADChunkingService';
 import { WebAudioChunkingService } from '../infrastructure/audio/WebAudioChunkingService';
+import { WebAudioEngine } from '../infrastructure/audio/WebAudioEngine';
 import { SafeStorageService } from '../infrastructure/storage/SafeStorageService';
 import { SecurityUtils } from '../infrastructure/storage/SecurityUtils';
-
-// Application
-import { TranscriptionWorkflow, WorkflowOptions, WorkflowResult } from './workflows/TranscriptionWorkflow';
-import { WhisperTranscriptionService } from './services/WhisperTranscriptionService';
-import { GPT4oTranscriptionService } from './services/GPT4oTranscriptionService';
-import { WhisperTranscriptionStrategy } from './strategies/WhisperTranscriptionStrategy';
-import { GPT4oTranscriptionStrategy } from './strategies/GPT4oTranscriptionStrategy';
-import { TranscriptionProgress } from '../core/transcription/TranscriptionTypes';
-
-// Support
-import { VADPreprocessor } from '../vad/VadPreprocessor';
-import { ProgressTracker } from '../ui/ProgressTracker';
-import { SimpleProgressCalculator } from '../core/utils/SimpleProgressCalculator';
 import { Logger } from '../utils/Logger';
 import { PathUtils } from '../utils/PathUtils';
+import { VADPreprocessor } from '../vad/VadPreprocessor';
+
+import { GPT4oTranscriptionService } from './services/GPT4oTranscriptionService';
+import { WhisperTranscriptionService } from './services/WhisperTranscriptionService';
+import { GPT4oTranscriptionStrategy } from './strategies/GPT4oTranscriptionStrategy';
+import { WhisperTranscriptionStrategy } from './strategies/WhisperTranscriptionStrategy';
+import { TranscriptionWorkflow } from './workflows/TranscriptionWorkflow';
+
+import type { APITranscriptionSettings, ContextualCorrection, DictionaryEntry, UserDictionary, VADMode } from '../ApiSettings';
+import type { AudioProcessingConfig } from '../core/audio/AudioTypes';
+import type { ChunkingService } from '../core/chunking/ChunkingService';
+import type { ChunkingConfig } from '../core/chunking/ChunkingTypes';
+import type { DictionaryEntry as CorrectionDictionaryEntry } from '../core/transcription/DictionaryCorrector';
+import type { TranscriptionProgress } from '../core/transcription/TranscriptionTypes';
+import type { ProgressTracker } from '../ui/ProgressTracker';
+import type { WorkflowOptions, WorkflowResult } from './workflows/TranscriptionWorkflow';
+import type { App, TFile } from 'obsidian';
 
 export class TranscriptionController {
 	private app: App;
@@ -85,35 +83,34 @@ export class TranscriptionController {
 		try {
 			// Load audio file
 			const loadStart = performance.now();
-				let audioBuffer = await this.app.vault.readBinary(audioFile);
-				timings['fileLoad'] = performance.now() - loadStart;
-				this.logger.debug('Audio file loaded', {
-					size: `${(audioBuffer.byteLength / 1024 / 1024).toFixed(2)}MB`,
-					loadTime: `${timings['fileLoad'].toFixed(0)}ms`
-				});
+			let audioBuffer = await this.app.vault.readBinary(audioFile);
+			timings['fileLoad'] = performance.now() - loadStart;
+			this.logger.debug('Audio file loaded', {
+				size: `${(audioBuffer.byteLength / 1024 / 1024).toFixed(2)}MB`,
+				loadTime: `${timings['fileLoad'].toFixed(0)}ms`
+			});
 
 			// Initialize components
 			await this.initialize();
 
 			// Apply VAD preprocessing (always enabled)
 			let vadApplied = false;
-			if (this.vadPreprocessor) {
-				try {
-					const vadStart = performance.now();
-					// const originalSize = audioBuffer.byteLength; // Removed: unused variable
-					// VADPreprocessor.processFile returns ArrayBuffer (processed audio)
+				if (this.vadPreprocessor) {
+					try {
+						const vadStart = performance.now();
+						// const originalSize = audioBuffer.byteLength; // Removed: unused variable
+						// VADPreprocessor.processFile returns ArrayBuffer (processed audio)
 						const processedBuffer = await this.vadPreprocessor.processFile(audioFile, startTime, endTime);
 						timings['vadProcessing'] = performance.now() - vadStart;
 
-					// If VAD processing was successful and modified the audio
-					// Compare byteLength instead of object reference to avoid
-					// false positives when the buffer is re-read from disk
-					if (
-						processedBuffer &&
-                                                processedBuffer.byteLength !== audioBuffer.byteLength
-					) {
-						audioBuffer = processedBuffer;
-						vadApplied = true;
+						// If VAD processing was successful and modified the audio
+						// Compare byteLength instead of object reference to avoid
+						// false positives when the buffer is re-read from disk
+						if (
+							processedBuffer.byteLength !== audioBuffer.byteLength
+						) {
+							audioBuffer = processedBuffer;
+							vadApplied = true;
 						// Note: Detailed statistics are logged inside VADPreprocessor
 					} else {
 						// VAD processing didn't modify the audio, use original
@@ -460,7 +457,7 @@ export class TranscriptionController {
 	/**
 	 * Create dictionary corrector with user dictionary
 	 */
-	private createDictionaryCorrector(): DictionaryCorrector {
+		private createDictionaryCorrector(): DictionaryCorrector {
 		// Get API key for GPT correction
 		// Enable GPT correction if post-processing is enabled
 		const useGPTCorrection = this.settings.postProcessingEnabled;
@@ -469,14 +466,14 @@ export class TranscriptionController {
 			? new GPTDictionaryCorrectionService(this.getApiKey(), resourceManager)
 			: undefined;
 
-		const corrector = new DictionaryCorrector(useGPTCorrection, gptService);
+			const corrector = new DictionaryCorrector(useGPTCorrection, gptService);
 
-		if (!this.settings.userDictionaries || !this.settings.dictionaryCorrectionEnabled) {
-			return corrector;
-		}
+			if (!this.settings.dictionaryCorrectionEnabled) {
+				return corrector;
+			}
 
 		// Get current language setting
-		const currentLanguage = this.settings.language || 'auto';
+			const currentLanguage = this.settings.language;
 
 		if (currentLanguage === 'auto') {
 			// For auto-detect, use all language dictionaries combined
@@ -494,21 +491,21 @@ export class TranscriptionController {
 						...this.settings.userDictionaries.en.definiteCorrections,
 						...this.settings.userDictionaries.zh.definiteCorrections
 					],
-					contextualCorrections: [
-						...(this.settings.userDictionaries.ja.contextualCorrections || []),
-						...(this.settings.userDictionaries.en.contextualCorrections || []),
-						...(this.settings.userDictionaries.zh.contextualCorrections || [])
-					],
-					entries: allEntries
-				};
+						contextualCorrections: [
+							...(this.settings.userDictionaries.ja.contextualCorrections ?? []),
+							...(this.settings.userDictionaries.en.contextualCorrections ?? []),
+							...(this.settings.userDictionaries.zh.contextualCorrections ?? [])
+						],
+						entries: allEntries
+					};
 				corrector.addDictionary(multiDict);
 			}
 		} else if (currentLanguage === 'ja' || currentLanguage === 'en' || currentLanguage === 'zh') {
 			// For specific language, use only that language's dictionary
-			const userDictionary = this.settings.userDictionaries[currentLanguage];
-			const entries = this.convertDictionaryToEntries(userDictionary);
+				const userDictionary = this.settings.userDictionaries[currentLanguage];
+				const entries = this.convertDictionaryToEntries(userDictionary);
 
-			if (entries.length > 0) {
+				if (entries.length > 0) {
 					const langDict = {
 						name: `user-dictionary-${currentLanguage}`,
 						language: currentLanguage,
@@ -520,7 +517,7 @@ export class TranscriptionController {
 					};
 					corrector.addDictionary(langDict);
 				}
-		}
+			}
 
 		return corrector;
 	}
@@ -531,14 +528,14 @@ export class TranscriptionController {
 	private convertDictionaryToEntries(userDictionary: UserDictionary): CorrectionDictionaryEntry[] {
 		const entries: CorrectionDictionaryEntry[] = [];
 
-		// Add definite corrections as rules
-		entries.push(
-			...userDictionary.definiteCorrections
-				.filter((entry: DictionaryEntry) => entry.from && entry.from.length > 0 && entry.to)
-				.flatMap((entry: DictionaryEntry) => {
-					return entry.from.map((pattern: string) => {
-						const mapped: CorrectionDictionaryEntry = {
-							pattern,
+			// Add definite corrections as rules
+			entries.push(
+				...userDictionary.definiteCorrections
+					.filter((entry: DictionaryEntry) => entry.from.length > 0 && entry.to)
+					.flatMap((entry: DictionaryEntry) => {
+						return entry.from.map((pattern: string) => {
+							const mapped: CorrectionDictionaryEntry = {
+								pattern,
 							replacement: entry.to,
 							caseSensitive: false
 						};
@@ -553,14 +550,14 @@ export class TranscriptionController {
 				})
 		);
 
-		// Add contextual corrections as rules with conditions
-		entries.push(
-			...(userDictionary.contextualCorrections ?? [])
-				.filter((entry: ContextualCorrection) => entry.from && entry.from.length > 0 && entry.to)
-				.flatMap((entry: ContextualCorrection) => {
-					return entry.from.map((pattern: string) => {
-						const mapped: CorrectionDictionaryEntry = {
-							pattern,
+			// Add contextual corrections as rules with conditions
+			entries.push(
+				...(userDictionary.contextualCorrections ?? [])
+					.filter((entry: ContextualCorrection) => entry.from.length > 0 && entry.to)
+					.flatMap((entry: ContextualCorrection) => {
+						return entry.from.map((pattern: string) => {
+							const mapped: CorrectionDictionaryEntry = {
+								pattern,
 							replacement: entry.to,
 							caseSensitive: false
 						};
@@ -589,12 +586,10 @@ export class TranscriptionController {
 		const allEntries: CorrectionDictionaryEntry[] = [];
 		const languages: ('ja' | 'en' | 'zh' | 'ko')[] = ['ja', 'en', 'zh', 'ko'];
 
-		for (const lang of languages) {
-			const dict = this.settings.userDictionaries[lang];
-			if (dict) {
+			for (const lang of languages) {
+				const dict = this.settings.userDictionaries[lang];
 				allEntries.push(...this.convertDictionaryToEntries(dict));
 			}
-		}
 
 		return allEntries;
 	}
@@ -609,10 +604,10 @@ export class TranscriptionController {
 		const apiKey = SafeStorageService.decryptFromStore(storedKey);
 
 		// Validate API key format using SecurityUtils
-		const validation = SecurityUtils.validateOpenAIAPIKey(apiKey);
-		if (!validation.valid) {
-			throw new Error(validation.error || 'Invalid API key');
-		}
+			const validation = SecurityUtils.validateOpenAIAPIKey(apiKey);
+			if (!validation.valid) {
+				throw new Error(validation.error ?? 'Invalid API key');
+			}
 
 		return apiKey;
 	}
@@ -653,7 +648,7 @@ export class TranscriptionController {
 				}
 
 				// Calculate unified progress using SimpleProgressCalculator
-				const unifiedPercentage = this.progressCalculator?.transcriptionProgress(completedChunks) || 0;
+				const unifiedPercentage = this.progressCalculator?.transcriptionProgress(completedChunks) ?? 0;
 
 				// Call the actual updateProgress method with the correct parameters
 				this.progressTracker?.updateProgress(currentTask.id, completedChunks, message, unifiedPercentage);
@@ -674,7 +669,7 @@ export class TranscriptionController {
 			abortSignal?: AbortSignal
 		): WorkflowOptions {
 			const options: WorkflowOptions = {
-				language: this.settings.language || 'auto',
+				language: this.settings.language,
 				onProgress: this.createProgressAdapter()
 				// Note: VAD is already applied at the file level before this point
 			};
@@ -704,10 +699,10 @@ export class TranscriptionController {
 				? `${result.strategy.totalChunks} chunks (${result.strategy.chunkDuration}s each)`
 				: 'Single chunk',
 			textLength: result.text.length,
-			charsPerSecond: (result.text.length / result.duration).toFixed(2),
-			partial: result.partial || false
-		});
-	}
+				charsPerSecond: (result.text.length / result.duration).toFixed(2),
+				partial: result.partial ?? false
+			});
+		}
 
 	/**
 	 * Cleanup resources
@@ -779,8 +774,8 @@ export class TranscriptionController {
 		this.audioPipeline = null;
 	}
 
-	private getVadMode(): VADMode {
-		return this.settings.vadMode ?? 'server';
-	}
+		private getVadMode(): VADMode {
+			return this.settings.vadMode;
+		}
 
 }

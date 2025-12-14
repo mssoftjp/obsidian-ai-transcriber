@@ -3,16 +3,18 @@
  * Coordinates the entire transcription process from audio file to final text
  */
 
-import { TFile } from 'obsidian';
-import { AudioInput, AudioChunk } from '../../core/audio/AudioTypes';
-import { AudioPipeline } from '../../core/audio/AudioPipeline';
-import { TranscriptionStrategy } from '../../core/transcription/TranscriptionStrategy';
-import { TranscriptionOptions, TranscriptionProgress } from '../../core/transcription/TranscriptionTypes';
+
 import { SUPPORTED_FORMATS, APP_LIMITS } from '../../config/constants';
-import { ChunkStrategy } from '../../core/chunking/ChunkingTypes';
 import { ResourceManager } from '../../core/resources/ResourceManager';
-import { Logger } from '../../utils/Logger';
 import { t } from '../../i18n';
+import { Logger } from '../../utils/Logger';
+
+import type { AudioPipeline } from '../../core/audio/AudioPipeline';
+import type { AudioInput, AudioChunk } from '../../core/audio/AudioTypes';
+import type { ChunkStrategy } from '../../core/chunking/ChunkingTypes';
+import type { TranscriptionStrategy } from '../../core/transcription/TranscriptionStrategy';
+import type { TranscriptionOptions, TranscriptionProgress } from '../../core/transcription/TranscriptionTypes';
+import type { TFile } from 'obsidian';
 
 export interface WorkflowOptions {
 	startTime?: number;
@@ -128,8 +130,8 @@ export class TranscriptionWorkflow {
 			// Check for cancellation
 			this.checkAborted();
 
-			// Step 3: Prepare transcription options
-			this.logger.debug('Step 3: Preparing transcription options');
+				// Step 3: Prepare transcription options
+				this.logger.debug('Step 3: Preparing transcription options');
 				const transcriptionOptions = this.prepareTranscriptionOptions(options);
 
 			// Step 4: Execute transcription strategy
@@ -138,9 +140,9 @@ export class TranscriptionWorkflow {
 			});
 			const result = await this.strategy.execute(chunks, transcriptionOptions);
 
-			// Step 5: Calculate final statistics
+				// Step 5: Calculate final statistics
 				const duration = (Date.now() - startTime) / 1000;
-				const modelUsed = this.strategy.getModelUsed ? this.strategy.getModelUsed() : undefined;
+				const modelUsed = this.strategy.getModelUsed();
 				const workflowResult: WorkflowResult = {
 					text: result.text,
 					duration,
@@ -149,9 +151,7 @@ export class TranscriptionWorkflow {
 					segments: result.segments ?? []
 				};
 
-				if (modelUsed) {
-					workflowResult.modelUsed = modelUsed;
-				}
+				workflowResult.modelUsed = modelUsed;
 				if (result.partial !== undefined) {
 					workflowResult.partial = result.partial;
 				}
@@ -160,12 +160,12 @@ export class TranscriptionWorkflow {
 				}
 
 			this.logger.info('Transcription workflow completed', {
-				duration: `${duration.toFixed(2)}s`,
-				textLength: result.text.length,
-				chunksProcessed: chunks.length,
-				partial: result.partial || false,
-				modelUsed: workflowResult.modelUsed
-			});
+					duration: `${duration.toFixed(2)}s`,
+					textLength: result.text.length,
+					chunksProcessed: chunks.length,
+					partial: result.partial ?? false,
+					modelUsed: workflowResult.modelUsed
+				});
 
 			return workflowResult;
 
@@ -257,15 +257,11 @@ export class TranscriptionWorkflow {
 		const errors: string[] = [];
 		const warnings: string[] = [];
 
-		// Check file
-		if (!file) {
-			errors.push('No file provided');
-		}
-
-		// Check audio buffer
-		if (!audioBuffer || audioBuffer.byteLength === 0) {
-			errors.push('Empty audio buffer');
-		}
+			// Check file
+			// Check audio buffer
+			if (audioBuffer.byteLength === 0) {
+				errors.push('Empty audio buffer');
+			}
 
 		// Check file size for warning
 		const sizeMB = audioBuffer.byteLength / (1024 * 1024);

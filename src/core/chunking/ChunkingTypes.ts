@@ -3,6 +3,8 @@
  * Defines the data structures for audio chunking strategies
  */
 
+import type { ProcessedAudio } from '../audio/AudioTypes';
+
 /**
  * Chunking strategy configuration
  */
@@ -84,7 +86,7 @@ export interface ChunkingConfig {
 	/** Whether to optimize chunk boundaries at natural breaks */
 	optimizeBoundaries?: boolean;
 	/** Custom boundary detection (e.g., silence, sentence ends) */
-	boundaryDetector?: (audio: import('../audio/AudioTypes').ProcessedAudio) => number[] | Promise<number[]>;
+	boundaryDetector?: (audio: ProcessedAudio) => number[] | Promise<number[]>;
 	/** Model name for model-specific configurations */
 	modelName?: string;
 }

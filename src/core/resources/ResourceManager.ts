@@ -16,7 +16,7 @@ export interface ResourceConfig {
 }
 
 export class ResourceManager {
-	private static instance: ResourceManager;
+	private static instance: ResourceManager | null = null;
 	private audioContexts: Map<string, AudioContext> = new Map();
 	private abortControllers: Map<string, AbortController> = new Map();
 	private cleanupHandlers: Map<string, Array<() => void | Promise<void>>> = new Map();
@@ -32,7 +32,7 @@ export class ResourceManager {
 	 * Get singleton instance
 	 */
 	static getInstance(): ResourceManager {
-		if (!ResourceManager.instance) {
+		if (ResourceManager.instance === null) {
 			ResourceManager.instance = new ResourceManager();
 		}
 		return ResourceManager.instance;
@@ -50,11 +50,12 @@ export class ResourceManager {
 			}
 			// Remove closed context
 			this.audioContexts.delete(id);
-		}
+			}
 
-		// Create new context
-		const context = new (window.AudioContext || (window as WindowWithWebKit).webkitAudioContext)(config);
-		this.audioContexts.set(id, context);
+			// Create new context
+			const AudioContextConstructor = (window as WindowWithWebKit).webkitAudioContext ?? window.AudioContext;
+			const context = new AudioContextConstructor(config);
+			this.audioContexts.set(id, context);
 
 		// Store metadata
 		this.resourceMetadata.set(id, {
@@ -108,14 +109,14 @@ export class ResourceManager {
 	 */
 	cleanupAbortController(id: string): void {
 		const controller = this.abortControllers.get(id);
-		if (controller) {
+			if (controller) {
 
-			// Execute cleanup handlers
-			const handlers = this.cleanupHandlers.get(id) || [];
-			for (const handler of handlers) {
-				try {
-					const result = handler();
-					if (result instanceof Promise) {
+				// Execute cleanup handlers
+				const handlers = this.cleanupHandlers.get(id) ?? [];
+				for (const handler of handlers) {
+					try {
+						const result = handler();
+						if (result instanceof Promise) {
 						// Handle async cleanup without blocking
 						result.catch(error => {
 							this.logger.error(`Error in async cleanup handler for ${id}`, error);

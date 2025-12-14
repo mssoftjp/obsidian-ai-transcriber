@@ -3,9 +3,10 @@
  * Applies domain-specific corrections after transcription
  */
 
-import { DictionaryEntry as UserDictionaryEntry, ContextualCorrection, DictionaryCategory } from '../../ApiSettings';
 import { DICTIONARY_CONSTANTS } from '../../config/constants';
 import { Logger } from '../../utils/Logger';
+
+import type { DictionaryEntry as UserDictionaryEntry, ContextualCorrection, DictionaryCategory } from '../../ApiSettings';
 
 // Extended type for internal use
 interface ExtendedDictionaryEntry {
@@ -51,7 +52,7 @@ export interface CorrectionDictionary {
  * GPT correction service interface
  */
 export interface IGPTCorrectionService {
-	correctWithGPT(text: string, language: string, hints: string[]): Promise<string>;
+	correctWithGPT: (text: string, language: string, hints: string[]) => Promise<string>;
 }
 
 export class DictionaryCorrector {
@@ -249,7 +250,7 @@ function getTopCorrections(
 ): (UserDictionaryEntry | ContextualCorrection)[] {
 	const defaultPriority = 3; // TODO: Use DICTIONARY_CORRECTION_CONFIG.defaultPriority
 	return corrections
-		.sort((a, b) => (b.priority || defaultPriority) - (a.priority || defaultPriority))
+		.sort((a, b) => (b.priority ?? defaultPriority) - (a.priority ?? defaultPriority))
 		.slice(0, limit);
 }
 
@@ -277,10 +278,8 @@ function buildCompactCorrectionPrompt(
 	// Group by category
 	const grouped = corrections.reduce((acc, correction) => {
 		const category = correction.category || 'other';
-		if (!acc[category]) {
-			acc[category] = [];
-		}
-		acc[category].push(`${correction.from}→${correction.to}`);
+		const items = (acc[category] ??= []);
+		items.push(`${correction.from}→${correction.to}`);
 		return acc;
 	}, {} as Record<string, string[]>);
 

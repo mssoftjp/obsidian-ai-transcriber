@@ -3,7 +3,8 @@
  */
 
 import { Logger } from '../../utils/Logger';
-import { ModelConfig } from '../../config/ModelProcessingConfig';
+
+import type { ModelConfig } from '../../config/ModelProcessingConfig';
 
 export class OverlapAnalyzer {
 	private static logger = Logger.getLogger('OverlapAnalyzer');

@@ -6,40 +6,40 @@
 // Electron interfaces
 export interface ElectronMain {
 	safeStorage?: {
-		isEncryptionAvailable(): boolean;
-		encryptString(plainText: string): Buffer;
-		decryptString(encrypted: Buffer): string;
+		isEncryptionAvailable: () => boolean;
+		encryptString: (plainText: string) => Buffer;
+		decryptString: (encrypted: Buffer) => string;
 	};
 }
 
 export interface ElectronRemote {
 	safeStorage?: {
-		isEncryptionAvailable(): boolean;
-		encryptString(plainText: string): Buffer;
-		decryptString(encrypted: Buffer): string;
+		isEncryptionAvailable: () => boolean;
+		encryptString: (plainText: string) => Buffer;
+		decryptString: (encrypted: Buffer) => string;
 	};
 }
 
 export interface ElectronRenderer {
 	safeStorage?: {
-		isEncryptionAvailable(): boolean;
-		encryptString(plainText: string): Buffer;
-		decryptString(encrypted: Buffer): string;
+		isEncryptionAvailable: () => boolean;
+		encryptString: (plainText: string) => Buffer;
+		decryptString: (encrypted: Buffer) => string;
 	};
 	remote?: ElectronRemote;
 }
 
 // Browser API extensions
 export interface WakeLockSentinel {
-	release(): Promise<void>;
+	release: () => Promise<void>;
 	type: 'screen';
 	released: boolean;
-	addEventListener(type: 'release', listener: () => void): void;
-	removeEventListener(type: 'release', listener: () => void): void;
+	addEventListener: (type: 'release', listener: () => void) => void;
+	removeEventListener: (type: 'release', listener: () => void) => void;
 }
 
 export interface WakeLockAPI {
-	request(type: 'screen'): Promise<WakeLockSentinel>;
+	request: (type: 'screen') => Promise<WakeLockSentinel>;
 }
 
 // Window extensions - avoid extending Window directly to prevent circular references
@@ -74,11 +74,11 @@ export interface ObsidianPlugins {
 }
 
 export interface ObsidianInternalPlugin {
-	getPluginById(id: string): unknown;
+	getPluginById: (id: string) => unknown;
 }
 
 export interface ObsidianInternalPlugins {
-	getPluginById(id: string): unknown;
+	getPluginById: (id: string) => unknown;
 }
 
 export interface ObsidianApp {
@@ -90,17 +90,17 @@ export interface ObsidianApp {
 // Module import types
 export interface FvadWasmInstance {
 	HEAP16: Int16Array;
-	_malloc(size: number): number;
-	_free(ptr: number): void;
-	_fvad_new(): number;
-	_fvad_set_sample_rate(instance: number, sampleRate: number): number;
-	_fvad_set_mode(instance: number, mode: number): number;
-	_fvad_process(instance: number, bufferPtr: number, length: number): number;
-	_fvad_free(instance: number): void;
+	_malloc: (size: number) => number;
+	_free: (ptr: number) => void;
+	_fvad_new: () => number;
+	_fvad_set_sample_rate: (instance: number, sampleRate: number) => number;
+	_fvad_set_mode: (instance: number, mode: number) => number;
+	_fvad_process: (instance: number, bufferPtr: number, length: number) => number;
+	_fvad_free: (instance: number) => void;
 }
 
 export interface FvadModule {
-	default(options?: Record<string, unknown>): Promise<FvadWasmInstance>;
+	default: (options?: Record<string, unknown>) => Promise<FvadWasmInstance>;
 }
 
 // Type assertions for common casts

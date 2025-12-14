@@ -1,4 +1,5 @@
 import { Notice, requestUrl } from 'obsidian';
+
 import { t } from '../../i18n';
 import { Logger } from '../../utils/Logger';
 

@@ -1,12 +1,15 @@
-import { App, PluginSettingTab, Setting, Notice, ToggleComponent, TextComponent } from 'obsidian';
+import { PluginSettingTab, Setting, Notice } from 'obsidian';
+
+import { BUY_ME_A_COFFEE_DEFAULT_BUTTON } from './assets/supportImages';
 import { t } from './i18n';
 import { SettingsUIBuilder } from './SettingsUiBuilder';
-import { FolderSuggestModal } from './ui/FolderSuggestModal';
 import { DictionaryManagementModal } from './ui/DictionaryManagementModal';
-import AITranscriberPlugin from './main-api';
-import { BUY_ME_A_COFFEE_DEFAULT_BUTTON } from './assets/supportImages';
 import { FolderInputSuggest } from './ui/FolderInputSuggest';
+import { FolderSuggestModal } from './ui/FolderSuggestModal';
 import { PathUtils } from './utils/PathUtils';
+
+import type AITranscriberPlugin from './main-api';
+import type { App, ToggleComponent, TextComponent } from 'obsidian';
 
 export class APISettingsTab extends PluginSettingTab {
 	plugin: AITranscriberPlugin;
@@ -120,20 +123,24 @@ export class APISettingsTab extends PluginSettingTab {
 					});
 			});
 
-		// Output folder setting with typeahead suggestions
-		let outputFolderText: TextComponent | null = null;
-		let outputFolderInput: HTMLInputElement | null = null;
-		new Setting(containerEl)
-			.setName(t('settings.outputFolder.name'))
-			.setDesc(t('settings.outputFolder.desc'))
-			.addText(text => {
-				outputFolderText = text;
-				outputFolderInput = text.inputEl;
-				return text
-					.setPlaceholder(t('settings.outputFolder.placeholder'))
-					.setValue(PathUtils.normalizeUserPath(this.plugin.settings.transcriptionOutputFolder))
-					.onChange(async (value) => {
-						this.plugin.settings.transcriptionOutputFolder = PathUtils.normalizeUserPath(value);
+			// Output folder setting with typeahead suggestions
+			let outputFolderText: TextComponent | null = null;
+			new Setting(containerEl)
+				.setName(t('settings.outputFolder.name'))
+				.setDesc(t('settings.outputFolder.desc'))
+				.addText(text => {
+					outputFolderText = text;
+					new FolderInputSuggest(this.app, text.inputEl, (folderPath) => {
+						const normalized = PathUtils.normalizeUserPath(folderPath);
+						this.plugin.settings.transcriptionOutputFolder = normalized;
+						void this.plugin.saveSettings();
+						text.setValue(normalized);
+					});
+					return text
+						.setPlaceholder(t('settings.outputFolder.placeholder'))
+						.setValue(PathUtils.normalizeUserPath(this.plugin.settings.transcriptionOutputFolder))
+						.onChange(async (value) => {
+							this.plugin.settings.transcriptionOutputFolder = PathUtils.normalizeUserPath(value);
 						await this.plugin.saveSettings();
 					});
 			})
@@ -150,21 +157,12 @@ export class APISettingsTab extends PluginSettingTab {
 						outputFolderText?.setValue(normalizedFolder);
 					};
 					modal.open();
-				}));
+					}));
 
-		if (outputFolderInput) {
-			new FolderInputSuggest(this.app, outputFolderInput, (folderPath) => {
-				const normalized = PathUtils.normalizeUserPath(folderPath);
-				this.plugin.settings.transcriptionOutputFolder = normalized;
-				void this.plugin.saveSettings();
-				outputFolderText?.setValue(normalized);
-			});
-		}
-
-		// Advanced settings
-		SettingsUIBuilder.displayAdvancedSettings(containerEl, this.plugin.settings, async () => {
-			await this.plugin.saveSettings();
-		}, () => this.display());
+			// Advanced settings
+			SettingsUIBuilder.displayAdvancedSettings(containerEl, this.plugin.settings, async () => {
+				await this.plugin.saveSettings();
+			}, () => this.display());
 
 		// Dictionary management button
 		const dictionarySetting = new Setting(containerEl)

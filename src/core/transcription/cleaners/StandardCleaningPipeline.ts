@@ -3,14 +3,15 @@
  * Executes multiple text cleaners in sequence with error handling and monitoring
  */
 
-import {
+import { Logger } from '../../../utils/Logger';
+
+import type {
 	CleaningPipeline,
 	PipelineResult,
 	CleaningStageResult,
 	PipelineConfig
 } from './interfaces/CleaningPipeline';
-import { TextCleaner, CleaningContext } from './interfaces/TextCleaner';
-import { Logger } from '../../../utils/Logger';
+import type { TextCleaner, CleaningContext } from './interfaces/TextCleaner';
 
 	export class StandardCleaningPipeline implements CleaningPipeline {
 		readonly name: string;

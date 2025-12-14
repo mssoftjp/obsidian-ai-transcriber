@@ -3,6 +3,8 @@
  * Defines the common data structures for transcription results and options
  */
 
+import type { AudioChunk } from '../audio/AudioTypes';
+
 /**
  * Transcription result from any AI model
  */
@@ -89,7 +91,7 @@ export interface ModelSpecificOptions {
  */
 export interface TranscriptionRequest {
 	/** Audio chunk to transcribe */
-	chunk: import('../audio/AudioTypes').AudioChunk;
+	chunk: AudioChunk;
 	/** Common transcription options */
 	options: TranscriptionOptions;
 	/** Model-specific options */

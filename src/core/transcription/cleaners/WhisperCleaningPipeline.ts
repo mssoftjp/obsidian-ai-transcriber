@@ -3,12 +3,16 @@
  * Optimized for Whisper transcription output which typically has fewer prompt contamination issues
  */
 
-import { StandardCleaningPipeline } from './StandardCleaningPipeline';
-import { BaseHallucinationCleaner } from './BaseHallucinationCleaner';
-import { JapaneseTextValidator, JapaneseValidationConfig } from './JapaneseTextValidator';
-import { DictionaryCorrector } from '../DictionaryCorrector';
-import { PipelineConfig } from './interfaces/CleaningPipeline';
 import { getModelCleaningStrategy } from '../../../config/ModelCleaningConfig';
+
+import { BaseHallucinationCleaner } from './BaseHallucinationCleaner';
+import { JapaneseTextValidator } from './JapaneseTextValidator';
+import { StandardCleaningPipeline } from './StandardCleaningPipeline';
+
+import type { JapaneseValidationConfig } from './JapaneseTextValidator';
+import type { DictionaryCorrector } from '../DictionaryCorrector';
+import type { PipelineConfig } from './interfaces/CleaningPipeline';
+
 
 export class WhisperCleaningPipeline extends StandardCleaningPipeline {
 

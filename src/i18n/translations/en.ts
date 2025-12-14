@@ -2,7 +2,7 @@
  * English translations
  */
 
-import { TranslationKeys } from '../locales';
+import type { TranslationKeys } from '../locales';
 
 const en: TranslationKeys = {
 	// Plugin info

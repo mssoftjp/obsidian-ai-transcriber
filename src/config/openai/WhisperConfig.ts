@@ -135,7 +135,7 @@ export function buildWhisperRequest(
 	}
 
 	// Include prompt if provided
-	if (params.prompt && params.prompt.trim()) {
+	if (params.prompt?.trim()) {
 		result.prompt = params.prompt;
 	}
 

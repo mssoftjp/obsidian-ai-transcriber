@@ -1,30 +1,34 @@
-import { App, Modal, Notice, TFile, TFolder, MarkdownView, Platform, Setting, getLanguage, TextComponent, ButtonComponent, normalizePath } from 'obsidian';
-import { APITranscriber } from '../ApiTranscriber';
-import { APITranscriptionSettings } from '../ApiSettings';
-import { MODEL_OPTIONS, getModelOption } from '../config/ModelOptions';
-import { ErrorHandler } from '../ErrorHandler';
-import { ProgressTracker } from './ProgressTracker';
-import { SimpleProgressCalculator } from '../core/utils/SimpleProgressCalculator';
-import { LoadingAnimation } from '../core/utils/LoadingAnimation';
-import { AudioWaveformSelector } from './AudioWaveformSelector';
-import { PostProcessingModal } from './PostProcessingModal';
-import { DictionaryManagementModal } from './DictionaryManagementModal';
+import { Modal, Notice, TFolder, MarkdownView, Platform, Setting, getLanguage, ButtonComponent, normalizePath } from 'obsidian';
+
 import { PostProcessingService } from '../application/services/PostProcessingService';
-import { TranscriptionMetaInfo } from '../core/transcription/TranscriptionTypes';
-import { createTranslationMetadata } from '../core/transcription/TranslationUtils';
-import { t } from '../i18n';
-import { ObsidianApp, isNavigatorWithWakeLock, WakeLockSentinel } from '../types/global';
 import { FileTypeUtils } from '../config/constants';
+import { MODEL_OPTIONS, getModelOption } from '../config/ModelOptions';
+import { createTranslationMetadata } from '../core/transcription/TranslationUtils';
+import { LoadingAnimation } from '../core/utils/LoadingAnimation';
+import { SimpleProgressCalculator } from '../core/utils/SimpleProgressCalculator';
+import { ErrorHandler } from '../ErrorHandler';
+import { t } from '../i18n';
+import { isNavigatorWithWakeLock } from '../types/global';
 import { Logger } from '../utils/Logger';
 import { PathUtils } from '../utils/PathUtils';
+
+import { AudioWaveformSelector } from './AudioWaveformSelector';
+import { DictionaryManagementModal } from './DictionaryManagementModal';
 import { FolderInputSuggest } from './FolderInputSuggest';
+import { PostProcessingModal } from './PostProcessingModal';
+
+import type { ProgressTracker } from './ProgressTracker';
+import type { APITranscriptionSettings } from '../ApiSettings';
+import type { APITranscriber } from '../ApiTranscriber';
+import type { TranscriptionMetaInfo } from '../core/transcription/TranscriptionTypes';
+import type { ObsidianApp, WakeLockSentinel } from '../types/global';
+import type { App, TFile, TextComponent } from 'obsidian';
 
 export class APITranscriptionModal extends Modal {
 	private transcriber: APITranscriber;
 	private audioFile: TFile;
 	private settings: APITranscriptionSettings;
 	private isTranscribing = false;
-	private originalView: MarkdownView | null;
 	private costEl!: HTMLElement;
 	private timeRangeEl!: HTMLElement;
 	private startTimeInput!: HTMLInputElement;
@@ -61,13 +65,10 @@ export class APITranscriptionModal extends Modal {
 		this.progressTracker = progressTracker || null;
 		this.loadingAnimation = new LoadingAnimation();
 		this.logger = Logger.getLogger('APITranscriptionModal');
-		this.logger.debug('APITranscriptionModal created', {
-			fileName: audioFile.name,
-			model: settings.model
-		});
-
-		// Store the current active view if it's a markdown view
-		this.originalView = this.app.workspace.getActiveViewOfType(MarkdownView);
+			this.logger.debug('APITranscriptionModal created', {
+				fileName: audioFile.name,
+				model: settings.model
+			});
 	}
 
 	override onOpen() {
@@ -80,11 +81,12 @@ export class APITranscriptionModal extends Modal {
 		this.progressCalculator = new SimpleProgressCalculator(this.settings.postProcessingEnabled);
 
 		// Register progress listener
-		if (this.progressTracker) {
-			this.progressListenerUnsubscribe = this.progressTracker.addListener((task) => {
-				if (task && task.status === 'processing') {
+		const progressTracker = this.progressTracker;
+		if (progressTracker) {
+			this.progressListenerUnsubscribe = progressTracker.addListener((task) => {
+				if (task?.status === 'processing') {
 					// Use unified percentage from progress tracker
-					const percentage = this.progressTracker.getProgressPercentage();
+					const percentage = progressTracker.getProgressPercentage();
 					this.updateProgress(percentage);
 				}
 			});
@@ -215,34 +217,6 @@ export class APITranscriptionModal extends Modal {
 			.setButtonText(t('modal.transcription.startButton'))
 			.setCta()
 			.onClick(() => this.startTranscription());
-	}
-
-	private openMetaInfoModal(): void {
-		const modal = new PostProcessingModal(
-			this.app,
-			'', // No transcription yet, just collecting meta info
-			this.settings,
-			(metaInfo) => {
-				// Only update if metaInfo is not undefined (undefined means cancel)
-				if (metaInfo !== undefined) {
-					this.metaInfo = metaInfo;
-				}
-
-				// Update button text to show info was entered
-				if (this.metaInfoBtn) {
-					if (this.metaInfo && this.metaInfo.rawContent) {
-						const filledText = t('modal.transcription.metaInfoButtonFilled');
-						this.metaInfoBtn.textContent = filledText;
-						this.metaInfoBtn.addClass('has-info');
-					} else {
-						const normalText = t('modal.transcription.metaInfoButton');
-						this.metaInfoBtn.textContent = normalText;
-						this.metaInfoBtn.removeClass('has-info');
-					}
-				}
-			}
-		);
-		modal.open();
 	}
 
 	private async displayCostEstimate() {
@@ -619,7 +593,7 @@ export class APITranscriptionModal extends Modal {
 		await this.insertTranscription(transcription, modelUsed);
 
 		// Only update to 100% if post-processing is not happening (it will be updated in insertTranscription)
-		const shouldShowCompletionNotice = !this.settings.postProcessingEnabled || !this.metaInfo || !this.metaInfo.enablePostProcessing;
+		const shouldShowCompletionNotice = !this.settings.postProcessingEnabled || !this.metaInfo?.enablePostProcessing;
 
 		if (shouldShowCompletionNotice) {
 			const charCount = transcription.length.toString();
@@ -1038,8 +1012,6 @@ export class APITranscriptionModal extends Modal {
 		return new Promise(resolve => setTimeout(resolve, ms));
 	}
 
-	private currentStatus = '';
-
 	private updateStatus(_status: string) {
 		// Status display removed from modal
 	}
@@ -1110,10 +1082,12 @@ export class APITranscriptionModal extends Modal {
 
 		// Output folder - same pattern as settings tab
 		let folderTextComponent: TextComponent | null = null;
+		let folderInputEl: HTMLInputElement | null = null;
 		new Setting(optionsSection)
 			.setName(t('modal.transcription.processingOptions.outputFolder'))
 			.addText(text => {
 				folderTextComponent = text;
+				folderInputEl = text.inputEl;
 				return text
 					.setPlaceholder(t('settings.outputFolder.placeholder'))
 					.setValue(this.getNormalizedOutputFolder())
@@ -1134,11 +1108,10 @@ export class APITranscriptionModal extends Modal {
 						folderTextComponent?.setValue(normalizedFolderPath);
 					};
 					modal.open();
-				}));
+					}));
 
-		const folderInput = folderTextComponent?.inputEl;
-		if (folderInput) {
-			new FolderInputSuggest(this.app, folderInput, (folderPath) => {
+		if (folderInputEl) {
+			new FolderInputSuggest(this.app, folderInputEl, (folderPath) => {
 				const normalizedFolderPath = PathUtils.normalizeUserPath(folderPath);
 				void updateOutputFolder(normalizedFolderPath);
 				folderTextComponent?.setValue(normalizedFolderPath);
@@ -1185,7 +1158,14 @@ export class APITranscriptionModal extends Modal {
 		dictSetting.addButton(button => button
 			.setButtonText(t('settings.dictionary.openManager'))
 			.onClick(() => {
-				const modal = new DictionaryManagementModal(this.app, this.settings, null);
+				const pluginAdapter = {
+					saveSettings: async () => {
+						if (this.saveSettings) {
+							await this.saveSettings();
+						}
+					}
+				};
+				const modal = new DictionaryManagementModal(this.app, this.settings, pluginAdapter);
 				modal.open();
 			}));
 
@@ -1507,23 +1487,29 @@ export class APITranscriptionModal extends Modal {
 		return input;
 	}
 
-	private getNextTimeInput(current: HTMLInputElement): HTMLInputElement | null {
-		const inputs = [
-			this.startHourInput, this.startMinInput, this.startSecInput,
-			this.endHourInput, this.endMinInput, this.endSecInput
-		];
-		const currentIndex = inputs.indexOf(current);
-		return currentIndex >= 0 && currentIndex < inputs.length - 1 ? inputs[currentIndex + 1] : null;
-	}
+		private getNextTimeInput(current: HTMLInputElement): HTMLInputElement | null {
+			const inputs = [
+				this.startHourInput, this.startMinInput, this.startSecInput,
+				this.endHourInput, this.endMinInput, this.endSecInput
+			];
+			const currentIndex = inputs.indexOf(current);
+			if (currentIndex >= 0 && currentIndex < inputs.length - 1) {
+				return inputs[currentIndex + 1] ?? null;
+			}
+			return null;
+		}
 
-	private getPrevTimeInput(current: HTMLInputElement): HTMLInputElement | null {
+		private getPrevTimeInput(current: HTMLInputElement): HTMLInputElement | null {
 		const inputs = [
 			this.startHourInput, this.startMinInput, this.startSecInput,
 			this.endHourInput, this.endMinInput, this.endSecInput
-		];
-		const currentIndex = inputs.indexOf(current);
-		return currentIndex > 0 ? inputs[currentIndex - 1] : null;
-	}
+			];
+			const currentIndex = inputs.indexOf(current);
+			if (currentIndex > 0) {
+				return inputs[currentIndex - 1] ?? null;
+			}
+			return null;
+		}
 
 	private updateTimeFromFields() {
 		// Update start time
@@ -1594,10 +1580,11 @@ export class APITranscriptionModal extends Modal {
 
 		// Handle colon-separated format
 		const parts = timeStr.split(':').filter(p => p.length > 0);
+		const [part0, part1, part2] = parts;
 
 		if (parts.length === 1) {
 			// Single number - intelligent parsing
-			const num = parseFloat(parts[0]) || 0;
+			const num = parseFloat(part0 ?? '0') || 0;
 			if (num >= 100) {
 				// Treat large numbers as MMSS format
 				// e.g., 130 = 1:30, 1045 = 10:45
@@ -1612,14 +1599,14 @@ export class APITranscriptionModal extends Modal {
 			return num;
 		} else if (parts.length === 2) {
 			// Minutes:seconds
-			const minutes = parseInt(parts[0]) || 0;
-			const seconds = Math.min(parseFloat(parts[1]) || 0, 59); // Cap at 59
+			const minutes = parseInt(part0 ?? '0') || 0;
+			const seconds = Math.min(parseFloat(part1 ?? '0') || 0, 59); // Cap at 59
 			return minutes * 60 + seconds;
 		} else if (parts.length === 3) {
 			// Hours:minutes:seconds
-			const hours = parseInt(parts[0]) || 0;
-			const minutes = Math.min(parseInt(parts[1]) || 0, 59); // Cap at 59
-			const seconds = Math.min(parseFloat(parts[2]) || 0, 59); // Cap at 59
+			const hours = parseInt(part0 ?? '0') || 0;
+			const minutes = Math.min(parseInt(part1 ?? '0') || 0, 59); // Cap at 59
+			const seconds = Math.min(parseFloat(part2 ?? '0') || 0, 59); // Cap at 59
 			return hours * 3600 + minutes * 60 + seconds;
 		}
 

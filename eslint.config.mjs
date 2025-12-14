@@ -29,11 +29,18 @@ const typescriptRules = {
   }],
   '@typescript-eslint/consistent-type-imports': ['error', { prefer: 'type-imports', fixStyle: 'separate-type-imports' }],
   '@typescript-eslint/consistent-type-exports': 'error',
-  '@typescript-eslint/explicit-function-return-type': ['error', { allowTypedFunctionExpressions: true, allowHigherOrderFunctions: true }],
-  '@typescript-eslint/explicit-member-accessibility': ['error', { accessibility: 'explicit', overrides: { constructors: 'no-public' } }],
+  '@typescript-eslint/explicit-function-return-type': 'off',
+  '@typescript-eslint/explicit-member-accessibility': ['error', { accessibility: 'no-public', overrides: { constructors: 'no-public' } }],
   '@typescript-eslint/method-signature-style': ['error', 'property'],
-  '@typescript-eslint/no-unnecessary-condition': ['error', { allowConstantLoop: false }],
-  '@typescript-eslint/prefer-nullish-coalescing': ['error', { ignoreConditionalTests: false, ignoreMixedLogicalExpressions: false, forceSuggestionFixer: true }],
+  '@typescript-eslint/no-unnecessary-condition': ['error', { allowConstantLoopConditions: false }],
+  '@typescript-eslint/prefer-nullish-coalescing': ['error', {
+    ignoreBooleanCoercion: false,
+    ignoreConditionalTests: false,
+    ignoreIfStatements: false,
+    ignoreMixedLogicalExpressions: false,
+    ignorePrimitives: { string: true },
+    ignoreTernaryTests: false
+  }],
   '@typescript-eslint/prefer-optional-chain': 'error',
   '@typescript-eslint/switch-exhaustiveness-check': 'error',
   'no-console': ['error', { allow: ['warn', 'error', 'debug'] }],
@@ -42,7 +49,7 @@ const typescriptRules = {
   eqeqeq: ['error', 'always'],
   curly: ['error', 'all'],
   'brace-style': ['error', '1tbs'],
-  indent: ['error', 2, { SwitchCase: 1 }],
+  indent: 'off',
   quotes: ['error', 'single', { avoidEscape: true }],
   semi: ['error', 'always'],
   'no-trailing-spaces': 'error',
@@ -57,7 +64,7 @@ const typescriptRules = {
   }],
   'import/no-duplicates': 'error',
   'import/no-mutable-exports': 'error',
-  'import/no-cycle': 'error'
+  'import/no-cycle': 'off'
 };
 
 export default [

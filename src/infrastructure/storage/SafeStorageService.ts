@@ -1,6 +1,9 @@
 import { Platform } from 'obsidian';
+
+import { isElectronWindow } from '../../types/global';
 import { Logger } from '../../utils/Logger';
-import { ElectronRenderer, isElectronWindow } from '../../types/global';
+
+import type { ElectronRenderer } from '../../types/global';
 
 const PREFIX = 'SAFE_V1::';
 const LEGACY_XOR = 'XOR_V1::';

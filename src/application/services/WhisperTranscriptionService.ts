@@ -3,10 +3,14 @@
  * Bridges the core TranscriptionService interface with Whisper API client
  */
 
+import { getModelConfig } from '../../config/ModelProcessingConfig';
 import { TranscriptionService } from '../../core/transcription/TranscriptionService';
 import { WhisperClient } from '../../infrastructure/api/openai/WhisperClient';
-import { AudioChunk } from '../../core/audio/AudioTypes';
-import {
+import { Logger } from '../../utils/Logger';
+
+import type { AudioChunk } from '../../core/audio/AudioTypes';
+import type { DictionaryCorrector } from '../../core/transcription/DictionaryCorrector';
+import type {
 	TranscriptionResult,
 	TranscriptionOptions,
 	ModelSpecificOptions,
@@ -14,9 +18,7 @@ import {
 	TranscriptionValidation,
 	TranscriptionSegment
 } from '../../core/transcription/TranscriptionTypes';
-import { getModelConfig } from '../../config/ModelProcessingConfig';
-import { DictionaryCorrector } from '../../core/transcription/DictionaryCorrector';
-import { Logger } from '../../utils/Logger';
+
 
 export class WhisperTranscriptionService extends TranscriptionService {
 	readonly modelId: string;
@@ -193,12 +195,12 @@ export class WhisperTranscriptionService extends TranscriptionService {
 		// Use the new cleaning pipeline for main text
 		const cleanedText = await this.cleanText(
 			result.text,
-			result.language || 'auto',
-			{
-				audioDuration: result.endTime - result.startTime,
-				isContinuation: result.id !== undefined && result.id > 0
-			}
-		);
+				result.language || 'auto',
+				{
+					audioDuration: result.endTime - result.startTime,
+					isContinuation: result.id > 0
+				}
+			);
 
 		// Clean up segments if present (also use the new pipeline)
 		if (result.segments) {

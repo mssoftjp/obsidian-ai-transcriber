@@ -1,7 +1,10 @@
-import { Plugin } from 'obsidian';
-import { APITranscriptionSettings, DEFAULT_API_SETTINGS, LanguageDictionaries, UserDictionary, DictionaryEntry, ContextualCorrection } from '../../ApiSettings';
-import type { TranscriptionTask } from '../../ui/ProgressTracker';
+
+import { DEFAULT_API_SETTINGS } from '../../ApiSettings';
 import { UI_CONSTANTS } from '../../config/constants';
+
+import type { APITranscriptionSettings, LanguageDictionaries, UserDictionary, DictionaryEntry, ContextualCorrection } from '../../ApiSettings';
+import type { TranscriptionTask } from '../../ui/ProgressTracker';
+import type { Plugin } from 'obsidian';
 
 type StoredSettings = Omit<APITranscriptionSettings, 'userDictionaries'>;
 type LegacyDictionaryEntry = Omit<DictionaryEntry, 'from'> & { from: string | string[] };

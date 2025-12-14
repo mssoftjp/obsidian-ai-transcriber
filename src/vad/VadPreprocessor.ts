@@ -1,14 +1,18 @@
-import { App, TFile, Notice } from 'obsidian';
-import {
+import { Notice } from 'obsidian';
+
+import { getTranscriptionConfig } from '../config/ModelProcessingConfig';
+import { t } from '../i18n';
+import { Logger } from '../utils/Logger';
+
+import { WebRTCVADProcessor } from './processors/WebrtcVadProcessor';
+import { AudioConverter } from './utils/AudioConverter';
+
+import type {
 	VADConfig,
 	VADProcessor,
 	VADResult
 } from './VadTypes';
-import { WebRTCVADProcessor } from './processors/WebrtcVadProcessor';
-import { AudioConverter } from './utils/AudioConverter';
-import { getTranscriptionConfig } from '../config/ModelProcessingConfig';
-import { t } from '../i18n';
-import { Logger } from '../utils/Logger';
+import type { App, TFile } from 'obsidian';
 
 /**
  * VADプリプロセッサー
@@ -133,20 +137,21 @@ export class VADPreprocessor {
 			fallbackMode: this.fallbackMode
 		});
 
-		let audioBuffer: ArrayBuffer;
+		let audioBuffer: ArrayBuffer | null = null;
 
 		try {
 			// キャッシュからファイルを読み込み（重複読み込みを避ける）
 			audioBuffer = await this.getCachedAudioBuffer(audioFile);
 
-			const useServerFallback = this.fallbackMode === 'server_vad';
+			let useServerFallback = this.fallbackMode === 'server_vad';
 
 			// プロセッサーが未初期化の場合、初期化を試みる
 			if (this.config.enabled && !this.processor && !useServerFallback) {
 				await this.initialize();
+				useServerFallback = this.fallbackMode === 'server_vad';
 
 				// 初期化が失敗した場合は、エラーをスロー
-				if (!this.processor && this.fallbackMode !== 'server_vad') {
+				if (!this.processor && !useServerFallback) {
 					this.logger.error('Failed to initialize VAD processor');
 					throw new Error(t('notices.vadInitError'));
 				}
@@ -170,10 +175,10 @@ export class VADPreprocessor {
 			let actualRangeEnd = audioData.length / sampleRate;
 			let rangeApplied = false;
 
-			if (rangeStart !== null && rangeStart !== undefined || rangeEnd !== null && rangeEnd !== undefined) {
-				const totalDuration = audioData.length / sampleRate;
-				actualRangeStart = rangeStart || 0;
-				actualRangeEnd = rangeEnd || totalDuration;
+				if (rangeStart !== null && rangeStart !== undefined || rangeEnd !== null && rangeEnd !== undefined) {
+					const totalDuration = audioData.length / sampleRate;
+					actualRangeStart = rangeStart ?? 0;
+					actualRangeEnd = rangeEnd ?? totalDuration;
 
 				// 範囲をサンプル数に変換
 				const startSample = Math.floor(actualRangeStart * sampleRate);
@@ -237,7 +242,7 @@ export class VADPreprocessor {
 			}
 
 			// フォールバック時は元のバッファを返す
-			return audioBuffer || new ArrayBuffer(0);
+			return audioBuffer ?? new ArrayBuffer(0);
 		}
 	}
 
@@ -273,11 +278,10 @@ export class VADPreprocessor {
 	/**
    * プロセッサーを作成
    */
-	private async createProcessor(): Promise<VADProcessor | null> {
-		const { processor } = this.config;
+		private async createProcessor(): Promise<VADProcessor | null> {
+			const { processor } = this.config;
 
-		// WebRTC VADを最優先（高精度、軽量、実績あり）
-		if (processor === 'webrtc' || processor === 'auto') {
+			// WebRTC VADを最優先（高精度、軽量、実績あり）
 			try {
 				const webrtcProcessor = new WebRTCVADProcessor(this.app, this.config);
 				await webrtcProcessor.initialize();
@@ -294,7 +298,6 @@ export class VADPreprocessor {
 					return null;
 				}
 			}
-		}
 
 		if (this.fallbackMode === 'server_vad') {
 			return null;
@@ -320,9 +323,10 @@ export class VADPreprocessor {
 		const cacheKey = `${audioFile.path}_${audioFile.stat.mtime}`;
 
 		// キャッシュにある場合は返す
-		if (this.audioBufferCache.has(cacheKey)) {
+		const cached = this.audioBufferCache.get(cacheKey);
+		if (cached) {
 			this.logger.trace('Audio buffer found in cache', { fileName: audioFile.name });
-			return this.audioBufferCache.get(cacheKey);
+			return cached;
 		}
 
 		// ファイルを読み込み
@@ -362,7 +366,7 @@ export class VADPreprocessor {
 
 		// 範囲情報を表示
 		if (rangeStart !== undefined && rangeEnd !== undefined) {
-			logData.range = `${rangeStart}s - ${rangeEnd}s`;
+			logData['range'] = `${rangeStart}s - ${rangeEnd}s`;
 		}
 
 		this.logger.debug('VAD Statistics', logData);

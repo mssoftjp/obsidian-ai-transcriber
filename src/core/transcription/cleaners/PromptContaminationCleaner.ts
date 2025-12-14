@@ -3,14 +3,19 @@
  * Removes system prompts and context markers that leak into GPT-4o transcription output
  */
 
-import { TextCleaner, CleaningResult, CleaningContext } from './interfaces/TextCleaner';
 import {
-	getModelCleaningStrategy,
+	getModelCleaningStrategy
+} from '../../../config/ModelCleaningConfig';
+import { Logger } from '../../../utils/Logger';
+
+import { PatternCompiler, GENERIC_XML_TAG } from './utils/PatternCompiler';
+
+import type { TextCleaner, CleaningResult, CleaningContext } from './interfaces/TextCleaner';
+import type {
 	ModelCleaningStrategy,
 	ContaminationPatterns
 } from '../../../config/ModelCleaningConfig';
-import { PatternCompiler, GENERIC_XML_TAG } from './utils/PatternCompiler';
-import { Logger } from '../../../utils/Logger';
+
 
 type XmlPatternGroupName = 'completeXmlTags' | 'sentenceBoundedTags' | 'lineBoundedTags' | 'standaloneTags';
 
@@ -99,7 +104,7 @@ export class PromptContaminationCleaner implements TextCleaner {
 		// Compile XML patterns
 		if (patterns.xmlPatternGroups) {
 			for (const [group, patternStrings] of Object.entries(patterns.xmlPatternGroups)) {
-				if ((group as string) in this.xmlPatternGroups) {
+				if ((group) in this.xmlPatternGroups) {
 					const key = group as XmlPatternGroupName;
 					this.xmlPatternGroups[key] = PatternCompiler.compileMany(patternStrings);
 				}

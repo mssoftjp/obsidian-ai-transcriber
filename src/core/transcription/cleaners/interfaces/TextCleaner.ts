@@ -36,7 +36,7 @@ export interface TextCleaner {
 	 * @param context - Optional context for cleaning decisions
 	 * @returns Cleaning result with cleaned text and metadata
 	 */
-	clean(text: string, language: string, context?: CleaningContext): Promise<CleaningResult> | CleaningResult;
+	clean: (text: string, language: string, context?: CleaningContext) => Promise<CleaningResult> | CleaningResult;
 }
 
 /**

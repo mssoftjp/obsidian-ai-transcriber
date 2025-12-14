@@ -3,19 +3,21 @@
  * Bridges the core TranscriptionService interface with GPT-4o API client
  */
 
+import { getModelConfig } from '../../config/ModelProcessingConfig';
 import { TranscriptionService } from '../../core/transcription/TranscriptionService';
 import { GPT4oClient } from '../../infrastructure/api/openai/GPT4oClient';
-import { AudioChunk } from '../../core/audio/AudioTypes';
-import {
+import { Logger } from '../../utils/Logger';
+
+import type { AudioChunk } from '../../core/audio/AudioTypes';
+import type { DictionaryCorrector } from '../../core/transcription/DictionaryCorrector';
+import type {
 	TranscriptionResult,
 	TranscriptionOptions,
 	ModelSpecificOptions,
 	TranscriptionRequest,
 	TranscriptionValidation
 } from '../../core/transcription/TranscriptionTypes';
-import { getModelConfig } from '../../config/ModelProcessingConfig';
-import { DictionaryCorrector } from '../../core/transcription/DictionaryCorrector';
-import { Logger } from '../../utils/Logger';
+
 
 export class GPT4oTranscriptionService extends TranscriptionService {
 	readonly modelId: string;
@@ -195,12 +197,12 @@ export class GPT4oTranscriptionService extends TranscriptionService {
 			return result;
 		}
 
-		// Use the new cleaning pipeline
-		const cleanedText = await this.cleanText(result.text, result.language || 'auto', {
-			audioDuration: result.endTime - result.startTime,
-			isContinuation: result.id !== undefined && result.id > 0,
-			originalPrompt: 'GPT-4o transcription prompt' // Could be made more specific
-		});
+			// Use the new cleaning pipeline
+			const cleanedText = await this.cleanText(result.text, result.language || 'auto', {
+				audioDuration: result.endTime - result.startTime,
+				isContinuation: result.id > 0,
+				originalPrompt: 'GPT-4o transcription prompt' // Could be made more specific
+			});
 
 		// CLEANER_DEBUG_START - Remove this block after confirming new cleaner system works
 		// CLEANER_DEBUG_END

@@ -3,13 +3,17 @@
  * Uses WebRTC VAD to create chunks at natural speech boundaries
  */
 
+import { Notice } from 'obsidian';
+
 import { ChunkingService } from '../../core/chunking/ChunkingService';
-import { ProcessedAudio, AudioChunk } from '../../core/audio/AudioTypes';
-import { ChunkStrategy, ChunkingConfig } from '../../core/chunking/ChunkingTypes';
-import { VADChunkingProcessor } from '../../vad/processors/VadChunkingProcessor';
-import { VADConfig } from '../../vad/VadTypes';
-import { App, Notice } from 'obsidian';
 import { t } from '../../i18n';
+import { VADChunkingProcessor } from '../../vad/processors/VadChunkingProcessor';
+
+
+import type { ProcessedAudio, AudioChunk } from '../../core/audio/AudioTypes';
+import type { ChunkStrategy, ChunkingConfig } from '../../core/chunking/ChunkingTypes';
+import type { VADConfig } from '../../vad/VadTypes';
+import type { App } from 'obsidian';
 
 export class VADChunkingService extends ChunkingService {
 	private vadProcessor: VADChunkingProcessor | null = null;

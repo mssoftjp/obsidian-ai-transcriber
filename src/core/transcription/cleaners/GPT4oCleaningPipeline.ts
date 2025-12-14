@@ -3,13 +3,17 @@
  * Handles GPT-4o's unique issues including prompt contamination and XML-style context tags
  */
 
-import { StandardCleaningPipeline } from './StandardCleaningPipeline';
-import { PromptContaminationCleaner } from './PromptContaminationCleaner';
-import { BaseHallucinationCleaner } from './BaseHallucinationCleaner';
-import { JapaneseTextValidator, JapaneseValidationConfig } from './JapaneseTextValidator';
-import { DictionaryCorrector } from '../DictionaryCorrector';
-import { PipelineConfig } from './interfaces/CleaningPipeline';
 import { getModelCleaningStrategy } from '../../../config/ModelCleaningConfig';
+
+import { BaseHallucinationCleaner } from './BaseHallucinationCleaner';
+import { JapaneseTextValidator } from './JapaneseTextValidator';
+import { PromptContaminationCleaner } from './PromptContaminationCleaner';
+import { StandardCleaningPipeline } from './StandardCleaningPipeline';
+
+import type { JapaneseValidationConfig } from './JapaneseTextValidator';
+import type { DictionaryCorrector } from '../DictionaryCorrector';
+import type { PipelineConfig } from './interfaces/CleaningPipeline';
+
 
 export interface GPT4oPipelineOptions {
 	/** Model ID for configuration lookup */

@@ -3,14 +3,16 @@
  * Implements parallel processing with timestamp-based merging
  */
 
-import { TranscriptionStrategy } from '../../core/transcription/TranscriptionStrategy';
-import { TranscriptionService } from '../../core/transcription/TranscriptionService';
-import { TranscriptionMerger } from '../../core/transcription/TranscriptionMerger';
-import { AudioChunk } from '../../core/audio/AudioTypes';
-import { TranscriptionResult, TranscriptionOptions, TranscriptionProgress } from '../../core/transcription/TranscriptionTypes';
 import { getModelConfig } from '../../config/ModelProcessingConfig';
-import { Logger } from '../../utils/Logger';
+import { TranscriptionMerger } from '../../core/transcription/TranscriptionMerger';
+import { TranscriptionStrategy } from '../../core/transcription/TranscriptionStrategy';
 import { t } from '../../i18n';
+import { Logger } from '../../utils/Logger';
+
+import type { AudioChunk } from '../../core/audio/AudioTypes';
+import type { TranscriptionService } from '../../core/transcription/TranscriptionService';
+import type { TranscriptionResult, TranscriptionOptions, TranscriptionProgress } from '../../core/transcription/TranscriptionTypes';
+
 
 export class WhisperTranscriptionStrategy extends TranscriptionStrategy {
 	readonly strategyName = 'Whisper Parallel Processing';
@@ -152,18 +154,18 @@ export class WhisperTranscriptionStrategy extends TranscriptionStrategy {
 					useTimestamps: true
 				});
 			}
-		} else {
-			// Get model-specific merge config
-			const modelConfig = getModelConfig(this.transcriptionService.modelId);
-			const mergeConfig = modelConfig.merging || {};
+			} else {
+				// Get model-specific merge config
+				const modelConfig = getModelConfig(this.transcriptionService.modelId);
+				const mergeConfig = modelConfig.merging;
 
-			mergedText = this.merger.mergeWithOverlapRemoval(results, {
-				removeOverlaps: true,
-				minMatchLength: mergeConfig.minMatchLength || 20,
-				separator: '\n\n',
-				includeFailures: true
-			});
-		}
+				mergedText = this.merger.mergeWithOverlapRemoval(results, {
+					removeOverlaps: true,
+					minMatchLength: mergeConfig.minMatchLength ?? 20,
+					separator: '\n\n',
+					includeFailures: true
+				});
+			}
 
 		// If we have partial results, prepend a notice
 		if (failed.length > 0) {

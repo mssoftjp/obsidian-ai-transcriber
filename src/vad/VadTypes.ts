@@ -9,7 +9,7 @@ export interface VADProcessor {
   /**
    * VADプロセッサーを初期化
    */
-  initialize(): Promise<void>;
+  initialize: () => Promise<void>;
 
   /**
    * 音声データから無音を除去
@@ -17,17 +17,17 @@ export interface VADProcessor {
    * @param sampleRate - サンプリングレート
    * @returns 無音除去された音声データ
    */
-  processAudio(audioData: Float32Array, sampleRate: number): Promise<VADResult>;
+  processAudio: (audioData: Float32Array, sampleRate: number) => Promise<VADResult>;
 
   /**
    * リソースをクリーンアップ
    */
-  cleanup(): Promise<void>;
+  cleanup: () => Promise<void>;
 
   /**
    * プロセッサーが利用可能かチェック
    */
-  isAvailable(): boolean;
+  isAvailable: () => boolean;
 }
 
 /**
@@ -166,7 +166,7 @@ export type VADProcessorFactory = (config: VADConfig) => Promise<VADProcessor>;
  * VADエラー
  */
 export class VADError extends Error {
-	constructor(message: string, public readonly cause?: unknown) {
+	constructor(message: string, readonly cause?: unknown) {
 		super(message);
 		this.name = 'VADError';
 	}

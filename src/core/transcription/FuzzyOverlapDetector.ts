@@ -310,7 +310,7 @@ export class FuzzyOverlapDetector {
 		let total = 0;
 
 		for (const [char, count1] of freq1) {
-			const count2 = freq2.get(char) || 0;
+			const count2 = freq2.get(char) ?? 0;
 			common += Math.min(count1, count2);
 			total += count1;
 		}
@@ -331,7 +331,7 @@ export class FuzzyOverlapDetector {
 		const freq = new Map<string, number>();
 
 		for (const char of text) {
-			freq.set(char, (freq.get(char) || 0) + 1);
+			freq.set(char, (freq.get(char) ?? 0) + 1);
 		}
 
 		return freq;

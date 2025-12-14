@@ -3,12 +3,13 @@
  * Infrastructure layer implementation for GPT corrections
  */
 
-import { ApiClient } from '../ApiClient';
-import { IGPTCorrectionService } from '../../../core/transcription/DictionaryCorrector';
 import { DICTIONARY_CORRECTION_CONFIG } from '../../../config/DictionaryCorrectionConfig';
 import { ResourceManager } from '../../../core/resources/ResourceManager';
 import { Logger } from '../../../utils/Logger';
-import { OpenAIChatResponse } from '../openai/OpenAIChatTypes';
+import { ApiClient } from '../ApiClient';
+
+import type { IGPTCorrectionService } from '../../../core/transcription/DictionaryCorrector';
+import type { OpenAIChatResponse } from '../openai/OpenAIChatTypes';
 
 /**
  * GPT dictionary correction service implementation

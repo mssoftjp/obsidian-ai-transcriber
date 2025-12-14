@@ -2,7 +2,7 @@
  * Japanese translations
  */
 
-import { TranslationKeys } from '../locales';
+import type { TranslationKeys } from '../locales';
 
 const ja: TranslationKeys = {
 	// Plugin info

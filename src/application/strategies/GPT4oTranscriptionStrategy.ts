@@ -3,14 +3,16 @@
  * Implements sequential processing with context preservation
  */
 
-import { TranscriptionStrategy } from '../../core/transcription/TranscriptionStrategy';
-import { TranscriptionService } from '../../core/transcription/TranscriptionService';
-import { TranscriptionMerger } from '../../core/transcription/TranscriptionMerger';
-import { AudioChunk } from '../../core/audio/AudioTypes';
-import { TranscriptionResult, TranscriptionOptions, TranscriptionProgress } from '../../core/transcription/TranscriptionTypes';
 import { getModelConfig } from '../../config/ModelProcessingConfig';
-import { Logger } from '../../utils/Logger';
+import { TranscriptionMerger } from '../../core/transcription/TranscriptionMerger';
+import { TranscriptionStrategy } from '../../core/transcription/TranscriptionStrategy';
 import { t } from '../../i18n';
+import { Logger } from '../../utils/Logger';
+
+import type { AudioChunk } from '../../core/audio/AudioTypes';
+import type { TranscriptionService } from '../../core/transcription/TranscriptionService';
+import type { TranscriptionResult, TranscriptionOptions, TranscriptionProgress } from '../../core/transcription/TranscriptionTypes';
+
 
 export class GPT4oTranscriptionStrategy extends TranscriptionStrategy {
 	readonly strategyName = 'GPT-4o Sequential Processing';

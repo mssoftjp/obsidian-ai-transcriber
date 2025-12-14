@@ -3,13 +3,15 @@
  * Coordinates the post-processing workflow
  */
 
-import { APITranscriptionSettings } from '../../ApiSettings';
-import { TranscriptionMetaInfo } from '../../core/transcription/TranscriptionTypes';
-import { PostProcessingClient, PostProcessingResult } from '../../infrastructure/api/openai/PostProcessingClient';
 import { buildPostProcessingMetaRequest, POST_PROCESSING_CONFIG, estimateTokenCount } from '../../config/openai/PostProcessingConfig';
 import { LanguageDetector } from '../../core/utils/LanguageDetector';
+import { PostProcessingClient } from '../../infrastructure/api/openai/PostProcessingClient';
 import { Logger } from '../../utils/Logger';
-import { OpenAIChatResponse } from '../../infrastructure/api/openai/OpenAIChatTypes';
+
+import type { APITranscriptionSettings } from '../../ApiSettings';
+import type { TranscriptionMetaInfo } from '../../core/transcription/TranscriptionTypes';
+import type { OpenAIChatResponse } from '../../infrastructure/api/openai/OpenAIChatTypes';
+import type { PostProcessingResult } from '../../infrastructure/api/openai/PostProcessingClient';
 
 export interface ProcessedTranscription {
 	originalText: string;
@@ -44,7 +46,7 @@ export class PostProcessingService {
 		const startTime = Date.now();
 		this.logger.info('Starting post-processing', {
 			textLength: transcription.length,
-			hasMetaInfo: !!metaInfo
+			hasMetaInfo: Boolean(metaInfo)
 		});
 
 		try {
@@ -204,7 +206,7 @@ export class PostProcessingService {
 				signal
 			);
 
-			if (!response || !response.choices || response.choices.length === 0) {
+			if (response.choices.length === 0) {
 				throw new Error('No response from meta reduction');
 			}
 
@@ -386,13 +388,13 @@ export class PostProcessingService {
 		maxInputTokens: number;
 		maxOutputTokens: number;
 		} {
-		return {
-			model: POST_PROCESSING_CONFIG.model,
-			enabled: this.settings.postProcessingEnabled ?? false,
-			maxInputTokens: POST_PROCESSING_CONFIG.limitations.maxInputTokens,
-			maxOutputTokens: POST_PROCESSING_CONFIG.limitations.maxOutputTokens
-		};
-	}
+			return {
+				model: POST_PROCESSING_CONFIG.model,
+				enabled: this.settings.postProcessingEnabled,
+				maxInputTokens: POST_PROCESSING_CONFIG.limitations.maxInputTokens,
+				maxOutputTokens: POST_PROCESSING_CONFIG.limitations.maxOutputTokens
+			};
+		}
 
 	/**
 	 * Detect language from text
@@ -405,8 +407,7 @@ export class PostProcessingService {
 	 * Segment transcription into manageable chunks
 	 */
 	private segmentTranscription(text: string, language: 'ja' | 'en' | 'zh' | 'ko'): string[] {
-		const maxChars = POST_PROCESSING_CONFIG.segmentation.maxSegmentChars[language] ??
-			POST_PROCESSING_CONFIG.segmentation.maxSegmentChars.ja;
+		const maxChars = POST_PROCESSING_CONFIG.segmentation.maxSegmentChars[language];
 		const segments: string[] = [];
 
 		// 文末パターン（優先順位順）

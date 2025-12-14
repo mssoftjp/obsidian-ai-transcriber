@@ -3,9 +3,10 @@
  * Used for applying meta information to improve transcription accuracy
  */
 
-import { estimateTokenCount as tokenEstimateTokenCount } from '../TokenConstants';
 import { replacePromptParams } from '../../i18n/promptHelpers';
-import { OpenAIChatRequest } from '../../infrastructure/api/openai/OpenAIChatTypes';
+import { estimateTokenCount as tokenEstimateTokenCount } from '../TokenConstants';
+
+import type { OpenAIChatRequest } from '../../infrastructure/api/openai/OpenAIChatTypes';
 
 export interface PostProcessingConfig {
 	endpoint: string;

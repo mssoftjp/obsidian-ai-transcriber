@@ -1,23 +1,27 @@
-import { Notice, Plugin, TFile, Menu, Platform, getLanguage } from 'obsidian';
-import { APITranscriber } from './ApiTranscriber';
-import { APITranscriptionSettings, DEFAULT_API_SETTINGS } from './ApiSettings';
+import { Notice, Plugin, TFile, Platform, getLanguage } from 'obsidian';
+
+import { DEFAULT_API_SETTINGS } from './ApiSettings';
 import { APISettingsTab } from './ApiSettingsTab';
-import { APITranscriptionModal } from './ui/ApiTranscriptionModal';
-import { AudioFileSelectionModal } from './ui/AudioFileSelectionModal';
-import { TempFileManager } from './infrastructure/storage/TempFileManager';
-import { ProgressTracker } from './ui/ProgressTracker';
-import { StatusBarManager } from './ui/StatusBarManager';
-import { TranscriptionView, VIEW_TYPE_TRANSCRIPTION } from './ui/TranscriptionView';
+import { APITranscriber } from './ApiTranscriber';
 import { SUPPORTED_FORMATS } from './config/constants';
 import { ResourceManager } from './core/resources/ResourceManager';
 import { initializeI18n, initializeTranslations, t } from './i18n';
 import en from './i18n/translations/en';
 import ja from './i18n/translations/ja';
-import zh from './i18n/translations/zh';
 import ko from './i18n/translations/ko';
-import { Logger, LogLevel } from './utils/Logger';
+import zh from './i18n/translations/zh';
 import { PluginStateRepository } from './infrastructure/storage/PluginStateRepository';
+import { TempFileManager } from './infrastructure/storage/TempFileManager';
+import { APITranscriptionModal } from './ui/ApiTranscriptionModal';
+import { AudioFileSelectionModal } from './ui/AudioFileSelectionModal';
+import { ProgressTracker } from './ui/ProgressTracker';
+import { StatusBarManager } from './ui/StatusBarManager';
+import { TranscriptionView, VIEW_TYPE_TRANSCRIPTION } from './ui/TranscriptionView';
+import { Logger, LogLevel } from './utils/Logger';
 import { PathUtils } from './utils/PathUtils';
+
+import type { APITranscriptionSettings } from './ApiSettings';
+import type { Menu } from 'obsidian';
 
 export default class AITranscriberPlugin extends Plugin {
 	settings!: APITranscriptionSettings;
@@ -114,7 +118,7 @@ export default class AITranscriberPlugin extends Plugin {
 
 		// Initialize status bar only on desktop
 		if (!Platform.isMobile) {
-			this.statusBarManager = new StatusBarManager(this.app, this, this.progressTracker);
+			this.statusBarManager = new StatusBarManager(this, this.progressTracker);
 			this.statusBarManager.initialize();
 
 			// Set click handler to open side panel
@@ -281,7 +285,7 @@ export default class AITranscriberPlugin extends Plugin {
 
 	private isAudioFile(file: TFile): boolean {
 		// フォルダの場合やextensionがない場合はfalseを返す
-		if (!file || !file.extension) {
+		if (!file?.extension) {
 			return false;
 		}
 		const audioExtensions = SUPPORTED_FORMATS.EXTENSIONS;
@@ -345,7 +349,7 @@ export default class AITranscriberPlugin extends Plugin {
 	private isApiConfigured(): boolean {
 		// Unified OpenAI API check (works for all models)
 		// Note: API key decryption is handled in TranscriptionController using BetterEncryptionService
-		const hasOpenaiKey = !!this.settings.openaiApiKey;
+		const hasOpenaiKey = Boolean(this.settings.openaiApiKey);
 
 		this.logger.debug('API configuration check', {
 			hasKey: hasOpenaiKey,

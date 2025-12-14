@@ -3,12 +3,15 @@
  * This is for Phase 3 implementation - adding meta information after transcription
  */
 
-import { App, Modal, Notice, TextAreaComponent, ButtonComponent } from 'obsidian';
-import { APITranscriptionSettings } from '../ApiSettings';
-import { TranscriptionMetaInfo } from '../core/transcription/TranscriptionTypes';
+import { Modal, Notice, TextAreaComponent, ButtonComponent } from 'obsidian';
+
+import { POST_PROCESSING_CONFIG } from '../config/openai/PostProcessingConfig';
 import { ErrorHandler } from '../ErrorHandler';
 import { t } from '../i18n';
-import { POST_PROCESSING_CONFIG } from '../config/openai/PostProcessingConfig';
+
+import type { APITranscriptionSettings } from '../ApiSettings';
+import type { TranscriptionMetaInfo } from '../core/transcription/TranscriptionTypes';
+import type { App } from 'obsidian';
 
 export class PostProcessingModal extends Modal {
 	private settings: APITranscriptionSettings;

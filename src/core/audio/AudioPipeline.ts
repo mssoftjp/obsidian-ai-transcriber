@@ -3,12 +3,15 @@
  * Coordinates the flow from raw audio input to transcription-ready chunks
  */
 
-import { AudioInput, ProcessedAudio, AudioChunk, AudioProcessingConfig } from './AudioTypes';
 import { AUDIO_CONSTANTS } from '../../config/constants';
-import { ChunkStrategy } from '../chunking/ChunkingTypes';
-import { AudioProcessor } from './AudioProcessor';
-import { ChunkingService } from '../chunking/ChunkingService';
 import { Logger } from '../../utils/Logger';
+
+import type { AudioProcessor } from './AudioProcessor';
+import type { AudioInput, ProcessedAudio, AudioChunk, AudioProcessingConfig } from './AudioTypes';
+import type { ChunkingService } from '../chunking/ChunkingService';
+import type { ChunkStrategy } from '../chunking/ChunkingTypes';
+
+
 
 export interface AudioPipelineConfig {
 	audioProcessor: AudioProcessor;

@@ -3,16 +3,17 @@
  * Primary audio engine for browser environment
  */
 
+import { SUPPORTED_FORMATS, APP_LIMITS, FileTypeUtils } from '../../config/constants';
 import { AudioProcessor } from '../../core/audio/AudioProcessor';
-import {
+import { ResourceManager } from '../../core/resources/ResourceManager';
+import { t } from '../../i18n';
+
+import type {
 	AudioInput,
 	ProcessedAudio,
 	AudioValidationResult,
 	AudioProcessingConfig
 } from '../../core/audio/AudioTypes';
-import { SUPPORTED_FORMATS, APP_LIMITS, FileTypeUtils } from '../../config/constants';
-import { ResourceManager } from '../../core/resources/ResourceManager';
-import { t } from '../../i18n';
 
 interface WindowWithWebKit extends Window {
 	webkitAudioContext?: typeof AudioContext;
@@ -195,7 +196,7 @@ export class WebAudioEngine extends AudioProcessor {
 	 */
 	static isAvailable(): boolean {
 		return typeof window !== 'undefined' &&
-		       !!(window.AudioContext || (window as WindowWithWebKit).webkitAudioContext);
+		       Boolean(window.AudioContext || (window as WindowWithWebKit).webkitAudioContext);
 	}
 
 	/**

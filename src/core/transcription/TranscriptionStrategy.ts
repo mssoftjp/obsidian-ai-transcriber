@@ -3,12 +3,14 @@
  * Implements the Strategy pattern for different transcription workflows
  */
 
-import { AudioChunk } from '../audio/AudioTypes';
-import { TranscriptionResult, TranscriptionOptions, TranscriptionProgress } from './TranscriptionTypes';
-import { ChunkProcessingMode } from '../chunking/ChunkingTypes';
-import { TranscriptionService } from './TranscriptionService';
-import { Logger } from '../../utils/Logger';
 import { t } from '../../i18n';
+import { Logger } from '../../utils/Logger';
+
+
+import type { TranscriptionService } from './TranscriptionService';
+import type { TranscriptionResult, TranscriptionOptions, TranscriptionProgress } from './TranscriptionTypes';
+import type { AudioChunk } from '../audio/AudioTypes';
+import type { ChunkProcessingMode } from '../chunking/ChunkingTypes';
 
 export interface TranscriptionExecutionResult {
 	text: string;

@@ -1,4 +1,6 @@
-import { App, normalizePath } from 'obsidian';
+import { normalizePath } from 'obsidian';
+
+import type { App } from 'obsidian';
 
 /**
  * Utility functions for dynamic path resolution
@@ -13,15 +15,15 @@ export class PathUtils {
 	 * @returns Plugin directory path
 	 */
 	static getPluginDir(app: App, pluginId?: string): string {
-		if (this.cachedPluginDir) {
-			return this.cachedPluginDir;
-		}
+			if (this.cachedPluginDir) {
+				return this.cachedPluginDir;
+			}
 
-		const id = pluginId || PathUtils.getCurrentPluginId(); // Use manifest ID as default
-		const manifestDir = this.getManifestDir(app, id);
-		if (manifestDir) {
-			this.cachedPluginDir = manifestDir;
-			return manifestDir;
+			const id = pluginId ?? PathUtils.getCurrentPluginId(); // Use manifest ID as default
+			const manifestDir = this.getManifestDir(app, id);
+			if (manifestDir) {
+				this.cachedPluginDir = manifestDir;
+				return manifestDir;
 		}
 
 		throw new Error(`Plugin manifest directory not available for plugin id: ${id}`);
@@ -31,12 +33,12 @@ export class PathUtils {
 	 * Cache plugin directory using manifest.dir to avoid fragile configDir concatenation.
 	 * Safe to call multiple times; the first non-empty value wins.
 	 */
-	static setPluginDir(manifestDir?: string | null): void {
-		if (this.cachedPluginDir || !manifestDir) {
-			return;
+		static setPluginDir(manifestDir?: string | null): void {
+			if (this.cachedPluginDir !== null || !manifestDir) {
+				return;
+			}
+			this.cachedPluginDir = normalizePath(manifestDir);
 		}
-		this.cachedPluginDir = normalizePath(manifestDir);
-	}
 
 	/**
 	 * Get a file path within the plugin directory
@@ -89,11 +91,11 @@ export class PathUtils {
 	 * @param pluginId Plugin ID (optional)
 	 * @returns Array of possible WASM file paths in order of preference
 	 */
-	static getWasmFilePaths(app: App, filename: string, pluginId?: string): string[] {
-		const pluginDir = this.getPluginDir(app, pluginId);
-		const configRelativeDir = `${app.vault.configDir}/plugins/${pluginId || this.getCurrentPluginId()}`;
-		return this.getWasmFilePathsFromDir(pluginDir, filename, configRelativeDir, app);
-	}
+		static getWasmFilePaths(app: App, filename: string, pluginId?: string): string[] {
+			const pluginDir = this.getPluginDir(app, pluginId);
+			const configRelativeDir = `${app.vault.configDir}/plugins/${pluginId ?? this.getCurrentPluginId()}`;
+			return this.getWasmFilePathsFromDir(pluginDir, filename, configRelativeDir, app);
+		}
 
 	static getWasmFilePathsFromDir(pluginDir: string, filename: string, configRelativeDir?: string, app?: App): string[] {
 		const base = this.getPluginDirFromManifestDir(pluginDir);
@@ -120,12 +122,12 @@ export class PathUtils {
 	}
 
 	private static getPluginVersion(app?: App): string | null {
-		if (!app) {
-			return null;
+			if (!app) {
+				return null;
+			}
+			const manifest = (app as unknown as { plugins?: { manifests?: Record<string, { version?: string }> } }).plugins?.manifests?.[this.getCurrentPluginId()];
+			return manifest?.version ?? null;
 		}
-		const manifest = (app as unknown as { plugins?: { manifests?: Record<string, { version?: string }> } }).plugins?.manifests?.[this.getCurrentPluginId()];
-		return manifest?.version || null;
-	}
 
 	/**
 	 * Get the plugin ID from manifest (current plugin)

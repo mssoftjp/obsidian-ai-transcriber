@@ -3,15 +3,18 @@
  * Delegates to the new TranscriptionController architecture
  */
 
-import { App, TFile, Notice } from 'obsidian';
-import { APITranscriptionSettings } from './ApiSettings';
+import { Notice } from 'obsidian';
+
 import { TranscriptionController } from './application/TranscriptionController';
 import { SUPPORTED_FORMATS } from './config/constants';
 import { getModelConfig } from './config/ModelProcessingConfig';
-import { ProgressTracker } from './ui/ProgressTracker';
 import { ErrorHandler } from './ErrorHandler';
-import { Logger } from './utils/Logger';
 import { t } from './i18n';
+import { Logger } from './utils/Logger';
+
+import type { APITranscriptionSettings } from './ApiSettings';
+import type { ProgressTracker } from './ui/ProgressTracker';
+import type { App, TFile } from 'obsidian';
 
 /**
  * Legacy APITranscriber class maintained for backward compatibility
@@ -26,7 +29,6 @@ export class APITranscriber {
 
 	// Cancellation support
 	private abortController: AbortController | null = null;
-	private isCancelled: boolean = false;
 
 	// For compatibility
 	private currentTaskId: string | null = null;
@@ -34,7 +36,7 @@ export class APITranscriber {
 	constructor(app: App, settings: APITranscriptionSettings, progressTracker?: ProgressTracker) {
 		this.app = app;
 		this.settings = settings;
-		this.progressTracker = progressTracker || null;
+		this.progressTracker = progressTracker ?? null;
 
 		// Create new controller
 		this.controller = new TranscriptionController(app, settings, progressTracker);
@@ -47,8 +49,8 @@ export class APITranscriber {
 	 */
 	async transcribe(audioFile: TFile, startTime?: number, endTime?: number): Promise<string | { text: string; modelUsed: string }> {
 		// Initialize cancellation controller
-		this.abortController = new AbortController();
-		this.isCancelled = false;
+		const abortController = new AbortController();
+		this.abortController = abortController;
 		const partialMarker = this.getPartialResultMarker();
 
 		// Create task in progress tracker if available
@@ -77,7 +79,7 @@ export class APITranscriber {
 				audioFile,
 				startTime,
 				endTime,
-				this.abortController.signal
+				abortController.signal
 			);
 
 			// Extract text for progress tracker
@@ -106,20 +108,10 @@ export class APITranscriber {
 				return partialText;
 			}
 
-			// Handle cancellation - but first check if we have partial results
-			if (this.isCancelled || (error instanceof Error && error.message.includes('cancelled'))) {
-
-				// If the error is a cancellation but includes partial results, return them
-				if (error instanceof Error && error.message.includes(partialMarker)) {
-					const partialText = error.message;
-
-					// Mark as partial, not complete
-					if (this.progressTracker && this.currentTaskId) {
-						this.progressTracker.updateTaskStatus(this.currentTaskId, 'partial');
-					}
-
-					return partialText;
-				}
+			// Handle cancellation
+			const isAbortError = abortController.signal.aborted
+				|| (error instanceof DOMException && error.name === 'AbortError');
+			if (isAbortError) {
 
 				// Only show notice and return empty if no partial results
 				new Notice(t('notices.transcriptionCancelled'));
@@ -148,8 +140,6 @@ export class APITranscriber {
 	 * Cancel ongoing transcription
 	 */
 	cancelTranscription(): Promise<void> {
-		this.isCancelled = true;
-
 		if (this.abortController) {
 			this.abortController.abort();
 		}

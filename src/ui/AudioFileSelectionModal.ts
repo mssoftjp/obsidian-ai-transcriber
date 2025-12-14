@@ -1,8 +1,11 @@
-import { App, Modal, TFile, Setting, Notice, ButtonComponent, getLanguage, AbstractInputSuggest } from 'obsidian';
+import { Modal, TFile, Setting, Notice, ButtonComponent, getLanguage, AbstractInputSuggest } from 'obsidian';
+
 import { SUPPORTED_FORMATS } from '../config/constants';
 import { t } from '../i18n';
 import { TempFileManager } from '../infrastructure/storage/TempFileManager';
 import { Logger } from '../utils/Logger';
+
+import type { App } from 'obsidian';
 
 export class AudioFileSelectionModal extends Modal {
 	private files: TFile[] = [];

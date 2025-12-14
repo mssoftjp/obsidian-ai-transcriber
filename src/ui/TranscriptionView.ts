@@ -1,8 +1,11 @@
-import { ItemView, WorkspaceLeaf, TFile, Notice, Modal, App, CachedMetadata, ButtonComponent, getLanguage } from 'obsidian';
-import { ProgressTracker, TranscriptionTask } from './ProgressTracker';
-import { t } from '../i18n';
+import { ItemView, TFile, Notice, Modal, ButtonComponent, getLanguage } from 'obsidian';
+
 import { LoadingAnimation } from '../core/utils/LoadingAnimation';
-import { ObsidianApp } from '../types/global';
+import { t } from '../i18n';
+
+import type { ProgressTracker, TranscriptionTask } from './ProgressTracker';
+import type { ObsidianApp } from '../types/global';
+import type { WorkspaceLeaf, App, CachedMetadata } from 'obsidian';
 
 export const VIEW_TYPE_TRANSCRIPTION = 'ai-transcriber-view';
 
@@ -17,9 +20,9 @@ interface TranscriptionPlugin {
 export class TranscriptionView extends ItemView {
 	private progressTracker: ProgressTracker;
 	private plugin: TranscriptionPlugin;
-	private progressContainer: HTMLElement;
-	private historyContainer: HTMLElement;
-	private controlsContainer: HTMLElement;
+	private progressContainer!: HTMLElement;
+	private historyContainer!: HTMLElement;
+	private controlsContainer!: HTMLElement;
 	private updateInterval: number | null = null;
 	private unsubscribeProgress: (() => void) | null = null;
 	private loadingAnimation: LoadingAnimation;
@@ -38,19 +41,19 @@ export class TranscriptionView extends ItemView {
 		this.loadingAnimation = new LoadingAnimation((intervalId) => this.plugin.registerInterval(intervalId));
 	}
 
-	getViewType() {
+	override getViewType(): string {
 		return VIEW_TYPE_TRANSCRIPTION;
 	}
 
-	getDisplayText() {
+	override getDisplayText(): string {
 		return t('ribbon.tooltip');
 	}
 
-	getIcon() {
+	override getIcon(): string {
 		return 'file-audio';
 	}
 
-	onOpen(): Promise<void> {
+	override onOpen(): Promise<void> {
 		const { contentEl } = this;
 		contentEl.empty();
 		contentEl.addClass('ai-transcriber-view');
@@ -80,7 +83,7 @@ export class TranscriptionView extends ItemView {
 		return Promise.resolve();
 	}
 
-	onClose(): Promise<void> {
+	override onClose(): Promise<void> {
 		// Clear update interval
 		if (this.updateInterval !== null) {
 			window.clearInterval(this.updateInterval);
@@ -171,7 +174,7 @@ export class TranscriptionView extends ItemView {
 		this.updateProgressDisplay();
 		// 履歴表示は頻繁に更新する必要がないため、処理中でない場合のみ更新
 		const currentTask = this.progressTracker.getCurrentTask();
-		if (!currentTask || currentTask.status !== 'processing') {
+		if (currentTask?.status !== 'processing') {
 			this.updateHistoryDisplay();
 		}
 		this.updateControlsDisplay();
@@ -374,7 +377,7 @@ export class TranscriptionView extends ItemView {
 
 	private async handleCancel() {
 		const currentTask = this.progressTracker.getCurrentTask();
-		if (!currentTask || currentTask.status !== 'processing') {
+		if (currentTask?.status !== 'processing') {
 			return;
 		}
 
@@ -497,7 +500,8 @@ export class TranscriptionView extends ItemView {
 		updatedTask.outputFileName = selectedFile.name;
 
 		const frontmatter = this.app.metadataCache.getFileCache(selectedFile)?.frontmatter;
-		const sourceFilePath = typeof frontmatter?.source_file === 'string' ? frontmatter.source_file : null;
+		const sourceFilePathValue: unknown = frontmatter?.['source_file'];
+		const sourceFilePath = typeof sourceFilePathValue === 'string' ? sourceFilePathValue : null;
 		if (sourceFilePath) {
 			const audioFile = this.app.vault.getAbstractFileByPath(sourceFilePath);
 			if (audioFile instanceof TFile) {
@@ -509,8 +513,11 @@ export class TranscriptionView extends ItemView {
 					f.name === searchFileName && this.isAudioFile(f.extension)
 				);
 				if (audioFiles.length === 1) {
-					updatedTask.inputFilePath = audioFiles[0].path;
-					updatedTask.inputFileName = audioFiles[0].name;
+					const [singleAudioFile] = audioFiles;
+					if (singleAudioFile) {
+						updatedTask.inputFilePath = singleAudioFile.path;
+						updatedTask.inputFileName = singleAudioFile.name;
+					}
 				} else if (audioFiles.length > 1) {
 					new Notice(t('common.multipleAudioFilesFound'));
 				}
@@ -564,7 +571,7 @@ class ConfirmModal extends Modal {
 		super(app);
 	}
 
-	onOpen() {
+	override onOpen(): void {
 		const { contentEl } = this;
 
 		this.modalEl.addClass('ai-transcriber-modal');
@@ -587,7 +594,7 @@ class ConfirmModal extends Modal {
 			});
 	}
 
-	onClose() {
+	override onClose(): void {
 		const { contentEl } = this;
 		contentEl.empty();
 	}
@@ -605,7 +612,7 @@ class FileSelectionModal extends Modal {
 		super(app);
 	}
 
-	onOpen() {
+	override onOpen(): void {
 		const { contentEl } = this;
 
 		this.modalEl.addClass('ai-transcriber-modal');
@@ -645,7 +652,7 @@ class FileSelectionModal extends Modal {
 		}).addEventListener('click', () => this.close());
 	}
 
-	onClose() {
+	override onClose(): void {
 		const { contentEl } = this;
 		contentEl.empty();
 	}

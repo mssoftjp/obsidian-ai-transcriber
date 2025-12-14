@@ -4,9 +4,12 @@
  * Clean Architectureに従い、インフラストラクチャ層に実装
  */
 
-import { App, TFile, TFolder } from 'obsidian';
+import { TFile, TFolder } from 'obsidian';
+
 import { t } from '../../i18n';
 import { Logger } from '../../utils/Logger';
+
+import type { App } from 'obsidian';
 
 export class TempFileManager {
 	private static readonly TEMP_DIR = 'ai-transcriber-temp';
@@ -198,7 +201,7 @@ export class TempFileManager {
 	 * @param specificFile 特定のファイルのみ削除する場合
 	 */
 	async cleanup(specificFile?: TFile): Promise<void> {
-		this.logger.debug('Starting cleanup', { specific: !!specificFile });
+		this.logger.debug('Starting cleanup', { specific: Boolean(specificFile) });
 		try {
 			if (specificFile) {
 				// 特定のファイルのみ削除

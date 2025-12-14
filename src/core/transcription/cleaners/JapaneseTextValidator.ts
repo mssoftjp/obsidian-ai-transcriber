@@ -4,12 +4,13 @@
  * Does not modify text, only reports quality issues
  */
 
-import { TextCleaner, CleaningResult, CleaningContext } from './interfaces/TextCleaner';
-import {
+import type { TextCleaner, CleaningResult, CleaningContext } from './interfaces/TextCleaner';
+import type {
 	ModelCleaningStrategy,
 	ValidationPatterns,
 	ValidationThresholds
 } from '../../../config/ModelCleaningConfig';
+
 
 export interface JapaneseValidationConfig {
 	/** Maximum allowed reduction ratio before flagging as excessive */
@@ -75,7 +76,7 @@ export class JapaneseTextValidator implements TextCleaner {
 	clean(text: string, language: string = 'auto', context?: CleaningContext): CleaningResult {
 		const issues: string[] = [];
 		const originalLengthValue = context?.customData
-			? (context.customData as Record<string, unknown>)['originalLength']
+			? (context.customData)['originalLength']
 			: undefined;
 		const originalLength = typeof originalLengthValue === 'number' ? originalLengthValue : text.length;
 

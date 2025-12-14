@@ -3,8 +3,11 @@
  * Handles authentication, error handling, and retry logic
  */
 
-import { requestUrl, RequestUrlResponse } from 'obsidian';
+import { requestUrl } from 'obsidian';
+
 import { Logger } from '../../utils/Logger';
+
+import type { RequestUrlResponse } from 'obsidian';
 
 export class ApiError extends Error {
 	constructor(

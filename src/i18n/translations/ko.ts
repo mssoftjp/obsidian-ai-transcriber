@@ -2,7 +2,7 @@
  * Korean translations
  */
 
-import { TranslationKeys } from '../locales';
+import type { TranslationKeys } from '../locales';
 
 const ko: TranslationKeys = {
 	// Plugin info

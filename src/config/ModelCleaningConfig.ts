@@ -3,12 +3,13 @@
  * Defines which cleaners and settings to use for each transcription model
  */
 
-import {
+import { Logger } from '../utils/Logger';
+
+import type {
 	PromptContaminationConfig,
 	JapaneseValidationConfig,
 	GPT4oPipelineOptions
 } from '../core/transcription/cleaners';
-import { Logger } from '../utils/Logger';
 
 /**
  * Hallucination pattern definitions by language

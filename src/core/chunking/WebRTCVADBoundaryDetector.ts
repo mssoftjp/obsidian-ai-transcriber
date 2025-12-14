@@ -3,9 +3,10 @@
  * Uses voice activity detection to find optimal chunk boundaries
  */
 
-import { ProcessedAudio } from '../audio/AudioTypes';
-import { VADProcessor } from '../../vad/VadTypes';
 import { Logger } from '../../utils/Logger';
+
+import type { VADProcessor } from '../../vad/VadTypes';
+import type { ProcessedAudio } from '../audio/AudioTypes';
 
 /**
  * Create a boundary detector using WebRTC VAD
@@ -38,10 +39,10 @@ export function createWebRTCVADBoundaryDetector(vadProcessor: VADProcessor) {
 				continue;
 			}
 
-			// Calculate silence duration between segments
-			const silenceStart = currentSegment.end ?? 0;
-			const silenceEnd = nextSegment.start ?? silenceStart;
-			const silenceDuration = silenceEnd - silenceStart;
+				// Calculate silence duration between segments
+				const silenceStart = currentSegment.end;
+				const silenceEnd = nextSegment.start;
+				const silenceDuration = silenceEnd - silenceStart;
 
 				// Only consider significant silence gaps
 				if (silenceDuration >= MIN_SILENCE_DURATION) {

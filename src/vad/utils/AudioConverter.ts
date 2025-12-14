@@ -13,16 +13,18 @@ export class AudioConverter {
    */
 	async decodeAudioFile(
 		audioBuffer: ArrayBuffer,
-		fileExtension: string
+			fileExtension: string
 	): Promise<{ audioData: Float32Array; sampleRate: number }> {
 		try {
 			// AudioContextを初期化（遅延初期化）
-			if (!this.audioContext) {
-				this.audioContext = new AudioContext();
+			this.audioContext ??= new AudioContext();
+			const audioContext = this.audioContext;
+			if (!audioContext) {
+				throw new Error('Failed to initialize AudioContext');
 			}
 
 			// AudioBufferにデコード
-			const decodedAudio = await this.audioContext.decodeAudioData(
+			const decodedAudio = await audioContext.decodeAudioData(
 				audioBuffer.slice(0) // コピーを作成
 			);
 
@@ -88,7 +90,8 @@ export class AudioConverter {
 		for (let i = 0; i < length; i++) {
 			let sum = 0;
 			for (let channel = 0; channel < numberOfChannels; channel++) {
-				sum += audioBuffer.getChannelData(channel)[i];
+				const channelData = audioBuffer.getChannelData(channel);
+				sum += channelData[i] ?? 0;
 			}
 			mono[i] = sum / numberOfChannels;
 		}
@@ -104,7 +107,7 @@ export class AudioConverter {
 
 		for (let i = 0; i < float32Array.length; i++) {
 			// クリッピング
-			let value = Math.max(-1, Math.min(1, float32Array[i]));
+			let value = Math.max(-1, Math.min(1, float32Array[i] ?? 0));
 
 			// スケーリング
 			value = value < 0 ? value * 32768 : value * 32767;
@@ -203,8 +206,11 @@ export class AudioConverter {
 			return error;
 		}
 		try {
-			const serialized = JSON.stringify(error);
-			return serialized ?? 'Unknown error';
+			const serialized: unknown = JSON.stringify(error);
+			if (typeof serialized === 'string') {
+				return serialized;
+			}
+			return 'Unknown error';
 		} catch {
 			return 'Unknown error';
 		}

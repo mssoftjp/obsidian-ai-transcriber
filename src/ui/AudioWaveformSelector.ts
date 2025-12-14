@@ -129,7 +129,12 @@ export class AudioWaveformSelector {
 		ctx.globalAlpha = 0.7;
 
 		for (let i = 0; i < width; i++) {
-			const { min, max } = this.waveformData[i];
+			const range = this.waveformData[i];
+			if (!range) {
+				continue;
+			}
+
+			const { min, max } = range;
 
 			// Draw vertical line for this sample
 			const minY = (1 + min) * amp;
@@ -161,6 +166,9 @@ export class AudioWaveformSelector {
 
 			for (let j = 0; j < step; j++) {
 				const datum = data[(i * step) + j];
+				if (datum === undefined) {
+					break;
+				}
 				if (datum < min) {
 					min = datum;
 				}
@@ -354,6 +362,9 @@ export class AudioWaveformSelector {
 	private handleTouchStart = (e: TouchEvent): void => {
 		e.preventDefault();
 		const touch = e.touches[0];
+		if (!touch) {
+			return;
+		}
 		const mouseEvent = new MouseEvent('mousedown', {
 			clientX: touch.clientX,
 			clientY: touch.clientY
@@ -364,6 +375,9 @@ export class AudioWaveformSelector {
 	private handleTouchMove = (e: TouchEvent): void => {
 		e.preventDefault();
 		const touch = e.touches[0];
+		if (!touch) {
+			return;
+		}
 		const mouseEvent = new MouseEvent('mousemove', {
 			clientX: touch.clientX,
 			clientY: touch.clientY

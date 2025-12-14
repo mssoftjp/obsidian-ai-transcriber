@@ -1,13 +1,17 @@
-import { Setting, Notice, Platform, App, ButtonComponent, TFile } from 'obsidian';
-import { APITranscriptionSettings, VADMode } from './ApiSettings';
-import { MODEL_OPTIONS, getModelOption } from './config/ModelOptions';
+import { Setting, Notice, Platform, ButtonComponent, TFile } from 'obsidian';
+
 import { MODEL_NAMES } from './config/constants';
+import { MODEL_OPTIONS, getModelOption } from './config/ModelOptions';
+import { t } from './i18n';
 import { SafeStorageService } from './infrastructure/storage/SafeStorageService';
 import { SecurityUtils } from './infrastructure/storage/SecurityUtils';
-import { t } from './i18n';
+import { isElectronWindow } from './types/global';
 import { Logger } from './utils/Logger';
 import { PathUtils } from './utils/PathUtils';
-import { isElectronWindow, ElectronRenderer } from './types/global';
+
+import type { APITranscriptionSettings, VADMode } from './ApiSettings';
+import type { ElectronRenderer } from './types/global';
+import type { App } from 'obsidian';
 
 export class SettingsUIBuilder {
 	private static readonly FVAD_DOWNLOAD_URL = 'https://github.com/echogarden-project/fvad-wasm';
@@ -168,11 +172,11 @@ export class SettingsUIBuilder {
 		gpt4oMiniLabel.setText(t('settings.model.gpt4oMini') + ':');
 		modelInfoEl.appendText(' ' + t('settings.model.gpt4oMiniDesc'));
 
-		const initialVadMode = settings.vadMode ?? 'server';
-    	const vadModeSetting = new Setting(containerEl)
-			.setName(t('settings.vadMode.name'))
-			.setDesc(this.createVADDescription(t('settings.vadMode.desc'), false, false))
-			.addDropdown(dropdown => {
+			const initialVadMode = settings.vadMode;
+			const vadModeSetting = new Setting(containerEl)
+				.setName(t('settings.vadMode.name'))
+				.setDesc(this.createVADDescription(t('settings.vadMode.desc'), false, false))
+				.addDropdown(dropdown => {
 				dropdown.addOption('server', t('settings.vadMode.options.server'));
 				dropdown.addOption('local', t('settings.vadMode.options.local'));
 				dropdown.addOption('disabled', t('settings.vadMode.options.disabled'));
@@ -389,13 +393,13 @@ export class SettingsUIBuilder {
 			if (!isElectronWindow(window) || typeof window.require !== 'function') {
 				return false;
 			}
-			const electronRequire = window.require as (moduleName: string) => ElectronRenderer;
-			const electronModule: ElectronRenderer = electronRequire('electron');
-			// remote.safeStorage を優先的に確認
-			const safeStorage = electronModule?.remote?.safeStorage ?? electronModule?.safeStorage;
-			if (safeStorage && typeof safeStorage.isEncryptionAvailable === 'function') {
-				return safeStorage.isEncryptionAvailable();
-			}
+				const electronRequire = window.require as (moduleName: string) => ElectronRenderer;
+				const electronModule: ElectronRenderer = electronRequire('electron');
+				// remote.safeStorage を優先的に確認
+				const safeStorage = electronModule.remote?.safeStorage ?? electronModule.safeStorage;
+				if (safeStorage && typeof safeStorage.isEncryptionAvailable === 'function') {
+					return safeStorage.isEncryptionAvailable();
+				}
 			return false;
 		} catch {
 			return false;
@@ -414,13 +418,13 @@ export class SettingsUIBuilder {
 			}
 		}
 
-		// Fallback: check existence via adapter for absolute or normalized paths
-			const adapter = app.vault.adapter as { exists?: (p: string) => Promise<boolean> };
-			if (adapter?.exists) {
-				const firstPath = possiblePaths[0];
-				if (firstPath) {
-					return adapter.exists(firstPath).catch(() => false);
-				}
+			// Fallback: check existence via adapter for absolute or normalized paths
+				const adapter = app.vault.adapter as { exists?: (p: string) => Promise<boolean> };
+				if (adapter.exists) {
+					const firstPath = possiblePaths[0];
+					if (firstPath) {
+						return adapter.exists(firstPath).catch(() => false);
+					}
 			}
 
 		return Promise.resolve(false);

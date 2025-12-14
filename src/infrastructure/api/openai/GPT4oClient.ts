@@ -3,21 +3,24 @@
  * Handles GPT-4o-specific API calls with context preservation
  */
 
-import { ApiClient } from '../ApiClient';
-import { AudioChunk } from '../../../core/audio/AudioTypes';
 import {
+		GPT4O_TRANSCRIBE_CONFIG,
+		buildGPT4oTranscribeRequest
+	} from '../../../config/openai/GPT4oTranscribeConfig';
+import { DEFAULT_REQUEST_CONFIG } from '../../../config/openai/index';
+import { Logger } from '../../../utils/Logger';
+import { ApiClient } from '../ApiClient';
+
+	import type {
+		GPT4oTranscribeParams,
+		GPT4oTranscribeRequestPayload
+	} from '../../../config/openai/GPT4oTranscribeConfig';
+import type { AudioChunk } from '../../../core/audio/AudioTypes';
+import type {
 	TranscriptionResult,
 	TranscriptionOptions,
 	ModelSpecificOptions
 } from '../../../core/transcription/TranscriptionTypes';
-	import {
-		GPT4O_TRANSCRIBE_CONFIG,
-		buildGPT4oTranscribeRequest,
-		GPT4oTranscribeParams,
-		GPT4oTranscribeRequestPayload
-	} from '../../../config/openai/GPT4oTranscribeConfig';
-import { DEFAULT_REQUEST_CONFIG } from '../../../config/openai/index';
-import { Logger } from '../../../utils/Logger';
 
 interface GPT4oResponse {
 	text: string;
@@ -106,7 +109,7 @@ export class GPT4oClient extends ApiClient {
 			this.logger.debug('Sending request to GPT-4o API', {
 				chunkId: chunk.id,
 				model: this.model,
-				hasCustomPrompt: !!customPrompt
+				hasCustomPrompt: Boolean(customPrompt)
 			});
 
 			const response = await this.post<GPT4oResponse>(
@@ -170,7 +173,7 @@ export class GPT4oClient extends ApiClient {
 		this.logger.debug('GPT-4o response parsed', {
 			chunkId: chunk.id,
 			textLength: result.text.length,
-			hasTranscriptTags: !!transcriptMatch
+			hasTranscriptTags: Boolean(transcriptMatch)
 		});
 
 		return result;

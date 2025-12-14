@@ -3,9 +3,11 @@
  * Handles the logic of splitting audio into manageable chunks
  */
 
-import { ProcessedAudio, AudioChunk } from '../audio/AudioTypes';
-import { ChunkStrategy, ChunkingConfig } from './ChunkingTypes';
 import { Logger } from '../../utils/Logger';
+
+import type { ChunkStrategy, ChunkingConfig } from './ChunkingTypes';
+import type { ProcessedAudio, AudioChunk } from '../audio/AudioTypes';
+
 
 export abstract class ChunkingService {
 	protected config: ChunkingConfig;
@@ -128,12 +130,17 @@ export abstract class ChunkingService {
 			estimatedProcessingTime: this.estimateProcessingTime(totalChunks)
 		};
 
+		const estimatedProcessingTime = strategy.estimatedProcessingTime;
+		const estimatedProcessingTimeLabel = estimatedProcessingTime === undefined
+			? 'unknown'
+			: `${estimatedProcessingTime}s`;
+
 		this.logger.debug('Chunking strategy created', {
 			totalChunks,
 			chunkDuration: `${chunkDuration.toFixed(2)}s`,
 			overlapDuration: `${overlapDuration}s`,
 			reason: finalReason,
-			estimatedProcessingTime: `${strategy.estimatedProcessingTime}s`
+			estimatedProcessingTime: estimatedProcessingTimeLabel
 		});
 
 		return strategy;
