@@ -94,6 +94,9 @@ export class PostProcessingService {
 				// Process with segmentation
 				this.logger.debug('Processing with segmentation');
 				const segments = this.segmentTranscription(transcription, language);
+				if (segments.length === 0) {
+					segments.push(transcription);
+				}
 				this.logger.debug('Text segmented', {
 					segmentCount: segments.length
 				});

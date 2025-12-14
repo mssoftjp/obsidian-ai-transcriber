@@ -45,12 +45,15 @@ export class GPT4oTranscriptionStrategy extends TranscriptionStrategy {
 		let previousChunkText = ''; // 前チャンクの最後の文を保持
 
 
-		for (let i = 0; i < chunks.length; i++) {
-			try {
-				// Check for cancellation
-				this.checkAborted();
+			for (let i = 0; i < chunks.length; i++) {
+				try {
+					// Check for cancellation
+					this.checkAborted();
 
-				const chunk = chunks[i];
+					const chunk = chunks[i];
+					if (!chunk) {
+						continue;
+					}
 
 				// Check chunk size before sending to API
 				const chunkSizeMB = chunk.data.byteLength / (1024 * 1024);
@@ -80,7 +83,7 @@ export class GPT4oTranscriptionStrategy extends TranscriptionStrategy {
 
 				// Process chunk
 
-				const result = await this.processSingleChunk(chunk, options, previousContext);
+					const result = await this.processSingleChunk(chunk, options, previousContext);
 
 
 				results.push(result);
@@ -98,11 +101,12 @@ export class GPT4oTranscriptionStrategy extends TranscriptionStrategy {
 				// For other errors, log and continue with next chunk
 				this.logger.error(`Failed to process chunk ${i + 1}:`, error);
 				const errorMessage = error instanceof Error ? error.message : t('errors.general');
+				const failedChunk = chunks[i];
 				results.push({
-					id: chunks[i].id,
+					id: failedChunk?.id ?? i,
 					text: t('modal.transcription.chunkFailure', { index: (i + 1).toString(), error: errorMessage }),
-					startTime: chunks[i].startTime,
-					endTime: chunks[i].endTime,
+					startTime: failedChunk?.startTime ?? 0,
+					endTime: failedChunk?.endTime ?? 0,
 					success: false,
 					error: errorMessage
 				});

@@ -265,6 +265,7 @@ export class WhisperTranscriptionService extends TranscriptionService {
 			auto: 'Please transcribe this audio accurately in its original language.'
 		};
 
-		return prompts[language] || prompts.auto;
+		const key = language as keyof typeof prompts;
+		return prompts[key] ?? prompts.auto;
 	}
 }
