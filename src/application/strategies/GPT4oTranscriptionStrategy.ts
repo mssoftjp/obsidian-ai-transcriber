@@ -20,6 +20,7 @@ export class GPT4oTranscriptionStrategy extends TranscriptionStrategy {
 	readonly maxConcurrency = 1; // Sequential processing only
 
 		private merger: TranscriptionMerger;
+		private workflowLanguage: string = 'auto';
 
 	constructor(
 		transcriptionService: TranscriptionService,
@@ -44,6 +45,7 @@ export class GPT4oTranscriptionStrategy extends TranscriptionStrategy {
 		const startTime = Date.now();
 		let previousChunkText = ''; // 前チャンクの最後の文を保持
 
+		this.workflowLanguage = this.normalizeLanguageCode(options.language) ?? 'auto';
 
 			for (let i = 0; i < chunks.length; i++) {
 				try {
@@ -117,6 +119,29 @@ export class GPT4oTranscriptionStrategy extends TranscriptionStrategy {
 		return results;
 	}
 
+	private normalizeLanguageCode(language: string | undefined): string | null {
+		if (!language) {
+			return null;
+		}
+		const trimmed = language.trim();
+		if (!trimmed) {
+			return null;
+		}
+		const base = trimmed.split('-')[0] ?? trimmed;
+		return base.toLowerCase();
+	}
+
+	private resolveCleaningLanguage(results: TranscriptionResult[]): string {
+		const requested = this.normalizeLanguageCode(this.workflowLanguage) ?? 'auto';
+		if (requested !== 'auto') {
+			return requested;
+		}
+
+		const detected = results.find(r => r.success && r.language)?.language;
+		const normalizedDetected = this.normalizeLanguageCode(detected);
+		return normalizedDetected ?? 'auto';
+	}
+
 	/**
 	 * Extract last sentences from text (within token limit)
 	 */
@@ -188,7 +213,8 @@ export class GPT4oTranscriptionStrategy extends TranscriptionStrategy {
 		// Apply cleaning pipeline to the merged text
 		// This includes duplicate removal and other GPT-4o specific cleaning
 		try {
-			mergedText = await this.transcriptionService.cleanText(mergedText, 'ja');
+			const cleaningLanguage = this.resolveCleaningLanguage(results);
+			mergedText = await this.transcriptionService.cleanText(mergedText, cleaningLanguage);
 		} catch (error) {
 			this.logger.error('Failed to clean merged text:', error);
 			// Continue with uncleaned text if cleaning fails

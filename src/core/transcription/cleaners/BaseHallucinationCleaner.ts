@@ -100,6 +100,7 @@ import type {
 		compiled.japanese.push(...this.generatePromptContaminationPatterns('ja'));
 		compiled.english.push(...this.generatePromptContaminationPatterns('en'));
 		compiled.chinese.push(...this.generatePromptContaminationPatterns('zh'));
+		compiled.korean.push(...this.generatePromptContaminationPatterns('ko'));
 
 		return compiled;
 	}
@@ -147,7 +148,8 @@ import type {
 			patterns = [
 				...this.hallucinationPatterns.japanese,
 				...this.hallucinationPatterns.english,
-				...this.hallucinationPatterns.chinese
+				...this.hallucinationPatterns.chinese,
+				...this.hallucinationPatterns.korean
 			];
 		} else if (language === 'ja') {
 			patterns = this.hallucinationPatterns.japanese;
@@ -155,6 +157,8 @@ import type {
 			patterns = this.hallucinationPatterns.english;
 		} else if (language === 'zh') {
 			patterns = this.hallucinationPatterns.chinese;
+		} else if (language === 'ko') {
+			patterns = this.hallucinationPatterns.korean;
 		} else {
 			// Default to Japanese patterns for other languages
 			patterns = this.hallucinationPatterns.japanese;
