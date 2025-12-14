@@ -164,8 +164,9 @@ export function buildGPT4oTranscribeRequest(
 	if (params.prompt) {
 		result.prompt = params.prompt;
 	} else if (params.language) {
-		const prompts = isFirstChunk ? config.prompts.firstChunk : config.prompts.continuation;
-		let prompt = prompts[params.language] || prompts.auto;
+			const prompts = isFirstChunk ? config.prompts.firstChunk : config.prompts.continuation;
+			const promptKey = params.language as keyof typeof prompts;
+			let prompt = prompts[promptKey] ?? prompts['auto'];
 
 		// Replace {previousTail} placeholder if we have previous context and it's a continuation chunk
 		if (!isFirstChunk && params.previousContext) {

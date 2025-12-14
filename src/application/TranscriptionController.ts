@@ -44,13 +44,13 @@ import { PathUtils } from '../utils/PathUtils';
 export class TranscriptionController {
 	private app: App;
 	private settings: APITranscriptionSettings;
-	private progressTracker?: ProgressTracker;
-	private vadPreprocessor?: VADPreprocessor;
+	private progressTracker: ProgressTracker | null;
+	private vadPreprocessor: VADPreprocessor | null = null;
 	private logger = Logger.getLogger('TranscriptionController');
 	private serverSideVADFallback = false;
 
 	// Cached instances
-	private audioPipeline?: AudioPipeline;
+	private audioPipeline: AudioPipeline | null = null;
 	private progressCalculator?: SimpleProgressCalculator;
 
 	constructor(
@@ -60,7 +60,7 @@ export class TranscriptionController {
 	) {
 		this.app = app;
 		this.settings = settings;
-		this.progressTracker = progressTracker;
+		this.progressTracker = progressTracker ?? null;
 	}
 
 	/**
@@ -252,8 +252,8 @@ export class TranscriptionController {
 				this.logger.warn('Local VAD unavailable; server-side VAD will be used for chunking.');
 			}
 		} else {
-			this.vadPreprocessor = undefined;
-			this.serverSideVADFallback = true;
+				this.vadPreprocessor = null;
+				this.serverSideVADFallback = true;
 			if (vadMode === 'server') {
 				this.logger.info('Server-side VAD mode active. Local fvad.wasm will not be used.');
 			} else {
@@ -349,6 +349,8 @@ export class TranscriptionController {
 
 		const serverFallback = this.serverSideVADFallback;
 
+		const minMatchLength = modelConfig.merging.minMatchLength ?? 0;
+
 		return {
 			constraints: {
 				maxSizeMB: modelConfig.maxFileSizeMB,
@@ -361,17 +363,17 @@ export class TranscriptionController {
 			modelName: model, // Pass model name for VAD chunking config
 			processingMode: isWhisper ? 'parallel' : 'sequential',
 			useServerVAD: serverFallback,
-			mergeStrategy: isWhisper ? {
-				type: 'overlap_removal',
-				config: {
-					minMatchLength: modelConfig.merging.minMatchLength
-				}
-			} : {
-				type: 'simple',
-				config: {
-					separator: '\n\n'
-				}
-			},
+				mergeStrategy: isWhisper ? {
+					type: 'overlap_removal',
+					config: {
+						minMatchLength
+					}
+				} : {
+					type: 'simple',
+					config: {
+						separator: '\n\n'
+					}
+				},
 			optimizeBoundaries: modelConfig.vadChunking.optimizeBoundaries
 		};
 	}
@@ -420,10 +422,12 @@ export class TranscriptionController {
 		}
 
 		// Create workflow
-		const workflow = new TranscriptionWorkflow(this.audioPipeline, strategy);
-		this.logger.debug('Workflow created successfully');
-		return workflow;
-	}
+			const pipeline = this.audioPipeline ?? this.createAudioPipeline();
+			this.audioPipeline = pipeline;
+			const workflow = new TranscriptionWorkflow(pipeline, strategy);
+			this.logger.debug('Workflow created successfully');
+			return workflow;
+		}
 
 	/**
 	 * Apply dictionary correction to transcribed text
@@ -505,17 +509,17 @@ export class TranscriptionController {
 			const entries = this.convertDictionaryToEntries(userDictionary);
 
 			if (entries.length > 0) {
-				const langDict = {
-					name: `user-dictionary-${currentLanguage}`,
-					language: currentLanguage,
-					enabled: true,
-					useGPTCorrection: useGPTCorrection,
-					definiteCorrections: userDictionary.definiteCorrections,
-					contextualCorrections: userDictionary.contextualCorrections,
-					entries: entries
-				};
-				corrector.addDictionary(langDict);
-			}
+					const langDict = {
+						name: `user-dictionary-${currentLanguage}`,
+						language: currentLanguage,
+						enabled: true,
+						useGPTCorrection: useGPTCorrection,
+						definiteCorrections: userDictionary.definiteCorrections,
+						contextualCorrections: userDictionary.contextualCorrections ?? [],
+						entries: entries
+					};
+					corrector.addDictionary(langDict);
+				}
 		}
 
 		return corrector;
@@ -532,31 +536,46 @@ export class TranscriptionController {
 			...userDictionary.definiteCorrections
 				.filter((entry: DictionaryEntry) => entry.from && entry.from.length > 0 && entry.to)
 				.flatMap((entry: DictionaryEntry) => {
-					return entry.from.map((pattern: string) => ({
-						pattern: pattern,
-						replacement: entry.to,
-						caseSensitive: false,
-						category: entry.category,
-						priority: entry.priority
-					}));
+					return entry.from.map((pattern: string) => {
+						const mapped: CorrectionDictionaryEntry = {
+							pattern,
+							replacement: entry.to,
+							caseSensitive: false
+						};
+						if (entry.category !== undefined) {
+							mapped.category = entry.category;
+						}
+						if (entry.priority !== undefined) {
+							mapped.priority = entry.priority;
+						}
+						return mapped;
+					});
 				})
 		);
 
 		// Add contextual corrections as rules with conditions
 		entries.push(
-			...(userDictionary.contextualCorrections || [])
+			...(userDictionary.contextualCorrections ?? [])
 				.filter((entry: ContextualCorrection) => entry.from && entry.from.length > 0 && entry.to)
 				.flatMap((entry: ContextualCorrection) => {
-					return entry.from.map((pattern: string) => ({
-						pattern: pattern,
-						replacement: entry.to,
-						caseSensitive: false,
-						category: entry.category,
-						priority: entry.priority,
-						condition: entry.contextKeywords && entry.contextKeywords.length > 0
-							? (text: string) => entry.contextKeywords.some((keyword: string) => text.includes(keyword))
-							: undefined
-					}));
+					return entry.from.map((pattern: string) => {
+						const mapped: CorrectionDictionaryEntry = {
+							pattern,
+							replacement: entry.to,
+							caseSensitive: false
+						};
+						if (entry.category !== undefined) {
+							mapped.category = entry.category;
+						}
+						if (entry.priority !== undefined) {
+							mapped.priority = entry.priority;
+						}
+						if (entry.contextKeywords && entry.contextKeywords.length > 0) {
+							const keywords = entry.contextKeywords;
+							mapped.condition = (text: string) => keywords.some((keyword: string) => text.includes(keyword));
+						}
+						return mapped;
+					});
 				})
 		);
 
@@ -652,15 +671,19 @@ export class TranscriptionController {
 		endTime?: number,
 		abortSignal?: AbortSignal
 	): WorkflowOptions {
-		return {
-			startTime,
-			endTime,
+		const options: WorkflowOptions = {
 			language: this.settings.language || 'auto',
-			customPrompt: undefined,
 			onProgress: this.createProgressAdapter(),
 			signal: abortSignal
 			// Note: VAD is already applied at the file level before this point
 		};
+		if (startTime !== undefined) {
+			options.startTime = startTime;
+		}
+		if (endTime !== undefined) {
+			options.endTime = endTime;
+		}
+		return options;
 	}
 
 
@@ -689,7 +712,7 @@ export class TranscriptionController {
 		// Clean up VAD preprocessor
 		if (this.vadPreprocessor) {
 			await this.vadPreprocessor.cleanup();
-			this.vadPreprocessor = undefined;
+			this.vadPreprocessor = null;
 		}
 
 		// Clean up audio pipeline (which includes WebAudioEngine and VADChunkingService)
@@ -709,7 +732,7 @@ export class TranscriptionController {
 			} catch (error) {
 				this.logger.error('Error cleaning up audio pipeline', error);
 			}
-			this.audioPipeline = undefined;
+			this.audioPipeline = null;
 		}
 	}
 
@@ -749,7 +772,7 @@ export class TranscriptionController {
 		});
 		this.settings = settings;
 		// Clear cached instances to force recreation with new settings
-		this.audioPipeline = undefined;
+		this.audioPipeline = null;
 	}
 
 	private getVadMode(): VADMode {

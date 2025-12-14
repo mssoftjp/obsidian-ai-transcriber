@@ -68,7 +68,7 @@ export class VADChunkingService extends ChunkingService {
 	 * Calculate chunking strategy based on audio properties
 	 * Override to always require chunking for VAD processing
 	 */
-	calculateStrategy(audio: ProcessedAudio): ChunkStrategy {
+	override calculateStrategy(audio: ProcessedAudio): ChunkStrategy {
 		const totalDuration = audio.duration;
 		const estimatedSizeMB = this.estimateSize(audio);
 
@@ -85,8 +85,7 @@ export class VADChunkingService extends ChunkingService {
 				totalChunks: 1,
 				chunkDuration: totalDuration,
 				overlapDuration: 0,
-				totalDuration,
-				reason: undefined
+				totalDuration
 			};
 		}
 
@@ -109,7 +108,7 @@ export class VADChunkingService extends ChunkingService {
 	/**
 	 * Create chunks from processed audio using VAD
 	 */
-	async createChunks(
+	override async createChunks(
 		audio: ProcessedAudio,
 		strategy: ChunkStrategy
 	): Promise<AudioChunk[]> {

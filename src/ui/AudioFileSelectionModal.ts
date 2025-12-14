@@ -149,11 +149,14 @@ export class AudioFileSelectionModal extends Modal {
 				.addOption('name', t('modal.audioFileSelection.sortByName'))
 				.addOption('path', t('modal.audioFileSelection.sortByPath'))
 				.setValue(this.sortBy)
-				.onChange((value: 'ctime' | 'mtime' | 'name' | 'path') => {
-					this.sortBy = value;
-					this.sortFiles();
-					this.filterFiles();
-					this.renderFileList();
+				.onChange((value: string) => {
+					// Guard the union manually to satisfy exactOptionalPropertyTypes
+					if (value === 'ctime' || value === 'mtime' || value === 'name' || value === 'path') {
+						this.sortBy = value;
+						this.sortFiles();
+						this.filterFiles();
+						this.renderFileList();
+					}
 				})
 			)
 			.addButton(button => button
@@ -422,7 +425,7 @@ class AudioFileSuggest extends AbstractInputSuggest<TFile> {
 		});
 	}
 
-	selectSuggestion(file: TFile): void {
+	override selectSuggestion(file: TFile): void {
 		this.inputElRef.value = `${file.basename}.${file.extension}`;
 		this.onChooseFile(file);
 		this.close();

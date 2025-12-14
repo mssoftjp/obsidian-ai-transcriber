@@ -140,16 +140,16 @@ export class TranscriptionWorkflow {
 
 			// Step 5: Calculate final statistics
 			const duration = (Date.now() - startTime) / 1000;
-			const workflowResult = {
-				text: result.text,
-				duration,
-				chunks: chunks.length,
-				strategy: chunkStrategy,
-				segments: result.segments,
-				modelUsed: this.strategy.getModelUsed ? this.strategy.getModelUsed() : undefined,
-				partial: result.partial,
-				error: result.error
-			};
+				const workflowResult: WorkflowResult = {
+					text: result.text,
+					duration,
+					chunks: chunks.length,
+					strategy: chunkStrategy,
+					segments: result.segments ?? [],
+					modelUsed: this.strategy.getModelUsed ? this.strategy.getModelUsed() : undefined,
+					partial: result.partial,
+					error: result.error
+				};
 
 			this.logger.info('Transcription workflow completed', {
 				duration: `${duration.toFixed(2)}s`,
@@ -212,7 +212,7 @@ export class TranscriptionWorkflow {
 		return {
 			language: options.language || 'auto',
 			timestamps: true,
-			signal: this.abortController.signal
+			signal: this.abortController?.signal
 		};
 	}
 
