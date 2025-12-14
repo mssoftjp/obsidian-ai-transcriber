@@ -249,19 +249,36 @@ export class SettingsUIBuilder {
 
 							try {
 								const pluginDir = PathUtils.getPluginDir(app);
-								const pluginFolder = app.vault.getFolderByPath(pluginDir);
-								if (!pluginFolder) {
-									await app.vault.createFolder(pluginDir);
-								}
-
 								const targetPath = PathUtils.getPluginFilePath(app, 'fvad.wasm');
 								const wasmData = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
 
-								const existing = app.vault.getAbstractFileByPath(targetPath);
-								if (existing instanceof TFile) {
-									await app.vault.modifyBinary(existing, wasmData);
+								const adapter = app.vault.adapter as unknown as {
+									mkdir?: (path: string) => Promise<void>;
+									writeBinary?: (path: string, data: ArrayBuffer) => Promise<void>;
+								};
+
+								// Ensure plugin directory exists; ignore "already exists" errors
+								if (typeof adapter.mkdir === 'function') {
+									try {
+										await adapter.mkdir(pluginDir);
+									} catch (mkdirError) {
+										if (!SettingsUIBuilder.isAlreadyExistsError(mkdirError)) {
+											throw mkdirError;
+										}
+									}
+								}
+
+								if (typeof adapter.writeBinary === 'function') {
+									// Overwrite or create without relying on vault indexing of configDir
+									await adapter.writeBinary(targetPath, wasmData);
 								} else {
-									await app.vault.createBinary(targetPath, wasmData);
+									// Fallback: use Vault API if adapter.writeBinary is unavailable
+									const existing = app.vault.getAbstractFileByPath(targetPath);
+									if (existing instanceof TFile) {
+										await app.vault.modifyBinary(existing, wasmData);
+									} else {
+										await app.vault.createBinary(targetPath, wasmData);
+									}
 								}
 								new Notice(t('settings.vadMode.installWasm.success'));
 								// Reflect installed state for local mode
@@ -405,29 +422,49 @@ export class SettingsUIBuilder {
 			return false;
 		}
 	}
-	private static checkLocalWasm(app: App): Promise<boolean> {
+	private static async checkLocalWasm(app: App): Promise<boolean> {
 		const possiblePaths = PathUtils.getWasmFilePaths(app, 'fvad.wasm');
+		const adapter = app.vault.adapter as unknown as {
+			stat?: (path: string) => Promise<unknown>;
+			readBinary?: (path: string) => Promise<ArrayBuffer>;
+		};
+
 		for (const path of possiblePaths) {
-			try {
-				const file = app.vault.getAbstractFileByPath(path);
-				if (file instanceof TFile) {
-					return Promise.resolve(true);
+			const normalizedPath = PathUtils.normalizeUserPath(path);
+			const file = app.vault.getAbstractFileByPath(normalizedPath);
+			if (file instanceof TFile) {
+				return true;
+			}
+
+			if (typeof adapter.stat === 'function') {
+				try {
+					const stat = await adapter.stat(normalizedPath);
+					if (stat) {
+						return true;
+					}
+				} catch {
+					// not found
 				}
-			} catch (error) {
-				this.logger.warn('Error checking fvad.wasm path', { path, error });
+				continue;
+			}
+
+			// Fallback: attempt read if stat() is unavailable
+			if (typeof adapter.readBinary === 'function') {
+				try {
+					await adapter.readBinary(normalizedPath);
+					return true;
+				} catch {
+					// not found
+				}
 			}
 		}
 
-			// Fallback: check existence via adapter for absolute or normalized paths
-				const adapter = app.vault.adapter as { exists?: (p: string) => Promise<boolean> };
-				if (adapter.exists) {
-					const firstPath = possiblePaths[0];
-					if (firstPath) {
-						return adapter.exists(firstPath).catch(() => false);
-					}
-			}
+		return false;
+	}
 
-		return Promise.resolve(false);
+	private static isAlreadyExistsError(error: unknown): boolean {
+		const message = SettingsUIBuilder.formatErrorMessage(error).toLowerCase();
+		return message.includes('already exists') || message.includes('eexist');
 	}
 
 

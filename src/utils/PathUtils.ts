@@ -91,13 +91,12 @@ export class PathUtils {
 	 * @param pluginId Plugin ID (optional)
 	 * @returns Array of possible WASM file paths in order of preference
 	 */
-		static getWasmFilePaths(app: App, filename: string, pluginId?: string): string[] {
-			const pluginDir = this.getPluginDir(app, pluginId);
-			const configRelativeDir = `${app.vault.configDir}/plugins/${pluginId ?? this.getCurrentPluginId()}`;
-			return this.getWasmFilePathsFromDir(pluginDir, filename, configRelativeDir, app);
-		}
+	static getWasmFilePaths(app: App, filename: string, pluginId?: string): string[] {
+		const pluginDir = this.getPluginDir(app, pluginId);
+		return this.getWasmFilePathsFromDir(pluginDir, filename, app);
+	}
 
-	static getWasmFilePathsFromDir(pluginDir: string, filename: string, configRelativeDir?: string, app?: App): string[] {
+	static getWasmFilePathsFromDir(pluginDir: string, filename: string, app?: App): string[] {
 		const base = this.getPluginDirFromManifestDir(pluginDir);
 		const version = this.getPluginVersion(app);
 		const candidates = [
@@ -106,15 +105,6 @@ export class PathUtils {
 			`${base}/build/${filename}`,
 			version ? `${base}/build/${version}/${filename}` : null
 		];
-
-		if (configRelativeDir) {
-			candidates.push(
-				`${normalizePath(configRelativeDir)}/node_modules/@echogarden/fvad-wasm/${filename}`,
-				`${normalizePath(configRelativeDir)}/${filename}`,
-				`${normalizePath(configRelativeDir)}/build/${filename}`,
-				version ? `${normalizePath(configRelativeDir)}/build/${version}/${filename}` : null
-			);
-		}
 
 		// Remove duplicates while preserving order
 		const filteredCandidates = candidates.filter((candidate): candidate is string => Boolean(candidate));

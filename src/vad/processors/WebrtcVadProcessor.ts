@@ -137,55 +137,39 @@ export class WebRTCVADProcessor implements VADProcessor {
 			throw new Error('WebRTC VAD requires FileSystemAdapter (desktop version)');
 		}
 
-		// WASMファイルのパスを構築
-		let wasmFile: TFile | null = null;
+			// WASMファイルのパスを構築
+			try {
+				const wasmPaths = PathUtils.getWasmFilePathsFromDir(
+					this.pluginDir,
+					'fvad.wasm',
+					this.app
+				);
 
-		try {
-			const wasmPaths = PathUtils.getWasmFilePathsFromDir(
-				this.pluginDir,
-				'fvad.wasm',
-				`${this.app.vault.configDir}/plugins/${PathUtils.getCurrentPluginId()}`,
-				this.app
-			);
-
-			// ファイルの存在確認（優先順位順）
-			for (const path of wasmPaths) {
-				const abstract = vault.getAbstractFileByPath(path);
-				if (abstract instanceof TFile) {
-					wasmFile = abstract;
-					this.logger.debug('WASM file found at:', path);
-					break;
+				// ファイルの存在確認（優先順位順）
+				for (const path of wasmPaths) {
+					const abstract = vault.getAbstractFileByPath(path);
+					if (abstract instanceof TFile) {
+						this.logger.debug('WASM file found at:', path);
+						return await vault.readBinary(abstract);
 					}
 
-					// Fallback: adapter lookup (relative first, then absolute for build/<version>/ releases)
-					const adapter = vault.adapter;
-					const normalizedPath = PathUtils.normalizeUserPath(path);
-
-					// First try vault-relative path (required by FileSystemAdapter.exists)
-					if (await adapter.exists(normalizedPath)) {
-						this.logger.debug('WASM file found via adapter at:', normalizedPath);
-						return await adapter.readBinary(normalizedPath);
-					}
-
-					const absolutePath = adapter.getFullPath(normalizedPath);
-					if (await adapter.exists(absolutePath)) {
-						this.logger.debug('WASM file found via adapter at:', absolutePath);
-						return await adapter.readBinary(absolutePath);
+					// Fallback: adapter read (avoids exists() / absolute-path checks)
+					try {
+						const normalizedPath = PathUtils.normalizeUserPath(path);
+						const wasmBuffer = await vault.adapter.readBinary(normalizedPath);
+						this.logger.debug('WASM file read via adapter at:', normalizedPath);
+						return wasmBuffer;
+					} catch {
+						// continue searching
 					}
 				}
 
-			if (!wasmFile) {
+				// No candidates succeeded
 				throw new Error(`WASM file not found in any of the expected locations: ${wasmPaths.join(', ')}`);
-			}
-
-			// バイナリとして読み込む
-			const wasmBuffer = await vault.readBinary(wasmFile);
-
-			return wasmBuffer;
-		} catch (error: unknown) {
-			this.logger.error('Failed to load WASM file', error);
-			const errorMessage = this.formatUnknownError(error);
-			throw new Error(`Failed to load WASM file: ${errorMessage}`);
+			} catch (error: unknown) {
+				this.logger.error('Failed to load WASM file', error);
+				const errorMessage = this.formatUnknownError(error);
+				throw new Error(`Failed to load WASM file: ${errorMessage}`);
 		}
 	}
 
