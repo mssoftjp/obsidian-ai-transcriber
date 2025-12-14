@@ -162,7 +162,8 @@ export function convertToPCM16(audioData: Float32Array): ArrayBuffer {
 
 	for (let i = 0; i < audioData.length; i++) {
 		// Convert float32 (-1 to 1) to int16 (-32768 to 32767)
-		const sample = Math.max(-1, Math.min(1, audioData[i]));
+		const value = audioData[i] ?? 0;
+		const sample = Math.max(-1, Math.min(1, value));
 		const int16 = Math.floor(sample * 32767);
 		view.setInt16(i * 2, int16, true); // Little-endian
 	}
@@ -178,7 +179,8 @@ export function createAudioAppendMessage(audioData: ArrayBuffer): string {
 	const uint8Array = new Uint8Array(audioData);
 	let binary = '';
 	for (let i = 0; i < uint8Array.byteLength; i++) {
-		binary += String.fromCharCode(uint8Array[i]);
+		const byte = uint8Array[i] ?? 0;
+		binary += String.fromCharCode(byte);
 	}
 	const base64Audio = btoa(binary);
 

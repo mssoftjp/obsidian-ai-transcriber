@@ -46,8 +46,12 @@ export class PatternCompiler {
 	/**
 	 * Compile an array of patterns
 	 */
-	static compileMany(patterns: string[], defaultFlags: string = 'g'): RegExp[] {
-		return patterns.map(pattern => PatternCompiler.compile(pattern, defaultFlags));
+	static compileMany(patterns: Array<string | undefined>, defaultFlags: string = 'g'): RegExp[] {
+		return patterns
+			.map(pattern => (typeof pattern === 'string' && pattern.length > 0)
+				? PatternCompiler.compile(pattern, defaultFlags)
+				: null)
+			.filter((pattern): pattern is RegExp => pattern !== null);
 	}
 
 	/**
@@ -86,6 +90,7 @@ export class PatternCompiler {
 	 * Compile language-specific patterns with appropriate modifications
 	 */
 	static compileWithLanguage(pattern: string, language: string, defaultFlags: string = 'g'): RegExp {
+		void language;
 		// Language-specific adjustments can be added here
 		// For now, just use standard compilation
 		return PatternCompiler.compile(pattern, defaultFlags);

@@ -31,14 +31,17 @@ export function createWebRTCVADBoundaryDetector(vadProcessor: VADProcessor) {
 			const boundaries: number[] = [];
 			const MIN_SILENCE_DURATION = 0.5; // Minimum 0.5s silence for a boundary
 
-			for (let i = 0; i < vadResult.segments.length - 1; i++) {
-				const currentSegment = vadResult.segments[i];
-				const nextSegment = vadResult.segments[i + 1];
+		for (let i = 0; i < vadResult.segments.length - 1; i++) {
+			const currentSegment = vadResult.segments[i];
+			const nextSegment = vadResult.segments[i + 1];
+			if (!currentSegment || !nextSegment) {
+				continue;
+			}
 
-				// Calculate silence duration between segments
-				const silenceStart = currentSegment.end;
-				const silenceEnd = nextSegment.start;
-				const silenceDuration = silenceEnd - silenceStart;
+			// Calculate silence duration between segments
+			const silenceStart = currentSegment.end ?? 0;
+			const silenceEnd = nextSegment.start ?? silenceStart;
+			const silenceDuration = silenceEnd - silenceStart;
 
 				// Only consider significant silence gaps
 				if (silenceDuration >= MIN_SILENCE_DURATION) {

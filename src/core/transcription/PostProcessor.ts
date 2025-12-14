@@ -78,16 +78,20 @@ export class PostProcessor {
 		original: TranscriptionResult,
 		processed: TranscriptionResult
 	): TranscriptionResult {
-		return {
+		const merged: TranscriptionResult = {
 			...original,
 			text: processed.text,
-			confidence: processed.confidence || original.confidence,
-			// Preserve original segments but update text
-			segments: original.segments?.map(segment => ({
-				...segment,
-				text: this.findCorrespondingText(segment, original.text, processed.text)
-			}))
+			confidence: processed.confidence ?? original.confidence
 		};
+
+		if (original.segments) {
+			merged.segments = original.segments.map(segment => ({
+				...segment,
+				text: this.findCorrespondingText(segment, processed.text)
+			}));
+		}
+
+		return merged;
 	}
 
 	/**
@@ -95,7 +99,6 @@ export class PostProcessor {
 	 */
 	private findCorrespondingText(
 		segment: { text: string; start: number; end: number },
-		originalText: string,
 		processedText: string
 	): string {
 		// Simple approach: Find similar text in processed version
@@ -146,22 +149,25 @@ export class PostProcessor {
 		}
 
 		for (let j = 0; j <= str1.length; j++) {
+			if (!matrix[0]) {
+				matrix[0] = [];
+			}
 			matrix[0][j] = j;
 		}
 
 		for (let i = 1; i <= str2.length; i++) {
 			for (let j = 1; j <= str1.length; j++) {
-				if (str2.charAt(i - 1) === str1.charAt(j - 1)) {
-					matrix[i][j] = matrix[i - 1][j - 1];
-				} else {
-					matrix[i][j] = Math.min(
-						matrix[i - 1][j - 1] + 1, // substitution
-						matrix[i][j - 1] + 1,     // insertion
-						matrix[i - 1][j] + 1      // deletion
-					);
+					if (str2.charAt(i - 1) === str1.charAt(j - 1)) {
+						matrix[i][j] = matrix[i - 1]?.[j - 1] ?? 0;
+					} else {
+						matrix[i][j] = Math.min(
+							(matrix[i - 1]?.[j - 1] ?? 0) + 1, // substitution
+							(matrix[i]?.[j - 1] ?? 0) + 1,     // insertion
+							(matrix[i - 1]?.[j] ?? 0) + 1      // deletion
+						);
+					}
 				}
 			}
-		}
 
 		return matrix[str2.length][str1.length];
 	}

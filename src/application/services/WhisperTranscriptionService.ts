@@ -254,7 +254,7 @@ export class WhisperTranscriptionService extends TranscriptionService {
 	 * Get Whisper-specific prompts
 	 */
 	getLanguagePrompt(language: string): string {
-		const prompts: Record<string, string> = {
+		const prompts = {
 			ja: 'これは日本語の音声です。正確に文字起こしを行ってください。',
 			en: 'This is English audio. Please transcribe accurately.',
 			zh: '这是中文音频。请准确转录。',
@@ -263,8 +263,11 @@ export class WhisperTranscriptionService extends TranscriptionService {
 			fr: 'Ceci est un audio en français. Veuillez transcrire avec précision.',
 			de: 'Dies ist eine deutsche Audioaufnahme. Bitte transkribieren Sie genau.',
 			auto: 'Please transcribe this audio accurately in its original language.'
-		};
+		} as const satisfies Record<string, string>;
 
-		return prompts[language as keyof typeof prompts] ?? prompts['auto'];
+		const prompt = language in prompts
+			? (prompts as Record<string, string>)[language]
+			: undefined;
+		return prompt ?? prompts.auto;
 	}
 }

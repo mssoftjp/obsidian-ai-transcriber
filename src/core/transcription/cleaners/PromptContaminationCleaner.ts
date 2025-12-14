@@ -12,6 +12,8 @@ import {
 import { PatternCompiler, GENERIC_XML_TAG } from './utils/PatternCompiler';
 import { Logger } from '../../../utils/Logger';
 
+type XmlPatternGroupName = 'completeXmlTags' | 'sentenceBoundedTags' | 'lineBoundedTags' | 'standaloneTags';
+
 export interface PromptContaminationConfig {
 	/** Custom prompts to remove (in addition to default patterns) */
 	customPrompts?: string[];
@@ -41,7 +43,7 @@ export class PromptContaminationCleaner implements TextCleaner {
 	/**
 	 * XML pattern groups (will be loaded from configuration)
 	 */
-	private xmlPatternGroups: Record<string, RegExp[]> = {
+	private xmlPatternGroups: Record<XmlPatternGroupName, RegExp[]> = {
 		completeXmlTags: [],
 		sentenceBoundedTags: [],
 		lineBoundedTags: [],
@@ -97,7 +99,10 @@ export class PromptContaminationCleaner implements TextCleaner {
 		// Compile XML patterns
 		if (patterns.xmlPatternGroups) {
 			for (const [group, patternStrings] of Object.entries(patterns.xmlPatternGroups)) {
-				this.xmlPatternGroups[group] = PatternCompiler.compileMany(patternStrings);
+				if ((group as string) in this.xmlPatternGroups) {
+					const key = group as XmlPatternGroupName;
+					this.xmlPatternGroups[key] = PatternCompiler.compileMany(patternStrings);
+				}
 			}
 		}
 
@@ -177,7 +182,7 @@ export class PromptContaminationCleaner implements TextCleaner {
 		const reductionRatio = originalLength > 0 ? (originalLength - cleanedLength) / originalLength : 0;
 
 		// Apply safety thresholds from configuration
-		const strategy = getModelCleaningStrategy(this.config.modelId);
+		const strategy = getModelCleaningStrategy(this.config.modelId || 'gpt-4o-mini-transcribe');
 		const thresholds = strategy.safetyThresholds;
 
 		// Detect potential issues with configured thresholds
@@ -278,15 +283,15 @@ export class PromptContaminationCleaner implements TextCleaner {
 		_issues: string[]
 	): string {
 		let cleaned = text;
-		const strategy = getModelCleaningStrategy(this.config.modelId);
+		const strategy = getModelCleaningStrategy(this.config.modelId || 'gpt-4o-mini-transcribe');
 		const maxReduction = strategy.safetyThresholds.singlePatternMaxReduction;
 
 		// Process pattern groups in priority order
 		const groups = [
-			{ name: 'Complete XML tags', patterns: this.xmlPatternGroups.completeXmlTags },
-			{ name: 'Sentence-bounded tags', patterns: this.xmlPatternGroups.sentenceBoundedTags },
-			{ name: 'Line-bounded tags', patterns: this.xmlPatternGroups.lineBoundedTags },
-			{ name: 'Standalone tags', patterns: this.xmlPatternGroups.standaloneTags }
+			{ name: 'Complete XML tags', patterns: this.xmlPatternGroups.completeXmlTags ?? [] },
+			{ name: 'Sentence-bounded tags', patterns: this.xmlPatternGroups.sentenceBoundedTags ?? [] },
+			{ name: 'Line-bounded tags', patterns: this.xmlPatternGroups.lineBoundedTags ?? [] },
+			{ name: 'Standalone tags', patterns: this.xmlPatternGroups.standaloneTags ?? [] }
 		];
 
 		for (const group of groups) {

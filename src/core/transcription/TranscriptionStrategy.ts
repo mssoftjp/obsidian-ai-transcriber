@@ -19,8 +19,8 @@ export interface TranscriptionExecutionResult {
 
 export abstract class TranscriptionStrategy {
 	protected transcriptionService: TranscriptionService;
-	protected onProgress?: (progress: TranscriptionProgress) => void;
-	protected abortSignal?: AbortSignal;
+	protected onProgress: ((progress: TranscriptionProgress) => void) | null = null;
+	protected abortSignal: AbortSignal | null = null;
 	protected logger: Logger;
 
 	constructor(
@@ -28,7 +28,7 @@ export abstract class TranscriptionStrategy {
 		onProgress?: (progress: TranscriptionProgress) => void
 	) {
 		this.transcriptionService = transcriptionService;
-		this.onProgress = onProgress;
+		this.onProgress = onProgress ?? null;
 		this.logger = Logger.getLogger('TranscriptionStrategy');
 	}
 
@@ -74,7 +74,7 @@ export abstract class TranscriptionStrategy {
 		chunks: AudioChunk[],
 		options: TranscriptionOptions
 	): Promise<TranscriptionExecutionResult> {
-		this.abortSignal = options.signal;
+		this.abortSignal = options.signal ?? null;
 
 		// Report initial progress
 		this.reportProgress({
@@ -155,9 +155,11 @@ export abstract class TranscriptionStrategy {
 				});
 
 				const result: TranscriptionExecutionResult = {
-					text: mergedText,
-					segments: allSegments
+					text: mergedText
 				};
+				if (allSegments && allSegments.length > 0) {
+					result.segments = allSegments;
+				}
 
 				if (isPartial) {
 					result.partial = true;

@@ -163,24 +163,24 @@ export function buildGPT4oTranscribeRequest(
 	// Prompt handling
 	if (params.prompt) {
 		result.prompt = params.prompt;
-	} else if (params.language) {
-			const prompts = isFirstChunk ? config.prompts.firstChunk : config.prompts.continuation;
-			const promptKey = params.language as keyof typeof prompts;
-			let prompt = prompts[promptKey] ?? prompts['auto'];
+		} else if (params.language) {
+				const prompts = isFirstChunk ? config.prompts.firstChunk : config.prompts.continuation;
+				const promptKey = params.language as keyof typeof prompts;
+				let prompt = prompts[promptKey] ?? prompts['auto'] ?? '';
 
-		// Replace {previousTail} placeholder if we have previous context and it's a continuation chunk
-		if (!isFirstChunk && params.previousContext) {
-			// Extract last characters from previous context based on config
-			const tailLength = PROMPT_CONSTANTS.CONTEXT_TAIL_LENGTH;
-			const previousTail = params.previousContext.length > tailLength
-				? params.previousContext.slice(-tailLength).trim()
-				: params.previousContext.trim();
+			// Replace {previousTail} placeholder if we have previous context and it's a continuation chunk
+			if (!isFirstChunk && params.previousContext) {
+				// Extract last characters from previous context based on config
+				const tailLength = PROMPT_CONSTANTS.CONTEXT_TAIL_LENGTH;
+				const previousTail = params.previousContext.length > tailLength
+					? params.previousContext.slice(-tailLength).trim()
+					: params.previousContext.trim();
 
-			prompt = prompt.replace('{previousTail}', previousTail);
+				prompt = prompt.replace('{previousTail}', previousTail);
+			}
+
+			result.prompt = prompt || config.prompts.firstChunk['auto'] || '';
 		}
-
-		result.prompt = prompt;
-	}
 
 	// Streaming support
 	if (params.stream !== undefined && params.stream !== config.defaults.stream) {

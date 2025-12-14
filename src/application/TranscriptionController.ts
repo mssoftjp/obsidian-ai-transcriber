@@ -620,9 +620,11 @@ export class TranscriptionController {
 	/**
 	 * Create progress adapter that converts TranscriptionProgress to ProgressTracker format
 	 */
-	private createProgressAdapter(): ((progress: TranscriptionProgress) => void) | undefined {
+	private createProgressAdapter(): (progress: TranscriptionProgress) => void {
 		if (!this.progressTracker || !this.progressCalculator) {
-			return undefined;
+			return () => {
+				// Progress tracking is disabled; no-op
+			};
 		}
 
 		// We need to get the current task ID from the API transcriber
@@ -666,25 +668,27 @@ export class TranscriptionController {
 	/**
 	 * Prepare workflow options
 	 */
-	private prepareWorkflowOptions(
-		startTime?: number,
-		endTime?: number,
-		abortSignal?: AbortSignal
-	): WorkflowOptions {
-		const options: WorkflowOptions = {
-			language: this.settings.language || 'auto',
-			onProgress: this.createProgressAdapter(),
-			signal: abortSignal
-			// Note: VAD is already applied at the file level before this point
-		};
-		if (startTime !== undefined) {
-			options.startTime = startTime;
+		private prepareWorkflowOptions(
+			startTime?: number,
+			endTime?: number,
+			abortSignal?: AbortSignal
+		): WorkflowOptions {
+			const options: WorkflowOptions = {
+				language: this.settings.language || 'auto',
+				onProgress: this.createProgressAdapter()
+				// Note: VAD is already applied at the file level before this point
+			};
+			if (startTime !== undefined) {
+				options.startTime = startTime;
+			}
+			if (endTime !== undefined) {
+				options.endTime = endTime;
+			}
+			if (abortSignal) {
+				options.signal = abortSignal;
+			}
+			return options;
 		}
-		if (endTime !== undefined) {
-			options.endTime = endTime;
-		}
-		return options;
-	}
 
 
 	/**

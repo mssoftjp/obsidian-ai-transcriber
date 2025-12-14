@@ -45,7 +45,7 @@ export class ResourceManager {
 		// Check for existing context
 		if (this.audioContexts.has(id)) {
 			const existing = this.audioContexts.get(id);
-			if (existing.state !== 'closed') {
+			if (existing && existing.state !== 'closed') {
 				return Promise.resolve(existing);
 			}
 			// Remove closed context
@@ -140,7 +140,10 @@ export class ResourceManager {
 		if (!this.cleanupHandlers.has(id)) {
 			this.cleanupHandlers.set(id, []);
 		}
-		this.cleanupHandlers.get(id).push(handler);
+		const handlers = this.cleanupHandlers.get(id);
+		if (handlers) {
+			handlers.push(handler);
+		}
 	}
 
 	/**

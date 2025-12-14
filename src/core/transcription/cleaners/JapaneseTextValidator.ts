@@ -30,7 +30,7 @@ export class JapaneseTextValidator implements TextCleaner {
 	readonly name = 'JapaneseTextValidator';
 	readonly enabled = true;
 
-	private config: JapaneseValidationConfig;
+	private config: Required<JapaneseValidationConfig>;
 	private validationPatterns: ValidationPatterns;
 	private validationThresholds: ValidationThresholds;
 
@@ -74,7 +74,10 @@ export class JapaneseTextValidator implements TextCleaner {
 	 */
 	clean(text: string, language: string = 'auto', context?: CleaningContext): CleaningResult {
 		const issues: string[] = [];
-		const originalLength = context?.customData?.originalLength || text.length;
+		const originalLengthValue = context?.customData
+			? (context.customData as Record<string, unknown>)['originalLength']
+			: undefined;
+		const originalLength = typeof originalLengthValue === 'number' ? originalLengthValue : text.length;
 
 		// Only validate Japanese text
 		if (language !== 'ja' && language !== 'auto') {
@@ -164,14 +167,14 @@ export class JapaneseTextValidator implements TextCleaner {
 			hasSignificantChanges: false, // Validator never changes text
 			metadata: {
 				originalLength: typeof originalLength === 'number' ? originalLength : text.length,
-				cleanedLength: text.length,
-				reductionRatio: typeof originalLength === 'number' && originalLength !== text.length && originalLength > 0
-					? (originalLength - text.length) / originalLength
-					: 0,
-				patternsMatched: issues.map(issue => issue.split(':')[0])
-			}
-		};
-	}
+					cleanedLength: text.length,
+					reductionRatio: typeof originalLength === 'number' && originalLength !== text.length && originalLength > 0
+						? (originalLength - text.length) / originalLength
+						: 0,
+					patternsMatched: issues.map(issue => issue.split(':')[0] ?? issue)
+				}
+			};
+		}
 
 	/**
 	 * Perform advanced linguistic checks for Japanese text

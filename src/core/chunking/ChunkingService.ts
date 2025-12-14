@@ -80,7 +80,7 @@ export abstract class ChunkingService {
 	 * Create chunking strategy when chunking is required
 	 */
 	private createChunkingStrategy(
-		audio: ProcessedAudio,
+		_audio: ProcessedAudio,
 		totalDuration: number,
 		estimatedSizeMB: number,
 		primaryReason: 'duration' | 'file_size'
@@ -330,7 +330,8 @@ export abstract class ChunkingService {
 	protected calculateEnergy(samples: Float32Array): number {
 		let sum = 0;
 		for (let i = 0; i < samples.length; i++) {
-			sum += samples[i] * samples[i];
+			const value = samples[i] ?? 0;
+			sum += value * value;
 		}
 		return Math.sqrt(sum / samples.length);
 	}
@@ -346,8 +347,8 @@ export abstract class ChunkingService {
 			let closest = target;
 			let minDistance = Infinity;
 
-			for (const boundary of boundaries) {
-				const distance = Math.abs(boundary - target);
+		for (const boundary of boundaries) {
+			const distance = Math.abs(boundary - target);
 				if (distance < minDistance) {
 					minDistance = distance;
 					closest = boundary;

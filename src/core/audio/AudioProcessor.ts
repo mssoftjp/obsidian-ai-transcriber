@@ -147,7 +147,8 @@ export abstract class AudioProcessor {
 		// Convert float32 to int16
 		let offset = 44;
 		for (let i = 0; i < length; i++) {
-			const sample = Math.max(-1, Math.min(1, pcmData[i]));
+			const value = pcmData[i] ?? 0;
+			const sample = Math.max(-1, Math.min(1, value));
 			view.setInt16(offset, sample < 0 ? sample * 0x8000 : sample * 0x7FFF, true);
 			offset += 2;
 		}
@@ -163,7 +164,9 @@ export abstract class AudioProcessor {
 		const mono = new Float32Array(length);
 
 		for (let i = 0; i < length; i++) {
-			mono[i] = (leftChannel[i] + rightChannel[i]) / 2;
+			const left = leftChannel[i] ?? 0;
+			const right = rightChannel[i] ?? 0;
+			mono[i] = (left + right) / 2;
 		}
 
 		return mono;
@@ -192,8 +195,9 @@ export abstract class AudioProcessor {
 			const fraction = inputIndex - inputIndexFloor;
 
 			// Linear interpolation
-			output[i] = input[inputIndexFloor] * (1 - fraction) +
-			           input[inputIndexCeil] * fraction;
+			const first = input[inputIndexFloor] ?? 0;
+			const second = input[inputIndexCeil] ?? 0;
+			output[i] = first * (1 - fraction) + second * fraction;
 		}
 
 		return output;

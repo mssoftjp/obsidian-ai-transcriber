@@ -95,9 +95,11 @@ export abstract class ApiClient {
 			method: 'POST',
 			headers,
 			body: data instanceof FormData ? data : JSON.stringify(data),
-			signal,
 			...options
 		};
+		if (signal !== undefined) {
+			requestOptions.signal = signal ?? null;
+		}
 
 		return this.executeWithRetry<T>(url, requestOptions);
 	}
@@ -122,9 +124,11 @@ export abstract class ApiClient {
 			method: 'GET',
 			headers: {
 				'Authorization': `Bearer ${this.config.apiKey}`
-			},
-			signal
+			}
 		};
+		if (signal !== undefined) {
+			requestOptions.signal = signal ?? null;
+		}
 
 		return this.executeWithRetry<T>(url.toString(), requestOptions);
 	}

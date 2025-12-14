@@ -12,20 +12,18 @@ import {
 import { TextCleaner, CleaningContext } from './interfaces/TextCleaner';
 import { Logger } from '../../../utils/Logger';
 
-export class StandardCleaningPipeline implements CleaningPipeline {
-	readonly name: string;
-	readonly config: PipelineConfig;
-	private modelId: string;
-	private logger = Logger.getLogger('StandardCleaningPipeline');
+	export class StandardCleaningPipeline implements CleaningPipeline {
+		readonly name: string;
+		readonly config: PipelineConfig;
+		private logger = Logger.getLogger('StandardCleaningPipeline');
 
-	constructor(config: PipelineConfig) {
-		this.name = config.name;
-		this.modelId = config.modelId || 'gpt-4o-mini-transcribe'; // Default fallback
-		this.config = {
-			stopOnCriticalIssue: false,
-			maxReductionRatio: 0.8,
-			enableDetailedLogging: false,
-			...config
+		constructor(config: PipelineConfig) {
+			this.name = config.name;
+			this.config = {
+				stopOnCriticalIssue: false,
+				maxReductionRatio: 0.8,
+				enableDetailedLogging: false,
+				...config
 		};
 	}
 
@@ -182,67 +180,6 @@ export class StandardCleaningPipeline implements CleaningPipeline {
 		return issues.some(issue =>
 			criticalPatterns.some(pattern => pattern.test(issue))
 		);
-	}
-
-	/**
-	 * Highlight removed content by comparing before and after text
-	 * This is a simple implementation that identifies removed sections
-	 */
-	private highlightRemovedContent(beforeText: string, afterText: string): string[] {
-		const removedParts: string[] = [];
-
-		// Simple approach: find chunks that are in before but not in after
-		const beforeWords = beforeText.split(/\s+/);
-		const afterWords = afterText.split(/\s+/);
-		const afterSet = new Set(afterWords);
-
-		let currentRemovedChunk: string[] = [];
-
-		for (const word of beforeWords) {
-			if (!afterSet.has(word)) {
-				currentRemovedChunk.push(word);
-			} else {
-				if (currentRemovedChunk.length > 0) {
-					removedParts.push(currentRemovedChunk.join(' '));
-					currentRemovedChunk = [];
-				}
-			}
-		}
-
-		// Add final chunk if exists
-		if (currentRemovedChunk.length > 0) {
-			removedParts.push(currentRemovedChunk.join(' '));
-		}
-
-		return removedParts;
-	}
-
-	/**
-	 * Get dynamic reduction threshold based on text length
-	 * Shorter texts can tolerate higher reduction rates due to higher hallucination likelihood
-	 * CURRENTLY DISABLED - using fixed threshold instead
-	 */
-	private getDynamicReductionThreshold(_textLength: number): number {
-		const baseThreshold = this.config.maxReductionRatio || 0.4;
-
-		// DISABLED: Dynamic thresholds - using fixed threshold for now
-		return baseThreshold;
-
-		/*
-		if (textLength <= 40) {
-			// Very short texts: Allow up to 90% reduction (often heavy hallucination)
-			return Math.min(0.9, baseThreshold + 0.2);
-		} else if (textLength <= 80) {
-			// Short texts: Allow up to 80% reduction
-			return Math.min(0.8, baseThreshold + 0.1);
-		} else if (textLength <= 150) {
-			// Medium texts: Use base threshold
-			return baseThreshold;
-		} else {
-			// Long texts: More conservative (less likely to be hallucination)
-			return Math.max(0.5, baseThreshold - 0.1);
-		}
-		*/
 	}
 
 	/**

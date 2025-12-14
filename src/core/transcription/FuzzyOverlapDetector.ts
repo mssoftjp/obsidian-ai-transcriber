@@ -181,7 +181,10 @@ export class FuzzyOverlapDetector {
 		let startOffset = 0;
 		while (sourcePos - startOffset > 0 &&
 			   targetPos - startOffset > 0 &&
-			   this.isSimilarChar(source[sourcePos - startOffset - 1], target[targetPos - startOffset - 1])) {
+			   this.isSimilarChar(
+				   source[sourcePos - startOffset - 1] ?? '',
+				   target[targetPos - startOffset - 1] ?? ''
+			   )) {
 			startOffset++;
 		}
 
@@ -189,7 +192,10 @@ export class FuzzyOverlapDetector {
 		let endOffset = 0;
 		while (sourcePos + endOffset < source.length &&
 			   targetPos + endOffset < target.length &&
-			   this.isSimilarChar(source[sourcePos + endOffset], target[targetPos + endOffset])) {
+			   this.isSimilarChar(
+				   source[sourcePos + endOffset] ?? '',
+				   target[targetPos + endOffset] ?? ''
+			   )) {
 			endOffset++;
 		}
 
@@ -344,15 +350,18 @@ export class FuzzyOverlapDetector {
 
 		// Try different alignments
 		for (let i = 0; i <= source.length - minLength; i++) {
-			for (let j = 0; j <= target.length - minLength; j++) {
-				// Determine match length
-				let length = 0;
-				let matches = 0;
+				for (let j = 0; j <= target.length - minLength; j++) {
+					// Determine match length
+					let length = 0;
+					let matches = 0;
 
-				while (i + length < source.length && j + length < target.length) {
-					if (this.isSimilarChar(source[i + length], target[j + length])) {
-						matches++;
-					}
+					while (i + length < source.length && j + length < target.length) {
+						if (this.isSimilarChar(
+							source[i + length] ?? '',
+							target[j + length] ?? ''
+						)) {
+							matches++;
+						}
 					length++;
 
 					// Check if we have enough similarity

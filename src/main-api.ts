@@ -131,7 +131,7 @@ export default class AITranscriberPlugin extends Plugin {
 
 		// Register context menu for audio files
 		this.registerEvent(
-			this.app.workspace.on('file-menu', (menu: Menu, file: import('obsidian').TAbstractFile, _source: string, leaf?) => {
+			this.app.workspace.on('file-menu', (menu: Menu, file: import('obsidian').TAbstractFile, _source: string) => {
 				if (file instanceof TFile && this.isAudioFile(file)) {
 					menu.addItem((item) => {
 						item

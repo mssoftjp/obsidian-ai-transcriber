@@ -17,7 +17,7 @@ export class WebAudioChunkingService extends ChunkingService {
 	/**
 	 * Set preferred chunk duration from model config
 	 */
-	setPreferredChunkDuration(duration: number): void {
+	override setPreferredChunkDuration(duration: number): void {
 		this.preferredChunkDuration = duration;
 	}
 
@@ -25,7 +25,7 @@ export class WebAudioChunkingService extends ChunkingService {
 	 * Calculate optimal chunk duration considering constraints and model preferences
 	 * Priority: 1. Time constraint, 2. Size constraint, 3. Model preference
 	 */
-	protected calculateOptimalChunkDuration(
+	protected override calculateOptimalChunkDuration(
 		totalDuration: number,
 		estimatedSizeMB: number,
 		maxDuration: number,
@@ -58,7 +58,7 @@ export class WebAudioChunkingService extends ChunkingService {
 	/**
 	 * Create chunks from processed audio
 	 */
-	async createChunks(
+	override async createChunks(
 		audio: ProcessedAudio,
 		strategy: ChunkStrategy
 	): Promise<AudioChunk[]> {
@@ -90,9 +90,11 @@ export class WebAudioChunkingService extends ChunkingService {
 		const chunks: AudioChunk[] = [];
 
 		for (let i = 0; i < boundaries.length; i++) {
-			const startSample = Math.floor(boundaries[i] * sampleRate);
+			const boundary = boundaries[i] ?? 0;
+			const nextBoundary = boundaries[i + 1] ?? boundary;
+			const startSample = Math.floor(boundary * sampleRate);
 			const endSample = i < boundaries.length - 1
-				? Math.floor(boundaries[i + 1] * sampleRate) + overlapSamples
+				? Math.floor(nextBoundary * sampleRate) + overlapSamples
 				: audio.pcmData.length;
 
 			// Skip if chunk would be empty or too small
@@ -205,7 +207,8 @@ export class WebAudioChunkingService extends ChunkingService {
 		// Convert float32 to int16
 		let offset = 44;
 		for (let i = 0; i < length; i++) {
-			const sample = Math.max(-1, Math.min(1, pcmData[i]));
+			const value = pcmData[i] ?? 0;
+			const sample = Math.max(-1, Math.min(1, value));
 			view.setInt16(offset, sample < 0 ? sample * 0x8000 : sample * 0x7FFF, true);
 			offset += 2;
 		}

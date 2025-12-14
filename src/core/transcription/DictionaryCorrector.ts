@@ -57,7 +57,7 @@ export interface IGPTCorrectionService {
 export class DictionaryCorrector {
 	private dictionaries: Map<string, CorrectionDictionary> = new Map();
 	private useGPTCorrection: boolean = false;
-	private gptService?: IGPTCorrectionService;
+	private gptService: IGPTCorrectionService | null = null;
 	private logger = Logger.getLogger('DictionaryCorrector');
 
 	/**
@@ -65,7 +65,7 @@ export class DictionaryCorrector {
 	 */
 	constructor(useGPTCorrection: boolean = false, gptService?: IGPTCorrectionService) {
 		this.useGPTCorrection = useGPTCorrection;
-		this.gptService = gptService;
+		this.gptService = gptService ?? null;
 	}
 
 	/**
@@ -175,32 +175,46 @@ export class DictionaryCorrector {
 
 			// Add definite corrections from user dictionary (max 50)
 			if (dictionary.definiteCorrections) {
-				const definiteEntries = getTopCorrections(dictionary.definiteCorrections, DICTIONARY_CONSTANTS.MAX_DEFINITE_CORRECTIONS)
-					.flatMap(entry =>
-						// Expand array of patterns to individual entries
-						entry.from.map(pattern => ({
-							from: pattern,
-							to: entry.to,
-							category: entry.category,
-							priority: entry.priority
-						}))
-					);
+					const definiteEntries = getTopCorrections(dictionary.definiteCorrections, DICTIONARY_CONSTANTS.MAX_DEFINITE_CORRECTIONS)
+						.flatMap(entry =>
+							// Expand array of patterns to individual entries
+							entry.from.map(pattern => {
+								const expanded: ExtendedDictionaryEntry = {
+									from: pattern,
+									to: entry.to
+								};
+								if (entry.category !== undefined) {
+									expanded.category = entry.category;
+								}
+								if (entry.priority !== undefined) {
+									expanded.priority = entry.priority;
+								}
+								return expanded;
+							})
+						);
 				corrections.push(...definiteEntries);
 			}
 
 			// Add relevant contextual corrections (max 150)
 			if (dictionary.contextualCorrections) {
 				const contextual = detectContextKeywords(text, dictionary.contextualCorrections);
-				const topContextual = getTopCorrections(contextual, DICTIONARY_CONSTANTS.MAX_CONTEXTUAL_CORRECTIONS)
-					.flatMap(entry =>
-						// Expand array of patterns to individual entries
-						entry.from.map(pattern => ({
-							from: pattern,
-							to: entry.to,
-							category: entry.category,
-							priority: entry.priority
-						}))
-					);
+					const topContextual = getTopCorrections(contextual, DICTIONARY_CONSTANTS.MAX_CONTEXTUAL_CORRECTIONS)
+						.flatMap(entry =>
+							// Expand array of patterns to individual entries
+							entry.from.map(pattern => {
+								const expanded: ExtendedDictionaryEntry = {
+									from: pattern,
+									to: entry.to
+								};
+								if (entry.category !== undefined) {
+									expanded.category = entry.category;
+								}
+								if (entry.priority !== undefined) {
+									expanded.priority = entry.priority;
+								}
+								return expanded;
+							})
+						);
 				corrections.push(...topContextual);
 			}
 

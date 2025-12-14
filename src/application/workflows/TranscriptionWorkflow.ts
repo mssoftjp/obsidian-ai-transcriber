@@ -130,7 +130,7 @@ export class TranscriptionWorkflow {
 
 			// Step 3: Prepare transcription options
 			this.logger.debug('Step 3: Preparing transcription options');
-			const transcriptionOptions = this.prepareTranscriptionOptions(options);
+				const transcriptionOptions = this.prepareTranscriptionOptions(options);
 
 			// Step 4: Execute transcription strategy
 			this.logger.debug('Step 4: Executing transcription strategy', {
@@ -139,17 +139,25 @@ export class TranscriptionWorkflow {
 			const result = await this.strategy.execute(chunks, transcriptionOptions);
 
 			// Step 5: Calculate final statistics
-			const duration = (Date.now() - startTime) / 1000;
+				const duration = (Date.now() - startTime) / 1000;
+				const modelUsed = this.strategy.getModelUsed ? this.strategy.getModelUsed() : undefined;
 				const workflowResult: WorkflowResult = {
 					text: result.text,
 					duration,
 					chunks: chunks.length,
 					strategy: chunkStrategy,
-					segments: result.segments ?? [],
-					modelUsed: this.strategy.getModelUsed ? this.strategy.getModelUsed() : undefined,
-					partial: result.partial,
-					error: result.error
+					segments: result.segments ?? []
 				};
+
+				if (modelUsed) {
+					workflowResult.modelUsed = modelUsed;
+				}
+				if (result.partial !== undefined) {
+					workflowResult.partial = result.partial;
+				}
+				if (result.error !== undefined) {
+					workflowResult.error = result.error;
+				}
 
 			this.logger.info('Transcription workflow completed', {
 				duration: `${duration.toFixed(2)}s`,
@@ -209,11 +217,15 @@ export class TranscriptionWorkflow {
 	 * Prepare transcription options
 	 */
 	private prepareTranscriptionOptions(options: WorkflowOptions): TranscriptionOptions {
-		return {
+		const transcriptionOptions: TranscriptionOptions = {
 			language: options.language || 'auto',
-			timestamps: true,
-			signal: this.abortController?.signal
+			timestamps: true
 		};
+		const signal = this.abortController?.signal ?? options.signal;
+		if (signal) {
+			transcriptionOptions.signal = signal;
+		}
+		return transcriptionOptions;
 	}
 
 	/**

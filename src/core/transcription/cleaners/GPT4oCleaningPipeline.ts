@@ -6,7 +6,7 @@
 import { StandardCleaningPipeline } from './StandardCleaningPipeline';
 import { PromptContaminationCleaner } from './PromptContaminationCleaner';
 import { BaseHallucinationCleaner } from './BaseHallucinationCleaner';
-import { JapaneseTextValidator } from './JapaneseTextValidator';
+import { JapaneseTextValidator, JapaneseValidationConfig } from './JapaneseTextValidator';
 import { DictionaryCorrector } from '../DictionaryCorrector';
 import { PipelineConfig } from './interfaces/CleaningPipeline';
 import { getModelCleaningStrategy } from '../../../config/ModelCleaningConfig';
@@ -56,12 +56,27 @@ export class GPT4oCleaningPipeline extends StandardCleaningPipeline {
 
 				// 3. Validate Japanese text quality (if enabled)
 				...(enableJapaneseValidation && strategy.japaneseValidation ? [
-					new JapaneseTextValidator({
-						maxReductionRatio: strategy.japaneseValidation.maxReductionRatio,
-						expectedCharsPerSecond: strategy.japaneseValidation.expectedCharsPerSecond,
-						maxIncompleteWords: strategy.japaneseValidation.maxIncompleteWords,
-						enableAdvancedChecks: strategy.japaneseValidation.enableAdvancedChecks
-					}, strategy)
+					(() => {
+						const validationConfig: JapaneseValidationConfig = {};
+						const jv = strategy.japaneseValidation;
+						if (jv.maxReductionRatio !== undefined) {
+							validationConfig.maxReductionRatio = jv.maxReductionRatio;
+						}
+						if (jv.expectedCharsPerSecond !== undefined) {
+							validationConfig.expectedCharsPerSecond = jv.expectedCharsPerSecond;
+						}
+						if (jv.maxIncompleteWords !== undefined) {
+							validationConfig.maxIncompleteWords = jv.maxIncompleteWords;
+						}
+						if (jv.maxMergedWords !== undefined) {
+							validationConfig.maxMergedWords = jv.maxMergedWords;
+						}
+						if (jv.enableAdvancedChecks !== undefined) {
+							validationConfig.enableAdvancedChecks = jv.enableAdvancedChecks;
+						}
+
+						return new JapaneseTextValidator(validationConfig, strategy);
+					})()
 				] : [])
 			],
 			stopOnCriticalIssue: strategy.stopOnCriticalIssue,

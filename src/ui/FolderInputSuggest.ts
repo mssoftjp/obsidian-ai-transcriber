@@ -6,11 +6,11 @@ import { AbstractInputSuggest, App } from 'obsidian';
  */
 export class FolderInputSuggest extends AbstractInputSuggest<string> {
 	private folders: string[];
-	private readonly onSelectCallback?: (value: string) => void;
+	private readonly onSelectCallback: (value: string) => void;
 
 	constructor(app: App, inputEl: HTMLInputElement, onSelect?: (value: string) => void) {
 		super(app, inputEl);
-		this.onSelectCallback = onSelect;
+		this.onSelectCallback = onSelect ?? (() => { /* no-op */ });
 		this.folders = this.loadFolders();
 	}
 
