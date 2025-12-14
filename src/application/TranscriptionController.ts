@@ -51,7 +51,6 @@ export class TranscriptionController {
 
 	// Cached instances
 	private audioPipeline?: AudioPipeline;
-	private currentWorkflow?: TranscriptionWorkflow;
 	private progressCalculator?: SimpleProgressCalculator;
 
 	constructor(
@@ -86,12 +85,12 @@ export class TranscriptionController {
 		try {
 			// Load audio file
 			const loadStart = performance.now();
-			let audioBuffer = await this.app.vault.readBinary(audioFile);
-			timings.fileLoad = performance.now() - loadStart;
-			this.logger.debug('Audio file loaded', {
-				size: `${(audioBuffer.byteLength / 1024 / 1024).toFixed(2)}MB`,
-				loadTime: `${timings.fileLoad.toFixed(0)}ms`
-			});
+				let audioBuffer = await this.app.vault.readBinary(audioFile);
+				timings['fileLoad'] = performance.now() - loadStart;
+				this.logger.debug('Audio file loaded', {
+					size: `${(audioBuffer.byteLength / 1024 / 1024).toFixed(2)}MB`,
+					loadTime: `${timings['fileLoad'].toFixed(0)}ms`
+				});
 
 			// Initialize components
 			await this.initialize();
@@ -103,8 +102,8 @@ export class TranscriptionController {
 					const vadStart = performance.now();
 					// const originalSize = audioBuffer.byteLength; // Removed: unused variable
 					// VADPreprocessor.processFile returns ArrayBuffer (processed audio)
-					const processedBuffer = await this.vadPreprocessor.processFile(audioFile, startTime, endTime);
-					timings.vadProcessing = performance.now() - vadStart;
+						const processedBuffer = await this.vadPreprocessor.processFile(audioFile, startTime, endTime);
+						timings['vadProcessing'] = performance.now() - vadStart;
 
 					// If VAD processing was successful and modified the audio
 					// Compare byteLength instead of object reference to avoid
@@ -162,18 +161,18 @@ export class TranscriptionController {
 			this.logger.debug('Executing transcription workflow...');
 			const transcriptionStart = performance.now();
 			const result = await workflow.execute(audioFile, audioBuffer, options);
-			timings.transcription = performance.now() - transcriptionStart;
-			this.logger.debug('Transcription completed', {
-				duration: `${timings.transcription.toFixed(0)}ms`,
-				chunks: result.chunks,
-				partial: result.partial
-			});
+				timings['transcription'] = performance.now() - transcriptionStart;
+				this.logger.debug('Transcription completed', {
+					duration: `${timings['transcription'].toFixed(0)}ms`,
+					chunks: result.chunks,
+					partial: result.partial
+				});
 
 			// Log statistics
 			this.logStatistics(audioFile, result);
 
 			// Log timing information
-			timings.total = performance.now() - processStartTime;
+				timings['total'] = performance.now() - processStartTime;
 
 			// Check if result is partial
 			if (result.partial) {
@@ -751,7 +750,6 @@ export class TranscriptionController {
 		this.settings = settings;
 		// Clear cached instances to force recreation with new settings
 		this.audioPipeline = undefined;
-		this.currentWorkflow = undefined;
 	}
 
 	private getVadMode(): VADMode {
