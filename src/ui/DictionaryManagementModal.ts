@@ -31,7 +31,7 @@ export class DictionaryManagementModal extends Modal {
 		}
 	}
 
-	onOpen() {
+	override onOpen() {
 		const { contentEl } = this;
 		contentEl.empty();
 
@@ -621,7 +621,7 @@ export class DictionaryManagementModal extends Modal {
 			Array.isArray((data as Record<string, unknown>).definiteCorrections);
 	}
 
-	onClose() {
+	override onClose() {
 		const { contentEl } = this;
 		contentEl.empty();
 	}

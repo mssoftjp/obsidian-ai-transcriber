@@ -23,7 +23,7 @@ export class FolderInputSuggest extends AbstractInputSuggest<string> {
 		el.setText(value === '' ? '/' : value);
 	}
 
-	selectSuggestion(value: string, _evt: MouseEvent | KeyboardEvent): void {
+	override selectSuggestion(value: string, _evt: MouseEvent | KeyboardEvent): void {
 		const normalized = value === '/' ? '' : value;
 		this.setValue(normalized);
 		this.onSelectCallback?.(normalized);

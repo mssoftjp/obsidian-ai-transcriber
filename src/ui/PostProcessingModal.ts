@@ -31,7 +31,7 @@ export class PostProcessingModal extends Modal {
 		this.onSubmit = onSubmit;
 	}
 
-	onOpen() {
+	override onOpen() {
 		const { contentEl } = this;
 		contentEl.empty();
 		this.modalEl.addClass('ai-transcriber-modal');
@@ -194,7 +194,7 @@ export class PostProcessingModal extends Modal {
 		}
 	}
 
-	onClose() {
+	override onClose() {
 		const { contentEl } = this;
 		contentEl.empty();
 	}

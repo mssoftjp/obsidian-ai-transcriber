@@ -25,16 +25,16 @@ export class APITranscriptionModal extends Modal {
 	private settings: APITranscriptionSettings;
 	private isTranscribing = false;
 	private originalView: MarkdownView | null;
-	private costEl: HTMLElement;
-	private timeRangeEl: HTMLElement;
-	private startTimeInput: HTMLInputElement;
-	private endTimeInput: HTMLInputElement;
-	private startHourInput: HTMLInputElement;
-	private startMinInput: HTMLInputElement;
-	private startSecInput: HTMLInputElement;
-	private endHourInput: HTMLInputElement;
-	private endMinInput: HTMLInputElement;
-	private endSecInput: HTMLInputElement;
+	private costEl!: HTMLElement;
+	private timeRangeEl!: HTMLElement;
+	private startTimeInput!: HTMLInputElement;
+	private endTimeInput!: HTMLInputElement;
+	private startHourInput!: HTMLInputElement;
+	private startMinInput!: HTMLInputElement;
+	private startSecInput!: HTMLInputElement;
+	private endHourInput!: HTMLInputElement;
+	private endMinInput!: HTMLInputElement;
+	private endSecInput!: HTMLInputElement;
 	private enableTimeRange = false;
 	private audioDuration = 0;
 	private progressTracker: ProgressTracker | null;
@@ -70,7 +70,7 @@ export class APITranscriptionModal extends Modal {
 		this.originalView = this.app.workspace.getActiveViewOfType(MarkdownView);
 	}
 
-	onOpen() {
+	override onOpen() {
 		const { contentEl } = this;
 		contentEl.empty();
 		this.logger.debug('Opening transcription modal');
@@ -1711,7 +1711,7 @@ export class APITranscriptionModal extends Modal {
 		}
 	}
 
-	onClose() {
+	override onClose() {
 		const { contentEl } = this;
 		contentEl.empty();
 
