@@ -67,6 +67,12 @@ const typescriptRules = {
   'import/no-cycle': 'off'
 };
 
+const artifactRules = {
+  // Disable plugin rules on build artifacts (generated JS; no typed linting).
+  ...Object.fromEntries(Object.keys(tsPlugin.rules).map((ruleName) => [`@typescript-eslint/${ruleName}`, 'off'])),
+  ...Object.fromEntries(Object.keys(obsidianmd.rules).map((ruleName) => [`obsidianmd/${ruleName}`, 'off']))
+};
+
 export default [
   {
     ignores: [
@@ -99,6 +105,27 @@ export default [
       import: importPlugin
     },
     rules: typescriptRules
+  },
+  {
+    // Build artifacts are JS-only and not part of the TS project; disable plugin rules here.
+    files: ['build/**/*.js', 'dist/**/*.js'],
+    languageOptions: {
+      globals: {
+        ...globals.browser,
+        ...globals.node,
+        Option: 'readonly'
+      }
+    },
+    rules: {
+      ...artifactRules,
+      // Generated/bundled output often contains patterns that are fine in source.
+      'no-console': 'off',
+      'no-empty': 'off',
+      'no-fallthrough': 'off',
+      'no-irregular-whitespace': 'off',
+      'no-restricted-globals': 'off',
+      'no-useless-escape': 'off'
+    }
   }
 ];
 
