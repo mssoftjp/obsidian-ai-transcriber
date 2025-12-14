@@ -68,6 +68,30 @@ describe('GPT4oTranscriptionStrategy', () => {
     expect((cleanText as jest.Mock).mock.calls[0][1]).toBe('en');
   });
 
+  it('normalizes Chinese language codes (e.g., zh-CN -> zh)', async () => {
+    const cleanText = jest.fn(async (text: string, _language: string) => text);
+    const service = {
+      modelId: 'gpt-4o-transcribe',
+      cleanText
+    } as unknown as TranscriptionService;
+
+    const strategy = new GPT4oTranscriptionStrategy(service);
+    await strategy.processChunks([], { language: 'zh-CN' });
+
+    const results: TranscriptionResult[] = [{
+      id: 0,
+      text: '你好',
+      startTime: 0,
+      endTime: 1,
+      success: true
+    }];
+
+    await strategy.mergeResults(results);
+
+    expect(cleanText).toHaveBeenCalledTimes(1);
+    expect((cleanText as jest.Mock).mock.calls[0][1]).toBe('zh');
+  });
+
   it('uses detected language when requested language is auto', async () => {
     const cleanText = jest.fn(async (text: string, _language: string) => text);
     const service = {
@@ -92,5 +116,29 @@ describe('GPT4oTranscriptionStrategy', () => {
     expect(cleanText).toHaveBeenCalledTimes(1);
     expect((cleanText as jest.Mock).mock.calls[0][1]).toBe('ko');
   });
-});
 
+  it('uses detected Chinese language when requested language is auto', async () => {
+    const cleanText = jest.fn(async (text: string, _language: string) => text);
+    const service = {
+      modelId: 'gpt-4o-transcribe',
+      cleanText
+    } as unknown as TranscriptionService;
+
+    const strategy = new GPT4oTranscriptionStrategy(service);
+    await strategy.processChunks([], { language: 'auto' });
+
+    const results: TranscriptionResult[] = [{
+      id: 0,
+      text: '你好',
+      startTime: 0,
+      endTime: 1,
+      success: true,
+      language: 'zh'
+    }];
+
+    await strategy.mergeResults(results);
+
+    expect(cleanText).toHaveBeenCalledTimes(1);
+    expect((cleanText as jest.Mock).mock.calls[0][1]).toBe('zh');
+  });
+});

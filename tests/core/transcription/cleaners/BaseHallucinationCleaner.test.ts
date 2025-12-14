@@ -35,4 +35,22 @@ describe('BaseHallucinationCleaner', () => {
     const result = await cleaner.clean(longText, 'auto');
     expect(result.cleanedText).not.toContain('[음악]');
   });
+
+  it('removes Chinese artifacts when language is zh', async () => {
+    const strategy = getModelCleaningStrategy('gpt-4o-transcribe');
+    const cleaner = new BaseHallucinationCleaner(undefined, strategy);
+
+    const longText = `[音乐] ${'a'.repeat(200)}`;
+    const result = await cleaner.clean(longText, 'zh');
+    expect(result.cleanedText).not.toContain('[音乐]');
+  });
+
+  it('removes Chinese artifacts when language is auto', async () => {
+    const strategy = getModelCleaningStrategy('gpt-4o-transcribe');
+    const cleaner = new BaseHallucinationCleaner(undefined, strategy);
+
+    const longText = `[音乐] ${'a'.repeat(200)}`;
+    const result = await cleaner.clean(longText, 'auto');
+    expect(result.cleanedText).not.toContain('[音乐]');
+  });
 });
