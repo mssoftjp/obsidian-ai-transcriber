@@ -143,13 +143,6 @@ export class StatusBarManager {
 		// Use specific "文字起こし中" instead of generic "処理中"
 		text.setText(`${t('statusBar.processing')}${this.loadingAnimation.getLoadingDots()}: ${percentage}% - ${elapsed}`);
 
-		// Progress bar
-		const progressContainer = statusBarItem.createSpan({ cls: 'ai-transcriber-status-progress' });
-		progressContainer.createEl('progress', {
-			cls: 'ait-progress',
-			attr: { max: '100', value: String(percentage) }
-		});
-
 		const fileName = task.inputFileName || '';
 		statusBarItem.setAttribute('aria-label', `${t('statusBar.processing')} ${fileName}: ${percentage}%`);
 		statusBarItem.addClass('is-processing');

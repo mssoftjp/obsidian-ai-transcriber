@@ -54,8 +54,6 @@
 	--ait-modal-max-width: 900px;
 	--ait-modal-max-height: 80vh;
 	--ait-progress-height: 8px;
-	--ait-status-bar-progress-width: 50px;
-	--ait-status-bar-progress-height: 4px;
 
 	/* Font Weights */
 	--ait-font-weight-medium: 500;
@@ -132,8 +130,7 @@
    3.2 Progress Bars (Common Pattern)
    ==================================== */
 /* Base progress bar container */
-.ai-transcriber-progress,
-.ait-progress {
+.ai-transcriber-progress {
 	width: 100%;
 	height: var(--ait-progress-height);
 	background-color: var(--background-modifier-border);
@@ -143,28 +140,21 @@
 	overflow: hidden;
 }
 
-.ai-transcriber-progress::-webkit-progress-bar,
-.ait-progress::-webkit-progress-bar {
+.ai-transcriber-progress::-webkit-progress-bar {
 	background-color: var(--background-modifier-border);
 	border-radius: var(--ait-radius-sm);
 }
 
-.ai-transcriber-progress::-webkit-progress-value,
-.ait-progress::-webkit-progress-value {
+.ai-transcriber-progress::-webkit-progress-value {
 	background-color: var(--interactive-accent);
 	border-radius: var(--ait-radius-sm);
 	transition: width var(--ait-transition-normal);
 }
 
-.ai-transcriber-progress::-moz-progress-bar,
-.ait-progress::-moz-progress-bar {
+.ai-transcriber-progress::-moz-progress-bar {
 	background-color: var(--interactive-accent);
 	border-radius: var(--ait-radius-sm);
 	transition: width var(--ait-transition-normal);
-}
-
-.ai-transcriber-status-progress .ait-progress {
-	height: var(--ait-status-bar-progress-height);
 }
 
 /* ====================================
@@ -197,24 +187,6 @@
 
 .ai-transcriber-status .ai-transcriber-status-text {
 	font-size: var(--font-ui-smaller);
-}
-
-.ai-transcriber-status .ai-transcriber-status-progress {
-	display: inline-block;
-	width: var(--ait-status-bar-progress-width);
-	height: var(--ait-status-bar-progress-height);
-	background-color: var(--background-modifier-border);
-	border-radius: var(--ait-radius-xs);
-	margin-inline-start: var(--ait-spacing-md);
-	overflow: hidden;
-}
-
-.ai-transcriber-status .ai-transcriber-status-progress-bar {
-	display: block;
-	height: 100%;
-	background-color: var(--interactive-accent);
-	transition: width var(--ait-transition-normal);
-	width: 0%; /* Default width, will be overridden by dynamic stylesheet */
 }
 
 /* ====================================
