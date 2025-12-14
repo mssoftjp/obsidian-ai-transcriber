@@ -37,7 +37,7 @@ describe('Logger', () => {
     expect((console.debug as jest.Mock).mock.calls[0][0]).toContain('node-info');
   });
 
-	  it('suppresses info logs when forceConsole=false and debugMode=false (browser-like)', () => {
+  it('suppresses info logs when forceConsole=false and debugMode=false (browser-like)', () => {
 	    (global as Record<string, unknown>)['window'] = {};
 	    jest.resetModules();
 
@@ -50,5 +50,21 @@ describe('Logger', () => {
     expect(console.debug).not.toHaveBeenCalled();
     expect(console.warn).toHaveBeenCalledTimes(1);
     expect((console.warn as jest.Mock).mock.calls[0][0]).toContain('should-log-warn');
+  });
+
+  it('logs debug/info via console.warn in browser-like debugMode for visibility', () => {
+    (global as Record<string, unknown>)['window'] = {};
+    jest.resetModules();
+
+    const { Logger: FreshLogger } = require('../../src/utils/Logger') as typeof import('../../src/utils/Logger');
+    const logger = FreshLogger.getInstance({ debugMode: true, forceConsole: false, logLevel: LogLevel.DEBUG });
+
+    logger.info('visible-info');
+    logger.debug('visible-debug');
+
+    expect(console.debug).not.toHaveBeenCalled();
+    expect(console.warn).toHaveBeenCalledTimes(2);
+    expect((console.warn as jest.Mock).mock.calls[0][0]).toContain('visible-info');
+    expect((console.warn as jest.Mock).mock.calls[1][0]).toContain('visible-debug');
   });
 });

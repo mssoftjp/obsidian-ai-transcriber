@@ -258,7 +258,9 @@ export class Logger {
 		// Keep lightweight in production; only mirror to console when debugMode is on
 		if (this.config.debugMode || this.config.forceConsole) {
 			// Restrict to allowed console methods to satisfy lint rules
-			const logFn = console.debug;
+			// Note: `console.debug` is "Verbose" in Chromium DevTools and can be hidden by default (e.g., Obsidian).
+			// Use `console.warn` in browser-like environments for better visibility when debugging.
+			const logFn = typeof window !== 'undefined' ? console.warn : console.debug;
 			if (data !== undefined) {
 				logFn(message, data);
 			} else {
