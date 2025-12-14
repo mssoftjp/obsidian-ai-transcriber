@@ -266,6 +266,7 @@ export class WhisperTranscriptionService extends TranscriptionService {
 		};
 
 		const key = language as keyof typeof prompts;
-		return prompts[key] ?? prompts.auto;
+		const prompt = prompts[key] ?? prompts['auto'];
+		return prompt;
 	}
 }

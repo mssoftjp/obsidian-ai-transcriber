@@ -105,12 +105,16 @@ export class PostProcessingService {
 
 				for (let i = 0; i < segments.length; i++) {
 					const segmentStartTime = Date.now();
+					const segment = segments[i];
+					if (!segment) {
+						continue;
+					}
 					this.logger.trace(`Processing segment ${i + 1}/${segments.length}`, {
-						segmentLength: segments[i].length
+						segmentLength: segment.length
 					});
 
 					const segmentResult = await this.client.processTranscription(
-						segments[i],
+						segment,
 						reducedMeta.context,
 						reducedMeta.keywords,
 						signal
@@ -200,11 +204,12 @@ export class PostProcessingService {
 				signal
 			);
 
-			if (!response.choices || response.choices.length === 0) {
+			if (!response || !response.choices || response.choices.length === 0) {
 				throw new Error('No response from meta reduction');
 			}
 
-			const content = response.choices[0].message?.content;
+			const firstChoice = response.choices[0];
+			const content = firstChoice?.message?.content;
 			if (!content) {
 				throw new Error('Empty response from meta reduction');
 			}
@@ -400,7 +405,8 @@ export class PostProcessingService {
 	 * Segment transcription into manageable chunks
 	 */
 	private segmentTranscription(text: string, language: 'ja' | 'en' | 'zh' | 'ko'): string[] {
-		const maxChars = POST_PROCESSING_CONFIG.segmentation.maxSegmentChars[language];
+		const maxChars = POST_PROCESSING_CONFIG.segmentation.maxSegmentChars[language] ??
+			POST_PROCESSING_CONFIG.segmentation.maxSegmentChars.ja;
 		const segments: string[] = [];
 
 		// 文末パターン（優先順位順）
@@ -434,10 +440,11 @@ export class PostProcessingService {
 
 				// 単一行が制限を超える場合は、文末で分割を試みる
 				if (lineLength > maxChars) {
-					const subSegments = this.splitLongLine(line, maxChars, sentenceEndPatterns, commaPattern);
-					segments.push(...subSegments.slice(0, -1));
-					currentSegment = subSegments[subSegments.length - 1];
-					currentLength = currentSegment.length;
+						const subSegments = this.splitLongLine(line, maxChars, sentenceEndPatterns, commaPattern);
+						segments.push(...subSegments.slice(0, -1));
+						const lastSegment = subSegments[subSegments.length - 1];
+						currentSegment = lastSegment ?? '';
+						currentLength = currentSegment.length;
 				} else {
 					currentSegment = line;
 					currentLength = lineLength;
@@ -475,8 +482,10 @@ export class PostProcessingService {
 
 				if (matches.length > 0) {
 					const lastMatch = matches[matches.length - 1];
-					splitPoint = lastMatch.index + lastMatch[0].length;
-					break;
+					if (lastMatch?.index !== undefined) {
+						splitPoint = lastMatch.index + lastMatch[0].length;
+						break;
+					}
 				}
 			}
 
@@ -487,7 +496,9 @@ export class PostProcessingService {
 
 				if (matches.length > 0) {
 					const lastMatch = matches[matches.length - 1];
-					splitPoint = lastMatch.index + lastMatch[0].length;
+					if (lastMatch?.index !== undefined) {
+						splitPoint = lastMatch.index + lastMatch[0].length;
+					}
 				}
 			}
 

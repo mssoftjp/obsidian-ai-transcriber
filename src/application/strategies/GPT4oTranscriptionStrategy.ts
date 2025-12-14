@@ -17,8 +17,7 @@ export class GPT4oTranscriptionStrategy extends TranscriptionStrategy {
 	readonly processingMode = 'sequential' as const;
 	readonly maxConcurrency = 1; // Sequential processing only
 
-	private merger: TranscriptionMerger;
-	private contextWindowSize: number;
+		private merger: TranscriptionMerger;
 
 	constructor(
 		transcriptionService: TranscriptionService,
@@ -28,10 +27,9 @@ export class GPT4oTranscriptionStrategy extends TranscriptionStrategy {
 		this.merger = new TranscriptionMerger(transcriptionService.modelId);
 		this.logger = Logger.getLogger('GPT4oTranscriptionStrategy');
 
-		// Get context window size from config based on model
-		const config = getModelConfig(transcriptionService.modelId);
-		this.contextWindowSize = config.contextWindowSize;
-	}
+			// Get context window size from config based on model
+			getModelConfig(transcriptionService.modelId);
+		}
 
 	/**
 	 * Process chunks sequentially with context preservation
@@ -128,9 +126,13 @@ export class GPT4oTranscriptionStrategy extends TranscriptionStrategy {
 		let totalLength = 0;
 
 		// 後ろから文を選択していく
-		for (let i = sentences.length - 1; i >= 0; i--) {
-			const sentence = sentences[i].trim();
-			if (sentence) {
+			for (let i = sentences.length - 1; i >= 0; i--) {
+				const raw = sentences[i];
+				if (!raw) {
+					continue;
+				}
+				const sentence = raw.trim();
+				if (sentence) {
 				// スペースを含めた長さを計算
 				const additionalLength = selectedSentences.length > 0
 					? sentence.length + 1 // スペース分を追加
