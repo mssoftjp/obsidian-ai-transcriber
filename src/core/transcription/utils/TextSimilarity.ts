@@ -137,12 +137,12 @@ export function findPotentialMatches(
 		const positions = nGramIndex.get(gram);
 		if (positions) {
 			for (const pos of positions) {
-				if (pos >= minPosition) {
-					positionScores.set(pos, (positionScores.get(pos) || 0) + 1);
+					if (pos >= minPosition) {
+						positionScores.set(pos, (positionScores.get(pos) ?? 0) + 1);
+					}
 				}
 			}
 		}
-	}
 
 
 	// Convert to array and sort by score
@@ -188,10 +188,10 @@ export function calculateCharFrequencySimilarity(text1: string, text2: string): 
 
 	// Count character frequencies
 	for (const char of text1) {
-		freq1.set(char, (freq1.get(char) || 0) + 1);
+		freq1.set(char, (freq1.get(char) ?? 0) + 1);
 	}
 	for (const char of text2) {
-		freq2.set(char, (freq2.get(char) || 0) + 1);
+		freq2.set(char, (freq2.get(char) ?? 0) + 1);
 	}
 
 	// Calculate similarity
@@ -199,7 +199,7 @@ export function calculateCharFrequencySimilarity(text1: string, text2: string): 
 	let total = 0;
 
 	for (const [char, count1] of freq1) {
-		const count2 = freq2.get(char) || 0;
+		const count2 = freq2.get(char) ?? 0;
 		common += Math.min(count1, count2);
 		total += count1;
 	}

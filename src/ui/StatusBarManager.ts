@@ -103,10 +103,13 @@ export class StatusBarManager {
 			statusBarItem.removeClass('ait-hidden');
 
 			// Active task state
-			switch (task.status) {
-			case 'processing':
-				this.setProcessingState(statusBarItem, task);
-				break;
+				switch (task.status) {
+				case 'idle':
+					this.setIdleState(statusBarItem);
+					break;
+				case 'processing':
+					this.setProcessingState(statusBarItem, task);
+					break;
 			case 'completed':
 				this.setCompletedState(statusBarItem, task);
 				break;

@@ -239,13 +239,13 @@ export class TranscriptionView extends ItemView {
 						}
 					}, 1000);
 				}
-			} else {
-				// Stop animation for non-processing states
-				this.loadingAnimation.stop();
-				const statusText = `${t('common.' + currentTask.status)}`;
-				this.statusEl.setText(statusText);
+				} else {
+					// Stop animation for non-processing states
+					this.loadingAnimation.stop();
+					const statusText = t(`common.${currentTask.status}`);
+					this.statusEl.setText(statusText);
+				}
 			}
-		}
 
 		// Update time elapsed
 		if (this.timeEl && currentTask.startTime) {
@@ -422,11 +422,12 @@ export class TranscriptionView extends ItemView {
 	/**
 	 * Handle missing transcription file
 	 */
-	private handleMissingFile(task: TranscriptionTask): void {
-		const searchQuery = task.transcriptionTimestamp ||
-			new Date(task.endTime || task.startTime).toLocaleString(getLanguage());
+		private handleMissingFile(task: TranscriptionTask): void {
+			const timestampSource = task.endTime ?? task.startTime;
+			const searchQuery = task.transcriptionTimestamp ??
+				new Date(timestampSource).toLocaleString(getLanguage());
 
-		new Notice(t('errors.fileNotFound'));
+			new Notice(t('errors.fileNotFound'));
 
 		// 検索モーダルを開くか確認
 		const modal = new ConfirmModal(

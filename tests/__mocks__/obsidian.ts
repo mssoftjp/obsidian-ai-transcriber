@@ -87,10 +87,12 @@ export class Vault {
 		return folder;
 	}
 
-	async createBinary(path: string, buffer: ArrayBuffer): Promise<TFile> {
+	async createBinary(path: string, _buffer: ArrayBuffer): Promise<TFile> {
 		const parts = path.split('/');
 		const name = parts.pop() || '';
-		const [basename, extension] = name.split('.');
+		const dotIndex = name.lastIndexOf('.');
+		const basename = dotIndex > 0 ? name.slice(0, dotIndex) : name;
+		const extension = dotIndex > 0 ? name.slice(dotIndex + 1) : '';
 		const file = new TFile();
 		file.path = path;
 		file.basename = basename;
@@ -106,7 +108,7 @@ export class Vault {
 		this.shouldThrowOnDelete = shouldThrow;
 	}
 
-	async delete(file: TFile | TFolder, force?: boolean): Promise<void> {
+	async delete(file: TFile | TFolder, _force?: boolean): Promise<void> {
 		if (this.shouldThrowOnDelete) {
 			// This is the old method that should not be used
 			throw new Error('app.vault.delete should not be used - use app.fileManager.trashFile instead');
@@ -117,7 +119,7 @@ export class Vault {
 }
 
 export class FileManager {
-	async trashFile(file: TFile | TFolder): Promise<void> {
+	async trashFile(_file: TFile | TFolder): Promise<void> {
 		// Mock implementation of trashFile - the recommended method
 		return Promise.resolve();
 	}

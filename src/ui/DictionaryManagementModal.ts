@@ -118,35 +118,8 @@ export class DictionaryManagementModal extends Modal {
 	}
 
 	private getCurrentDictionary(): UserDictionary {
-		// Ensure userDictionaries exists
-		if (!this.settings.userDictionaries) {
-			this.settings.userDictionaries = {
-				ja: { definiteCorrections: [], contextualCorrections: [] },
-				en: { definiteCorrections: [], contextualCorrections: [] },
-				zh: { definiteCorrections: [], contextualCorrections: [] },
-				ko: { definiteCorrections: [], contextualCorrections: [] }
-			};
-		}
-
-		// Get dictionary for current language
 		const dict = this.settings.userDictionaries[this.currentLanguage];
-		if (!dict) {
-			// Initialize if not exists
-			this.settings.userDictionaries[this.currentLanguage] = {
-				definiteCorrections: [],
-				contextualCorrections: []
-			};
-			return this.settings.userDictionaries[this.currentLanguage];
-		}
-
-		// Ensure arrays exist
-		if (!dict.definiteCorrections) {
-			dict.definiteCorrections = [];
-		}
-		if (!dict.contextualCorrections) {
-			dict.contextualCorrections = [];
-		}
-
+		dict.contextualCorrections ??= [];
 		return dict;
 	}
 
@@ -165,13 +138,13 @@ export class DictionaryManagementModal extends Modal {
 		const header = section.createEl('div', { cls: 'dictionary-section-header' });
 		header.createEl('h3', { text: t('settings.dictionary.definiteCorrections') });
 
-		// Add count and limit info
-		const dict = this.getCurrentDictionary();
-		const currentCount = dict.definiteCorrections?.length || 0;
-		header.createEl('span', {
-			cls: 'dictionary-limit-info',
-			text: `(${currentCount} / ${DICTIONARY_CONSTANTS.MAX_DEFINITE_CORRECTIONS})`
-		});
+			// Add count and limit info
+			const dict = this.getCurrentDictionary();
+			const currentCount = dict.definiteCorrections.length;
+			header.createEl('span', {
+				cls: 'dictionary-limit-info',
+				text: `(${currentCount} / ${DICTIONARY_CONSTANTS.MAX_DEFINITE_CORRECTIONS})`
+			});
 
 		// Create table
 		const tableContainer = section.createEl('div', { cls: 'dictionary-table-container' });
@@ -226,13 +199,14 @@ export class DictionaryManagementModal extends Modal {
 		const header = section.createEl('div', { cls: 'dictionary-section-header' });
 		header.createEl('h3', { text: t('settings.dictionary.contextualCorrections') });
 
-		// Add count and limit info
-		const dict = this.getCurrentDictionary();
-		const currentCount = dict.contextualCorrections?.length || 0;
-		header.createEl('span', {
-			cls: 'dictionary-limit-info',
-			text: `(${currentCount} / ${DICTIONARY_CONSTANTS.MAX_CONTEXTUAL_CORRECTIONS})`
-		});
+			// Add count and limit info
+			const dict = this.getCurrentDictionary();
+			const entries = dict.contextualCorrections ??= [];
+			const currentCount = entries.length;
+			header.createEl('span', {
+				cls: 'dictionary-limit-info',
+				text: `(${currentCount} / ${DICTIONARY_CONSTANTS.MAX_CONTEXTUAL_CORRECTIONS})`
+			});
 
 		// Create table
 		const tableContainer = section.createEl('div', { cls: 'dictionary-table-container' });
@@ -248,14 +222,11 @@ export class DictionaryManagementModal extends Modal {
 		headerRow.createEl('th', { text: t('settings.dictionary.context') });
 		headerRow.createEl('th', { text: '' }); // Delete button column
 
-		// Body
-		const tbody = table.createEl('tbody');
-		const currentDict = this.getCurrentDictionary();
-		const entries = currentDict.contextualCorrections || [];
-
-		entries.forEach((entry, index) => {
-			this.createContextualEntryRow(tbody, entry, index);
-		});
+			// Body
+			const tbody = table.createEl('tbody');
+			entries.forEach((entry, index) => {
+				this.createContextualEntryRow(tbody, entry, index);
+			});
 
 		// Add button
 		const addButton = section.createEl('button', {
@@ -441,19 +412,17 @@ export class DictionaryManagementModal extends Modal {
 			text: '×',
 			cls: 'dictionary-delete-button'
 		});
-		deleteButton.addEventListener('click', () => {
-			const currentDict = this.getCurrentDictionary();
-			const entries = currentDict.contextualCorrections || [];
-			entries.splice(index, 1);
-			void this.saveSettings();
-			this.displayDictionary();
-		});
-	}
+			deleteButton.addEventListener('click', () => {
+				const currentDict = this.getCurrentDictionary();
+				const entries = currentDict.contextualCorrections ??= [];
+				entries.splice(index, 1);
+				void this.saveSettings();
+				this.displayDictionary();
+			});
+		}
 
 	private async saveSettings(): Promise<void> {
-		if (this.plugin) {
-			await this.plugin.saveSettings();
-		}
+		await this.plugin.saveSettings();
 	}
 
 	private exportDictionary(): void {
@@ -525,42 +494,35 @@ export class DictionaryManagementModal extends Modal {
 					if (shouldReplace) {
 						// Replace all dictionaries
 						this.settings.userDictionaries = imported.dictionaries;
-					} else {
-						// Merge dictionaries
-						const languages: ('ja' | 'en' | 'zh' | 'ko')[] = ['ja', 'en', 'zh', 'ko'];
-						for (const lang of languages) {
-							if (imported.dictionaries[lang]) {
+						} else {
+							// Merge dictionaries
+							const languages: ('ja' | 'en' | 'zh' | 'ko')[] = ['ja', 'en', 'zh', 'ko'];
+							for (const lang of languages) {
+								const importedDict = imported.dictionaries[lang];
 								this.settings.userDictionaries[lang].definiteCorrections.push(
-									...imported.dictionaries[lang].definiteCorrections
+									...importedDict.definiteCorrections
 								);
-								if (imported.dictionaries[lang].contextualCorrections) {
-									if (!this.settings.userDictionaries[lang].contextualCorrections) {
-										this.settings.userDictionaries[lang].contextualCorrections = [];
-									}
-									this.settings.userDictionaries[lang].contextualCorrections.push(
-										...imported.dictionaries[lang].contextualCorrections
-									);
+								if (importedDict.contextualCorrections) {
+									const targetContextual = this.settings.userDictionaries[lang].contextualCorrections ??= [];
+									targetContextual.push(...importedDict.contextualCorrections);
 								}
 							}
 						}
-					}
 				} else if (this.isLegacyDictionaryData(imported)) {
 					// Old single-language format - import to current language
 					const currentDict = this.getCurrentDictionary();
 					const shouldReplace = await this.confirmReplace();
 
-					if (shouldReplace) {
-						currentDict.definiteCorrections = imported.definiteCorrections;
-						currentDict.contextualCorrections = imported.contextualCorrections || [];
-					} else {
-						currentDict.definiteCorrections.push(...imported.definiteCorrections);
-						if (imported.contextualCorrections) {
-							if (!currentDict.contextualCorrections) {
-								currentDict.contextualCorrections = [];
+						if (shouldReplace) {
+							currentDict.definiteCorrections = imported.definiteCorrections;
+							currentDict.contextualCorrections = imported.contextualCorrections ?? [];
+						} else {
+							currentDict.definiteCorrections.push(...imported.definiteCorrections);
+							if (imported.contextualCorrections) {
+								const targetContextual = currentDict.contextualCorrections ??= [];
+								targetContextual.push(...imported.contextualCorrections);
 							}
-							currentDict.contextualCorrections.push(...imported.contextualCorrections);
 						}
-					}
 				} else {
 					throw new Error('Invalid dictionary format');
 				}

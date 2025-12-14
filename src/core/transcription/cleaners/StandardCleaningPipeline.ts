@@ -189,13 +189,14 @@ import type { TextCleaner, CleaningContext } from './interfaces/TextCleaner';
 	getSummary(result: PipelineResult): string {
 		const { metadata } = result;
 		const reductionPercent = Math.round(metadata.totalReductionRatio * 100);
+		const processingTimeMs = metadata.processingTimeMs ?? 0;
 
 		return [
 			`Pipeline: ${this.name}`,
 			`Stages: ${metadata.stagesExecuted}`,
 			`Text: ${metadata.totalOriginalLength} → ${metadata.totalFinalLength} chars (${reductionPercent}% reduction)`,
 			`Issues: ${metadata.totalIssuesFound}`,
-			`Time: ${metadata.processingTimeMs}ms`
+			`Time: ${processingTimeMs}ms`
 		].join(' | ');
 	}
 }

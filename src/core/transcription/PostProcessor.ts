@@ -144,17 +144,18 @@ export class PostProcessor {
 	/**
 	 * Calculate Levenshtein distance between two strings
 	 */
-	private levenshteinDistance(str1: string, str2: string): number {
-		const matrix: number[][] = [];
+		private levenshteinDistance(str1: string, str2: string): number {
+			const matrix: number[][] = [];
+			const firstRow: number[] = [];
+			matrix[0] = firstRow;
 
-		for (let i = 0; i <= str2.length; i++) {
-			matrix[i] = [i];
-		}
+			for (let i = 1; i <= str2.length; i++) {
+				matrix[i] = [i];
+			}
 
-		for (let j = 0; j <= str1.length; j++) {
-			const firstRow = (matrix[0] ??= []);
-			firstRow[j] = j;
-		}
+			for (let j = 0; j <= str1.length; j++) {
+				firstRow[j] = j;
+			}
 
 		for (let i = 1; i <= str2.length; i++) {
 			const row = matrix[i];

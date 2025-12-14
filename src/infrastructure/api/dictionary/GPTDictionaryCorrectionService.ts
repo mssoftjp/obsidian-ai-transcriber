@@ -17,15 +17,15 @@ import type { OpenAIChatResponse } from '../openai/OpenAIChatTypes';
 export class GPTDictionaryCorrectionService extends ApiClient implements IGPTCorrectionService {
 	private resourceManager: ResourceManager;
 
-	constructor(apiKey: string, resourceManager?: ResourceManager) {
-		super({
-			baseUrl: 'https://api.openai.com/v1',
-			apiKey: apiKey
-		});
-		this.resourceManager = resourceManager || ResourceManager.getInstance();
-		this.logger = Logger.getLogger('GPTDictionaryCorrection');
-		this.logger.debug('GPTDictionaryCorrectionService initialized');
-	}
+		constructor(apiKey: string, resourceManager?: ResourceManager) {
+			super({
+				baseUrl: 'https://api.openai.com/v1',
+				apiKey: apiKey
+			});
+			this.resourceManager = resourceManager ?? ResourceManager.getInstance();
+			this.logger = Logger.getLogger('GPTDictionaryCorrection');
+			this.logger.debug('GPTDictionaryCorrectionService initialized');
+		}
 
 	/**
 	 * Correct text using GPT model

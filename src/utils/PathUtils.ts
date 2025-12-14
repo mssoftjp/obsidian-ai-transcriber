@@ -140,11 +140,11 @@ export class PathUtils {
 	private static getManifestDir(app: App, pluginId: string): string | null {
 		const obsidianApp = app as unknown as {
 			plugins?: {
-				plugins?: Record<string, { manifest?: { dir?: string } }>;
-				manifests?: Record<string, { dir?: string }>;
-				getPlugin?: (id: string) => { manifest?: { dir?: string } };
+					plugins?: Record<string, { manifest?: { dir?: string } }>;
+					manifests?: Record<string, { dir?: string }>;
+					getPlugin?: (id: string) => { manifest?: { dir?: string } } | undefined;
+				};
 			};
-		};
 
 		const candidates = [
 			obsidianApp.plugins?.getPlugin?.(pluginId)?.manifest?.dir,

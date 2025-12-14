@@ -94,18 +94,18 @@ export abstract class ApiClient {
 			headers['Content-Type'] = 'application/json';
 		}
 
-		const requestOptions: RequestInit = {
-			method: 'POST',
-			headers,
-			body: data instanceof FormData ? data : JSON.stringify(data),
-			...options
-		};
-		if (signal !== undefined) {
-			requestOptions.signal = signal ?? null;
-		}
+			const requestOptions: RequestInit = {
+				method: 'POST',
+				headers,
+				body: data instanceof FormData ? data : JSON.stringify(data),
+				...options
+			};
+			if (signal !== undefined) {
+				requestOptions.signal = signal;
+			}
 
-		return this.executeWithRetry<T>(url, requestOptions);
-	}
+			return this.executeWithRetry<T>(url, requestOptions);
+		}
 
 	/**
 	 * Make an authenticated GET request
@@ -123,18 +123,18 @@ export abstract class ApiClient {
 			});
 		}
 
-		const requestOptions: RequestInit = {
-			method: 'GET',
-			headers: {
-				'Authorization': `Bearer ${this.config.apiKey}`
+			const requestOptions: RequestInit = {
+				method: 'GET',
+				headers: {
+					'Authorization': `Bearer ${this.config.apiKey}`
+				}
+			};
+			if (signal !== undefined) {
+				requestOptions.signal = signal;
 			}
-		};
-		if (signal !== undefined) {
-			requestOptions.signal = signal ?? null;
-		}
 
-		return this.executeWithRetry<T>(url.toString(), requestOptions);
-	}
+			return this.executeWithRetry<T>(url.toString(), requestOptions);
+		}
 
 	/**
 	 * Execute request with retry logic
@@ -143,13 +143,13 @@ export abstract class ApiClient {
 		url: string,
 		options: RequestInit,
 		retryCount = 0
-	): Promise<T> {
-		try {
-			// Handle different body types for requestUrl
-			let body: string | ArrayBuffer | undefined;
-			const headers = options.headers as Record<string, string> || {};
+		): Promise<T> {
+			try {
+				// Handle different body types for requestUrl
+				let body: string | ArrayBuffer | undefined;
+				const headers = options.headers as Record<string, string>;
 
-			if (options.body instanceof FormData) {
+				if (options.body instanceof FormData) {
 				// Convert FormData to ArrayBuffer for requestUrl compatibility
 				const boundary = `----ObsidianBoundary${Date.now()}`;
 				const chunks: Uint8Array[] = [];
@@ -265,13 +265,13 @@ export abstract class ApiClient {
 	private parseError(response: RequestUrlResponse): ApiErrorData {
 		try {
 			const data = response.json as ApiErrorResponseBody;
-			const nestedError = data.error ?? {};
+			const nestedError = data.error;
 			const errorData: ApiErrorData = {
 				status: response.status,
-				message: nestedError.message || data.message || `HTTP ${response.status} error`,
-				details: nestedError || data
+				message: nestedError?.message ?? data.message ?? `HTTP ${response.status} error`,
+				details: nestedError ?? data
 			};
-			const code = nestedError.code || data.code;
+			const code = nestedError?.code ?? data.code;
 			if (code) {
 				errorData.code = code;
 			}

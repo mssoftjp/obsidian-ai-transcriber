@@ -65,7 +65,7 @@ export class PostProcessingClient extends ApiClient {
 				signal
 			);
 
-				if (!response.choices || response.choices.length === 0) {
+				if (response.choices.length === 0) {
 					throw new Error('No response from post-processing model');
 				}
 
@@ -187,11 +187,11 @@ export class PostProcessingClient extends ApiClient {
 		if (typeof error === 'string') {
 			return error;
 		}
-		try {
-			const serialized = JSON.stringify(error);
-			return serialized ?? 'Unknown error';
-		} catch {
-			return 'Unknown error';
-		}
+			try {
+				const serialized = JSON.stringify(error);
+				return serialized;
+			} catch {
+				return 'Unknown error';
+			}
 	}
 }

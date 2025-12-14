@@ -188,14 +188,14 @@ export class PostProcessingModal extends Modal {
 		}
 		if (typeof error === 'string') {
 			return error;
+			}
+			try {
+				const serialized = JSON.stringify(error);
+				return serialized;
+			} catch {
+				return 'Unknown error';
+			}
 		}
-		try {
-			const serialized = JSON.stringify(error);
-			return serialized ?? 'Unknown error';
-		} catch {
-			return 'Unknown error';
-		}
-	}
 
 	override onClose() {
 		const { contentEl } = this;

@@ -143,19 +143,20 @@ export class VADPreprocessor {
 			// キャッシュからファイルを読み込み（重複読み込みを避ける）
 			audioBuffer = await this.getCachedAudioBuffer(audioFile);
 
-			let useServerFallback = this.fallbackMode === 'server_vad';
+				let useServerFallback = this.isServerFallback();
 
-			// プロセッサーが未初期化の場合、初期化を試みる
-			if (this.config.enabled && !this.processor && !useServerFallback) {
-				await this.initialize();
-				useServerFallback = this.fallbackMode === 'server_vad';
+				// プロセッサーが未初期化の場合、初期化を試みる
+				if (this.config.enabled && this.getProcessor() === null && !useServerFallback) {
+					await this.initialize();
+					useServerFallback = this.isServerFallback();
 
-				// 初期化が失敗した場合は、エラーをスロー
-				if (!this.processor && !useServerFallback) {
-					this.logger.error('Failed to initialize VAD processor');
-					throw new Error(t('notices.vadInitError'));
+					// 初期化が失敗した場合は、エラーをスロー
+					const processorAfterInit = this.getProcessor();
+					if (processorAfterInit === null && !useServerFallback) {
+						this.logger.error('Failed to initialize VAD processor');
+						throw new Error(t('notices.vadInitError'));
+					}
 				}
-			}
 
 			// オーディオデータをデコード
 			this.logger.debug('Decoding audio file');

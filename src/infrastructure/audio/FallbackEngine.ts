@@ -71,19 +71,15 @@ export class FallbackEngine extends AudioProcessor {
 			bitrate: sampleRate * channels * bitsPerSample
 		};
 
-			// Warnings for non-optimal settings
-			if (sampleRate !== this.config.targetSampleRate) {
-				if (!validation.warnings) {
-					validation.warnings = [];
+				// Warnings for non-optimal settings
+				if (sampleRate !== this.config.targetSampleRate) {
+					validation.warnings ??= [];
+					validation.warnings.push(`Sample rate ${sampleRate}Hz will be passed as-is (no resampling in fallback mode)`);
 				}
-				validation.warnings.push(`Sample rate ${sampleRate}Hz will be passed as-is (no resampling in fallback mode)`);
-			}
-			if (channels !== 1) {
-				if (!validation.warnings) {
-					validation.warnings = [];
+				if (channels !== 1) {
+					validation.warnings ??= [];
+					validation.warnings.push(`${channels} channels detected (fallback mode does not support mixing to mono)`);
 				}
-				validation.warnings.push(`${channels} channels detected (fallback mode does not support mixing to mono)`);
-			}
 
 		return Promise.resolve(validation);
 	}

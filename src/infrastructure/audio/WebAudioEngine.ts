@@ -15,10 +15,6 @@ import type {
 	AudioProcessingConfig
 } from '../../core/audio/AudioTypes';
 
-interface WindowWithWebKit extends Window {
-	webkitAudioContext?: typeof AudioContext;
-}
-
 export class WebAudioEngine extends AudioProcessor {
 	private audioContext: AudioContext | null = null;
 	private resourceId: string;
@@ -195,8 +191,11 @@ export class WebAudioEngine extends AudioProcessor {
 	 * Check if Web Audio API is available
 	 */
 	static isAvailable(): boolean {
-		return typeof window !== 'undefined' &&
-		       Boolean(window.AudioContext || (window as WindowWithWebKit).webkitAudioContext);
+		if (typeof window === 'undefined') {
+			return false;
+		}
+		const win = window as unknown as Record<string, unknown>;
+		return typeof win['AudioContext'] === 'function' || typeof win['webkitAudioContext'] === 'function';
 	}
 
 	/**

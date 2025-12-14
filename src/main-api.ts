@@ -20,8 +20,8 @@ import { TranscriptionView, VIEW_TYPE_TRANSCRIPTION } from './ui/TranscriptionVi
 import { Logger, LogLevel } from './utils/Logger';
 import { PathUtils } from './utils/PathUtils';
 
-import type { APITranscriptionSettings } from './ApiSettings';
-import type { Menu } from 'obsidian';
+	import type { APITranscriptionSettings } from './ApiSettings';
+	import type { Menu, TAbstractFile } from 'obsidian';
 
 export default class AITranscriberPlugin extends Plugin {
 	settings!: APITranscriptionSettings;
@@ -43,7 +43,7 @@ export default class AITranscriberPlugin extends Plugin {
 		initializeI18n();
 
 		// Cache plugin directory from manifest for consistent path resolution
-		PathUtils.setPluginDir(this.manifest?.dir);
+		PathUtils.setPluginDir(this.manifest.dir);
 
 		await this.loadSettings();
 
@@ -133,12 +133,12 @@ export default class AITranscriberPlugin extends Plugin {
 			void this.transcribeCurrentAudio();
 		});
 
-		// Register context menu for audio files
-		this.registerEvent(
-			this.app.workspace.on('file-menu', (menu: Menu, file: import('obsidian').TAbstractFile, _source: string) => {
-				if (file instanceof TFile && this.isAudioFile(file)) {
-					menu.addItem((item) => {
-						item
+			// Register context menu for audio files
+			this.registerEvent(
+				this.app.workspace.on('file-menu', (menu: Menu, file: TAbstractFile, _source: string) => {
+					if (file instanceof TFile && this.isAudioFile(file)) {
+						menu.addItem((item) => {
+							item
 							.setTitle(t('commands.contextMenu'))
 							.setIcon('file-audio')
 							.onClick(() => {
@@ -166,10 +166,8 @@ export default class AITranscriberPlugin extends Plugin {
 			this.statusBarManager.destroy();
 		}
 
-		// Clean up API transcriber resources
-		if (this.transcriber && typeof this.transcriber.cleanup === 'function') {
+			// Clean up API transcriber resources
 			await this.transcriber.cleanup();
-		}
 
 		// Clean up all global resources via ResourceManager
 		await ResourceManager.getInstance().cleanupAll();
@@ -182,22 +180,16 @@ export default class AITranscriberPlugin extends Plugin {
 		await this.stateRepo.initialize();
 
 		const storedSettings = this.stateRepo.getSettings();
-		this.settings = Object.assign({}, DEFAULT_API_SETTINGS, storedSettings);
-		this.settings.userDictionaries = this.stateRepo.getDictionaries();
-		this.normalizeSettingsPaths();
-		if (!this.settings.vadMode) {
-			this.settings.vadMode = DEFAULT_API_SETTINGS.vadMode;
-		}
-
-		if (this.logger) {
+			this.settings = Object.assign({}, DEFAULT_API_SETTINGS, storedSettings);
+			this.settings.userDictionaries = this.stateRepo.getDictionaries();
+			this.normalizeSettingsPaths();
 			this.logger.debug('Settings loaded', { debugMode: this.settings.debugMode });
-		}
 
-		// Migrate from old XOR encryption to new SafeStorage format
-		if (this.settings.openaiApiKey && this.settings.openaiApiKey.startsWith('XOR_V1::')) {
-			const { SafeStorageService } = await import('./infrastructure/storage/SafeStorageService');
-			const apiKey = SafeStorageService.decryptFromStore(this.settings.openaiApiKey);
-			if (apiKey) {
+			// Migrate from old XOR encryption to new SafeStorage format
+			if (this.settings.openaiApiKey.startsWith('XOR_V1::')) {
+				const { SafeStorageService } = await import('./infrastructure/storage/SafeStorageService');
+				const apiKey = SafeStorageService.decryptFromStore(this.settings.openaiApiKey);
+				if (apiKey) {
 				// Re-encrypt with new format
 				this.settings.openaiApiKey = SafeStorageService.encryptForStore(apiKey);
 				await this.stateRepo.saveSettings(this.settings);
@@ -205,27 +197,19 @@ export default class AITranscriberPlugin extends Plugin {
 			}
 		}
 
-		// If no language setting exists, use Obsidian's locale
-		if (!storedSettings?.language) {
-			const obsidianLanguage = this.getObsidianLanguage();
-			if (obsidianLanguage && obsidianLanguage !== 'auto') {
-				this.settings.language = obsidianLanguage;
+			// If no language setting exists, use Obsidian's locale
+			if (!storedSettings.language) {
+				const obsidianLanguage = this.getObsidianLanguage();
+				if (obsidianLanguage && obsidianLanguage !== 'auto') {
+					this.settings.language = obsidianLanguage;
 				// Using Obsidian's language setting
 			}
 		}
 
-		const languages: ('ja' | 'en' | 'zh' | 'ko')[] = ['ja', 'en', 'zh', 'ko'];
-		for (const lang of languages) {
-			if (!this.settings.userDictionaries[lang]) {
-				this.settings.userDictionaries[lang] = { definiteCorrections: [], contextualCorrections: [] };
+			const languages: ('ja' | 'en' | 'zh' | 'ko')[] = ['ja', 'en', 'zh', 'ko'];
+			for (const lang of languages) {
+				this.settings.userDictionaries[lang].contextualCorrections ??= [];
 			}
-			if (!this.settings.userDictionaries[lang].definiteCorrections) {
-				this.settings.userDictionaries[lang].definiteCorrections = [];
-			}
-			if (!this.settings.userDictionaries[lang].contextualCorrections) {
-				this.settings.userDictionaries[lang].contextualCorrections = [];
-			}
-		}
 
 	}
 
@@ -274,20 +258,18 @@ export default class AITranscriberPlugin extends Plugin {
 			logLevel: this.settings.debugMode ? LogLevel.DEBUG : LogLevel.INFO
 		});
 
-		// Update transcriber with new settings
-		if (this.transcriber) {
+			// Update transcriber with new settings
 			this.transcriber.updateSettings(this.settings);
-		}
 
 		const elapsedTime = performance.now() - startTime;
 		this.logger.info('Settings saved', { elapsedTime: `${elapsedTime.toFixed(2)}ms` });
 	}
 
-	private isAudioFile(file: TFile): boolean {
-		// フォルダの場合やextensionがない場合はfalseを返す
-		if (!file?.extension) {
-			return false;
-		}
+		private isAudioFile(file: TFile): boolean {
+			// フォルダの場合やextensionがない場合はfalseを返す
+			if (!file.extension) {
+				return false;
+			}
 		const audioExtensions = SUPPORTED_FORMATS.EXTENSIONS;
 		const extension = file.extension.toLowerCase();
 		return audioExtensions.includes(extension);

@@ -31,7 +31,7 @@ export class AudioFileSelectionModal extends Modal {
 
 	private loadAudioFilesFromCache(): void {
 		const metadataCache = this.app.metadataCache as { getCachedFiles?: () => string[]; fileCache?: unknown };
-		const cacheReady = Boolean(metadataCache?.fileCache);
+		const cacheReady = Boolean(metadataCache.fileCache);
 		const cachedFiles: unknown = cacheReady && typeof metadataCache.getCachedFiles === 'function'
 			? metadataCache.getCachedFiles()
 			: [];
@@ -216,7 +216,7 @@ export class AudioFileSelectionModal extends Modal {
 	}
 
 	private renderFileList(container?: HTMLElement) {
-		const listContainer = container || this.contentEl.querySelector('.audio-file-list-container');
+		const listContainer = container ?? this.contentEl.querySelector<HTMLElement>('.audio-file-list-container');
 		if (!listContainer) {
 			return;
 		}

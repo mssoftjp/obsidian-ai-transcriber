@@ -104,12 +104,10 @@ export class AudioWaveformSelector {
 	}
 
 	private requestDraw() {
-		if (this.animationFrameId === null) {
-			this.animationFrameId = requestAnimationFrame(() => {
-				this.drawInternal();
-				this.animationFrameId = null;
-			});
-		}
+		this.animationFrameId ??= requestAnimationFrame(() => {
+			this.drawInternal();
+			this.animationFrameId = null;
+		});
 	}
 
 	/**
@@ -333,7 +331,7 @@ export class AudioWaveformSelector {
 				this.startTime = Math.max(0, Math.min(time, this.endTime - 1));
 			} else if (this.dragType === 'end') {
 				this.endTime = Math.max(this.startTime + 1, Math.min(time, duration));
-			} else if (this.dragType === 'range') {
+			} else {
 				const range = this.endTime - this.startTime;
 				const center = time;
 				this.startTime = Math.max(0, center - range/2);

@@ -133,11 +133,9 @@ export class PluginStateRepository {
 		this.ensureInitialized();
 		const { userDictionaries, ...stored } = settings;
 		this.state.settings.data = cloneStoredSettings(stored);
-		if (userDictionaries) {
-			this.state.dictionaries.languages = cloneDictionaries(
-				this.ensureAllLanguages(userDictionaries)
-			);
-		}
+		this.state.dictionaries.languages = cloneDictionaries(
+			this.ensureAllLanguages(userDictionaries)
+		);
 		await this.persistState();
 	}
 
@@ -154,8 +152,8 @@ export class PluginStateRepository {
 				return createEmptyDictionary();
 			}
 			return {
-				definiteCorrections: dict.definiteCorrections || [],
-				contextualCorrections: dict.contextualCorrections || []
+				definiteCorrections: dict.definiteCorrections,
+				contextualCorrections: dict.contextualCorrections ?? []
 			};
 		};
 
@@ -170,14 +168,14 @@ export class PluginStateRepository {
 	private migrateDictionaryFormat(data: LanguageDictionaries): LanguageDictionaries {
 		const clone = this.ensureAllLanguages(data);
 		const languages: (keyof LanguageDictionaries)[] = ['ja', 'en', 'zh', 'ko'];
-		languages.forEach((lang) => {
-			clone[lang] = {
-				definiteCorrections: clone[lang].definiteCorrections.map(entry => this.normalizeDictionaryEntry(entry)),
-				contextualCorrections: clone[lang].contextualCorrections?.map(entry => this.normalizeContextualEntry(entry)) || []
-			};
-		});
-		return clone;
-	}
+			languages.forEach((lang) => {
+				clone[lang] = {
+					definiteCorrections: clone[lang].definiteCorrections.map(entry => this.normalizeDictionaryEntry(entry)),
+					contextualCorrections: (clone[lang].contextualCorrections ?? []).map(entry => this.normalizeContextualEntry(entry))
+				};
+			});
+			return clone;
+		}
 
 	private normalizeDictionaryEntry(entry: DictionaryEntry | LegacyDictionaryEntry): DictionaryEntry {
 		const fromValue = (entry as LegacyDictionaryEntry).from;
@@ -223,25 +221,25 @@ export class PluginStateRepository {
 			version: STATE_VERSION,
 			format: 'ai-transcriber-state'
 		};
-		merged.settings = {
-			version: SETTINGS_VERSION,
-			data: {
-				...merged.settings.data,
-				...raw.settings?.data
-			}
-		};
-			merged.dictionaries = {
-				version: DICTIONARIES_VERSION,
-				languages: this.migrateDictionaryFormat(
-					this.ensureAllLanguages(raw.dictionaries?.languages || merged.dictionaries.languages)
-				)
+			merged.settings = {
+				version: SETTINGS_VERSION,
+				data: {
+					...merged.settings.data,
+					...raw.settings.data
+				}
 			};
-		merged.history = {
-			version: HISTORY_VERSION,
-			items: Array.isArray(raw.history?.items) ? raw.history.items : []
-		};
-		return merged;
-	}
+				merged.dictionaries = {
+					version: DICTIONARIES_VERSION,
+					languages: this.migrateDictionaryFormat(
+						this.ensureAllLanguages(raw.dictionaries.languages)
+					)
+				};
+			merged.history = {
+				version: HISTORY_VERSION,
+				items: Array.isArray(raw.history.items) ? raw.history.items : []
+			};
+			return merged;
+		}
 
 		private createStateFromLegacy(raw: Partial<APITranscriptionSettings>): PluginState {
 		const state = getDefaultState();

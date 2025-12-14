@@ -8,7 +8,6 @@ import { LoadingAnimation } from '../core/utils/LoadingAnimation';
 import { SimpleProgressCalculator } from '../core/utils/SimpleProgressCalculator';
 import { ErrorHandler } from '../ErrorHandler';
 import { t } from '../i18n';
-import { isNavigatorWithWakeLock } from '../types/global';
 import { Logger } from '../utils/Logger';
 import { PathUtils } from '../utils/PathUtils';
 
@@ -62,12 +61,12 @@ export class APITranscriptionModal extends Modal {
 		this.transcriber = transcriber;
 		this.audioFile = audioFile;
 		this.settings = settings;
-		this.progressTracker = progressTracker || null;
+		this.progressTracker = progressTracker ?? null;
 		this.loadingAnimation = new LoadingAnimation();
 		this.logger = Logger.getLogger('APITranscriptionModal');
-			this.logger.debug('APITranscriptionModal created', {
-				fileName: audioFile.name,
-				model: settings.model
+				this.logger.debug('APITranscriptionModal created', {
+					fileName: audioFile.name,
+					model: settings.model
 			});
 	}
 
@@ -241,13 +240,13 @@ export class APITranscriptionModal extends Modal {
 			const pricePerMinute = this.settings.model === 'gpt-4o-mini-transcribe' ? 0.003 : 0.006;
 			let adjustedMinutes = actualMinutes;
 
-			// Apply time range selection if enabled
-			if (this.enableTimeRange && this.audioDuration > 0) {
-				const { startTime, endTime } = this.getTimeRange();
-				const selectedDuration = (endTime || this.audioDuration) - (startTime || 0);
-				const durationRatio = selectedDuration / this.audioDuration;
-				adjustedMinutes = adjustedMinutes * durationRatio;
-			}
+				// Apply time range selection if enabled
+				if (this.enableTimeRange && this.audioDuration > 0) {
+					const { startTime, endTime } = this.getTimeRange();
+					const selectedDuration = (endTime ?? this.audioDuration) - (startTime ?? 0);
+					const durationRatio = selectedDuration / this.audioDuration;
+					adjustedMinutes = adjustedMinutes * durationRatio;
+				}
 
 			// Calculate cost
 			const adjustedCost = Math.round(adjustedMinutes * pricePerMinute * 100) / 100;
@@ -294,13 +293,13 @@ export class APITranscriptionModal extends Modal {
 		try {
 			if (this.saveSettings) {
 				await this.saveSettings();
-			} else {
-				const obsidianApp = this.app as ObsidianApp;
-				const plugin = obsidianApp.plugins?.plugins?.[PathUtils.getCurrentPluginId()];
-				if (plugin?.saveSettings && typeof plugin.saveSettings === 'function') {
-					await plugin.saveSettings();
 				} else {
-					this.logger.warn('Unable to save settings - saveSettings callback or plugin instance not found');
+					const obsidianApp = this.app as ObsidianApp;
+					const plugin = obsidianApp.plugins?.plugins[PathUtils.getCurrentPluginId()];
+					if (plugin?.saveSettings && typeof plugin.saveSettings === 'function') {
+						await plugin.saveSettings();
+					} else {
+						this.logger.warn('Unable to save settings - saveSettings callback or plugin instance not found');
 				}
 			}
 		} catch (error) {
@@ -343,12 +342,13 @@ export class APITranscriptionModal extends Modal {
 	}
 
 	private async requestWakeLock() {
-		if (Platform.isMobile && isNavigatorWithWakeLock(navigator) && navigator.wakeLock?.request) {
-			try {
-				this.wakeLock = await navigator.wakeLock.request('screen');
-			} catch (err) {
-				this.logger.warn('Failed to acquire wake lock', err);
-			}
+		if (!Platform.isMobile) {
+			return;
+		}
+		try {
+			this.wakeLock = await navigator.wakeLock.request('screen');
+		} catch (err) {
+			this.logger.warn('Failed to acquire wake lock', err);
 		}
 	}
 
@@ -400,13 +400,13 @@ export class APITranscriptionModal extends Modal {
 			// Only perform transcription
 			await this.performTranscriptionOnly();
 
-		} catch (error) {
-			const userError = ErrorHandler.handleError(error as Error, 'API transcription');
-			this.updateStatus(`${userError.title}`);
-			ErrorHandler.displayError(userError);
+			} catch (error) {
+				const userError = ErrorHandler.handleError(error as Error, 'API transcription');
+				this.updateStatus(userError.title);
+				ErrorHandler.displayError(userError);
 
-		} finally {
-			this.isTranscribing = false;
+			} finally {
+				this.isTranscribing = false;
 			this.releaseWakeLock();
 
 			// Reset button states
@@ -426,9 +426,8 @@ export class APITranscriptionModal extends Modal {
 	 */
 	private async performTranscriptionInBackground() {
 		// Ensure progress calculator is initialized
-		if (!this.progressCalculator) {
-			this.progressCalculator = new SimpleProgressCalculator(this.settings.postProcessingEnabled);
-		}
+		const progressCalculator = this.progressCalculator ?? new SimpleProgressCalculator(this.settings.postProcessingEnabled);
+		this.progressCalculator = progressCalculator;
 
 		try {
 			// Get time range if enabled
@@ -466,26 +465,26 @@ export class APITranscriptionModal extends Modal {
 				throw new Error(t('errors.messages.noTranscriptionText'));
 			}
 
-			// Update progress to 70% before processing
-			if (this.progressTracker) {
-				const currentTask = this.progressTracker.getCurrentTask();
-				if (currentTask && this.progressCalculator) {
-					const progress = this.progressCalculator.postProcessingProgress('start');
-					this.progressTracker.updateProgress(currentTask.id, currentTask.completedChunks, t('modal.transcription.postProcessing'), progress);
+				// Update progress to 70% before processing
+				if (this.progressTracker) {
+					const currentTask = this.progressTracker.getCurrentTask();
+					if (currentTask) {
+						const progress = progressCalculator.postProcessingProgress('start');
+						this.progressTracker.updateProgress(currentTask.id, currentTask.completedChunks, t('modal.transcription.postProcessing'), progress);
+					}
 				}
-			}
 
 			// Insert transcription to the active note
 			await this.insertTranscription(transcription, modelUsed);
 
-			// Update to 100% after completion
-			if (this.progressTracker) {
-				const currentTask = this.progressTracker.getCurrentTask();
-				if (currentTask && this.progressCalculator) {
-					const progress = this.progressCalculator.completionProgress();
-					this.progressTracker.updateProgress(currentTask.id, currentTask.completedChunks, t('common.completed'), progress);
+				// Update to 100% after completion
+				if (this.progressTracker) {
+					const currentTask = this.progressTracker.getCurrentTask();
+					if (currentTask) {
+						const progress = progressCalculator.completionProgress();
+						this.progressTracker.updateProgress(currentTask.id, currentTask.completedChunks, t('common.completed'), progress);
+					}
 				}
-			}
 
 			// Mark task as complete in progress tracker
 			if (this.progressTracker) {
@@ -582,12 +581,13 @@ export class APITranscriptionModal extends Modal {
 		// Check if this is a partial result
 		const isPartialResult = transcription.includes(partialMarker);
 
-		// Adjust progress based on whether post-processing is enabled
-		// If post-processing is enabled and will be performed: 70%
-		// Otherwise: 80% (matching the transcription callback range)
-		const saveProgress = this.settings.postProcessingEnabled && this.metaInfo && this.metaInfo.enablePostProcessing ? 70 : 80;
-		this.updateStatus(t('modal.transcription.savingResults'));
-		this.updateProgress(saveProgress);
+			// Adjust progress based on whether post-processing is enabled
+			// If post-processing is enabled and will be performed: 70%
+			// Otherwise: 80% (matching the transcription callback range)
+			const isPostProcessingEnabled = this.settings.postProcessingEnabled && this.metaInfo?.enablePostProcessing === true;
+			const saveProgress = isPostProcessingEnabled ? 70 : 80;
+			this.updateStatus(t('modal.transcription.savingResults'));
+			this.updateProgress(saveProgress);
 
 
 		await this.insertTranscription(transcription, modelUsed);
@@ -600,13 +600,13 @@ export class APITranscriptionModal extends Modal {
 			if (isPartialResult) {
 				this.updateStatus(t('modal.transcription.partialResult'));
 				new Notice(t('notices.partialTranscriptionComplete', { count: charCount }), 5000);
-			} else {
-				this.updateStatus(t('modal.transcription.completed'));
-				const modelInfo = this.settings.postProcessingEnabled && this.metaInfo && this.metaInfo.enablePostProcessing
-					? t('notices.postProcessingSuffix', { model: modelUsed || this.settings.model })
-					: '';
-				new Notice(t('notices.transcriptionCompleteDetailed', { count: charCount, details: modelInfo }), 5000);
-			}
+				} else {
+					this.updateStatus(t('modal.transcription.completed'));
+					const modelInfo = isPostProcessingEnabled
+						? t('notices.postProcessingSuffix', { model: modelUsed || this.settings.model })
+						: '';
+					new Notice(t('notices.transcriptionCompleteDetailed', { count: charCount, details: modelInfo }), 5000);
+				}
 			this.updateProgress(100);
 		}
 
@@ -650,16 +650,18 @@ export class APITranscriptionModal extends Modal {
 			modelUsed,
 			transcriptionLength: transcription.length,
 			postProcessingEnabled: this.settings.postProcessingEnabled
-		});
+			});
 
-		// Check if post-processing is enabled and meta info was provided
-		if (this.settings.postProcessingEnabled && this.metaInfo && this.metaInfo.enablePostProcessing) {
-			try {
-				this.updateStatus(t('modal.transcription.postProcessing'));
-				// Update progress using unified calculator
-				if (this.progressCalculator) {
-					this.updateProgress(this.progressCalculator.postProcessingProgress('start'));
-				}
+			// Check if post-processing is enabled and meta info was provided
+			const metaInfo = this.metaInfo;
+				const isPostProcessingEnabled = this.settings.postProcessingEnabled && metaInfo?.enablePostProcessing === true;
+				if (isPostProcessingEnabled) {
+					try {
+						this.updateStatus(t('modal.transcription.postProcessing'));
+					// Update progress using unified calculator
+					if (this.progressCalculator) {
+						this.updateProgress(this.progressCalculator.postProcessingProgress('start'));
+					}
 
 				const postProcessingService = new PostProcessingService(this.settings);
 
@@ -676,10 +678,10 @@ export class APITranscriptionModal extends Modal {
 					}
 				}
 
-				const processed = await postProcessingService.processTranscription(
-					transcription,
-					this.metaInfo
-				);
+					const processed = await postProcessingService.processTranscription(
+						transcription,
+						metaInfo
+					);
 
 				// Use processed text
 				transcription = processed.processedText;
@@ -742,8 +744,8 @@ export class APITranscriptionModal extends Modal {
 			this.logger.debug('Using output folder', { folder: outputFolder, filePath });
 		}
 
-		let createdFile: TFile | null = null;
-		let markdownView: MarkdownView | null = null;
+			let createdFile: TFile;
+			let markdownView: MarkdownView | null = null;
 		try {
 			// Ensure the folder exists if specified
 			if (outputFolder) {
@@ -757,15 +759,15 @@ export class APITranscriptionModal extends Modal {
 			// Wait a moment for Obsidian to process the file creation
 			// This helps avoid Dataview indexing errors
 			await this.delay(50);
-			const leaf = this.app.workspace.getLeaf(false);
-			await leaf.openFile(createdFile);
-			markdownView = leaf.view instanceof MarkdownView ? leaf.view : null;
-			if (!markdownView) {
-				this.logger.warn('Opened leaf is not a MarkdownView. Falling back to Vault writes.', {
-					viewType: leaf.view?.getViewType?.()
-				});
-			}
-			this.logger.info('File created and opened', { filePath, viewType: leaf.view?.getViewType?.() });
+				const leaf = this.app.workspace.getLeaf(false);
+				await leaf.openFile(createdFile);
+				markdownView = leaf.view instanceof MarkdownView ? leaf.view : null;
+				if (!markdownView) {
+					this.logger.warn('Opened leaf is not a MarkdownView. Falling back to Vault writes.', {
+						viewType: leaf.view.getViewType()
+					});
+				}
+				this.logger.info('File created and opened', { filePath, viewType: leaf.view.getViewType() });
 
 			// Save the output file path to progress tracker
 			if (this.progressTracker) {
@@ -780,12 +782,8 @@ export class APITranscriptionModal extends Modal {
 			throw new Error(t('errors.createFileFailed', { error: err.message }));
 		}
 
-		if (!createdFile) {
-			throw new Error(t('errors.messages.unableToOpenFile'));
-		}
-
-		const editor = markdownView?.editor ?? null;
-		const cursor = editor?.getCursor();
+			const editor = markdownView?.editor ?? null;
+			const cursor = editor?.getCursor();
 
 
 		// Format transcription based on settings
@@ -843,11 +841,10 @@ export class APITranscriptionModal extends Modal {
 			});
 
 
-			// Add completion metadata to frontmatter
-			if (targetFile) {
+				// Add completion metadata to frontmatter
 				try {
 					const fileCache = this.app.metadataCache.getFileCache(targetFile);
-					const frontmatter = fileCache?.frontmatter || {};
+					const frontmatter = fileCache?.frontmatter ?? {};
 
 					const metadata = {
 						...frontmatter,
@@ -868,7 +865,6 @@ export class APITranscriptionModal extends Modal {
 					const err = metadataError instanceof Error ? metadataError : new Error(this.formatUnknownError(metadataError));
 					this.logger.warn('Failed to add frontmatter metadata', { error: err.message });
 				}
-			}
 
 			// Add translation hints for external plugins with detailed metadata
 			const translationMeta = createTranslationMetadata(
@@ -913,9 +909,8 @@ export class APITranscriptionModal extends Modal {
 			// Enhanced fallback: Try alternative insertion methods
 			try {
 
-				const targetFile = markdownView?.file ?? createdFile;
-				if (targetFile) {
-					// Fallback 1: Append to file
+					const targetFile = markdownView?.file ?? createdFile;
+					// Fallback: Append to file
 					const currentContent = await this.app.vault.read(targetFile);
 					const newContent = currentContent + '\n\n' + formattedTranscription;
 					await this.app.vault.modify(targetFile, newContent);
@@ -938,36 +933,8 @@ export class APITranscriptionModal extends Modal {
 						timestamp: new Date().toISOString(),
 						length: transcription.length
 					});
-				} else {
-					// Fallback 2: Create new file
-					const fileName = `AI-Transcription-Fallback-${this.audioFile.basename}-${Date.now()}.md`;
-
-					try {
-						this.logger.debug('Fallback: Creating new file', { fileName });
-						const newFile = await this.app.vault.create(fileName, formattedTranscription);
-
-						// Open the new file
-						const leaf = this.app.workspace.getLeaf(false);
-						await leaf.openFile(newFile);
-
-						new Notice(t('notices.transcriptionSavedToNewFile', { fileName }));
-
-						// Emit completion events for new file creation
-						this.app.workspace.trigger('transcription:completed', {
-							file: newFile,
-							transcription: transcription,
-							audioFile: this.audioFile,
-							modelUsed: modelUsed || this.settings.model,
-							timestamp: new Date().toISOString(),
-							length: transcription.length
-						});
-					} catch (fileError) {
-						this.logger.error('Failed to create fallback file', fileError);
-						throw fileError;
-					}
-				}
-			} catch (fallbackError) {
-				this.logger.error('All insertion methods failed', fallbackError);
+				} catch (fallbackError) {
+					this.logger.error('All insertion methods failed', fallbackError);
 
 				// Last resort: Copy to clipboard
 				await navigator.clipboard.writeText(transcription);
@@ -1080,21 +1047,24 @@ export class APITranscriptionModal extends Modal {
 					}
 				}));
 
-		// Output folder - same pattern as settings tab
-		let folderTextComponent: TextComponent | null = null;
-		let folderInputEl: HTMLInputElement | null = null;
-		new Setting(optionsSection)
-			.setName(t('modal.transcription.processingOptions.outputFolder'))
-			.addText(text => {
-				folderTextComponent = text;
-				folderInputEl = text.inputEl;
-				return text
-					.setPlaceholder(t('settings.outputFolder.placeholder'))
-					.setValue(this.getNormalizedOutputFolder())
-					.onChange(async (value) => {
-						await updateOutputFolder(value);
+			// Output folder - same pattern as settings tab
+			let folderTextComponent: TextComponent | null = null;
+			new Setting(optionsSection)
+				.setName(t('modal.transcription.processingOptions.outputFolder'))
+				.addText(text => {
+					folderTextComponent = text;
+					new FolderInputSuggest(this.app, text.inputEl, (folderPath) => {
+						const normalizedFolderPath = PathUtils.normalizeUserPath(folderPath);
+						void updateOutputFolder(normalizedFolderPath);
+						folderTextComponent?.setValue(normalizedFolderPath);
 					});
-			})
+					return text
+						.setPlaceholder(t('settings.outputFolder.placeholder'))
+						.setValue(this.getNormalizedOutputFolder())
+						.onChange(async (value) => {
+							await updateOutputFolder(value);
+						});
+				})
 			.addExtraButton(button => button
 				.setIcon('folder')
 				.setTooltip(t('settings.outputFolder.select'))
@@ -1107,18 +1077,10 @@ export class APITranscriptionModal extends Modal {
 						// Update the text input
 						folderTextComponent?.setValue(normalizedFolderPath);
 					};
-					modal.open();
-					}));
+						modal.open();
+						}));
 
-		if (folderInputEl) {
-			new FolderInputSuggest(this.app, folderInputEl, (folderPath) => {
-				const normalizedFolderPath = PathUtils.normalizeUserPath(folderPath);
-				void updateOutputFolder(normalizedFolderPath);
-				folderTextComponent?.setValue(normalizedFolderPath);
-			});
-		}
-
-		const aiDependentContainer = document.createElement('div');
+			const aiDependentContainer = document.createElement('div');
 		if (!this.settings.postProcessingEnabled) {
 			aiDependentContainer.classList.add('ait-hidden');
 		}
@@ -1198,21 +1160,21 @@ export class APITranscriptionModal extends Modal {
 		}
 	}
 
-	private createRelatedInfoButton(container: HTMLElement): void {
-		// Create button with correct initial text based on whether meta info exists
-		const buttonText = this.metaInfo && this.metaInfo.rawContent
-			? t('modal.transcription.metaInfoButtonFilled')
-			: t('modal.transcription.metaInfoButton');
+		private createRelatedInfoButton(container: HTMLElement): void {
+			// Create button with correct initial text based on whether meta info exists
+			const buttonText = this.metaInfo?.rawContent
+				? t('modal.transcription.metaInfoButtonFilled')
+				: t('modal.transcription.metaInfoButton');
 
 		this.metaInfoBtn = container.createEl('button', {
 			text: buttonText,
 			cls: 'mod-info'
 		});
 
-		// Add has-info class if meta info exists
-		if (this.metaInfo && this.metaInfo.rawContent) {
-			this.metaInfoBtn.addClass('has-info');
-		}
+			// Add has-info class if meta info exists
+			if (this.metaInfo?.rawContent) {
+				this.metaInfoBtn.addClass('has-info');
+			}
 
 		// Set visibility based on post-processing setting
 		if (!this.settings.postProcessingEnabled) {
@@ -1260,11 +1222,12 @@ export class APITranscriptionModal extends Modal {
 
 		// Try to get audio duration and show waveform
 		try {
-			this.logger.trace('Reading audio file for waveform', { audioFile: this.audioFile.name });
-			const audioBuffer = await this.app.vault.readBinary(this.audioFile);
-			this.modalAudioContext = new AudioContext();
-			const decodedAudio = await this.modalAudioContext.decodeAudioData(audioBuffer.slice(0));
-			this.audioDuration = decodedAudio.duration;
+				this.logger.trace('Reading audio file for waveform', { audioFile: this.audioFile.name });
+				const audioBuffer = await this.app.vault.readBinary(this.audioFile);
+				const modalAudioContext = new AudioContext();
+				this.modalAudioContext = modalAudioContext;
+				const decodedAudio = await modalAudioContext.decodeAudioData(audioBuffer.slice(0));
+				this.audioDuration = decodedAudio.duration;
 
 			headerEl.createEl('p', {
 				text: `${t('audioRange.audioDuration')}: ${this.formatTime(this.audioDuration)}`,
@@ -1318,12 +1281,12 @@ export class APITranscriptionModal extends Modal {
 				void this.displayCostEstimate();
 			});
 
-			// Close audio context after successful load
-			if (this.modalAudioContext && this.modalAudioContext.state !== 'closed') {
-				await this.modalAudioContext.close();
+				// Close audio context after successful load
+				if (modalAudioContext.state !== 'closed') {
+					await modalAudioContext.close();
+				}
 				this.modalAudioContext = null;
-			}
-		} catch (error) {
+			} catch (error) {
 			this.logger.warn('Could not determine audio duration', error);
 			headerEl.createEl('p', {
 				text: t('modal.transcription.duration', { duration: 'Unknown' }),
@@ -1639,10 +1602,11 @@ export class APITranscriptionModal extends Modal {
 			t('common.fileSize.units.mb'),
 			t('common.fileSize.units.gb')
 		];
-		const index = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
-		const value = Math.round((bytes / Math.pow(1024, index)) * 100) / 100;
-		return `${value} ${units[index]}`;
-	}
+			const index = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
+			const value = Math.round((bytes / Math.pow(1024, index)) * 100) / 100;
+			const unit = units[index] ?? t('common.fileSize.units.bytes');
+			return `${value} ${unit}`;
+		}
 
 	/**
 	 * Get display name for a specific model
@@ -1670,13 +1634,13 @@ export class APITranscriptionModal extends Modal {
 		if (typeof error === 'string') {
 			return error;
 		}
-		try {
-			const serialized = JSON.stringify(error);
-			return serialized ?? 'Unknown error';
-		} catch {
-			return 'Unknown error';
+			try {
+				const serialized = JSON.stringify(error);
+				return serialized;
+			} catch {
+				return 'Unknown error';
+			}
 		}
-	}
 
 	/**
 	 * Get localized timestamp

@@ -15,17 +15,14 @@ export class AudioConverter {
 		audioBuffer: ArrayBuffer,
 			fileExtension: string
 	): Promise<{ audioData: Float32Array; sampleRate: number }> {
-		try {
-			// AudioContextを初期化（遅延初期化）
-			this.audioContext ??= new AudioContext();
-			const audioContext = this.audioContext;
-			if (!audioContext) {
-				throw new Error('Failed to initialize AudioContext');
-			}
+			try {
+				// AudioContextを初期化（遅延初期化）
+				const audioContext = this.audioContext ?? new AudioContext();
+				this.audioContext = audioContext;
 
-			// AudioBufferにデコード
-			const decodedAudio = await audioContext.decodeAudioData(
-				audioBuffer.slice(0) // コピーを作成
+				// AudioBufferにデコード
+				const decodedAudio = await audioContext.decodeAudioData(
+					audioBuffer.slice(0) // コピーを作成
 			);
 
 			// モノラルに変換（VAD処理用）

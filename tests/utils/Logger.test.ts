@@ -14,17 +14,17 @@ describe('Logger', () => {
     Logger.getInstance({ debugMode: false, forceConsole: false, logLevel: LogLevel.INFO });
   });
 
-  afterEach(() => {
-    console.debug = originalConsoleDebug;
-    console.error = originalConsoleError;
-    console.warn = originalConsoleWarn;
-    delete (global as Record<string, unknown>).window;
-    delete process.env.AI_TRANSCRIBER_FORCE_CONSOLE;
-  });
+	  afterEach(() => {
+	    console.debug = originalConsoleDebug;
+	    console.error = originalConsoleError;
+	    console.warn = originalConsoleWarn;
+	    delete (global as Record<string, unknown>)['window'];
+	    delete process.env['AI_TRANSCRIBER_FORCE_CONSOLE'];
+	  });
 
-  it('forces console output in Node environment even when debugMode is false', () => {
-    // Node-like environment (no window)
-    delete (global as Record<string, unknown>).window;
+	  it('forces console output in Node environment even when debugMode is false', () => {
+	    // Node-like environment (no window)
+	    delete (global as Record<string, unknown>)['window'];
 
     jest.resetModules();
     const { Logger: FreshLogger } = require('../../src/utils/Logger') as typeof import('../../src/utils/Logger');
@@ -37,9 +37,9 @@ describe('Logger', () => {
     expect((console.debug as jest.Mock).mock.calls[0][0]).toContain('node-info');
   });
 
-  it('suppresses info logs when forceConsole=false and debugMode=false (browser-like)', () => {
-    (global as Record<string, unknown>).window = {};
-    jest.resetModules();
+	  it('suppresses info logs when forceConsole=false and debugMode=false (browser-like)', () => {
+	    (global as Record<string, unknown>)['window'] = {};
+	    jest.resetModules();
 
     const { Logger: FreshLogger } = require('../../src/utils/Logger') as typeof import('../../src/utils/Logger');
     const logger = FreshLogger.getInstance({ debugMode: false, forceConsole: false, logLevel: LogLevel.INFO });

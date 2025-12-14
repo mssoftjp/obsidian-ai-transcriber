@@ -51,12 +51,12 @@ export class Logger {
 	/**
 	 * Create a logger for a specific module/component
 	 */
-	static getLogger(moduleName: string): Logger {
-		const mainLogger = Logger.getInstance();
-		const existing = mainLogger.moduleLoggers.get(moduleName);
-		if (existing) {
-			return existing;
-		}
+		static getLogger(moduleName: string): Logger {
+			const mainLogger = Logger.getInstance();
+			const existing = mainLogger.moduleLoggers.get(moduleName);
+			if (existing) {
+				return existing;
+			}
 
 		// Check size limit to prevent memory leaks
 		if (mainLogger.moduleLoggers.size >= Logger.MAX_MODULE_LOGGERS) {
@@ -67,14 +67,15 @@ export class Logger {
 			});
 		}
 
-		const moduleLogger = new Logger({
-			debugMode: mainLogger.config.debugMode,
-			logLevel: mainLogger.config.logLevel,
-			prefix: `${mainLogger.config.prefix} [${moduleName}]`
-		});
-		mainLogger.moduleLoggers.set(moduleName, moduleLogger);
-		return moduleLogger;
-	}
+			const basePrefix = mainLogger.config.prefix ?? '[AI Transcriber]';
+			const moduleLogger = new Logger({
+				debugMode: mainLogger.config.debugMode,
+				logLevel: mainLogger.config.logLevel,
+				prefix: `${basePrefix} [${moduleName}]`
+			});
+			mainLogger.moduleLoggers.set(moduleName, moduleLogger);
+			return moduleLogger;
+		}
 
 	/**
 	 * Update logger configuration
@@ -94,23 +95,25 @@ export class Logger {
 	/**
 	 * Check if logging is enabled for a given level
 	 */
-	private shouldLog(level: LogLevel): boolean {
-		if (!this.config.debugMode && !this.config.forceConsole) {
-			// In production mode, only show errors and warnings
-			return level <= LogLevel.WARN;
+		private shouldLog(level: LogLevel): boolean {
+			if (!this.config.debugMode && !this.config.forceConsole) {
+				// In production mode, only show errors and warnings
+				return level <= LogLevel.WARN;
+			}
+			return level <= this.config.logLevel;
 		}
-		return level <= (this.config.logLevel ?? LogLevel.INFO);
-	}
 
 	/**
 	 * Format the log message with timestamp and prefix
 	 */
-	private formatMessage(level: LogLevel, message: string): string {
-		const iso = new Date().toISOString();
-		const timePart = iso.split('T')[1] ?? iso;
-		const timestamp = timePart.slice(0, 12);
-		return `${timestamp} ${LogLevel[level].padEnd(5)} ${this.config.prefix} ${message}`;
-	}
+		private formatMessage(level: LogLevel, message: string): string {
+			const iso = new Date().toISOString();
+			const timePart = iso.split('T')[1] ?? iso;
+			const timestamp = timePart.slice(0, 12);
+			const levelName = LogLevel[level];
+			const prefix = this.config.prefix ?? '[AI Transcriber]';
+			return `${timestamp} ${levelName.padEnd(5)} ${prefix} ${message}`;
+		}
 
 	/**
 	 * Log an error message
@@ -212,26 +215,28 @@ export class Logger {
 	/**
 	 * Log performance timing
 	 */
-	time(label: string): void {
-		if (!this.shouldLog(LogLevel.DEBUG)) {
-			return;
+		time(label: string): void {
+			if (!this.shouldLog(LogLevel.DEBUG)) {
+				return;
+			}
+			const prefix = this.config.prefix ?? '[AI Transcriber]';
+			const timerKey = `${prefix} ${label}`;
+			this.timers.set(timerKey, this.getTimestamp());
 		}
-		const timerKey = `${this.config.prefix} ${label}`;
-		this.timers.set(timerKey, this.getTimestamp());
-	}
 
 	/**
 	 * End performance timing
 	 */
-	timeEnd(label: string): void {
-		if (!this.shouldLog(LogLevel.DEBUG)) {
-			return;
-		}
-		const timerKey = `${this.config.prefix} ${label}`;
-		const start = this.timers.get(timerKey);
-		if (start === undefined) {
-			return;
-		}
+		timeEnd(label: string): void {
+			if (!this.shouldLog(LogLevel.DEBUG)) {
+				return;
+			}
+			const prefix = this.config.prefix ?? '[AI Transcriber]';
+			const timerKey = `${prefix} ${label}`;
+			const start = this.timers.get(timerKey);
+			if (start === undefined) {
+				return;
+			}
 		const duration = this.getTimestamp() - start;
 		this.debug(`${label} completed in ${duration.toFixed(2)}ms`);
 		this.timers.delete(timerKey);
@@ -240,13 +245,14 @@ export class Logger {
 	/**
 	 * Create a scoped logger for a specific operation
 	 */
-	scope(scopeName: string): Logger {
-		return new Logger({
-			debugMode: this.config.debugMode,
-			logLevel: this.config.logLevel,
-			prefix: `${this.config.prefix} [${scopeName}]`
-		});
-	}
+		scope(scopeName: string): Logger {
+			const prefix = this.config.prefix ?? '[AI Transcriber]';
+			return new Logger({
+				debugMode: this.config.debugMode,
+				logLevel: this.config.logLevel,
+				prefix: `${prefix} [${scopeName}]`
+			});
+		}
 
 	private recordLog(level: LogLevel, message: string, data?: unknown): void {
 		// Keep lightweight in production; only mirror to console when debugMode is on
@@ -260,15 +266,13 @@ export class Logger {
 			}
 		}
 
-		// Always buffer logs for in-app inspection
-		if (typeof window !== 'undefined') {
-			const globalObj = window as Window & { __aiTranscriberLogs?: Array<{ level: LogLevel; message: string; data?: unknown }> };
-			if (!globalObj.__aiTranscriberLogs) {
-				globalObj.__aiTranscriberLogs = [];
+			// Always buffer logs for in-app inspection
+			if (typeof window !== 'undefined') {
+				const globalObj = window as Window & { __aiTranscriberLogs?: Array<{ level: LogLevel; message: string; data?: unknown }> };
+				globalObj.__aiTranscriberLogs ??= [];
+				globalObj.__aiTranscriberLogs.push({ level, message, data });
 			}
-			globalObj.__aiTranscriberLogs.push({ level, message, data });
 		}
-	}
 
 	private getTimestamp(): number {
 		if (typeof performance !== 'undefined' && typeof performance.now === 'function') {
@@ -279,14 +283,14 @@ export class Logger {
 
 	private static shouldForceConsoleOutput(): boolean {
 		// Enable console output automatically in Node/CLI (no window)
-		if (typeof window === 'undefined') {
-			return true;
+			if (typeof window === 'undefined') {
+				return true;
+			}
+			// Allow explicit opt-in via environment flag or global toggle for debugging
+			const envFlag = typeof process !== 'undefined' && process.env['AI_TRANSCRIBER_FORCE_CONSOLE'] === '1';
+			const globalFlag = (window as Window & { __aiTranscriberForceConsole__?: boolean }).__aiTranscriberForceConsole__ === true;
+			return envFlag || globalFlag;
 		}
-		// Allow explicit opt-in via environment flag or global toggle for debugging
-		const envFlag = typeof process !== 'undefined' && process?.env?.['AI_TRANSCRIBER_FORCE_CONSOLE'] === '1';
-		const globalFlag = (window as Window & { __aiTranscriberForceConsole__?: boolean }).__aiTranscriberForceConsole__ === true;
-		return envFlag || globalFlag;
-	}
 }
 
 // Export convenience functions

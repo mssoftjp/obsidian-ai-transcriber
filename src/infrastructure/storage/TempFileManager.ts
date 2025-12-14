@@ -250,11 +250,11 @@ export class TempFileManager {
 		this.logger.trace('Estimating available storage space');
 		try {
 			// navigator.storage.estimate() を使用（対応ブラウザのみ）
-			if ('storage' in navigator && 'estimate' in navigator.storage) {
-				const estimate = await navigator.storage.estimate();
-				const usageGB = (estimate.usage || 0) / (1024 * 1024 * 1024);
-				const quotaGB = (estimate.quota || 0) / (1024 * 1024 * 1024);
-				const availableGB = quotaGB - usageGB;
+					if ('storage' in navigator && 'estimate' in navigator.storage) {
+						const estimate = await navigator.storage.estimate();
+						const usageGB = (estimate.usage ?? 0) / (1024 * 1024 * 1024);
+						const quotaGB = (estimate.quota ?? 0) / (1024 * 1024 * 1024);
+						const availableGB = quotaGB - usageGB;
 
 				if (availableGB < 0.1) { // 100MB未満
 					this.logger.warn('Low disk space detected', { availableGB });

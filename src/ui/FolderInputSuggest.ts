@@ -28,7 +28,7 @@ export class FolderInputSuggest extends AbstractInputSuggest<string> {
 	override selectSuggestion(value: string, _evt: MouseEvent | KeyboardEvent): void {
 		const normalized = value === '/' ? '' : value;
 		this.setValue(normalized);
-		this.onSelectCallback?.(normalized);
+		this.onSelectCallback(normalized);
 	}
 
 	private loadFolders(): string[] {

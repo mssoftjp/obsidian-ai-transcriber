@@ -32,9 +32,7 @@ export class ResourceManager {
 	 * Get singleton instance
 	 */
 	static getInstance(): ResourceManager {
-		if (ResourceManager.instance === null) {
-			ResourceManager.instance = new ResourceManager();
-		}
+		ResourceManager.instance ??= new ResourceManager();
 		return ResourceManager.instance;
 	}
 

@@ -112,7 +112,7 @@ import type {
 		const patternsMatched: string[] = [];
 		const issues: string[] = [];
 		const removedSections: Array<{type: string, content: string, reason: string}> = [];
-		const enableDetailedLogging = context?.enableDetailedLogging || this.strategy?.enableDetailedLogging || false;
+		const enableDetailedLogging = context?.enableDetailedLogging ?? this.strategy?.enableDetailedLogging ?? false;
 
 		this.logger.debug('Starting hallucination cleaning', {
 			originalLength,
@@ -164,7 +164,7 @@ import type {
 		let cleanedText = text;
 
 		// Multi-stage cleaning process
-		const maxIterations = this.strategy?.safetyThresholds?.maxCleaningIterations || 3;
+			const maxIterations = this.strategy?.safetyThresholds.maxCleaningIterations ?? 3;
 		let iteration = 0;
 		let previousLength = cleanedText.length;
 
@@ -188,7 +188,7 @@ import type {
 			// Safety check: prevent excessive reduction in a single iteration
 			// For mechanical repetitions (like medium-length phrases),
 			// we allow up to configured limit (default 99.9%)
-			const iterationReductionLimit = this.strategy?.safetyThresholds?.iterationReductionLimit || 0.999;
+				const iterationReductionLimit = this.strategy?.safetyThresholds.iterationReductionLimit ?? 0.999;
 			const iterationReduction = (previousLength - currentLength) / previousLength;
 			if (iterationReduction > iterationReductionLimit) {
 				if (enableDetailedLogging) {
@@ -210,7 +210,7 @@ import type {
 		cleanedText = cleanedText.replace(/[\uFFF0-\uFFFF]/g, '');
 
 		// Clean up formatting while preserving Japanese text structure
-		const newlineLimit = this.repetitionThresholds.consecutiveNewlineLimit || 3;
+			const newlineLimit = this.repetitionThresholds.consecutiveNewlineLimit ?? 3;
 		const newlineRegex = new RegExp(`\\n{${newlineLimit},}`, 'g');
 
 		if (language === 'ja' || language === 'auto') {
@@ -238,13 +238,13 @@ import type {
 		const reductionRatio = originalLength > 0 ? (originalLength - cleanedLength) / originalLength : 0;
 
 		// Check for excessive reduction
-		const excessiveReductionWarning = this.strategy?.safetyThresholds?.excessiveReductionWarning || 0.5;
+			const excessiveReductionWarning = this.strategy?.safetyThresholds.excessiveReductionWarning ?? 0.5;
 		if (reductionRatio > excessiveReductionWarning) {
 			issues.push(`Excessive text reduction: ${Math.round(reductionRatio * 100)}% removed`);
 		}
 
 		// Check for patterns that might indicate remaining issues
-		const highPatternCountWarning = this.strategy?.safetyThresholds?.highPatternCountWarning || 10;
+			const highPatternCountWarning = this.strategy?.safetyThresholds.highPatternCountWarning ?? 10;
 		if (patternsMatched.length > highPatternCountWarning) {
 			issues.push(`High number of hallucination patterns detected: ${patternsMatched.length}`);
 		}
@@ -260,7 +260,7 @@ import type {
 			}
 		}
 
-		const significantChangeThreshold = this.strategy?.safetyThresholds?.significantChangeThreshold || 0.1;
+			const significantChangeThreshold = this.strategy?.safetyThresholds.significantChangeThreshold ?? 0.1;
 
 		return Promise.resolve({
 			cleanedText,
@@ -384,7 +384,7 @@ import type {
 	private applyContextAwareShortCharRemoval(text: string, originalLength: number): string {
 		// Calculate dynamic threshold based on text length
 		const baseThreshold = this.repetitionThresholds.baseThreshold;
-		const dynamicThresholdDivisor = this.repetitionThresholds.dynamicThresholdDivisor || 100;
+		const dynamicThresholdDivisor = this.repetitionThresholds.dynamicThresholdDivisor ?? 100;
 		const lengthFactor = Math.floor(originalLength / dynamicThresholdDivisor); // Add 1 per divisor chars
 		const dynamicThreshold = baseThreshold + (lengthFactor * this.repetitionThresholds.lengthFactor);
 
@@ -395,10 +395,10 @@ import type {
 		const commonExpressions = this.repetitionThresholds.commonExpressions;
 
 		// Get configuration for short char detection
-		const minLength = this.repetitionThresholds.shortCharMinLength || 1;
-		const maxLength = this.repetitionThresholds.shortCharMaxLength || 4;
-		const maxConsecutiveParticles = this.repetitionThresholds.maxConsecutiveParticles || 5;
-		const particleMode = this.repetitionThresholds.particleReductionMode || 'limit';
+		const minLength = this.repetitionThresholds.shortCharMinLength ?? 1;
+		const maxLength = this.repetitionThresholds.shortCharMaxLength ?? 4;
+		const maxConsecutiveParticles = this.repetitionThresholds.maxConsecutiveParticles ?? 5;
+		const particleMode = this.repetitionThresholds.particleReductionMode ?? 'limit';
 
 		// Find repetitive patterns but exclude essential elements
 		const words = text.split(/\s+/);
@@ -406,11 +406,11 @@ import type {
 
 		// Count occurrences of each short character word
 		for (const word of words) {
-			const cleanWord = word.replace(/[。、！？\s]/g, '');
-			if (cleanWord.length >= minLength && cleanWord.length <= maxLength && /^[あ-んア-ン]+$/.test(cleanWord)) {
-				wordCount.set(cleanWord, (wordCount.get(cleanWord) || 0) + 1);
+				const cleanWord = word.replace(/[。、！？\s]/g, '');
+				if (cleanWord.length >= minLength && cleanWord.length <= maxLength && /^[あ-んア-ン]+$/.test(cleanWord)) {
+					wordCount.set(cleanWord, (wordCount.get(cleanWord) ?? 0) + 1);
+				}
 			}
-		}
 
 		let result = text;
 
@@ -440,25 +440,25 @@ import type {
 					}
 					break;
 				}
-			} else if (commonExpressions.includes(word)) {
-				// Common expressions need higher threshold
-				if (count >= dynamicThreshold * 1.5) {
-					const keepRatio = this.repetitionThresholds.shortCharKeepRatio || 0.2;
-					keepCount = Math.max(2, Math.floor(count * keepRatio));
+				} else if (commonExpressions.includes(word)) {
+					// Common expressions need higher threshold
+					if (count >= dynamicThreshold * 1.5) {
+						const keepRatio = this.repetitionThresholds.shortCharKeepRatio ?? 0.2;
+						keepCount = Math.max(2, Math.floor(count * keepRatio));
+						shouldReduce = true;
+					}
+				} else if (count >= dynamicThreshold) {
+					// Normal short words
+					const keepRatio = this.repetitionThresholds.shortCharKeepRatio ?? 0.2;
+					keepCount = Math.max(1, Math.floor(count * keepRatio));
 					shouldReduce = true;
 				}
-			} else if (count >= dynamicThreshold) {
-				// Normal short words
-				const keepRatio = this.repetitionThresholds.shortCharKeepRatio || 0.2;
-				keepCount = Math.max(1, Math.floor(count * keepRatio));
-				shouldReduce = true;
-			}
 
 			if (shouldReduce) {
-				// Create regex to match the word with optional punctuation
-				const wordRegex = new RegExp(`${word}[。、]?\\s*`, 'g');
-				const matches = result.match(wordRegex) || [];
-				const removeCount = count - keepCount;
+					// Create regex to match the word with optional punctuation
+					const wordRegex = new RegExp(`${word}[。、]?\\s*`, 'g');
+					const matches = result.match(wordRegex) ?? [];
+					const removeCount = count - keepCount;
 
 				if (matches.length >= removeCount) {
 					// Remove excessive occurrences from the end
@@ -521,7 +521,7 @@ import type {
 		let collapsedText = result.join('');
 
 		// Remove extreme trailing repetitions
-		const trailingRepCount = this.repetitionThresholds.extremeTrailingRepetitionCount || 10;
+			const trailingRepCount = this.repetitionThresholds.extremeTrailingRepetitionCount ?? 10;
 		const trailingRegex = new RegExp(`(\\s*[・。、]\\s*){${trailingRepCount},}$`, 'g');
 		collapsedText = collapsedText.replace(trailingRegex, '。');
 
@@ -534,7 +534,7 @@ import type {
 	 */
 	private isSimilarSentence(sent1: string, sent2: string): boolean {
 		// Skip similarity check for very short sentences (likely natural)
-		const minLength = this.repetitionThresholds.minimumSentenceLengthForSimilarity || 6;
+			const minLength = this.repetitionThresholds.minimumSentenceLengthForSimilarity ?? 6;
 		if (sent1.length < minLength || sent2.length < minLength) {
 			return false;
 		}
@@ -597,11 +597,11 @@ import type {
 
 
 		// Get configuration from strategy, with fallback to default
-		const lengthRanges = this.repetitionThresholds.mediumLengthRanges || [
-			{ min: 5, max: 10, threshold: 3 },    // Default: Short phrases repeated 3+ times
-			{ min: 10, max: 20, threshold: 2 },   // Default: Medium phrases repeated 2+ times
-			{ min: 20, max: 30, threshold: 2 }    // Default: Longer phrases repeated 2+ times
-		];
+			const lengthRanges = this.repetitionThresholds.mediumLengthRanges ?? [
+				{ min: 5, max: 10, threshold: 3 },    // Default: Short phrases repeated 3+ times
+				{ min: 10, max: 20, threshold: 2 },   // Default: Medium phrases repeated 2+ times
+				{ min: 20, max: 30, threshold: 2 }    // Default: Longer phrases repeated 2+ times
+			];
 
 		for (const range of lengthRanges) {
 			const pattern = new RegExp(`(.{${range.min},${range.max}}?)\\1{${range.threshold - 1},}`, 'g');
@@ -657,15 +657,17 @@ import type {
 			const prompts = this.strategy.contaminationPatterns.instructionPatterns;
 
 			// Language-specific sentence endings
-			const sentenceEndings: Record<string, string> = {
-				'ja': '[。、]',
-				'en': '[.,!?]',
-				'zh': '[。，！？]',
-				'ko': '[.!?]'
-			};
+				const sentenceEndings = {
+					ja: '[。、]',
+					en: '[.,!?]',
+					zh: '[。，！？]',
+					ko: '[.!?]'
+				} as const;
 
-			// Get appropriate sentence ending pattern for the language
-			const endingPattern = sentenceEndings[language] || sentenceEndings['en']; // Default to English
+					// Get appropriate sentence ending pattern for the language
+					const endingPattern = Object.prototype.hasOwnProperty.call(sentenceEndings, language)
+						? sentenceEndings[language as keyof typeof sentenceEndings]
+						: sentenceEndings.en; // Default to English
 
 			// Convert prompt phrases to regex patterns for any language
 			for (const prompt of prompts) {
@@ -693,7 +695,7 @@ import type {
 			}
 
 			const sentences = text.split(/(?<=[。.!?！？。])/);
-			const headChars = config.headChars ?? 0;
+				const headChars = config.headChars;
 			const seen = new Set<string>();
 			const keep: string[] = [];
 
@@ -771,12 +773,13 @@ import type {
 	 */
 	private collapseRepeatingEnumerations(text: string): string {
 		// Check if feature is enabled
-		if (!this.repetitionThresholds.enumerationDetection?.enabled) {
-			return text;
-		}
+			const enumerationConfig = this.repetitionThresholds.enumerationDetection;
+			if (!enumerationConfig?.enabled) {
+				return text;
+			}
 
-		const minRepeatCount = this.repetitionThresholds.enumerationDetection?.minRepeatCount || 3;
-		const sentences = text.split(/(?<=[。.!?！？])\s*/);
+			const minRepeatCount = enumerationConfig.minRepeatCount ?? 3;
+			const sentences = text.split(/(?<=[。.!?！？])\s*/);
 
 		return sentences.map(sentence => {
 			// Detect separator - find the actual separator character used

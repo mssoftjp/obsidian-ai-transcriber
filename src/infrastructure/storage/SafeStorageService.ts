@@ -29,7 +29,7 @@ export class SafeStorageService {
 				}
 				const electron = window.require('electron') as ElectronRenderer;
 
-				this.safeStorage = electron.remote?.safeStorage || electron.safeStorage || null;
+					this.safeStorage = electron.remote?.safeStorage ?? electron.safeStorage ?? null;
 			} catch (error) {
 				this.logger.error('Error during safeStorage initialization', {
 					error: this.formatError(error)
@@ -51,14 +51,14 @@ export class SafeStorageService {
 			return '';
 		}
 
-		this.logger.trace('Encrypting API key for storage');
+			this.logger.trace('Encrypting API key for storage');
 
-		const safeStorage = this.getSafeStorage();
-		if (safeStorage?.isEncryptionAvailable?.()) {
-			try {
-				const buf = safeStorage.encryptString(trimmedKey);
-				this.logger.debug('API key encrypted using SafeStorage');
-				return PREFIX + buf.toString('base64');
+			const safeStorage = this.getSafeStorage();
+			if (safeStorage?.isEncryptionAvailable()) {
+				try {
+					const buf = safeStorage.encryptString(trimmedKey);
+					this.logger.debug('API key encrypted using SafeStorage');
+					return PREFIX + buf.toString('base64');
 			} catch (error) {
 				this.logger.warn('SafeStorage encryption failed, using fallback', {
 					error: this.formatError(error)

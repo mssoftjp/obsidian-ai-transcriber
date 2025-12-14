@@ -18,10 +18,10 @@ export class LanguageDetector {
 		const englishRegex = /[a-zA-Z]/g;
 		const koreanRegex = /[\uAC00-\uD7AF\u1100-\u11FF\u3130-\u318F]/g; // Hangul
 
-		const japaneseMatches = (text.match(japaneseRegex) || []).length;
-		const chineseMatches = (text.match(chineseOnlyRegex) || []).length;
-		const englishMatches = (text.match(englishRegex) || []).length;
-		const koreanMatches = (text.match(koreanRegex) || []).length;
+			const japaneseMatches = (text.match(japaneseRegex) ?? []).length;
+			const chineseMatches = (text.match(chineseOnlyRegex) ?? []).length;
+			const englishMatches = (text.match(englishRegex) ?? []).length;
+			const koreanMatches = (text.match(koreanRegex) ?? []).length;
 
 		const textLength = text.length;
 
@@ -103,10 +103,10 @@ export class LanguageDetector {
 		const englishRegex = /[a-zA-Z]/g;
 		const koreanRegex = /[\uAC00-\uD7AF\u1100-\u11FF\u3130-\u318F]/g;
 
-		const japaneseMatches = (text.match(japaneseRegex) || []).length;
-		const chineseMatches = (text.match(chineseOnlyRegex) || []).length;
-		const englishMatches = (text.match(englishRegex) || []).length;
-		const koreanMatches = (text.match(koreanRegex) || []).length;
+			const japaneseMatches = (text.match(japaneseRegex) ?? []).length;
+			const chineseMatches = (text.match(chineseOnlyRegex) ?? []).length;
+			const englishMatches = (text.match(englishRegex) ?? []).length;
+			const koreanMatches = (text.match(koreanRegex) ?? []).length;
 
 		const textLength = text.length;
 

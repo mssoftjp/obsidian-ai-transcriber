@@ -44,13 +44,13 @@ export class JapaneseTextValidator implements TextCleaner {
 			expectedCharsPerSecond: 1.5,
 			enableAdvancedChecks: true,
 			...config
-		};
+			};
 
-		// Load validation patterns from strategy or use defaults
-		this.validationPatterns = strategy?.validationPatterns || {
-			incompleteWord: '[はがにをでと](?:\\s|$)',
-			mergedWord: '[あ-んア-ン]{1,2}[あ-んア-ン]{5,}',
-			charRepetition: '(.)\\1{10,}',
+			// Load validation patterns from strategy or use defaults
+			this.validationPatterns = strategy?.validationPatterns ?? {
+				incompleteWord: '[はがにをでと](?:\\s|$)',
+				mergedWord: '[あ-んア-ン]{1,2}[あ-んア-ン]{5,}',
+				charRepetition: '(.)\\1{10,}',
 			sentenceEnding: '[。！？]',
 			strangePatterns: [
 				'[あ-ん]{20,}',     // Too many hiragana in sequence
@@ -58,13 +58,13 @@ export class JapaneseTextValidator implements TextCleaner {
 				'[a-zA-Z]{10,}',    // Too much continuous Latin text
 				'\\d{6,}'           // Very long numbers
 			]
-		};
+			};
 
-		// Load validation thresholds from strategy or use defaults
-		this.validationThresholds = strategy?.validationThresholds || {
-			katakanaRatio: 0.3,
-			particlelessSentenceLength: 20,
-			hiraganaRatio: 0.8,
+			// Load validation thresholds from strategy or use defaults
+			this.validationThresholds = strategy?.validationThresholds ?? {
+				katakanaRatio: 0.3,
+				particlelessSentenceLength: 20,
+				hiraganaRatio: 0.8,
 			kanjiRatio: 0.05,
 			latinRatio: 0.2
 		};
@@ -94,13 +94,13 @@ export class JapaneseTextValidator implements TextCleaner {
 			};
 		}
 
-		// 1. Check reduction ratio (if original length is provided)
-		if (typeof originalLength === 'number' && originalLength > 0 && originalLength !== text.length) {
-			const reductionRatio = (originalLength - text.length) / originalLength;
-			if (reductionRatio > (this.config.maxReductionRatio ?? 0)) {
-				issues.push(`Excessive text removal: ${Math.round(reductionRatio * 100)}% of original text removed`);
+			// 1. Check reduction ratio (if original length is provided)
+			if (typeof originalLength === 'number' && originalLength > 0 && originalLength !== text.length) {
+				const reductionRatio = (originalLength - text.length) / originalLength;
+				if (reductionRatio > this.config.maxReductionRatio) {
+					issues.push(`Excessive text removal: ${Math.round(reductionRatio * 100)}% of original text removed`);
+				}
 			}
-		}
 
 		// 2. Check for incomplete Japanese words (particles without content)
 		const incompleteWordPattern = new RegExp(this.validationPatterns.incompleteWord, 'g');
@@ -181,20 +181,20 @@ export class JapaneseTextValidator implements TextCleaner {
 	 * Perform advanced linguistic checks for Japanese text
 	 */
 	private performAdvancedChecks(text: string): string[] {
-		const issues: string[] = [];
+			const issues: string[] = [];
 
-		// Check for unbalanced parentheses/brackets
-		const openParens = (text.match(/[（「『【〈]/g) || []).length;
-		const closeParens = (text.match(/[）」』】〉]/g) || []).length;
-		if (Math.abs(openParens - closeParens) > 2) {
-			issues.push('Unbalanced parentheses or brackets detected');
-		}
+			// Check for unbalanced parentheses/brackets
+			const openParens = (text.match(/[（「『【〈]/g) ?? []).length;
+			const closeParens = (text.match(/[）」』】〉]/g) ?? []).length;
+			if (Math.abs(openParens - closeParens) > 2) {
+				issues.push('Unbalanced parentheses or brackets detected');
+			}
 
-		// Check for excessive katakana (might indicate foreign word recognition issues)
-		const katakanaRatio = (text.match(/[ア-ン]/g) || []).length / text.length;
-		if (katakanaRatio > this.validationThresholds.katakanaRatio) {
-			issues.push(`High katakana ratio: ${Math.round(katakanaRatio * 100)}% (possible foreign word recognition issues)`);
-		}
+			// Check for excessive katakana (might indicate foreign word recognition issues)
+			const katakanaRatio = (text.match(/[ア-ン]/g) ?? []).length / text.length;
+			if (katakanaRatio > this.validationThresholds.katakanaRatio) {
+				issues.push(`High katakana ratio: ${Math.round(katakanaRatio * 100)}% (possible foreign word recognition issues)`);
+			}
 
 		// Check for missing particles in longer sentences
 		const sentences = text.split(/[。！？]/);
@@ -256,12 +256,12 @@ export class JapaneseTextValidator implements TextCleaner {
 
 		if (totalChars === 0) {
 			return issues;
-		}
+			}
 
-		// Count different character types
-		const hiragana = (text.match(/[あ-ん]/g) || []).length;
-		const kanji = (text.match(/[一-龯]/g) || []).length;
-		const latin = (text.match(/[a-zA-Z]/g) || []).length;
+			// Count different character types
+			const hiragana = (text.match(/[あ-ん]/g) ?? []).length;
+			const kanji = (text.match(/[一-龯]/g) ?? []).length;
+			const latin = (text.match(/[a-zA-Z]/g) ?? []).length;
 
 		// Check for extremely unbalanced distributions
 		const hiraganaRatio = hiragana / totalChars;

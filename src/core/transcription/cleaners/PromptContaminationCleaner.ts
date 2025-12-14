@@ -71,11 +71,11 @@ export class PromptContaminationCleaner implements TextCleaner {
 		this.logger = Logger.getLogger('PromptContaminationCleaner');
 
 		// Load contamination patterns from strategy or use defaults
-		this.contaminationPatterns = strategy?.contaminationPatterns || {
-			instructionPatterns: [],
-			xmlPatternGroups: {
-				completeXmlTags: [],
-				sentenceBoundedTags: [],
+			this.contaminationPatterns = strategy?.contaminationPatterns ?? {
+				instructionPatterns: [],
+				xmlPatternGroups: {
+					completeXmlTags: [],
+					sentenceBoundedTags: [],
 				lineBoundedTags: [],
 				standaloneTags: []
 			},
@@ -97,25 +97,21 @@ export class PromptContaminationCleaner implements TextCleaner {
 	/**
 	 * Load and compile patterns from strategy configuration
 	 */
-	private loadPatternsFromStrategy(patterns: ContaminationPatterns): void {
-		// Load instruction patterns
-		this.commonInstructionPatterns = patterns.instructionPatterns || [];
+		private loadPatternsFromStrategy(patterns: ContaminationPatterns): void {
+			// Load instruction patterns
+			this.commonInstructionPatterns = patterns.instructionPatterns;
 
-		// Compile XML patterns
-		if (patterns.xmlPatternGroups) {
+			// Compile XML patterns
 			for (const [group, patternStrings] of Object.entries(patterns.xmlPatternGroups)) {
 				if ((group) in this.xmlPatternGroups) {
 					const key = group as XmlPatternGroupName;
 					this.xmlPatternGroups[key] = PatternCompiler.compileMany(patternStrings);
 				}
 			}
-		}
 
-		// Compile context patterns
-		if (patterns.contextPatterns) {
+			// Compile context patterns
 			this.contextPatterns = PatternCompiler.compileMany(patterns.contextPatterns);
 		}
-	}
 
 	/**
 	 * Clean text by removing prompt contamination
@@ -236,13 +232,13 @@ export class PromptContaminationCleaner implements TextCleaner {
 			new RegExp(`^${escapedPrompt}$`, 'gm'),
 			// Match prompt anywhere in text (in case it's embedded)
 			new RegExp(`${escapedPrompt}\\s*`, 'g')
-		];
+			];
 
-		// Also check for partial prompts (use configured lengths)
-		const lengths = this.contaminationPatterns.promptSnippetLengths || [10, 15, 20, 30];
-		for (const len of lengths) {
-			if (prompt.length >= len) {
-				const snippet = prompt.slice(0, len);
+			// Also check for partial prompts (use configured lengths)
+			const lengths = this.contaminationPatterns.promptSnippetLengths;
+			for (const len of lengths) {
+				if (prompt.length >= len) {
+					const snippet = prompt.slice(0, len);
 				const escapedSnippet = this.escapeRegExp(snippet);
 				// Only match if followed by the rest of a likely prompt pattern
 				patterns.push(new RegExp(`${escapedSnippet}[^。.!?！？\\n]{0,50}(?:ください|してください|です|ます)`, 'g'));
@@ -291,13 +287,13 @@ export class PromptContaminationCleaner implements TextCleaner {
 		const strategy = getModelCleaningStrategy(this.config.modelId || 'gpt-4o-mini-transcribe');
 		const maxReduction = strategy.safetyThresholds.singlePatternMaxReduction;
 
-		// Process pattern groups in priority order
-		const groups = [
-			{ name: 'Complete XML tags', patterns: this.xmlPatternGroups.completeXmlTags ?? [] },
-			{ name: 'Sentence-bounded tags', patterns: this.xmlPatternGroups.sentenceBoundedTags ?? [] },
-			{ name: 'Line-bounded tags', patterns: this.xmlPatternGroups.lineBoundedTags ?? [] },
-			{ name: 'Standalone tags', patterns: this.xmlPatternGroups.standaloneTags ?? [] }
-		];
+			// Process pattern groups in priority order
+			const groups = [
+				{ name: 'Complete XML tags', patterns: this.xmlPatternGroups.completeXmlTags },
+				{ name: 'Sentence-bounded tags', patterns: this.xmlPatternGroups.sentenceBoundedTags },
+				{ name: 'Line-bounded tags', patterns: this.xmlPatternGroups.lineBoundedTags },
+				{ name: 'Standalone tags', patterns: this.xmlPatternGroups.standaloneTags }
+			];
 
 		for (const group of groups) {
 			for (const pattern of group.patterns) {
