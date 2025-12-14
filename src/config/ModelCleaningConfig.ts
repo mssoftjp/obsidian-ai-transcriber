@@ -598,7 +598,8 @@ export const DEBUG_CLEANING_STRATEGIES: Record<string, ModelCleaningStrategy> = 
 			enableDetailedLogging: true
 		},
 		repetitionThresholds: {
-			...MODEL_CLEANING_STRATEGIES['gpt-4o-mini-transcribe'].repetitionThresholds,
+			...(MODEL_CLEANING_STRATEGIES['gpt-4o-mini-transcribe'].repetitionThresholds ?? COMMON_REPETITION_THRESHOLDS),
+			lengthFactor: (MODEL_CLEANING_STRATEGIES['gpt-4o-mini-transcribe'].repetitionThresholds?.lengthFactor ?? COMMON_REPETITION_THRESHOLDS.lengthFactor),
 			// Ultra-conservative for debugging
 			baseThreshold: 50,
 			sentenceRepetition: 8
@@ -613,7 +614,8 @@ export const DEBUG_CLEANING_STRATEGIES: Record<string, ModelCleaningStrategy> = 
 			enableAdvancedChecks: true
 		},
 		repetitionThresholds: {
-			...MODEL_CLEANING_STRATEGIES['whisper-1'].repetitionThresholds,
+			...(MODEL_CLEANING_STRATEGIES['whisper-1'].repetitionThresholds ?? COMMON_REPETITION_THRESHOLDS),
+			lengthFactor: (MODEL_CLEANING_STRATEGIES['whisper-1'].repetitionThresholds?.lengthFactor ?? COMMON_REPETITION_THRESHOLDS.lengthFactor),
 			// More verbose for debugging
 			baseThreshold: 45,
 			sentenceRepetition: 8

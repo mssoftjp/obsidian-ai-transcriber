@@ -128,3 +128,13 @@ export class Notice {
 		console.log(`Notice: ${message}`);
 	}
 }
+
+// Simplified normalizePath implementation for tests
+export function normalizePath(path: string): string {
+	const normalized = path.replace(/\\/g, '/').replace(/\/+/g, '/').trim();
+	// Remove trailing slash except root
+	if (normalized.endsWith('/') && normalized !== '/') {
+		return normalized.slice(0, -1);
+	}
+	return normalized;
+}

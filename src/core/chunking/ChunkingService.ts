@@ -72,8 +72,7 @@ export abstract class ChunkingService {
 			totalChunks: 1,
 			chunkDuration: totalDuration,
 			overlapDuration: 0,
-			totalDuration,
-			reason: undefined
+			totalDuration
 		};
 	}
 
