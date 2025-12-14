@@ -4,7 +4,7 @@
   "description": "AI-powered speech-to-text transcription using OpenAI GPT-4o and Whisper APIs",
   "main": "main.js",
   "scripts": {
-    "build": "tsc -noEmit -skipLibCheck && node esbuild-api.config.mjs production",
+    "build": "tsc --noEmit && node esbuild-api.config.mjs production",
     "build:release": "npm run check && node -e \"const fs=require('fs');const path=require('path');const manifest=JSON.parse(fs.readFileSync('./manifest.json','utf8'));const dir='build/'+manifest.version;['manifest.json','styles.css'].forEach(f=>fs.existsSync(f)&&fs.copyFileSync(f,path.join(dir,f)));const wasmSrc='node_modules/@echogarden/fvad-wasm/fvad.wasm';if(fs.existsSync(wasmSrc)){fs.copyFileSync(wasmSrc,path.join(dir,'fvad.wasm'));console.log('Copied fvad.wasm');}console.log('Release files created in',dir)\"",
     "test": "jest",
     "test:watch": "jest --watch",

@@ -15,6 +15,7 @@ export interface LoggerConfig {
 	debugMode: boolean;
 	logLevel?: LogLevel;
 	prefix?: string;
+	forceConsole?: boolean;
 }
 
 export class Logger {
@@ -22,7 +23,8 @@ export class Logger {
 	private config: LoggerConfig = {
 		debugMode: false,
 		logLevel: LogLevel.INFO,
-		prefix: '[AI Transcriber]'
+		prefix: '[AI Transcriber]',
+		forceConsole: Logger.shouldForceConsoleOutput()
 	};
 	private moduleLoggers: Map<string, Logger> = new Map();
 	private timers: Map<string, number> = new Map();
@@ -90,7 +92,7 @@ export class Logger {
 	 * Check if logging is enabled for a given level
 	 */
 	private shouldLog(level: LogLevel): boolean {
-		if (!this.config.debugMode) {
+		if (!this.config.debugMode && !this.config.forceConsole) {
 			// In production mode, only show errors and warnings
 			return level <= LogLevel.WARN;
 		}
@@ -243,7 +245,7 @@ export class Logger {
 
 	private recordLog(level: LogLevel, message: string, data?: unknown): void {
 		// Keep lightweight in production; only mirror to console when debugMode is on
-		if (this.config.debugMode) {
+		if (this.config.debugMode || this.config.forceConsole) {
 			// Restrict to allowed console methods to satisfy lint rules
 			const logFn = console.debug;
 			if (data !== undefined) {
@@ -268,6 +270,17 @@ export class Logger {
 			return performance.now();
 		}
 		return Date.now();
+	}
+
+	private static shouldForceConsoleOutput(): boolean {
+		// Enable console output automatically in Node/CLI (no window)
+		if (typeof window === 'undefined') {
+			return true;
+		}
+		// Allow explicit opt-in via environment flag or global toggle for debugging
+		const envFlag = typeof process !== 'undefined' && process?.env?.AI_TRANSCRIBER_FORCE_CONSOLE === '1';
+		const globalFlag = (window as Window & { __aiTranscriberForceConsole__?: boolean }).__aiTranscriberForceConsole__ === true;
+		return envFlag || globalFlag;
 	}
 }
 

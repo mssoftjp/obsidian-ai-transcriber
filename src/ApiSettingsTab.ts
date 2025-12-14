@@ -40,7 +40,7 @@ export class APISettingsTab extends PluginSettingTab {
 
 		// Show current Obsidian language if available
 		const obsidianLang = this.plugin.getObsidianLanguage();
-		const languageDesc = obsidianLang && obsidianLang !== 'auto'
+		const languageDesc = obsidianLang && obsidianLang !== 'auto' && this.plugin.settings.language !== 'auto'
 			? `${t('settings.language.desc')} (${t('settings.language.useObsidianLang')}: ${obsidianLang})`
 			: t('settings.language.desc');
 

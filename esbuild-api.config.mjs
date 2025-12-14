@@ -25,6 +25,7 @@ const context = await esbuild.context({
 	banner: {
 		js: banner,
 	},
+	tsconfig: 'tsconfig.json',
 	entryPoints: ['src/main-api.ts'],
 	bundle: true,
 	external: [
@@ -41,10 +42,10 @@ const context = await esbuild.context({
 		'@lezer/common',
 		'@lezer/highlight',
 		'@lezer/lr',
-		...builtins],
+	...builtins],
 	format: 'cjs',
 	target: 'es2020',
-	logLevel: "info",
+	logLevel: "error",
 	sourcemap: prod ? false : 'inline',
 	treeShaking: true,
 	minify: prod,

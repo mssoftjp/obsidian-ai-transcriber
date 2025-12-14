@@ -3,6 +3,7 @@ import tsParser from '@typescript-eslint/parser';
 import tsPlugin from '@typescript-eslint/eslint-plugin';
 import obsidianmd from 'eslint-plugin-obsidianmd';
 import globals from 'globals';
+import importPlugin from 'eslint-plugin-import';
 
 const typescriptRules = {
   '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
@@ -26,28 +27,43 @@ const typescriptRules = {
     allowNumber: true,
     allowRegExp: false
   }],
+  '@typescript-eslint/consistent-type-imports': ['error', { prefer: 'type-imports', fixStyle: 'separate-type-imports' }],
+  '@typescript-eslint/consistent-type-exports': 'error',
+  '@typescript-eslint/explicit-function-return-type': ['error', { allowTypedFunctionExpressions: true, allowHigherOrderFunctions: true }],
+  '@typescript-eslint/explicit-member-accessibility': ['error', { accessibility: 'explicit', overrides: { constructors: 'no-public' } }],
+  '@typescript-eslint/method-signature-style': ['error', 'property'],
+  '@typescript-eslint/no-unnecessary-condition': ['error', { allowConstantLoop: false }],
+  '@typescript-eslint/prefer-nullish-coalescing': ['error', { ignoreConditionalTests: false, ignoreMixedLogicalExpressions: false, forceSuggestionFixer: true }],
+  '@typescript-eslint/prefer-optional-chain': 'error',
+  '@typescript-eslint/switch-exhaustiveness-check': 'error',
   'no-console': ['error', { allow: ['warn', 'error', 'debug'] }],
   'prefer-const': 'error',
   'no-var': 'error',
   eqeqeq: ['error', 'always'],
   curly: ['error', 'all'],
   'brace-style': ['error', '1tbs'],
-  indent: ['error', 'tab'],
+  indent: ['error', 2, { SwitchCase: 1 }],
   quotes: ['error', 'single', { avoidEscape: true }],
   semi: ['error', 'always'],
   'no-trailing-spaces': 'error',
   'comma-dangle': ['error', 'never'],
   'object-curly-spacing': ['error', 'always'],
-  'array-bracket-spacing': ['error', 'never']
+  'array-bracket-spacing': ['error', 'never'],
+  'no-implicit-coercion': ['error', { boolean: true, number: true, string: true, disallowTemplateShorthand: true }],
+  'import/order': ['error', {
+    groups: ['builtin', 'external', 'internal', 'parent', 'sibling', 'index', 'object', 'type'],
+    'newlines-between': 'always',
+    alphabetize: { order: 'asc', caseInsensitive: true }
+  }],
+  'import/no-duplicates': 'error',
+  'import/no-mutable-exports': 'error',
+  'import/no-cycle': 'error'
 };
 
 export default [
   {
     ignores: [
       'node_modules/**',
-      'dist/**',
-      'build/**',
-      'main.js',
       '*.config.mjs',
       'scripts/**',
       'docs/**'
@@ -72,7 +88,8 @@ export default [
       }
     },
     plugins: {
-      '@typescript-eslint': tsPlugin
+      '@typescript-eslint': tsPlugin,
+      import: importPlugin
     },
     rules: typescriptRules
   }

@@ -4,23 +4,34 @@
     "inlineSourceMap": true,
     "inlineSources": true,
     "module": "ESNext",
-    "target": "ES2018",
-    "allowJs": true,
+    "target": "ES2020",
+    "allowJs": false,
     "noImplicitAny": true,
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitOverride": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "noPropertyAccessFromIndexSignature": true,
     "moduleResolution": "node",
     "importHelpers": true,
     "declaration": true,
     "outDir": "./dist",
     "types": ["node"],
-    "skipLibCheck": true,
+    "skipLibCheck": false,
     "useUnknownInCatchVariables": true,
+    "forceConsistentCasingInFileNames": true,
+    "useDefineForClassFields": true,
     "lib": [
       "DOM",
-      "ES2018"
+      "ES2020"
     ]
   },
   "include": [
-    "**/*.ts"
+    "src/**/*.ts"
   ],
   "exclude": [
     "node_modules",
