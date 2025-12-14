@@ -115,11 +115,14 @@ export class PathUtils {
 		}
 
 		// Remove duplicates while preserving order
-		return Array.from(new Set(candidates.filter(Boolean) as string[]));
+		const filteredCandidates = candidates.filter((candidate): candidate is string => Boolean(candidate));
+		return Array.from(new Set(filteredCandidates));
 	}
 
 	private static getPluginVersion(app?: App): string | null {
-		if (!app) return null;
+		if (!app) {
+			return null;
+		}
 		const manifest = (app as unknown as { plugins?: { manifests?: Record<string, { version?: string }> } }).plugins?.manifests?.[this.getCurrentPluginId()];
 		return manifest?.version || null;
 	}

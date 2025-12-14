@@ -244,12 +244,8 @@ export class Logger {
 	private recordLog(level: LogLevel, message: string, data?: unknown): void {
 		// Keep lightweight in production; only mirror to console when debugMode is on
 		if (this.config.debugMode) {
-			const logFn =
-				level === LogLevel.TRACE || level === LogLevel.DEBUG
-					? console.debug
-					: level === LogLevel.INFO
-						? console.info
-						: console.log;
+			// Restrict to allowed console methods to satisfy lint rules
+			const logFn = console.debug;
 			if (data !== undefined) {
 				logFn(message, data);
 			} else {
