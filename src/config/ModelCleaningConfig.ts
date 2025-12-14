@@ -585,21 +585,21 @@ export const MODEL_CLEANING_STRATEGIES: Record<string, ModelCleaningStrategy> = 
  */
 export const DEBUG_CLEANING_STRATEGIES: Record<string, ModelCleaningStrategy> = {
 	'gpt-4o-mini-transcribe-debug': {
-		...MODEL_CLEANING_STRATEGIES['gpt-4o-mini-transcribe'],
+		...getBaseStrategy('gpt-4o-mini-transcribe'),
 		enableDetailedLogging: true,
 		maxReductionRatio: 0.1, // Very conservative for debugging
 		promptContamination: {
-			...MODEL_CLEANING_STRATEGIES['gpt-4o-mini-transcribe'].promptContamination,
+			...getBaseStrategy('gpt-4o-mini-transcribe').promptContamination,
 			aggressiveMatching: false // Conservative for debugging
 		},
 		gpt4oOptions: {
-			...MODEL_CLEANING_STRATEGIES['gpt-4o-mini-transcribe'].gpt4oOptions,
+			...getBaseStrategy('gpt-4o-mini-transcribe').gpt4oOptions,
 			aggressivePromptCleaning: false, // Conservative for debugging
 			enableDetailedLogging: true
 		},
 		repetitionThresholds: {
-			...(MODEL_CLEANING_STRATEGIES['gpt-4o-mini-transcribe'].repetitionThresholds ?? COMMON_REPETITION_THRESHOLDS),
-			lengthFactor: (MODEL_CLEANING_STRATEGIES['gpt-4o-mini-transcribe'].repetitionThresholds?.lengthFactor ?? COMMON_REPETITION_THRESHOLDS.lengthFactor),
+			...(getBaseStrategy('gpt-4o-mini-transcribe').repetitionThresholds ?? COMMON_REPETITION_THRESHOLDS),
+			lengthFactor: (getBaseStrategy('gpt-4o-mini-transcribe').repetitionThresholds?.lengthFactor ?? COMMON_REPETITION_THRESHOLDS.lengthFactor),
 			// Ultra-conservative for debugging
 			baseThreshold: 50,
 			sentenceRepetition: 8
@@ -607,21 +607,34 @@ export const DEBUG_CLEANING_STRATEGIES: Record<string, ModelCleaningStrategy> = 
 	},
 
 	'whisper-1-debug': {
-		...MODEL_CLEANING_STRATEGIES['whisper-1'],
+		...getBaseStrategy('whisper-1'),
 		enableDetailedLogging: true,
 		japaneseValidation: {
-			...MODEL_CLEANING_STRATEGIES['whisper-1'].japaneseValidation,
+			...getBaseStrategy('whisper-1').japaneseValidation,
 			enableAdvancedChecks: true
 		},
 		repetitionThresholds: {
-			...(MODEL_CLEANING_STRATEGIES['whisper-1'].repetitionThresholds ?? COMMON_REPETITION_THRESHOLDS),
-			lengthFactor: (MODEL_CLEANING_STRATEGIES['whisper-1'].repetitionThresholds?.lengthFactor ?? COMMON_REPETITION_THRESHOLDS.lengthFactor),
+			...(getBaseStrategy('whisper-1').repetitionThresholds ?? COMMON_REPETITION_THRESHOLDS),
+			lengthFactor: (getBaseStrategy('whisper-1').repetitionThresholds?.lengthFactor ?? COMMON_REPETITION_THRESHOLDS.lengthFactor),
 			// More verbose for debugging
 			baseThreshold: 45,
 			sentenceRepetition: 8
 		}
 	}
 };
+
+function getBaseStrategy(id: string): ModelCleaningStrategy {
+	const strategy = MODEL_CLEANING_STRATEGIES[id];
+	if (strategy) {
+		return strategy;
+	}
+	// Fallback to default mini strategy; this should never happen for known IDs
+	const fallback = MODEL_CLEANING_STRATEGIES['gpt-4o-mini-transcribe'];
+	if (!fallback) {
+		throw new Error('Default cleaning strategy not found');
+	}
+	return fallback;
+}
 
 /**
  * Get cleaning strategy for a model
@@ -640,7 +653,11 @@ export function getModelCleaningStrategy(modelId: string, debug = false): ModelC
 	const strategy = MODEL_CLEANING_STRATEGIES[modelId];
 	if (!strategy) {
 		logger.warn(`No cleaning strategy found for model '${modelId}', using default GPT-4o mini strategy`);
-		return MODEL_CLEANING_STRATEGIES['gpt-4o-mini-transcribe'];
+		const fallback = MODEL_CLEANING_STRATEGIES['gpt-4o-mini-transcribe'];
+		if (!fallback) {
+			throw new Error('Default cleaning strategy not found');
+		}
+		return fallback;
 	}
 
 	return strategy;

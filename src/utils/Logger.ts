@@ -13,7 +13,7 @@ export enum LogLevel {
 
 export interface LoggerConfig {
 	debugMode: boolean;
-	logLevel?: LogLevel;
+	logLevel: LogLevel;
 	prefix?: string;
 	forceConsole?: boolean;
 }

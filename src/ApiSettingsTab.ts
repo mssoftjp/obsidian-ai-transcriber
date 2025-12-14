@@ -122,11 +122,13 @@ export class APISettingsTab extends PluginSettingTab {
 
 		// Output folder setting with typeahead suggestions
 		let outputFolderText: TextComponent | null = null;
+		let outputFolderInput: HTMLInputElement | null = null;
 		new Setting(containerEl)
 			.setName(t('settings.outputFolder.name'))
 			.setDesc(t('settings.outputFolder.desc'))
 			.addText(text => {
 				outputFolderText = text;
+				outputFolderInput = text.inputEl;
 				return text
 					.setPlaceholder(t('settings.outputFolder.placeholder'))
 					.setValue(PathUtils.normalizeUserPath(this.plugin.settings.transcriptionOutputFolder))
@@ -150,7 +152,6 @@ export class APISettingsTab extends PluginSettingTab {
 					modal.open();
 				}));
 
-		const outputFolderInput = outputFolderText?.inputEl;
 		if (outputFolderInput) {
 			new FolderInputSuggest(this.app, outputFolderInput, (folderPath) => {
 				const normalized = PathUtils.normalizeUserPath(folderPath);

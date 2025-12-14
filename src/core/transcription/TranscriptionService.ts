@@ -87,12 +87,12 @@ export abstract class TranscriptionService {
 	/**
 	 * Dictionary corrector instance for text correction
 	 */
-	protected dictionaryCorrector?: DictionaryCorrector;
+	protected dictionaryCorrector: DictionaryCorrector | undefined;
 
 	/**
 	 * Text cleaning pipeline for this model
 	 */
-	protected cleaningPipeline?: CleaningPipeline;
+	protected cleaningPipeline: CleaningPipeline | undefined;
 
 	/**
 	 * Logger instance

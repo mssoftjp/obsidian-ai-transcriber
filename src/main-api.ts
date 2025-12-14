@@ -20,14 +20,14 @@ import { PluginStateRepository } from './infrastructure/storage/PluginStateRepos
 import { PathUtils } from './utils/PathUtils';
 
 export default class AITranscriberPlugin extends Plugin {
-	settings: APITranscriptionSettings;
-	transcriber: APITranscriber;
-	progressTracker: ProgressTracker;
-	statusBarManager: StatusBarManager;
-	private stateRepo: PluginStateRepository;
+	settings!: APITranscriptionSettings;
+	transcriber!: APITranscriber;
+	progressTracker!: ProgressTracker;
+	statusBarManager?: StatusBarManager;
+	private stateRepo!: PluginStateRepository;
 	private logger = Logger.getLogger('Plugin');
 
-	onload(): void {
+	override onload(): void {
 		void this.initializePlugin().catch(error => {
 			this.logger.error('Failed to load AI Transcriber plugin', error);
 		});
@@ -85,7 +85,7 @@ export default class AITranscriberPlugin extends Plugin {
 		this.logger.info('AI Transcriber plugin loaded successfully');
 	}
 
-	onunload(): void {
+	override onunload(): void {
 		void this.disposePlugin().catch(error => {
 			this.logger.error('Failed to unload AI Transcriber plugin', error);
 		});
@@ -131,7 +131,7 @@ export default class AITranscriberPlugin extends Plugin {
 
 		// Register context menu for audio files
 		this.registerEvent(
-			this.app.workspace.on('file-menu', (menu: Menu, file: TFile) => {
+			this.app.workspace.on('file-menu', (menu: Menu, file: TFile, source: string) => {
 				if (this.isAudioFile(file)) {
 					menu.addItem((item) => {
 						item

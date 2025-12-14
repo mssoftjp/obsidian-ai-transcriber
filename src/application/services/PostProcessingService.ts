@@ -313,33 +313,33 @@ export class PostProcessingService {
 		}
 
 		// Extract keywords
-		if (parsedInfo.keywords) {
-			const keywordText = parsedInfo.keywords;
+		if (parsedInfo['keywords']) {
+			const keywordText = parsedInfo['keywords'];
 			keywords.push(...keywordText.split(/[,、，]/).map(k => k.trim()).filter(k => k));
-			delete parsedInfo.keywords;
+			delete parsedInfo['keywords'];
 		}
 
 		// Build context from parsed information
 		const contextElements: string[] = [];
 
 		// Add structured information to context
-		if (parsedInfo.speakers) {
-			contextElements.push(`話者: ${parsedInfo.speakers}`);
+		if (parsedInfo['speakers']) {
+			contextElements.push(`話者: ${parsedInfo['speakers']}`);
 		}
-		if (parsedInfo.topic) {
-			contextElements.push(`議題: ${parsedInfo.topic}`);
+		if (parsedInfo['topic']) {
+			contextElements.push(`議題: ${parsedInfo['topic']}`);
 		}
-		if (parsedInfo.datetime) {
-			contextElements.push(`日時: ${parsedInfo.datetime}`);
+		if (parsedInfo['datetime']) {
+			contextElements.push(`日時: ${parsedInfo['datetime']}`);
 		}
-		if (parsedInfo.location) {
-			contextElements.push(`場所: ${parsedInfo.location}`);
+		if (parsedInfo['location']) {
+			contextElements.push(`場所: ${parsedInfo['location']}`);
 		}
-		if (parsedInfo.summary) {
-			contextElements.push(`要約: ${parsedInfo.summary}`);
+		if (parsedInfo['summary']) {
+			contextElements.push(`要約: ${parsedInfo['summary']}`);
 		}
-		if (parsedInfo.notes) {
-			contextElements.push(`備考: ${parsedInfo.notes}`);
+		if (parsedInfo['notes']) {
+			contextElements.push(`備考: ${parsedInfo['notes']}`);
 		}
 
 		// Add any unmatched context

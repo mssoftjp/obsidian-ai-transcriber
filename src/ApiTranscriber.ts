@@ -246,20 +246,6 @@ export class APITranscriber {
 	}
 
 	/**
-	 * Debug log helper (for compatibility)
-	 */
-	private log(message: string, data?: unknown): void {
-		if (!this.settings.debugMode) {
-			return;
-		}
-		if (data !== undefined) {
-			this.logger.debug(message, data);
-		} else {
-			this.logger.debug(message);
-		}
-	}
-
-	/**
 	 * Get provider display name
 	 */
 	getProviderDisplayName(): string {
