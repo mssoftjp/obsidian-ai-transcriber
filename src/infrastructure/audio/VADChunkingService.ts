@@ -23,12 +23,14 @@ export class VADChunkingService extends ChunkingService {
 		config: ChunkingConfig,
 		vadConfig: VADConfig,
 		pluginId?: string
-	) {
-		super(config);
-		this.app = app;
-		this.vadConfig = vadConfig;
-		this.pluginId = pluginId;
-	}
+		) {
+			super(config);
+			this.app = app;
+			this.vadConfig = vadConfig;
+			if (pluginId !== undefined) {
+				this.pluginId = pluginId;
+			}
+		}
 
 	/**
 	 * Initialize VAD processor

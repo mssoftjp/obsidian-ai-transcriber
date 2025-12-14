@@ -14,13 +14,17 @@ export class PatternCompiler {
 	 * Compile a string pattern into RegExp
 	 * Handles both regex-format strings (e.g., "/pattern/flags") and literal strings
 	 */
-	static compile(pattern: string, defaultFlags: string = 'g'): RegExp {
-		// Check if pattern is in regex format: /pattern/flags
-		const regexMatch = pattern.match(/^\/(.*)\/([gimuy]*)$/);
-		if (regexMatch) {
-			const [, patternBody, flags] = regexMatch;
-			return new RegExp(patternBody, flags || defaultFlags);
-		}
+		static compile(pattern: string, defaultFlags: string = 'g'): RegExp {
+			// Check if pattern is in regex format: /pattern/flags
+			const regexMatch = pattern.match(/^\/(.*)\/([gimuy]*)$/);
+			if (regexMatch) {
+				const patternBody = regexMatch[1];
+				const flags = regexMatch[2];
+				if (!patternBody) {
+					return PatternCompiler.compileLiteral(pattern, defaultFlags);
+				}
+				return new RegExp(patternBody, flags || defaultFlags);
+			}
 
 		// Check if pattern contains regex special characters
 		const hasRegexChars = /[\^$\\.*+?[\]{}()|]/.test(pattern);

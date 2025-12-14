@@ -51,33 +51,37 @@ export class WebAudioEngine extends AudioProcessor {
 	 * Validate audio input
 	 */
 	async validate(input: AudioInput): Promise<AudioValidationResult> {
+		const warnings: string[] = [];
 		const validation: AudioValidationResult = {
 			isValid: true,
-			warnings: []
+			warnings
 		};
 
 		// Check file size for warning
 		const sizeMB = input.size / (1024 * 1024);
 		const warningSizeMB = APP_LIMITS.LARGE_FILE_WARNING_SIZE_MB;
 
-		if (sizeMB > warningSizeMB) {
-			validation.warnings.push(`大きなファイル（${sizeMB.toFixed(1)} MB）の処理には時間がかかる場合があります`);
-		}
+			if (sizeMB > warningSizeMB) {
+				warnings.push(`大きなファイル（${sizeMB.toFixed(1)} MB）の処理には時間がかかる場合があります`);
+			}
 
 		// Check extension
-		const supportedExtensions = SUPPORTED_FORMATS.EXTENSIONS;
-		if (!supportedExtensions.includes(input.extension.toLowerCase())) {
-			validation.warnings.push(`File extension '${input.extension}' may not be supported`);
-		}
+			const supportedExtensions = SUPPORTED_FORMATS.EXTENSIONS;
+			if (!supportedExtensions.includes(input.extension.toLowerCase())) {
+				warnings.push(`File extension '${input.extension}' may not be supported`);
+			}
 
 		// Try to decode a small portion to validate format
-		try {
-			await this.initializeContext();
-			// Just check if we can create the audio context
-			validation.properties = {
-				format: input.extension,
-				duration: 0, // Will be determined during decode
-				sampleRate: this.audioContext.sampleRate,
+			try {
+				await this.initializeContext();
+				if (!this.audioContext) {
+					throw new Error('AudioContext not initialized');
+				}
+				// Just check if we can create the audio context
+				validation.properties = {
+					format: input.extension,
+					duration: 0, // Will be determined during decode
+					sampleRate: this.audioContext.sampleRate,
 				channels: 0 // Will be determined during decode
 			};
 		} catch (error) {
@@ -94,6 +98,9 @@ export class WebAudioEngine extends AudioProcessor {
 	 */
 	async decode(input: AudioInput): Promise<AudioBuffer> {
 		await this.initializeContext();
+		if (!this.audioContext) {
+			throw new Error('AudioContext not initialized');
+		}
 
 		try {
 			// Clone the buffer as decodeAudioData consumes it

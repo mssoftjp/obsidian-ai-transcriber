@@ -143,7 +143,10 @@ export function validatePromptParams(
 
 	let match;
 	while ((match = paramRegex.exec(template)) !== null) {
-		requiredParams.add(match[1]);
+		const key = match[1];
+		if (key) {
+			requiredParams.add(key);
+		}
 	}
 
 	const missingParams: string[] = [];
@@ -219,16 +222,18 @@ export function getLanguageSpecificPrompt(
 	language: string
 ): string {
 	// Direct match
-	if (promptObj[language]) {
-		return promptObj[language];
+	const direct = promptObj[language];
+	if (direct) {
+		return direct;
 	}
 
 	// Fall back to English
-	if (promptObj['en']) {
-		return promptObj['en'];
+	const english = promptObj['en'];
+	if (english) {
+		return english;
 	}
 
 	// Fall back to first available
 	const firstKey = Object.keys(promptObj)[0];
-	return firstKey ? promptObj[firstKey] : '';
+	return firstKey ? (promptObj[firstKey] ?? '') : '';
 }

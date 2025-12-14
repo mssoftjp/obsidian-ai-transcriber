@@ -28,7 +28,7 @@ export function initializeI18n(): void {
 	const locale = getLanguage();
 
 	// Extract language code (e.g., 'en-US' -> 'en')
-	const langCode = locale.split('-')[0].toLowerCase();
+	const langCode = (locale.split('-')[0] ?? locale).toLowerCase();
 
 	// Set current locale
 	if (langCode === 'ja') {

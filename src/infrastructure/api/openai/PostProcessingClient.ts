@@ -64,11 +64,12 @@ export class PostProcessingClient extends ApiClient {
 				signal
 			);
 
-			if (!response.choices || response.choices.length === 0) {
-				throw new Error('No response from post-processing model');
-			}
+				if (!response.choices || response.choices.length === 0) {
+					throw new Error('No response from post-processing model');
+				}
 
-			const processedText = response.choices[0].message?.content || transcription;
+				const firstChoice = response.choices[0];
+				const processedText = firstChoice?.message?.content ?? transcription;
 
 			const elapsedTime = performance.now() - startTime;
 			this.logger.info('Post-processing completed', {
@@ -78,13 +79,16 @@ export class PostProcessingClient extends ApiClient {
 				tokensUsed: response.usage?.total_tokens
 			});
 
-			return {
-				processedText,
-				modelUsed: POST_PROCESSING_CONFIG.model,
-				confidence: response.usage ? 0.9 : undefined // Placeholder confidence
-			};
+				const result: PostProcessingResult = {
+					processedText,
+					modelUsed: POST_PROCESSING_CONFIG.model
+				};
+				if (response.usage) {
+					result.confidence = 0.9; // Placeholder confidence
+				}
+				return result;
 
-		} catch (error: unknown) {
+			} catch (error: unknown) {
 			if (error instanceof Error && error.name === 'AbortError') {
 				throw error;
 			}

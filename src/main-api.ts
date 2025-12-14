@@ -245,8 +245,8 @@ export default class AITranscriberPlugin extends Plugin {
 			'ko-KR': 'ko'
 		};
 
-		// Extract language code from locale (e.g., 'en-US' -> 'en')
-		const languageCode = locale.split('-')[0].toLowerCase();
+			// Extract language code from locale (e.g., 'en-US' -> 'en')
+			const languageCode = (locale.split('-')[0] ?? locale).toLowerCase();
 
 		// Return mapped language or 'auto' if not found
 		return localeMap[locale.toLowerCase()] ||
@@ -371,12 +371,15 @@ export default class AITranscriberPlugin extends Plugin {
 			const { workspace } = this.app;
 			// Activating transcription view...
 
-			// Check if view already exists
-			const existing = workspace.getLeavesOfType(VIEW_TYPE_TRANSCRIPTION);
-			if (existing.length) {
-				await workspace.revealLeaf(existing[0]);
-				return;
-			}
+				// Check if view already exists
+				const existing = workspace.getLeavesOfType(VIEW_TYPE_TRANSCRIPTION);
+				if (existing.length) {
+					const leaf = existing[0];
+					if (leaf) {
+						await workspace.revealLeaf(leaf);
+						return;
+					}
+				}
 
 			// Create new view in right sidebar
 			// Creating new view in right sidebar

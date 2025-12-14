@@ -7,12 +7,14 @@ import { ApiClient } from '../ApiClient';
 import { AudioChunk } from '../../../core/audio/AudioTypes';
 import {
 	TranscriptionResult,
+	TranscriptionSegment,
 	TranscriptionOptions,
 	ModelSpecificOptions
 } from '../../../core/transcription/TranscriptionTypes';
 import {
 	WHISPER_CONFIG,
 	buildWhisperRequest,
+	WhisperTranscriptionParams,
 	WhisperRequestPayload
 } from '../../../config/openai/WhisperConfig';
 import { DEFAULT_REQUEST_CONFIG } from '../../../config/openai/index';
@@ -38,8 +40,9 @@ interface WhisperResponse {
 export class WhisperClient extends ApiClient {
 
 	constructor(apiKey: string) {
+		const baseUrl = WHISPER_CONFIG.endpoint.transcriptions.split('/audio')[0] ?? WHISPER_CONFIG.endpoint.transcriptions;
 		super({
-			baseUrl: WHISPER_CONFIG.endpoint.transcriptions.split('/audio')[0], // Extract base URL
+			baseUrl, // Extract base URL
 			apiKey,
 			timeout: 60000, // 60 seconds for Whisper
 			maxRetries: DEFAULT_REQUEST_CONFIG.maxRetries,
@@ -56,24 +59,27 @@ export class WhisperClient extends ApiClient {
 		chunk: AudioChunk,
 		options: TranscriptionOptions,
 		modelOptions?: ModelSpecificOptions
-	): Promise<TranscriptionResult> {
-		const formData = new FormData();
+		): Promise<TranscriptionResult> {
+			const formData = new FormData();
 
 		// Create file from chunk data
 		const fileName = `chunk_${chunk.id}.wav`;
 		const file = new File([chunk.data], fileName, { type: 'audio/wav' });
 		formData.append('file', file);
 
-		// Whisper does not use prompts - they can cause hallucinations
-		const prompt = ''; // No prompt for Whisper
+			// Build request parameters using the new config
+			const requestInput: Partial<WhisperTranscriptionParams> = {
+				response_format: modelOptions?.whisper?.responseFormat || WHISPER_CONFIG.defaults.response_format
+			};
+			if (options.language !== 'auto') {
+				requestInput.language = options.language;
+			}
+			const granularities = modelOptions?.whisper?.timestampGranularities;
+			if (granularities && granularities.length > 0) {
+				requestInput.timestamp_granularities = granularities;
+			}
 
-		// Build request parameters using the new config
-		const requestParams = buildWhisperRequest({
-			response_format: modelOptions?.whisper?.responseFormat || WHISPER_CONFIG.defaults.response_format,
-			language: options.language === 'auto' ? undefined : options.language,
-			timestamp_granularities: modelOptions?.whisper?.timestampGranularities,
-			prompt: prompt || undefined
-		}, chunk.id === 0); // isFirstChunk
+			const requestParams = buildWhisperRequest(requestInput, chunk.id === 0); // isFirstChunk
 
 
 		// Append all parameters to FormData
@@ -165,46 +171,52 @@ export class WhisperClient extends ApiClient {
 	/**
 	 * Parse Whisper API response
 	 */
-	private parseResponse(response: WhisperResponse | string, chunk: AudioChunk): TranscriptionResult {
-		// Handle text-only response format
-		if (typeof response === 'string') {
-			return {
+		private parseResponse(response: WhisperResponse | string, chunk: AudioChunk): TranscriptionResult {
+			// Handle text-only response format
+			if (typeof response === 'string') {
+				return {
+					id: chunk.id,
+					text: response,
+					startTime: chunk.startTime,
+					endTime: chunk.endTime,
+					success: true
+				};
+			}
+
+			// Handle verbose_json response format
+			// Adjust timestamps based on chunk offset
+			const segments = response.segments?.flatMap(segment => {
+				const mapped: TranscriptionSegment = {
+					text: segment.text,
+					start: segment.start + chunk.startTime,
+					end: segment.end + chunk.startTime
+				};
+				if (segment.words) {
+					mapped.words = segment.words.map(word => ({
+						word: word.word,
+						start: word.start + chunk.startTime,
+						end: word.end + chunk.startTime
+					}));
+				}
+				return [mapped];
+			});
+
+			const result: TranscriptionResult = {
 				id: chunk.id,
-				text: response,
+				text: response.text || '',
 				startTime: chunk.startTime,
 				endTime: chunk.endTime,
-				success: true,
-				segments: undefined, // No segments for text format
-				language: undefined // Language detection not available in text format
+				success: true
 			};
+			if (segments && segments.length > 0) {
+				result.segments = segments;
+			}
+			if (response.language) {
+				result.language = response.language;
+			}
+
+			return result;
 		}
-
-		// Handle verbose_json response format
-		// Adjust timestamps based on chunk offset
-		const segments = response.segments?.map(segment => ({
-			text: segment.text,
-			start: segment.start + chunk.startTime,
-			end: segment.end + chunk.startTime,
-			words: segment.words?.map(word => ({
-				word: word.word,
-				start: word.start + chunk.startTime,
-				end: word.end + chunk.startTime
-			}))
-		}));
-
-		const result = {
-			id: chunk.id,
-			text: response.text || '',
-			startTime: chunk.startTime,
-			endTime: chunk.endTime,
-			success: true,
-			segments,
-			language: response.language
-		};
-
-
-		return result;
-	}
 
 	/**
 	 * Test connection to OpenAI API

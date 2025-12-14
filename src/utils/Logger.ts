@@ -53,24 +53,27 @@ export class Logger {
 	 */
 	static getLogger(moduleName: string): Logger {
 		const mainLogger = Logger.getInstance();
-		if (!mainLogger.moduleLoggers.has(moduleName)) {
-			// Check size limit to prevent memory leaks
-			if (mainLogger.moduleLoggers.size >= Logger.MAX_MODULE_LOGGERS) {
-				// Clear oldest entries (first 10) when limit is reached
-				const entries = Array.from(mainLogger.moduleLoggers.entries());
-				entries.slice(0, 10).forEach(([key]) => {
-					mainLogger.moduleLoggers.delete(key);
-				});
-			}
-
-			const moduleLogger = new Logger({
-				debugMode: mainLogger.config.debugMode,
-				logLevel: mainLogger.config.logLevel,
-				prefix: `${mainLogger.config.prefix} [${moduleName}]`
-			});
-			mainLogger.moduleLoggers.set(moduleName, moduleLogger);
+		const existing = mainLogger.moduleLoggers.get(moduleName);
+		if (existing) {
+			return existing;
 		}
-		return mainLogger.moduleLoggers.get(moduleName);
+
+		// Check size limit to prevent memory leaks
+		if (mainLogger.moduleLoggers.size >= Logger.MAX_MODULE_LOGGERS) {
+			// Clear oldest entries (first 10) when limit is reached
+			const entries = Array.from(mainLogger.moduleLoggers.entries());
+			entries.slice(0, 10).forEach(([key]) => {
+				mainLogger.moduleLoggers.delete(key);
+			});
+		}
+
+		const moduleLogger = new Logger({
+			debugMode: mainLogger.config.debugMode,
+			logLevel: mainLogger.config.logLevel,
+			prefix: `${mainLogger.config.prefix} [${moduleName}]`
+		});
+		mainLogger.moduleLoggers.set(moduleName, moduleLogger);
+		return moduleLogger;
 	}
 
 	/**
@@ -103,7 +106,9 @@ export class Logger {
 	 * Format the log message with timestamp and prefix
 	 */
 	private formatMessage(level: LogLevel, message: string): string {
-		const timestamp = new Date().toISOString().split('T')[1].slice(0, 12);
+		const iso = new Date().toISOString();
+		const timePart = iso.split('T')[1] ?? iso;
+		const timestamp = timePart.slice(0, 12);
 		return `${timestamp} ${LogLevel[level].padEnd(5)} ${this.config.prefix} ${message}`;
 	}
 
@@ -278,7 +283,7 @@ export class Logger {
 			return true;
 		}
 		// Allow explicit opt-in via environment flag or global toggle for debugging
-		const envFlag = typeof process !== 'undefined' && process?.env?.AI_TRANSCRIBER_FORCE_CONSOLE === '1';
+		const envFlag = typeof process !== 'undefined' && process?.env?.['AI_TRANSCRIBER_FORCE_CONSOLE'] === '1';
 		const globalFlag = (window as Window & { __aiTranscriberForceConsole__?: boolean }).__aiTranscriberForceConsole__ === true;
 		return envFlag || globalFlag;
 	}

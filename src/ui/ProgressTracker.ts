@@ -50,7 +50,7 @@ export class ProgressTracker {
 	startTask(file: TFile, totalChunks: number, provider: string, estimatedCost?: number): string {
 		const taskId = this.generateTaskId();
 
-		this.currentTask = {
+		const task: TranscriptionTask = {
 			id: taskId,
 			inputFileName: file.name,
 			inputFilePath: file.path,
@@ -58,9 +58,12 @@ export class ProgressTracker {
 			totalChunks,
 			completedChunks: 0,
 			status: 'processing',
-			provider,
-			estimatedCost
+			provider
 		};
+		if (estimatedCost !== undefined) {
+			task.estimatedCost = estimatedCost;
+		}
+		this.currentTask = task;
 
 		this.logger.info('Transcription task started', {
 			taskId,

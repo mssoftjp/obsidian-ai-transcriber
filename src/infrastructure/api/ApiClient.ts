@@ -45,7 +45,7 @@ interface ApiErrorResponseBody {
 }
 
 export abstract class ApiClient {
-	protected config: ApiConfig;
+	protected config: Required<ApiConfig>;
 	private readonly defaultMaxRetries = 3;
 	private readonly defaultRetryDelay = 1000; // 1 second
 	private readonly defaultTimeout = 90000; // 90 seconds
@@ -263,12 +263,16 @@ export abstract class ApiClient {
 		try {
 			const data = response.json as ApiErrorResponseBody;
 			const nestedError = data.error ?? {};
-			return {
+			const errorData: ApiErrorData = {
 				status: response.status,
 				message: nestedError.message || data.message || `HTTP ${response.status} error`,
-				code: nestedError.code || data.code,
 				details: nestedError || data
 			};
+			const code = nestedError.code || data.code;
+			if (code) {
+				errorData.code = code;
+			}
+			return errorData;
 		} catch (error) {
 			this.logger.warn('Failed to parse API error response as JSON', error);
 			const fallbackMessage = typeof response.text === 'string' && response.text.trim().length > 0

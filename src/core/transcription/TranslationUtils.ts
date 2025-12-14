@@ -138,7 +138,7 @@ export function needsChunking(
  * Get optimal chunk size based on target model and language
  */
 export function getOptimalChunkSize(
-	totalLength: number,
+	_totalLength: number,
 	targetModel = 'gpt-4o-mini',
 	language = 'auto'
 ): number {

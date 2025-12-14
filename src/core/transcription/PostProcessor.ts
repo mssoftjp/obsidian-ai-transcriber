@@ -80,9 +80,12 @@ export class PostProcessor {
 	): TranscriptionResult {
 		const merged: TranscriptionResult = {
 			...original,
-			text: processed.text,
-			confidence: processed.confidence ?? original.confidence
+			text: processed.text
 		};
+		const confidence = processed.confidence ?? original.confidence;
+		if (confidence !== undefined) {
+			merged.confidence = confidence;
+		}
 
 		if (original.segments) {
 			merged.segments = original.segments.map(segment => ({
@@ -156,20 +159,26 @@ export class PostProcessor {
 		}
 
 		for (let i = 1; i <= str2.length; i++) {
-			for (let j = 1; j <= str1.length; j++) {
-					if (str2.charAt(i - 1) === str1.charAt(j - 1)) {
-						matrix[i][j] = matrix[i - 1]?.[j - 1] ?? 0;
-					} else {
-						matrix[i][j] = Math.min(
-							(matrix[i - 1]?.[j - 1] ?? 0) + 1, // substitution
-							(matrix[i]?.[j - 1] ?? 0) + 1,     // insertion
-							(matrix[i - 1]?.[j] ?? 0) + 1      // deletion
-						);
-					}
-				}
+			const row = matrix[i];
+			const prevRow = matrix[i - 1];
+			if (!row || !prevRow) {
+				continue;
 			}
 
-		return matrix[str2.length][str1.length];
+			for (let j = 1; j <= str1.length; j++) {
+				if (str2.charAt(i - 1) === str1.charAt(j - 1)) {
+					row[j] = prevRow[j - 1] ?? 0;
+				} else {
+					row[j] = Math.min(
+						(prevRow[j - 1] ?? 0) + 1, // substitution
+						(row[j - 1] ?? 0) + 1,     // insertion
+						(prevRow[j] ?? 0) + 1      // deletion
+					);
+				}
+			}
+		}
+
+		return matrix[str2.length]?.[str1.length] ?? 0;
 	}
 
 	/**

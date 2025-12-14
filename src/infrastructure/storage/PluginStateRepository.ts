@@ -212,7 +212,7 @@ export class PluginStateRepository {
 		await this.plugin.saveData(this.state);
 	}
 
-	private mergeWithDefaults(raw: PluginState): PluginState {
+		private mergeWithDefaults(raw: PluginState): PluginState {
 		const merged = getDefaultState();
 		merged.meta = {
 			...merged.meta,
@@ -227,10 +227,12 @@ export class PluginStateRepository {
 				...raw.settings?.data
 			}
 		};
-		merged.dictionaries = {
-			version: DICTIONARIES_VERSION,
-			languages: this.ensureAllLanguages(raw.dictionaries?.languages || merged.dictionaries.languages)
-		};
+			merged.dictionaries = {
+				version: DICTIONARIES_VERSION,
+				languages: this.migrateDictionaryFormat(
+					this.ensureAllLanguages(raw.dictionaries?.languages || merged.dictionaries.languages)
+				)
+			};
 		merged.history = {
 			version: HISTORY_VERSION,
 			items: Array.isArray(raw.history?.items) ? raw.history.items : []
@@ -238,34 +240,28 @@ export class PluginStateRepository {
 		return merged;
 	}
 
-	private createStateFromLegacy(raw: Partial<APITranscriptionSettings>): PluginState {
+		private createStateFromLegacy(raw: Partial<APITranscriptionSettings>): PluginState {
 		const state = getDefaultState();
 		const { userDictionaries, ...rest } = raw;
 		state.settings.data = {
 			...state.settings.data,
 			...rest
 		};
-		if (userDictionaries) {
-			state.dictionaries.languages = this.ensureAllLanguages(userDictionaries);
+			if (userDictionaries) {
+				state.dictionaries.languages = this.migrateDictionaryFormat(
+					this.ensureAllLanguages(userDictionaries)
+				);
+			}
+			return state;
 		}
-		return state;
-	}
 
 	private isPluginState(data: unknown): data is PluginState {
 		return typeof data === 'object' && data !== null && 'meta' in data && 'settings' in data;
 	}
 
-	private isLanguageDictionaries(data: unknown): data is Partial<LanguageDictionaries> {
-		if (!data || typeof data !== 'object') {
-			return false;
+		private ensureInitialized(): void {
+			if (!this.initialized) {
+				throw new Error('PluginStateRepository not initialized');
+			}
 		}
-		const obj = data as Record<string, unknown>;
-		return ['ja', 'en', 'zh', 'ko'].some(lang => lang in obj);
-	}
-
-	private ensureInitialized(): void {
-		if (!this.initialized) {
-			throw new Error('PluginStateRepository not initialized');
-		}
-	}
 }

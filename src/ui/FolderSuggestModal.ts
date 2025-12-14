@@ -2,7 +2,7 @@ import { App, FuzzySuggestModal, TFolder } from 'obsidian';
 
 export class FolderSuggestModal extends FuzzySuggestModal<TFolder> {
 	currentFolder: string;
-	onChooseFolderPath: (folder: string) => void;
+	onChooseFolderPath?: (folder: string) => void;
 
 	constructor(app: App, currentFolder: string) {
 		super(app);

@@ -17,7 +17,10 @@ export function generateNGrams(text: string, n: number): Map<string, number[]> {
 		if (!ngrams.has(gram)) {
 			ngrams.set(gram, []);
 		}
-		ngrams.get(gram).push(i);
+		const positions = ngrams.get(gram);
+		if (positions) {
+			positions.push(i);
+		}
 	}
 
 	return ngrams;
@@ -96,7 +99,10 @@ export function buildNGramIndex(
 		if (!index.has(gram)) {
 			index.set(gram, []);
 		}
-		index.get(gram).push(i);
+		const positions = index.get(gram);
+		if (positions) {
+			positions.push(i);
+		}
 	}
 
 	return index;

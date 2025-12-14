@@ -14,7 +14,6 @@ import { OpenAIChatResponse } from '../openai/OpenAIChatTypes';
  * GPT dictionary correction service implementation
  */
 export class GPTDictionaryCorrectionService extends ApiClient implements IGPTCorrectionService {
-	private apiKey: string;
 	private resourceManager: ResourceManager;
 
 	constructor(apiKey: string, resourceManager?: ResourceManager) {
@@ -22,7 +21,6 @@ export class GPTDictionaryCorrectionService extends ApiClient implements IGPTCor
 			baseUrl: 'https://api.openai.com/v1',
 			apiKey: apiKey
 		});
-		this.apiKey = apiKey;
 		this.resourceManager = resourceManager || ResourceManager.getInstance();
 		this.logger = Logger.getLogger('GPTDictionaryCorrection');
 		this.logger.debug('GPTDictionaryCorrectionService initialized');
@@ -66,10 +64,15 @@ export class GPTDictionaryCorrectionService extends ApiClient implements IGPTCor
 				requestBody,
 				{},
 				controller.signal
-			);
+				);
 
-			clearTimeout(timeoutId);
-			const correctedText = response.choices[0].message.content.trim();
+				clearTimeout(timeoutId);
+				const firstChoice = response.choices[0];
+				const content = firstChoice?.message?.content;
+				if (!content) {
+					throw new Error('No content returned from GPT correction request');
+				}
+				const correctedText = content.trim();
 
 			const elapsedTime = performance.now() - startTime;
 			this.logger.info('GPT correction completed', {
@@ -168,8 +171,8 @@ ${hintText}
 Return only the corrected text. No explanations needed.`
 		};
 
-		return systemPrompts[language] || systemPrompts['auto'];
-	}
+			return systemPrompts[language] ?? systemPrompts['auto'] ?? '';
+		}
 
 	/**
 	 * Get user prompt for the specified language
@@ -183,8 +186,8 @@ Return only the corrected text. No explanations needed.`
 			auto: `Please correct the following text (preserve original languages): ${text}`
 		};
 
-		return userPrompts[language] || userPrompts['auto'];
-	}
+			return userPrompts[language] ?? userPrompts['auto'] ?? '';
+		}
 
 	/**
 	 * Test connection to OpenAI API

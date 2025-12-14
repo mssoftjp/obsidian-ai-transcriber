@@ -10,11 +10,12 @@ import {
 	TranscriptionOptions,
 	ModelSpecificOptions
 } from '../../../core/transcription/TranscriptionTypes';
-import {
-	GPT4O_TRANSCRIBE_CONFIG,
-	buildGPT4oTranscribeRequest,
-	GPT4oTranscribeRequestPayload
-} from '../../../config/openai/GPT4oTranscribeConfig';
+	import {
+		GPT4O_TRANSCRIBE_CONFIG,
+		buildGPT4oTranscribeRequest,
+		GPT4oTranscribeParams,
+		GPT4oTranscribeRequestPayload
+	} from '../../../config/openai/GPT4oTranscribeConfig';
 import { DEFAULT_REQUEST_CONFIG } from '../../../config/openai/index';
 import { Logger } from '../../../utils/Logger';
 
@@ -33,8 +34,9 @@ export class GPT4oClient extends ApiClient {
 	};
 
 	constructor(apiKey: string, private model: string) {
+		const baseUrl = GPT4O_TRANSCRIBE_CONFIG.endpoint.split('/audio')[0] ?? GPT4O_TRANSCRIBE_CONFIG.endpoint;
 		super({
-			baseUrl: GPT4O_TRANSCRIBE_CONFIG.endpoint.split('/audio')[0], // Extract base URL
+			baseUrl, // Extract base URL
 			apiKey,
 			timeout: DEFAULT_REQUEST_CONFIG.timeout,
 			maxRetries: DEFAULT_REQUEST_CONFIG.maxRetries,
@@ -70,15 +72,22 @@ export class GPT4oClient extends ApiClient {
 		const customPrompt = modelOptions?.gpt4o?.customPrompt;
 
 
-		// Build request parameters using the new config
-		const requestParams = buildGPT4oTranscribeRequest({
-			model: this.model as 'gpt-4o-transcribe' | 'gpt-4o-mini-transcribe',
-			response_format: 'json', // GPT-4o only supports json/text
-			language: options.language === 'auto' ? 'auto' : options.language,
-			prompt: customPrompt || undefined,
-			previousContext: modelOptions?.gpt4o?.previousContext,
-			stream: false // No streaming for now
-		}, chunk.id === 0 && !modelOptions?.gpt4o?.previousContext);
+			// Build request parameters using the new config
+			const requestInput: Partial<GPT4oTranscribeParams> = {
+				model: this.model as 'gpt-4o-transcribe' | 'gpt-4o-mini-transcribe',
+				response_format: 'json', // GPT-4o only supports json/text
+				language: options.language === 'auto' ? 'auto' : options.language,
+				stream: false // No streaming for now
+			};
+			if (customPrompt) {
+				requestInput.prompt = customPrompt;
+			}
+			const previousContext = modelOptions?.gpt4o?.previousContext;
+			if (previousContext) {
+				requestInput.previousContext = previousContext;
+			}
+
+			const requestParams = buildGPT4oTranscribeRequest(requestInput, chunk.id === 0 && !previousContext);
 
 		// Append all parameters to FormData
 		const paramEntries = Object.entries(requestParams) as Array<
@@ -136,15 +145,18 @@ export class GPT4oClient extends ApiClient {
 	/**
 	 * Parse GPT-4o API response
 	 */
-	private parseResponse(response: GPT4oResponse, chunk: AudioChunk): TranscriptionResult {
-		let text = response.text || '';
+		private parseResponse(response: GPT4oResponse, chunk: AudioChunk): TranscriptionResult {
+			let text = response.text || '';
 
-		// Extract content from <TRANSCRIPT> tags if present
-		const transcriptMatch = text.match(/<TRANSCRIPT>([\s\S]*?)<\/TRANSCRIPT>/);
-		if (transcriptMatch) {
-			this.logger.trace('Extracted text from TRANSCRIPT tags', { chunkId: chunk.id });
-			text = transcriptMatch[1].trim();
-		}
+			// Extract content from <TRANSCRIPT> tags if present
+			const transcriptMatch = text.match(/<TRANSCRIPT>([\s\S]*?)<\/TRANSCRIPT>/);
+			if (transcriptMatch) {
+				this.logger.trace('Extracted text from TRANSCRIPT tags', { chunkId: chunk.id });
+				const extracted = transcriptMatch[1];
+				if (extracted !== undefined) {
+					text = extracted.trim();
+				}
+			}
 
 		const result = {
 			id: chunk.id,

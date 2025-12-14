@@ -415,10 +415,13 @@ export class SettingsUIBuilder {
 		}
 
 		// Fallback: check existence via adapter for absolute or normalized paths
-		const adapter = app.vault.adapter as { exists?: (p: string) => Promise<boolean> };
-		if (adapter?.exists) {
-			return adapter.exists(possiblePaths[0]).catch(() => false);
-		}
+			const adapter = app.vault.adapter as { exists?: (p: string) => Promise<boolean> };
+			if (adapter?.exists) {
+				const firstPath = possiblePaths[0];
+				if (firstPath) {
+					return adapter.exists(firstPath).catch(() => false);
+				}
+			}
 
 		return Promise.resolve(false);
 	}

@@ -5,10 +5,10 @@ export class LoadingAnimation {
 	private loadingDotsCount = 0;
 	private animationInterval: number | null = null;
 	private isAnimating = false;
-	private registerInterval?: (intervalId: number) => number;
+	private registerInterval: ((intervalId: number) => number) | null = null;
 
 	constructor(registerInterval?: (intervalId: number) => number) {
-		this.registerInterval = registerInterval;
+		this.registerInterval = registerInterval ?? null;
 	}
 
 	/**
@@ -18,7 +18,7 @@ export class LoadingAnimation {
 		// Simple rotating dots animation with fixed width
 		const patterns = ['\u00A0\u00A0\u00A0', '.\u00A0\u00A0', '..\u00A0', '...']; // Using non-breaking spaces
 		this.loadingDotsCount = (this.loadingDotsCount + 1) % patterns.length;
-		return patterns[this.loadingDotsCount];
+		return patterns[this.loadingDotsCount] ?? patterns[0] ?? '';
 	}
 
 	/**

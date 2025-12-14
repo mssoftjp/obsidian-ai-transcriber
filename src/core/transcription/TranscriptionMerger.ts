@@ -4,10 +4,9 @@
  */
 
 import { TranscriptionResult, TranscriptionSegment } from './TranscriptionTypes';
-import { getTranscriptionConfig, getModelConfig, ModelConfig } from '../../config/ModelProcessingConfig';
+import { getModelConfig, ModelConfig } from '../../config/ModelProcessingConfig';
 import { OverlapDebugger } from '../utils/OverlapDebugger';
 import { OverlapAnalyzer } from '../utils/OverlapAnalyzer';
-import { FuzzyOverlapDetector, FuzzyMatchOptions } from './FuzzyOverlapDetector';
 import {
 	buildNGramIndex,
 	findPotentialMatches,
@@ -31,10 +30,8 @@ export interface MergeOptions {
 
 export class TranscriptionMerger {
 	private defaultOptions: MergeOptions;
-	private config = getTranscriptionConfig();
 	private mergingConfig: ModelConfig['merging'];
 	private modelConfig: ModelConfig;
-	private fuzzyDetector: FuzzyOverlapDetector;
 	private logger: Logger;
 
 	constructor(modelName: string) {
@@ -48,18 +45,10 @@ export class TranscriptionMerger {
 			throw new Error(`[TranscriptionMerger] Model "${modelName}" does not have merging configuration`);
 		}
 
-		// Initialize fuzzy detector with model-specific options
-		const fuzzyOptions: Partial<FuzzyMatchOptions> = {
-			minSimilarity: this.mergingConfig.fuzzyMatchSimilarity || 0.8,
-			minMatchLength: this.mergingConfig.minMatchLength,
-			useNGramScreening: this.mergingConfig.useNGramScreening !== false,
-			nGramSize: this.mergingConfig.nGramSize || 3
-		};
-		this.fuzzyDetector = new FuzzyOverlapDetector(fuzzyOptions);
-
+		const minMatchLength = this.mergingConfig.minMatchLength ?? 20;
 		this.defaultOptions = {
 			removeOverlaps: true,
-			minMatchLength: this.mergingConfig.minMatchLength,
+			minMatchLength,
 			useTimestamps: true,
 			separator: '\n\n',
 			includeFailures: true
@@ -107,15 +96,22 @@ export class TranscriptionMerger {
 			return this.formatFailures(failedResults);
 		}
 
-		// Sort by start time
-		validResults.sort((a, b) => a.startTime - b.startTime);
+			// Sort by start time
+			validResults.sort((a, b) => a.startTime - b.startTime);
 
-		// Merge with overlap detection
-		let mergedText = validResults[0].text;
+			// Merge with overlap detection
+			const firstResult = validResults[0];
+			if (!firstResult) {
+				return this.formatFailures(failedResults);
+			}
+			let mergedText = firstResult.text;
 
-		for (let i = 1; i < validResults.length; i++) {
-			const previous = validResults[i - 1];
-			const current = validResults[i];
+			for (let i = 1; i < validResults.length; i++) {
+				const previous = validResults[i - 1];
+				const current = validResults[i];
+				if (!previous || !current) {
+					continue;
+				}
 
 
 			// Analyze the overlap problem
@@ -279,6 +275,9 @@ export class TranscriptionMerger {
 			if (matches.length > 0) {
 				// Log match details
 				const lastMatch = matches[matches.length - 1];
+				if (!lastMatch) {
+					continue;
+				}
 				const matchedText = currentText.slice(lastMatch.position, lastMatch.position + lastMatch.length);
 
 				OverlapDebugger.logMatchFound(
@@ -371,34 +370,39 @@ export class TranscriptionMerger {
 			return [];
 		}
 
-		const merged: TranscriptionSegment[] = [segments[0]];
+		const firstSegment = segments[0];
+		if (!firstSegment) {
+			return [];
+		}
+		const merged: TranscriptionSegment[] = [firstSegment];
 		// Get duplicate window from config or model-specific config
-		const duplicateWindowSeconds = this.mergingConfig.duplicateWindowSeconds;
+		const duplicateWindowSeconds = this.mergingConfig.duplicateWindowSeconds ?? 30;
+		const overlapThreshold = this.mergingConfig.overlapThreshold ?? 0.5;
 
 		for (let i = 1; i < segments.length; i++) {
 			const current = segments[i];
 			const previous = merged[merged.length - 1];
+			if (!current || !previous) {
+				continue;
+			}
 
 			const currText = current.text.trim();
 			const prevText = previous.text.trim();
 
 			// Skip consecutive duplicate text within a short time window
-			if (
-				currText === prevText &&
-                                current.start - previous.start <= duplicateWindowSeconds
-			) {
-				continue;
-			}
+				if (
+					currText === prevText &&
+					current.start - previous.start <= duplicateWindowSeconds
+				) {
+					continue;
+				}
 
 			// Check for overlap
 			if (current.start < previous.end) {
 				// Overlapping segments - merge or skip
 				if (current.end > previous.end) {
 					// Partial overlap - extract non-overlapping part
-					const overlapRatio =
-                                                (previous.end - current.start) /
-                                                (current.end - current.start);
-					const overlapThreshold = this.mergingConfig.overlapThreshold;
+					const overlapRatio = (previous.end - current.start) / (current.end - current.start);
 					if (overlapRatio < overlapThreshold) {
 						// Less than threshold overlap, keep both
 						merged.push(current);
