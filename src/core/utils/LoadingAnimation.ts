@@ -1,15 +1,12 @@
+import { Component } from 'obsidian';
+
 /**
  * Shared loading animation utility
  */
-export class LoadingAnimation {
+export class LoadingAnimation extends Component {
 	private loadingDotsCount = 0;
 	private animationInterval: number | null = null;
 	private isAnimating = false;
-	private registerInterval: ((intervalId: number) => number) | null = null;
-
-	constructor(registerInterval?: (intervalId: number) => number) {
-		this.registerInterval = registerInterval ?? null;
-	}
 
 	/**
 	 * Get the current loading dots pattern
@@ -47,9 +44,7 @@ export class LoadingAnimation {
 			}
 		}, interval);
 
-		this.animationInterval = this.registerInterval
-			? this.registerInterval(intervalId)
-			: intervalId;
+		this.animationInterval = this.registerInterval(intervalId);
 	}
 
 	/**
@@ -81,9 +76,13 @@ export class LoadingAnimation {
 	}
 
 	/**
-	 * Clean up resources
+	 * Clean up resources (legacy)
 	 */
 	destroy(): void {
+		this.stop();
+	}
+
+	override onunload(): void {
 		this.stop();
 	}
 }

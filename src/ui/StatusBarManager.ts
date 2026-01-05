@@ -19,7 +19,7 @@ export class StatusBarManager {
 	constructor(plugin: Plugin, progressTracker: ProgressTracker) {
 		this.plugin = plugin;
 		this.progressTracker = progressTracker;
-		this.loadingAnimation = new LoadingAnimation((intervalId) => this.plugin.registerInterval(intervalId));
+		this.loadingAnimation = this.plugin.addChild(new LoadingAnimation());
 	}
 
 	/**
@@ -70,6 +70,7 @@ export class StatusBarManager {
 		}
 
 		this.loadingAnimation.destroy();
+		this.plugin.removeChild(this.loadingAnimation);
 
 		if (this.statusBarItem) {
 			this.statusBarItem.remove();

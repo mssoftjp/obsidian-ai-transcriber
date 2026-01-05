@@ -158,9 +158,6 @@ export default class AITranscriberPlugin extends Plugin {
 	private async disposePlugin(): Promise<void> {
 		this.logger.info('Unloading AI Transcriber plugin...');
 
-		// Close any open transcription view leaves to prevent orphaned views after unload
-		this.app.workspace.detachLeavesOfType(VIEW_TYPE_TRANSCRIPTION);
-
 		// Clean up status bar
 		if (this.statusBarManager) {
 			this.statusBarManager.destroy();
@@ -321,7 +318,7 @@ export default class AITranscriberPlugin extends Plugin {
 			return;
 		}
 
-		const modal = new APITranscriptionModal(this.app, this.transcriber, file, this.settings, this.progressTracker);
+			const modal = new APITranscriptionModal(this.app, this, this.transcriber, file, this.settings, this.progressTracker);
 		// Set save callback
 		(modal as unknown as { saveSettings: () => Promise<void> }).saveSettings = () => this.saveSettings();
 		modal.open();

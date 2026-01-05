@@ -14,7 +14,6 @@ interface TranscriptionPlugin {
 	transcriber?: {
 		cancelTranscription?: () => Promise<void>;
 	};
-	registerInterval: (intervalId: number) => number;
 }
 
 export class TranscriptionView extends ItemView {
@@ -23,7 +22,6 @@ export class TranscriptionView extends ItemView {
 	private progressContainer!: HTMLElement;
 	private historyContainer!: HTMLElement;
 	private controlsContainer!: HTMLElement;
-	private updateInterval: number | null = null;
 	private unsubscribeProgress: (() => void) | null = null;
 	private loadingAnimation: LoadingAnimation;
 
@@ -38,7 +36,7 @@ export class TranscriptionView extends ItemView {
 		super(leaf);
 		this.plugin = plugin;
 		this.progressTracker = progressTracker;
-		this.loadingAnimation = new LoadingAnimation((intervalId) => this.plugin.registerInterval(intervalId));
+		this.loadingAnimation = this.addChild(new LoadingAnimation());
 	}
 
 	override getViewType(): string {
@@ -70,11 +68,9 @@ export class TranscriptionView extends ItemView {
 		this.unsubscribeProgress = this.progressTracker.addListener(this.handleProgressUpdate);
 
 		// Start update interval
-		this.updateInterval = this.plugin.registerInterval(
-			window.setInterval(() => {
-				this.updateView();
-			}, 1000)
-		);
+		this.registerInterval(window.setInterval(() => {
+			this.updateView();
+		}, 1000));
 
 		// Initial update - force history display
 		this.updateView();
@@ -84,12 +80,6 @@ export class TranscriptionView extends ItemView {
 	}
 
 	override onClose(): Promise<void> {
-		// Clear update interval
-		if (this.updateInterval !== null) {
-			window.clearInterval(this.updateInterval);
-			this.updateInterval = null;
-		}
-
 		// Unsubscribe from progress updates
 		if (this.unsubscribeProgress !== null) {
 			this.unsubscribeProgress();
