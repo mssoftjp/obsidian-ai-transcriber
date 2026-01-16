@@ -860,15 +860,18 @@ export class APITranscriptionModal extends Modal {
 				});
 
 					// Verify that the body actually persisted (some environments drop initial write)
-						try {
-							const savedContent = await this.app.vault.read(createdFile);
-							if (!savedContent || savedContent.trim().length === 0) {
+					try {
+						await this.app.vault.process(targetFile, (currentContent) => {
+							if (!currentContent || currentContent.trim().length === 0) {
 								this.logger.warn('Transcription body missing after write; reapplying content');
-								await this.app.vault.modify(createdFile, formattedTranscription);
+								return formattedTranscription;
 							}
-						} catch (verifyError: unknown) {
-							this.logger.warn('Failed to verify transcription write', { error: verifyError });
-						}
+							return currentContent;
+						});
+					} catch (verifyError: unknown) {
+						const err = verifyError instanceof Error ? verifyError : new Error(this.formatUnknownError(verifyError));
+						this.logger.warn('Failed to verify transcription write', { error: err.message });
+					}
 			} catch (writeError) {
 				this.logger.error('Failed to write transcription to file', writeError);
 
