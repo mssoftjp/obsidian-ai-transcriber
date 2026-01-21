@@ -3,7 +3,7 @@
   "name": "AI Transcriber",
   "version": "0.9.6",
   "minAppVersion": "1.8.0",
-  "description": "AI-powered speech-to-text transcription using OpenAI GPT-4o and Whisper APIs",
+  "description": "AI-powered speech-to-text transcription using OpenAI GPT-4o and Whisper APIs.",
   "author": "Musashino Software",
   "authorUrl": "https://github.com/mssoftjp",
   "fundingUrl": "https://buymeacoffee.com/mssoft",
