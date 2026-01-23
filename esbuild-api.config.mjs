@@ -57,7 +57,12 @@ function deployToObsidianPluginsDir(outputDir) {
 		throw new Error("Invalid manifest.json: missing 'id'.");
 	}
 
-	const targetDir = path.join(pluginsDir, pluginId);
+	// Allow either:
+	// - OBSIDIAN_PLUGINS_DIR="<vault>/.obsidian/plugins"
+	// - OBSIDIAN_PLUGINS_DIR="<vault>/.obsidian/plugins/<pluginId>"
+	const targetDir = path.basename(pluginsDir) === pluginId
+		? pluginsDir
+		: path.join(pluginsDir, pluginId);
 	mkdirSync(targetDir, { recursive: true });
 
 	copyFileSync(path.join(outputDir, 'main.js'), path.join(targetDir, 'main.js'));
@@ -70,6 +75,10 @@ function deployToObsidianPluginsDir(outputDir) {
 	const wasmPath = path.join(outputDir, 'fvad.wasm');
 	if (existsSync(wasmPath)) {
 		copyFileSync(wasmPath, path.join(targetDir, 'fvad.wasm'));
+	}
+
+	if (process.env.OBSIDIAN_DEPLOY_LOG === 'true') {
+		console.log(`[deploy] ${targetDir}`);
 	}
 }
 
