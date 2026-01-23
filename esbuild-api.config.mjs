@@ -1,6 +1,7 @@
 import esbuild from "esbuild";
 import process from "process";
 import builtins from "builtin-modules";
+import path from "node:path";
 import { readFileSync, mkdirSync, copyFileSync, existsSync } from "fs";
 import { execSync } from "child_process";
 
@@ -11,17 +12,78 @@ if you want to view the source, please visit the github repository of this plugi
 */
 `;
 
-const prod = (process.argv[2] === 'production');
+const isProduction = process.argv.includes('production');
+const isWatch = process.argv.includes('--watch');
+
+function loadDotenvIfPresent(dotenvPath = path.join(process.cwd(), '.env')) {
+	try {
+		const content = readFileSync(dotenvPath, 'utf8');
+		for (const rawLine of content.split(/\r?\n/)) {
+			const line = rawLine.trim();
+			if (!line || line.startsWith('#')) continue;
+
+			const equalsIndex = line.indexOf('=');
+			if (equalsIndex === -1) continue;
+
+			const key = line.slice(0, equalsIndex).trim();
+			let value = line.slice(equalsIndex + 1).trim();
+
+			if (!key) continue;
+			if (process.env[key] !== undefined) continue;
+
+			if (
+				(value.startsWith('"') && value.endsWith('"')) ||
+				(value.startsWith("'") && value.endsWith("'"))
+			) {
+				value = value.slice(1, -1);
+			}
+
+			process.env[key] = value;
+		}
+	} catch {
+		// ignore
+	}
+}
+
+function deployToObsidianPluginsDir(outputDir) {
+	const pluginsDir = process.env.OBSIDIAN_PLUGINS_DIR;
+	if (!pluginsDir) return;
+
+	const manifestRaw = readFileSync('manifest.json', 'utf8');
+	const manifest = JSON.parse(manifestRaw);
+	const pluginId = manifest?.id;
+
+	if (typeof pluginId !== 'string' || !pluginId) {
+		throw new Error("Invalid manifest.json: missing 'id'.");
+	}
+
+	const targetDir = path.join(pluginsDir, pluginId);
+	mkdirSync(targetDir, { recursive: true });
+
+	copyFileSync(path.join(outputDir, 'main.js'), path.join(targetDir, 'main.js'));
+	copyFileSync('manifest.json', path.join(targetDir, 'manifest.json'));
+	if (existsSync('styles.css')) {
+		copyFileSync('styles.css', path.join(targetDir, 'styles.css'));
+	}
+
+	// Optional WASM (if present in outputDir)
+	const wasmPath = path.join(outputDir, 'fvad.wasm');
+	if (existsSync(wasmPath)) {
+		copyFileSync(wasmPath, path.join(targetDir, 'fvad.wasm'));
+	}
+}
+
+loadDotenvIfPresent();
 
 // Get version from manifest.json
 const manifest = JSON.parse(readFileSync('./manifest.json', 'utf8'));
 const version = manifest.version;
-const outputDir = `build/${version}`;
+const outputDir = isProduction ? `build/${version}` : 'dist';
 
 // Create output directory if it doesn't exist
 mkdirSync(outputDir, { recursive: true });
 
-const context = await esbuild.context({
+const buildOptions = {
 	banner: {
 		js: banner,
 	},
@@ -46,14 +108,37 @@ const context = await esbuild.context({
 	format: 'cjs',
 	target: 'es2020',
 	logLevel: "error",
-	sourcemap: prod ? false : 'inline',
+	sourcemap: isProduction ? false : 'inline',
 	treeShaking: true,
-	minify: prod,
+	minify: isProduction,
 	outfile: `${outputDir}/main.js`,
+	plugins: [
+		{
+			name: 'deploy-to-obsidian',
+			setup(build) {
+				build.onEnd((result) => {
+					if (result.errors.length > 0) return;
+					deployToObsidianPluginsDir(outputDir);
+				});
+			}
+		}
+	]
+};
+
+// Always copy manifest/styles next to the build output (for local dev & packaging)
+['manifest.json', 'styles.css'].forEach(file => {
+	if (existsSync(file)) {
+		copyFileSync(file, `${outputDir}/${file}`);
+	}
 });
 
-if (prod) {
-	await context.rebuild();
+if (isWatch) {
+	const ctx = await esbuild.context(buildOptions);
+	await ctx.watch();
+} else {
+	await esbuild.build(buildOptions);
+
+	if (isProduction) {
 	
 	// Copy additional files to build directory
 	console.log('Copying additional files...');
@@ -100,6 +185,5 @@ if (includeWasm) {
 	}
 	
 	process.exit(0);
-} else {
-	await context.watch();
+	}
 }

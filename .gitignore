@@ -41,6 +41,7 @@ logs/
 
 # Build directory
 build/
+dist/
 
 # Test coverage reports
 coverage/
