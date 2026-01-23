@@ -163,24 +163,27 @@ export function buildGPT4oTranscribeRequest(
 	// Prompt handling
 	if (params.prompt) {
 		result.prompt = params.prompt;
-		} else if (params.language) {
-				const prompts = isFirstChunk ? config.prompts.firstChunk : config.prompts.continuation;
-				const promptKey = params.language;
-				let prompt = prompts[promptKey] ?? prompts['auto'] ?? '';
+	} else if (params.language) {
+		const hasPreviousContext = Boolean(params.previousContext?.trim());
+		const shouldUseFirstChunkPrompt = isFirstChunk || !hasPreviousContext;
 
-			// Replace {previousTail} placeholder if we have previous context and it's a continuation chunk
-			if (!isFirstChunk && params.previousContext) {
-				// Extract last characters from previous context based on config
-				const tailLength = PROMPT_CONSTANTS.CONTEXT_TAIL_LENGTH;
-				const previousTail = params.previousContext.length > tailLength
-					? params.previousContext.slice(-tailLength).trim()
-					: params.previousContext.trim();
+		const prompts = shouldUseFirstChunkPrompt ? config.prompts.firstChunk : config.prompts.continuation;
+		const promptKey = params.language;
+		let prompt = prompts[promptKey] ?? prompts['auto'] ?? '';
 
-				prompt = prompt.replace('{previousTail}', previousTail);
-			}
+		// Replace {previousTail} placeholder if we have previous context and it's a continuation chunk
+		if (!shouldUseFirstChunkPrompt && params.previousContext) {
+			// Extract last characters from previous context based on config
+			const tailLength = PROMPT_CONSTANTS.CONTEXT_TAIL_LENGTH;
+			const previousTail = params.previousContext.length > tailLength
+				? params.previousContext.slice(-tailLength).trim()
+				: params.previousContext.trim();
 
-			result.prompt = prompt || config.prompts.firstChunk['auto'] || '';
+			prompt = prompt.replace('{previousTail}', previousTail);
 		}
+
+		result.prompt = prompt || config.prompts.firstChunk['auto'] || '';
+	}
 
 	// Streaming support
 	if (params.stream !== undefined && params.stream !== config.defaults.stream) {
