@@ -438,8 +438,10 @@ export interface TranslationKeys {
 		noHistory: string;
 		noActiveTask: string;
 		loading: string;
+		idle: string;
 		processing: string;
 		completed: string;
+		partial: string;
 		failed: string;
 		cancelled: string;
 		retry: string;

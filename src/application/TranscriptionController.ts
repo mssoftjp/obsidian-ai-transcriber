@@ -158,18 +158,18 @@ export class TranscriptionController {
 			this.logger.debug('Executing transcription workflow...');
 			const transcriptionStart = performance.now();
 			const result = await workflow.execute(audioFile, audioBuffer, options);
-				timings['transcription'] = performance.now() - transcriptionStart;
-				this.logger.debug('Transcription completed', {
-					duration: `${timings['transcription'].toFixed(0)}ms`,
-					chunks: result.chunks,
-					partial: result.partial
-				});
+			timings['transcription'] = performance.now() - transcriptionStart;
+			this.logger.debug('Transcription completed', {
+				duration: `${timings['transcription'].toFixed(0)}ms`,
+				chunks: result.chunks,
+				partial: result.partial
+			});
 
 			// Log statistics
 			this.logStatistics(audioFile, result);
 
 			// Log timing information
-				timings['total'] = performance.now() - processStartTime;
+			timings['total'] = performance.now() - processStartTime;
 
 			// Check if result is partial
 			if (result.partial) {
@@ -190,13 +190,25 @@ export class TranscriptionController {
 			return correctedText;
 
 		} catch (error) {
-			this.logger.error('Transcription failed', error);
 			const partialMarker = t('modal.transcription.partialResult');
-			// Re-throw the error but with more context
+
+			// Partial results are expected on cancel/partial failure; avoid logging as ERROR
 			if (error instanceof Error && error.message.includes(partialMarker)) {
-				// This is already formatted partial result, pass it through
+				this.logger.warn('Transcription returned a partial result');
 				throw error;
 			}
+
+			// Cancellation is also user-driven; keep logs quieter
+			const isCancelled =
+				(abortSignal?.aborted ?? false) ||
+				(error instanceof DOMException && error.name === 'AbortError') ||
+				(error instanceof Error && error.message === t('errors.transcriptionCancelledByUser'));
+			if (isCancelled) {
+				this.logger.info('Transcription cancelled');
+				throw error;
+			}
+
+			this.logger.error('Transcription failed', error);
 			throw error;
 		} finally {
 			this.logger.debug('Cleaning up resources...');

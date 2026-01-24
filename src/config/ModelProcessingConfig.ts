@@ -239,11 +239,11 @@ export const DEFAULT_TRANSCRIPTION_CONFIG: TranscriptionConfig = {
 					useFuzzyMatching: true // Use fuzzy matching for duplicate detection
 				},
 				overlapDetection: {
-					minOverlapLength: 150, // Minimum 150 characters
+					minOverlapLength: 40, // Minimum 40 characters (handles larger transcription drift at boundaries)
 					maxOverlapLength: 500, // Maximum 500 characters
-					searchRangeInNext: 1500, // Search in first 1500 chars of next chunk
-					candidateStepSize: 20, // Try candidates in 20 char decrements
-					similarityThreshold: 0.85 // 85% similarity for match
+					searchRangeInNext: 800, // Search early in next chunk (overlap should appear near the start)
+					candidateStepSize: 10, // Finer scan to cover 40-150 char overlaps
+					similarityThreshold: 0.78 // Allow small differences in transcription across chunks
 				}
 			},
 			pricing: {
@@ -285,11 +285,11 @@ export const DEFAULT_TRANSCRIPTION_CONFIG: TranscriptionConfig = {
 					useFuzzyMatching: true // Use fuzzy matching for duplicate detection
 				},
 				overlapDetection: {
-					minOverlapLength: 150, // Minimum 150 characters
+					minOverlapLength: 40, // Minimum 40 characters (handles larger transcription drift at boundaries)
 					maxOverlapLength: 500, // Maximum 500 characters
-					searchRangeInNext: 1500, // Search in first 1500 chars of next chunk
-					candidateStepSize: 20, // Try candidates in 20 char decrements
-					similarityThreshold: 0.85 // 85% similarity for match
+					searchRangeInNext: 800, // Search early in next chunk (overlap should appear near the start)
+					candidateStepSize: 10, // Finer scan to cover 40-150 char overlaps
+					similarityThreshold: 0.78 // Allow small differences in transcription across chunks
 				}
 			},
 			pricing: {

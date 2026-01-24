@@ -29,7 +29,6 @@ export class GPT4oTranscriptionStrategy extends TranscriptionStrategy {
 
 	private static readonly WAVE_MIN_GROUP_SIZE = 3;
 	private static readonly WAVE_MAX_GROUP_SIZE = 5;
-	private static readonly PREVIOUS_CONTEXT_MAX_CHARS = 200;
 	private static readonly CHUNK_MAX_RETRY = 1;
 	private static readonly RATE_LIMIT_BACKOFF_BASE_MS = 2000;
 	private static readonly RATE_LIMIT_BACKOFF_MAX_MS = 15000;
@@ -246,7 +245,8 @@ export class GPT4oTranscriptionStrategy extends TranscriptionStrategy {
 			// Process chunk with previous context (within the group only)
 			let previousContext: string | undefined;
 			if (previousChunkText) {
-				const lastSentences = this.extractLastSentences(previousChunkText, GPT4oTranscriptionStrategy.PREVIOUS_CONTEXT_MAX_CHARS);
+				const maxContextChars = getModelConfig(this.transcriptionService.modelId).contextWindowSize;
+				const lastSentences = this.extractLastSentences(previousChunkText, maxContextChars);
 				if (lastSentences) {
 					previousContext = lastSentences;
 				}
