@@ -8,6 +8,10 @@ import { getModelCleaningStrategy } from '../../config/ModelCleaningConfig';
 import { Logger } from '../../utils/Logger';
 
 import {
+	BaseHallucinationCleaner,
+	JapaneseTextValidator,
+	PromptContaminationCleaner,
+	TailRepeatCleaner,
 	WhisperCleaningPipeline,
 	GPT4oCleaningPipeline,
 	StandardCleaningPipeline
@@ -15,8 +19,12 @@ import {
 
 import type {
 	CleaningPipeline,
-	CleaningContext
+	CleaningContext,
+	PipelineConfig,
+	PipelineResult,
+	TextCleaner
 } from './cleaners';
+import type { ModelCleaningStrategy } from '../../config/ModelCleaningConfig';
 import type { DictionaryCorrector } from './DictionaryCorrector';
 import type {
 	TranscriptionResult,
@@ -135,8 +143,8 @@ export abstract class TranscriptionService {
 			switch (strategy.pipelineType) {
 			case 'whisper':
 				this.cleaningPipeline = debugMode
-					? WhisperCleaningPipeline.createWithLogging(this.dictionaryCorrector)
-					: WhisperCleaningPipeline.createDefault(this.dictionaryCorrector);
+					? WhisperCleaningPipeline.createWithLogging(this.dictionaryCorrector, this.modelId)
+					: WhisperCleaningPipeline.createDefault(this.dictionaryCorrector, this.modelId);
 				break;
 
 			case 'gpt4o':
@@ -191,7 +199,31 @@ export abstract class TranscriptionService {
 				modelId: this.modelId,
 				...(context ?? {})
 			};
+			const strategy = getModelCleaningStrategy(this.modelId);
 			const result = await this.cleaningPipeline.execute(text, language, pipelineContext);
+
+			// Pipeline-level fallback: avoid catastrophic deletion while keeping strong deduplication.
+			// This re-runs the pipeline with safer settings when the output is suspiciously short.
+			if (this.shouldRunPipelineFallback(result, pipelineContext, strategy)) {
+				this.logger.warn(`[${this.modelId}] Cleaning pipeline fallback triggered`, {
+					totalReductionRatio: result.metadata.totalReductionRatio,
+					totalFinalLength: result.metadata.totalFinalLength
+				});
+
+				// Fallback level 1: keep hallucination cleaning, but disable paragraph fingerprint dedup.
+				const safeStrategy1 = this.createStrategyWithParagraphRepeatDisabled(strategy);
+				const safePipeline1 = this.buildPipelineForStrategy(safeStrategy1);
+				const safe1 = await safePipeline1.execute(text, language, pipelineContext);
+
+				if (this.shouldRunPipelineFallback(safe1, pipelineContext, safeStrategy1)) {
+					// Fallback level 2: preserve more content (omit hallucination cleaner), keep tail repeat + validator.
+					const safePipeline2 = this.buildPipelineForStrategy(safeStrategy1, { omitHallucinationCleaner: true });
+					const safe2 = await safePipeline2.execute(text, language, pipelineContext);
+					return safe2.finalText;
+				}
+
+				return safe1.finalText;
+			}
 
 			// Log summary if there were significant changes or issues
 			if (result.metadata.totalIssuesFound > 0 || result.metadata.totalReductionRatio > 0.1) {
@@ -218,6 +250,132 @@ export abstract class TranscriptionService {
 			// Return original text as fallback
 			return text;
 		}
+	}
+
+	private shouldRunPipelineFallback(
+		result: PipelineResult,
+		context: CleaningContext,
+		strategy: ModelCleaningStrategy
+	): boolean {
+		const fallback = strategy.pipelineFallback;
+		if (!fallback?.enabled) {
+			return false;
+		}
+
+		const finalLength = result.metadata.totalFinalLength;
+		if (finalLength <= 0) {
+			// If we deleted everything, try a safer pass.
+			return true;
+		}
+
+		// Collect issues across stages.
+		const issues = result.stageResults.flatMap(stage => stage.result.issues);
+		const hasCriticalIssue = issues.some(issue =>
+			/emergency fallback/i.test(issue) ||
+			/excessive text removal/i.test(issue) ||
+			/text significantly shorter than expected/i.test(issue) ||
+			/unicode replacement characters/i.test(issue) ||
+			/encoding issues/i.test(issue)
+		);
+
+		const audioDuration = typeof context.audioDuration === 'number' ? context.audioDuration : null;
+		const hasDuration = audioDuration !== null && audioDuration >= fallback.minAudioDurationSeconds;
+
+		const actualChars = result.finalText.replace(/\s+/g, '').length;
+		const expectedCharsPerSecond = strategy.japaneseValidation?.expectedCharsPerSecond ?? 1.5;
+		const expectedChars = hasDuration ? audioDuration * expectedCharsPerSecond : null;
+		const expectedRatio = expectedChars && expectedChars > 0 ? actualChars / expectedChars : null;
+
+		const suspiciouslyShortByRatio = expectedRatio !== null && expectedRatio < fallback.minExpectedContentRatio;
+		const suspiciouslyShortByLength = finalLength < fallback.minFinalTextLength;
+
+		if (hasDuration && suspiciouslyShortByRatio && suspiciouslyShortByLength) {
+			return true;
+		}
+
+		// Without reliable duration info, only fallback on both issues + extreme shortness.
+		if (!hasDuration && hasCriticalIssue && suspiciouslyShortByLength && result.metadata.totalReductionRatio > 0.9) {
+			return true;
+		}
+
+		return false;
+	}
+
+	private createStrategyWithParagraphRepeatDisabled(strategy: ModelCleaningStrategy): ModelCleaningStrategy {
+		const repetitionThresholds = strategy.repetitionThresholds;
+		if (!repetitionThresholds) {
+			return strategy;
+		}
+
+		const paragraphRepeat = repetitionThresholds.paragraphRepeat
+			? { ...repetitionThresholds.paragraphRepeat, enabled: false }
+			: { headChars: 15, enabled: false };
+
+		return {
+			...strategy,
+			repetitionThresholds: {
+				...repetitionThresholds,
+				paragraphRepeat
+			}
+		};
+	}
+
+	private buildPipelineForStrategy(
+		strategy: ModelCleaningStrategy,
+		options?: { omitHallucinationCleaner?: boolean }
+	): CleaningPipeline {
+		const cleaners: TextCleaner[] = [];
+		const omitHallucinationCleaner = options?.omitHallucinationCleaner ?? false;
+
+		switch (strategy.pipelineType) {
+			case 'gpt4o': {
+				cleaners.push(new PromptContaminationCleaner({
+					removeXmlTags: strategy.promptContamination?.removeXmlTags ?? true,
+					removeContextPatterns: strategy.promptContamination?.removeContextPatterns ?? true,
+					aggressiveMatching: strategy.promptContamination?.aggressiveMatching ?? false,
+					modelId: strategy.modelId
+				}, strategy));
+
+				if (!omitHallucinationCleaner) {
+					cleaners.push(new BaseHallucinationCleaner(this.dictionaryCorrector, strategy));
+				}
+
+				cleaners.push(new TailRepeatCleaner(strategy.tailRepeat));
+
+				if (strategy.japaneseValidation) {
+					cleaners.push(new JapaneseTextValidator(strategy.japaneseValidation, strategy));
+				}
+				break;
+			}
+
+			case 'whisper': {
+				if (!omitHallucinationCleaner) {
+					cleaners.push(new BaseHallucinationCleaner(this.dictionaryCorrector, strategy));
+				}
+
+				cleaners.push(new TailRepeatCleaner(strategy.tailRepeat));
+
+				if (strategy.japaneseValidation) {
+					cleaners.push(new JapaneseTextValidator(strategy.japaneseValidation, strategy));
+				}
+				break;
+			}
+
+			case 'standard':
+				// No-op
+				break;
+		}
+
+		const config: PipelineConfig = {
+			name: `Pipeline(${strategy.modelId})`,
+			modelId: strategy.modelId,
+			cleaners,
+			stopOnCriticalIssue: strategy.stopOnCriticalIssue,
+			maxReductionRatio: strategy.maxReductionRatio,
+			enableDetailedLogging: strategy.enableDetailedLogging
+		};
+
+		return new StandardCleaningPipeline(config);
 	}
 
 	/**

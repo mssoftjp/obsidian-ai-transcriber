@@ -8,7 +8,8 @@ import { Logger } from '../utils/Logger';
 import type {
 	PromptContaminationConfig,
 	JapaneseValidationConfig,
-	GPT4oPipelineOptions
+	GPT4oPipelineOptions,
+	TailRepeatConfig
 } from '../core/transcription/cleaners';
 
 /**
@@ -86,6 +87,14 @@ export interface RepetitionThresholds {
 		headChars: number;
 		/** Whether to enable paragraph repeat detection */
 		enabled?: boolean;
+		/** Comparison mode */
+		mode?: 'consecutiveOnly' | 'windowed';
+		/** Window size (only used when mode='windowed') */
+		windowSize?: number;
+		/** Similarity threshold (0-1) after normalization */
+		similarityThreshold?: number;
+		/** Minimum repeat count to compress */
+		minRepeatCount?: number;
 	};
 }
 
@@ -189,6 +198,25 @@ export interface ModelCleaningStrategy {
 	validationThresholds?: ValidationThresholds;
 	/** Patterns for detecting and removing prompt contamination */
 	contaminationPatterns?: ContaminationPatterns;
+	/** Tail-repeat (endless loop) compression configuration */
+	tailRepeat?: TailRepeatConfig;
+	/** Pipeline-level fallback configuration (avoid catastrophic deletion) */
+	pipelineFallback?: PipelineFallbackConfig;
+}
+
+/**
+ * Pipeline-level fallback configuration
+ * Used to avoid catastrophic deletion when aggressive deduplication misfires.
+ */
+export interface PipelineFallbackConfig {
+	/** Enable fallback re-run with safer settings */
+	enabled: boolean;
+	/** Only consider expected-length checks when audioDuration >= this (seconds) */
+	minAudioDurationSeconds: number;
+	/** Minimum ratio of (actual chars without whitespace) / (expected chars) before fallback */
+	minExpectedContentRatio: number;
+	/** Absolute minimum final text length before fallback is considered */
+	minFinalTextLength: number;
 }
 
 /**
@@ -310,7 +338,11 @@ const COMMON_REPETITION_THRESHOLDS: RepetitionThresholds = {
 	particleReductionMode: 'limit',
 	paragraphRepeat: {
 		headChars: 15,
-		enabled: true
+		enabled: true,
+		mode: 'consecutiveOnly',
+		windowSize: 8,
+		similarityThreshold: 0.9,
+		minRepeatCount: 2
 	}
 };
 
@@ -456,7 +488,77 @@ export const MODEL_CLEANING_STRATEGIES: Record<string, ModelCleaningStrategy> = 
 			sentenceRepetition: 6
 		},
 		validationPatterns: COMMON_VALIDATION_PATTERNS,
-		validationThresholds: COMMON_VALIDATION_THRESHOLDS
+		validationThresholds: COMMON_VALIDATION_THRESHOLDS,
+		tailRepeat: {
+			enabled: true,
+			maxTailParagraphs: 12,
+			maxTailSentences: 40,
+			minRepeatCount: 3,
+			similarityThreshold: 0.9,
+			maxUnitParagraphs: 4,
+			maxUnitSentences: 6
+		},
+		pipelineFallback: {
+			enabled: true,
+			minAudioDurationSeconds: 60,
+			minExpectedContentRatio: 0.1,
+			minFinalTextLength: 80
+		}
+	},
+
+	// Whisper model with timestamp output formatting
+	'whisper-1-ts': {
+		modelId: 'whisper-1-ts',
+		modelName: 'OpenAI Whisper (timestamps)',
+		pipelineType: 'whisper',
+		enableDetailedLogging: false,
+		maxReductionRatio: 0.4,
+		stopOnCriticalIssue: false,
+		japaneseValidation: {
+			maxReductionRatio: 0.3,
+			minTextLength: 60,
+			maxIncompleteWords: 3,
+			maxMergedWords: 5,
+			expectedCharsPerSecond: 2.0,
+			enableAdvancedChecks: true
+		},
+		safetyThresholds: {
+			singleCleanerMaxReduction: 0.3,
+			singlePatternMaxReduction: 0.2,
+			emergencyFallbackThreshold: 0.7,
+			warningThreshold: 0.25,
+			maxPatternsBeforeWarning: 15,
+			repetitionPatternMaxReduction: 1.0,
+			phrasePatternMaxReduction: 0.2,
+			maxCleaningIterations: 3,
+			iterationReductionLimit: 0.999,
+			excessiveReductionWarning: 0.5,
+			highPatternCountWarning: 10,
+			significantChangeThreshold: 0.1
+		},
+		hallucinationPatterns: COMMON_HALLUCINATION_PATTERNS,
+		repetitionThresholds: {
+			...COMMON_REPETITION_THRESHOLDS,
+			baseThreshold: 35,
+			sentenceRepetition: 6
+		},
+		validationPatterns: COMMON_VALIDATION_PATTERNS,
+		validationThresholds: COMMON_VALIDATION_THRESHOLDS,
+		tailRepeat: {
+			enabled: true,
+			maxTailParagraphs: 12,
+			maxTailSentences: 40,
+			minRepeatCount: 3,
+			similarityThreshold: 0.9,
+			maxUnitParagraphs: 4,
+			maxUnitSentences: 6
+		},
+		pipelineFallback: {
+			enabled: true,
+			minAudioDurationSeconds: 60,
+			minExpectedContentRatio: 0.1,
+			minFinalTextLength: 80
+		}
 	},
 
 	// GPT-4o Mini Transcribe configuration
@@ -518,7 +620,22 @@ export const MODEL_CLEANING_STRATEGIES: Record<string, ModelCleaningStrategy> = 
 			katakanaRatio: 0.4,
 			hiraganaRatio: 0.85
 		},
-		contaminationPatterns: COMMON_CONTAMINATION_PATTERNS
+		contaminationPatterns: COMMON_CONTAMINATION_PATTERNS,
+		tailRepeat: {
+			enabled: true,
+			maxTailParagraphs: 12,
+			maxTailSentences: 40,
+			minRepeatCount: 3,
+			similarityThreshold: 0.9,
+			maxUnitParagraphs: 4,
+			maxUnitSentences: 6
+		},
+		pipelineFallback: {
+			enabled: true,
+			minAudioDurationSeconds: 60,
+			minExpectedContentRatio: 0.1,
+			minFinalTextLength: 80
+		}
 	},
 
 	// GPT-4o Transcribe configuration (full model)
@@ -577,7 +694,22 @@ export const MODEL_CLEANING_STRATEGIES: Record<string, ModelCleaningStrategy> = 
 			hiraganaRatio: 0.9,
 			latinRatio: 0.3
 		},
-		contaminationPatterns: COMMON_CONTAMINATION_PATTERNS
+		contaminationPatterns: COMMON_CONTAMINATION_PATTERNS,
+		tailRepeat: {
+			enabled: true,
+			maxTailParagraphs: 12,
+			maxTailSentences: 40,
+			minRepeatCount: 3,
+			similarityThreshold: 0.9,
+			maxUnitParagraphs: 4,
+			maxUnitSentences: 6
+		},
+		pipelineFallback: {
+			enabled: true,
+			minAudioDurationSeconds: 60,
+			minExpectedContentRatio: 0.1,
+			minFinalTextLength: 80
+		}
 	}
 };
 

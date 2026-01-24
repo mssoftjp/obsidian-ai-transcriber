@@ -418,6 +418,17 @@ export class GPT4oTranscriptionStrategy extends TranscriptionStrategy {
 		return normalizedDetected ?? 'auto';
 	}
 
+	private getTotalDurationSecondsFromResults(results: TranscriptionResult[]): number {
+		let minStart = Infinity;
+		let maxEnd = 0;
+		for (const result of results) {
+			minStart = Math.min(minStart, result.startTime);
+			maxEnd = Math.max(maxEnd, result.endTime);
+		}
+		const normalizedMinStart = Number.isFinite(minStart) ? minStart : 0;
+		return Math.max(0, maxEnd - normalizedMinStart);
+	}
+
 	/**
 	 * Extract last sentences from text (within token limit)
 	 */
@@ -490,7 +501,8 @@ export class GPT4oTranscriptionStrategy extends TranscriptionStrategy {
 		// This includes duplicate removal and other GPT-4o specific cleaning
 		try {
 			const cleaningLanguage = this.resolveCleaningLanguage(results);
-			mergedText = await this.transcriptionService.cleanText(mergedText, cleaningLanguage);
+			const audioDuration = this.getTotalDurationSecondsFromResults(results);
+			mergedText = await this.transcriptionService.cleanText(mergedText, cleaningLanguage, { audioDuration });
 		} catch (error) {
 			this.logger.error('Failed to clean merged text:', error);
 			// Continue with uncleaned text if cleaning fails

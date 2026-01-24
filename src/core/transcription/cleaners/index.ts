@@ -20,6 +20,8 @@ export { PromptContaminationCleaner } from './PromptContaminationCleaner';
 export type { PromptContaminationConfig } from './PromptContaminationCleaner';
 export { JapaneseTextValidator } from './JapaneseTextValidator';
 export type { JapaneseValidationConfig } from './JapaneseTextValidator';
+export { TailRepeatCleaner } from './TailRepeatCleaner';
+export type { TailRepeatConfig } from './TailRepeatCleaner';
 
 // Pipeline implementations
 export { StandardCleaningPipeline } from './StandardCleaningPipeline';

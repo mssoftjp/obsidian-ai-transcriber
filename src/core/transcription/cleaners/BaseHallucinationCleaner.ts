@@ -699,41 +699,82 @@ import type {
 			}
 
 			const sentences = text.split(/(?<=[。.!?！？。])/);
-				const headChars = config.headChars;
-			const seen = new Set<string>();
-			const keep: string[] = [];
+			const headChars = config.headChars;
+			const minRepeatCount = config.minRepeatCount ?? 2;
+			const similarityThreshold = config.similarityThreshold ?? 0.9;
+			const minLength = this.repetitionThresholds.minimumSentenceLengthForSimilarity ?? 6;
 
-		// Single pass: skip sentences with duplicate fingerprints
+			const normalizeForDedup = (s: string): string => {
+				const normalized = s.trim().normalize('NFKC').toLowerCase();
+				return normalized
+					.replace(/[。、！？.!?\s]/g, '')
+					.replace(/[ァ-ヶ]/g, (match) => String.fromCharCode(match.charCodeAt(0) - 0x60));
+			};
+
+			const getFingerprint = (normalized: string): string => normalized.slice(0, headChars);
+
+			const keep: string[] = [];
+			let run: { items: string[]; fp: string; lastNormalized: string } | null = null;
+
+			const flushRun = (): void => {
+				if (!run) {
+					return;
+				}
+
+				const runLength = run.items.length;
+				if (runLength >= minRepeatCount) {
+					keep.push(run.items[0] ?? '');
+					if (enableDetailedLogging && runLength > 1) {
+						for (let i = 1; i < runLength; i++) {
+							const removed = run.items[i] ?? '';
+							removedSections.push({
+								type: 'paragraph_repeat',
+								content: removed.substring(0, 50) + (removed.length > 50 ? '...' : ''),
+								reason: `Consecutive sentence repeat compressed (run=${runLength}, min=${minRepeatCount})`
+							});
+						}
+					}
+				} else {
+					keep.push(...run.items);
+				}
+
+				run = null;
+			};
+
+			// Single pass: compress consecutive repeats with fingerprint + similarity guard
 			for (let i = 0; i < sentences.length; i++) {
-				const s = sentences[i] ?? '';
-				if (!s.trim()) {
+				const sentence = sentences[i] ?? '';
+				if (!sentence.trim()) {
 					continue;
 				}
 
-			// Create fingerprint from the beginning of the sentence
-			const fp = s.slice(0, headChars).toLowerCase().replace(/\s+/g, '');
+				const normalized = normalizeForDedup(sentence);
+				const fp = getFingerprint(normalized);
 
-			if (seen.has(fp)) {
-				// Skip this sentence as it has a duplicate fingerprint
-				if (enableDetailedLogging) {
-					removedSections.push({
-						type: 'paragraph_repeat',
-						content: s.substring(0, 50) + (s.length > 50 ? '...' : ''),
-						reason: `Sentence with fingerprint "${fp}" already seen`
-					});
+				if (!run) {
+					run = { items: [sentence], fp, lastNormalized: normalized };
+					continue;
 				}
-				continue;
+
+				const fingerprintMatches = fp === run.fp;
+				const isComparable = normalized.length >= minLength && run.lastNormalized.length >= minLength;
+				const isSimilar = fingerprintMatches && isComparable
+					? this.calculateSimilarity(run.lastNormalized, normalized) >= similarityThreshold
+					: false;
+
+				if (isSimilar) {
+					run.items.push(sentence);
+					run.lastNormalized = normalized;
+					continue;
+				}
+
+				flushRun();
+				run = { items: [sentence], fp, lastNormalized: normalized };
 			}
 
-			seen.add(fp);
-			keep.push(s);
+			flushRun();
 
-			if (enableDetailedLogging) {
-				this.logger.trace('Keeping unique sentence fingerprint', { fingerprint: fp });
-			}
-		}
-
-		return keep.join('');
+			return keep.join('');
 	}
 
 	/**

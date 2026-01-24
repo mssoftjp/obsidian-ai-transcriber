@@ -8,6 +8,7 @@ import { getModelCleaningStrategy } from '../../../config/ModelCleaningConfig';
 import { BaseHallucinationCleaner } from './BaseHallucinationCleaner';
 import { JapaneseTextValidator } from './JapaneseTextValidator';
 import { StandardCleaningPipeline } from './StandardCleaningPipeline';
+import { TailRepeatCleaner } from './TailRepeatCleaner';
 
 import type { JapaneseValidationConfig } from './JapaneseTextValidator';
 import type { DictionaryCorrector } from '../DictionaryCorrector';
@@ -27,7 +28,10 @@ export class WhisperCleaningPipeline extends StandardCleaningPipeline {
 				// 1. Remove basic hallucinations (repetitions, artifacts)
 				new BaseHallucinationCleaner(dictionaryCorrector, strategy),
 
-				// 2. Validate Japanese text quality
+				// 2. Compress repeated tail blocks (endless loops)
+				new TailRepeatCleaner(strategy.tailRepeat),
+
+				// 3. Validate Japanese text quality
 				...(strategy.japaneseValidation ? [
 					(() => {
 						const validationConfig: JapaneseValidationConfig = {};
@@ -62,15 +66,15 @@ export class WhisperCleaningPipeline extends StandardCleaningPipeline {
 	/**
 	 * Create a Whisper pipeline with default settings
 	 */
-	static createDefault(dictionaryCorrector?: DictionaryCorrector): WhisperCleaningPipeline {
-		return new WhisperCleaningPipeline(dictionaryCorrector, false);
+	static createDefault(dictionaryCorrector?: DictionaryCorrector, modelId: string = 'whisper-1'): WhisperCleaningPipeline {
+		return new WhisperCleaningPipeline(dictionaryCorrector, false, modelId);
 	}
 
 	/**
 	 * Create a Whisper pipeline with debug logging enabled
 	 */
-	static createWithLogging(dictionaryCorrector?: DictionaryCorrector): WhisperCleaningPipeline {
-		return new WhisperCleaningPipeline(dictionaryCorrector, true);
+	static createWithLogging(dictionaryCorrector?: DictionaryCorrector, modelId: string = 'whisper-1'): WhisperCleaningPipeline {
+		return new WhisperCleaningPipeline(dictionaryCorrector, true, modelId);
 	}
 
 	/**

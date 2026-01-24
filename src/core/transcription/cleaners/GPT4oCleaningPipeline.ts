@@ -9,6 +9,7 @@ import { BaseHallucinationCleaner } from './BaseHallucinationCleaner';
 import { JapaneseTextValidator } from './JapaneseTextValidator';
 import { PromptContaminationCleaner } from './PromptContaminationCleaner';
 import { StandardCleaningPipeline } from './StandardCleaningPipeline';
+import { TailRepeatCleaner } from './TailRepeatCleaner';
 
 import type { JapaneseValidationConfig } from './JapaneseTextValidator';
 import type { DictionaryCorrector } from '../DictionaryCorrector';
@@ -58,7 +59,10 @@ export class GPT4oCleaningPipeline extends StandardCleaningPipeline {
 				// 2. Remove general hallucinations
 				new BaseHallucinationCleaner(dictionaryCorrector, strategy),
 
-				// 3. Validate Japanese text quality (if enabled)
+				// 3. Compress repeated tail blocks (endless loops)
+				new TailRepeatCleaner(strategy.tailRepeat),
+
+				// 4. Validate Japanese text quality (if enabled)
 				...(enableJapaneseValidation && strategy.japaneseValidation ? [
 					(() => {
 						const validationConfig: JapaneseValidationConfig = {};
