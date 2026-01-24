@@ -226,21 +226,22 @@ export class GPT4oTranscriptionStrategy extends TranscriptionStrategy {
 
 			// Check chunk size before sending to API
 			const chunkSizeMB = chunk.data.byteLength / (1024 * 1024);
-			if (chunkSizeMB > 25) {
-				const indexLabel = (chunk.id + 1).toString();
-				const errorMessage = `Chunk size ${chunkSizeMB.toFixed(1)}MB exceeds API limit of 25MB`;
-				results.push({
-					id: chunk.id,
+				if (chunkSizeMB > 25) {
+					const indexLabel = (chunk.id + 1).toString();
+					const errorMessage = `Chunk size ${chunkSizeMB.toFixed(1)}MB exceeds API limit of 25MB`;
+					results.push({
+						id: chunk.id,
 					text: t('modal.transcription.chunkFailure', { index: indexLabel, error: errorMessage }),
 					startTime: chunk.startTime,
 					endTime: chunk.endTime,
-					success: false,
-					error: errorMessage
-				});
-				progressState.completedChunks++;
-				this.reportWaveProgress(progressState.completedChunks, groupIndex, totalGroups, chunk.id, totalChunks, startTime);
-				continue;
-			}
+						success: false,
+						error: errorMessage
+					});
+					previousChunkText = '';
+					progressState.completedChunks++;
+					this.reportWaveProgress(progressState.completedChunks, groupIndex, totalGroups, chunk.id, totalChunks, startTime);
+					continue;
+				}
 
 			// Process chunk with previous context (within the group only)
 			let previousContext: string | undefined;
@@ -252,12 +253,16 @@ export class GPT4oTranscriptionStrategy extends TranscriptionStrategy {
 				}
 			}
 
-			const result = await this.transcribeChunkWithSingleRetry(chunk, options, previousContext, adaptiveState);
-			results.push(result);
+				const result = await this.transcribeChunkWithSingleRetry(chunk, options, previousContext, adaptiveState);
+				results.push(result);
 
-			if (result.success && result.text) {
-				previousChunkText = result.text;
-			}
+				if (result.success && result.text) {
+					previousChunkText = result.text;
+				} else {
+					// If a chunk fails, avoid using stale context from earlier chunks.
+					// Treat the next chunk as a "new start" so it can recover overlap content.
+					previousChunkText = '';
+				}
 
 			progressState.completedChunks++;
 			this.reportWaveProgress(progressState.completedChunks, groupIndex, totalGroups, chunk.id, totalChunks, startTime);
