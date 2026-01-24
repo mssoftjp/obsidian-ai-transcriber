@@ -149,8 +149,8 @@ const ko: TranslationKeys = {
 			title: '사용자 사전 관리',
 			fromPlaceholder: '변환원 (쉼표로 구분)',
 			toPlaceholder: '변환후',
-			autoModeDesc: '자동 감지 모드에서는 모든 언어 사전이 적용됩니다',
-			languageModeDesc: '{lang} 사전만 적용됩니다. ※사전 설정은 AI 처리의 보조 제안으로 사용되며, 문맥과 신뢰도에 따라 항상 적용되지 않을 수 있습니다.',
+			autoModeDesc: '자동 감지 모드에서는 모든 언어 사전이 적용됩니다. ※고정 보정은 자동 치환으로 적용되며, 문맥 보정은 키워드가 포함된 경우에만 적용됩니다.',
+			languageModeDesc: '{lang} 사전만 적용됩니다. ※고정 보정은 자동 치환으로 적용되며, 문맥 보정은 키워드가 포함된 경우에만 적용됩니다.',
 			contextPlaceholder: '키워드 (쉼표로 구분)',
 			limitReached: '사전 항목 수가 제한({limit}개)에 도달했습니다',
 			categories: {

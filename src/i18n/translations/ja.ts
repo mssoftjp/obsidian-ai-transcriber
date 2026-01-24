@@ -149,8 +149,8 @@ const ja: TranslationKeys = {
 			title: 'ユーザー辞書管理',
 			fromPlaceholder: '変換元 (カンマ区切りで複数可)',
 			toPlaceholder: '変換先',
-			autoModeDesc: '言語自動検出時は全言語の辞書が適用されます',
-			languageModeDesc: '{lang}の辞書のみが適用されます。※辞書設定はAIの補正候補として使用されますが、文脈や信頼度により必ずしも適用されない場合があります',
+			autoModeDesc: '言語自動検出時は全言語の辞書が適用されます。※固定補正は自動置換、文脈補正はキーワードが含まれる場合に適用されます',
+			languageModeDesc: '{lang}の辞書のみが適用されます。※固定補正は自動置換、文脈補正はキーワードが含まれる場合に適用されます',
 			contextPlaceholder: 'キーワード (カンマ区切り)',
 			limitReached: '辞書項目数が上限({limit}件)に達しました',
 			categories: {

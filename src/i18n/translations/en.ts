@@ -149,8 +149,8 @@ const en: TranslationKeys = {
 			title: 'User dictionary management',
 			fromPlaceholder: 'From (comma-separated)',
 			toPlaceholder: 'To',
-			autoModeDesc: 'All language dictionaries will be applied in auto-detect mode',
-			languageModeDesc: 'Only {lang} dictionary will be applied. Note: Dictionary entries are suggestions used alongside AI processing. Depending on context and confidence scores, they may not always be applied.',
+			autoModeDesc: 'All language dictionaries will be applied in auto-detect mode. Note: Definite corrections are applied as automatic replacements; contextual corrections apply only when their keywords are present.',
+			languageModeDesc: 'Only the {lang} dictionary will be applied. Note: Definite corrections are applied as automatic replacements; contextual corrections apply only when their keywords are present.',
 			contextPlaceholder: 'Keywords (comma-separated)',
 			limitReached: 'Dictionary limit reached ({limit} entries)',
 			categories: {

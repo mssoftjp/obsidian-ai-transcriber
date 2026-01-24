@@ -149,8 +149,8 @@ const zh: TranslationKeys = {
 			title: '用户词典管理',
 			fromPlaceholder: '转换前 (逗号分隔)',
 			toPlaceholder: '转换后',
-			autoModeDesc: '自动检测语言时将应用所有语言的词典',
-			languageModeDesc: '仅应用{lang}词典。注：词典设置作为AI处理的辅助建议，受上下文和置信度影响，可能不会始终应用。',
+			autoModeDesc: '自动检测语言时将应用所有语言的词典。注：固定修正会作为自动替换应用；上下文修正仅在包含指定关键词时应用。',
+			languageModeDesc: '仅应用{lang}词典。注：固定修正会作为自动替换应用；上下文修正仅在包含指定关键词时应用。',
 			contextPlaceholder: '关键词 (逗号分隔)',
 			limitReached: '词典项目数已达上限({limit}个)',
 			categories: {
