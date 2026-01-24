@@ -4,17 +4,19 @@
  */
 
 import {
-		GPT4O_TRANSCRIBE_CONFIG,
-		buildGPT4oTranscribeRequest
-	} from '../../../config/openai/GPT4oTranscribeConfig';
+	GPT4O_TRANSCRIBE_CONFIG,
+	buildGPT4oTranscribeRequest
+} from '../../../config/openai/GPT4oTranscribeConfig';
 import { DEFAULT_REQUEST_CONFIG } from '../../../config/openai/index';
 import { Logger } from '../../../utils/Logger';
 import { ApiClient } from '../ApiClient';
 
-	import type {
-		GPT4oTranscribeParams,
-		GPT4oTranscribeRequestPayload
-	} from '../../../config/openai/GPT4oTranscribeConfig';
+import { extractTranscriptFromTagWrapper } from './TranscriptTagExtractor';
+
+import type {
+	GPT4oTranscribeParams,
+	GPT4oTranscribeRequestPayload
+} from '../../../config/openai/GPT4oTranscribeConfig';
 import type { AudioChunk } from '../../../core/audio/AudioTypes';
 import type {
 	TranscriptionResult,
@@ -148,18 +150,11 @@ export class GPT4oClient extends ApiClient {
 	/**
 	 * Parse GPT-4o API response
 	 */
-		private parseResponse(response: GPT4oResponse, chunk: AudioChunk): TranscriptionResult {
-			let text = response.text || '';
+			private parseResponse(response: GPT4oResponse, chunk: AudioChunk): TranscriptionResult {
+				let text = response.text || '';
 
-			// Extract content from <TRANSCRIPT> tags if present
-			const transcriptMatch = text.match(/<TRANSCRIPT>([\s\S]*?)<\/TRANSCRIPT>/);
-			if (transcriptMatch) {
-				this.logger.trace('Extracted text from TRANSCRIPT tags', { chunkId: chunk.id });
-				const extracted = transcriptMatch[1];
-				if (extracted !== undefined) {
-					text = extracted.trim();
-				}
-			}
+				const extraction = extractTranscriptFromTagWrapper(text);
+				text = extraction.extractedText;
 
 		const result = {
 			id: chunk.id,
@@ -170,11 +165,12 @@ export class GPT4oClient extends ApiClient {
 			// GPT-4o doesn't provide segments in basic JSON format
 		};
 
-		this.logger.debug('GPT-4o response parsed', {
-			chunkId: chunk.id,
-			textLength: result.text.length,
-			hasTranscriptTags: Boolean(transcriptMatch)
-		});
+			this.logger.debug('GPT-4o response parsed', {
+				chunkId: chunk.id,
+				textLength: result.text.length,
+				hasTranscriptTags: extraction.hadTranscriptTags,
+				transcriptTagMode: extraction.mode
+			});
 
 		return result;
 	}

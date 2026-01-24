@@ -4,6 +4,16 @@
 
 import { Logger } from '../../utils/Logger';
 
+export type OverlapMatchKind = 'ngram' | 'exact' | 'normalizedExact';
+
+export interface OverlapMatchLog {
+	kind: OverlapMatchKind;
+	matchLength: number;
+	matchPositionInPrevious: number;
+	matchPositionInCurrent: number;
+	similarity?: number;
+}
+
 export class OverlapDebugger {
 	private static logger = Logger.getLogger('OverlapDebugger');
 	private static enabled = true;
@@ -57,22 +67,12 @@ export class OverlapDebugger {
 		});
 	}
 
-	static logMatchFound(
-		matchLength: number,
-		matchPositionInPrevious: number,
-		matchPositionInCurrent: number,
-		matchedText: string
-	) {
+	static logMatchFound(match: OverlapMatchLog) {
 		if (!this.enabled) {
 			return;
 		}
 
-		this.logger.debug('*** MATCH FOUND ***', {
-			matchLength,
-			matchPositionInPrevious,
-			matchPositionInCurrent,
-			matchedText: matchedText.substring(0, 100) + (matchedText.length > 100 ? '...' : '')
-		});
+		this.logger.debug('*** MATCH FOUND ***', match);
 	}
 
 	static logNoMatchFound() {
@@ -90,7 +90,7 @@ export class OverlapDebugger {
 		this.logger.debug('Final Result', {
 			trimmedTextLength: trimmedText.length,
 			connector,
-			trimmedTextPreview: trimmedText.substring(0, 100) + (trimmedText.length > 100 ? '...' : '')
+			containsTranscriptTags: trimmedText.includes('<TRANSCRIPT>') || trimmedText.includes('</TRANSCRIPT>')
 		});
 	}
 }

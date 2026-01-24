@@ -342,7 +342,7 @@ const COMMON_REPETITION_THRESHOLDS: RepetitionThresholds = {
 		mode: 'consecutiveOnly',
 		windowSize: 8,
 		similarityThreshold: 0.9,
-		minRepeatCount: 2
+		minRepeatCount: 3
 	}
 };
 

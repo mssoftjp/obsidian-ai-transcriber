@@ -8,7 +8,9 @@
  * - Tolerate minor punctuation/whitespace drift via normalization + similarity threshold
  */
 
-import { Logger } from '../../../utils/Logger';
+	import { Logger } from '../../../utils/Logger';
+
+	import { splitIntoSentences } from './utils/TextSegmentation';
 
 import type { TextCleaner, CleaningResult, CleaningContext } from './interfaces/TextCleaner';
 
@@ -50,7 +52,7 @@ export class TailRepeatCleaner implements TextCleaner {
 		this.config = { ...DEFAULT_CONFIG, ...(config ?? {}) };
 	}
 
-	clean(text: string, _language: string = 'auto', context?: CleaningContext): CleaningResult {
+	clean(text: string, language: string = 'auto', context?: CleaningContext): CleaningResult {
 		if (!this.config.enabled) {
 			return this.buildResult(text, text, []);
 		}
@@ -68,7 +70,7 @@ export class TailRepeatCleaner implements TextCleaner {
 		}
 
 		// 2) Fallback: sentence-level tail loop removal (for single-paragraph endless loops)
-		const sentenceResult = this.compressRepeatedTailSentences(original, enableDetailedLogging);
+		const sentenceResult = this.compressRepeatedTailSentences(original, language, enableDetailedLogging);
 		if (sentenceResult.changed) {
 			return this.buildResult(text, sentenceResult.text, sentenceResult.patternsMatched);
 		}
@@ -127,9 +129,10 @@ export class TailRepeatCleaner implements TextCleaner {
 
 	private compressRepeatedTailSentences(
 		text: string,
+		language: string,
 		enableDetailedLogging: boolean
 	): { changed: boolean; text: string; patternsMatched: string[] } {
-		const sentences = this.splitSentences(text);
+		const sentences = splitIntoSentences(text, language);
 		if (sentences.length < this.config.minRepeatCount) {
 			return { changed: false, text, patternsMatched: [] };
 		}
@@ -266,29 +269,6 @@ export class TailRepeatCleaner implements TextCleaner {
 			.filter(Boolean);
 	}
 
-	private splitSentences(text: string): string[] {
-		// Keep sentence-ending punctuation AND any following whitespace to preserve reconstruction.
-		const segments: string[] = [];
-		const regex = /[^。.!?！？?]*[。.!?！？?]+\s*/g;
-
-		let lastIndex = 0;
-		for (const match of text.matchAll(regex)) {
-			const segment = match[0] ?? '';
-			const index = match.index ?? 0;
-			lastIndex = Math.max(lastIndex, index + segment.length);
-			if (segment.trim()) {
-				segments.push(segment);
-			}
-		}
-
-		const rest = text.slice(lastIndex);
-		if (rest.trim()) {
-			segments.push(rest);
-		}
-
-		return segments;
-	}
-
 	private normalizeNewlines(text: string): string {
 		return text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
 	}
@@ -306,8 +286,8 @@ export class TailRepeatCleaner implements TextCleaner {
 			if (code >= 0x30A1 && code <= 0x30F6) {
 				ch = String.fromCharCode(code - 0x60);
 			}
-			// Drop whitespace / punctuation / symbols
-			if (/[\p{White_Space}\p{P}\p{S}]/u.test(ch)) {
+			// Drop whitespace / punctuation / symbols / format controls (e.g., zero-width chars)
+			if (/[\p{White_Space}\p{P}\p{S}\p{Cf}]/u.test(ch)) {
 				continue;
 			}
 			out += ch;

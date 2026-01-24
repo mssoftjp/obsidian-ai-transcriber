@@ -243,11 +243,11 @@ export class TranscriptionMerger {
 		const STEP_SIZE = overlapConfig.candidateStepSize;
 		const SIMILARITY_THRESHOLD = overlapConfig.similarityThreshold;
 
-		// Validate inputs
-		if (!previousText || !currentText) {
-			this.logger.warn('Empty text provided to findOverlap');
-			return { trimmedText: currentText || '', connector: '\n\n' };
-		}
+			// Validate inputs
+			if (!previousText || !currentText) {
+				this.logger.warn('Empty text provided to findOverlap');
+				return { trimmedText: currentText || '', connector: this.determineConnector(previousText) };
+			}
 
 		// Debug logging using OverlapDebugger
 		OverlapDebugger.logOverlapDetection(
@@ -288,21 +288,71 @@ export class TranscriptionMerger {
 			MAX_OVERLAP,
 			SEARCH_RANGE
 		);
-		if (normalizedExactOverlap) {
-			const cleanedText = this.trimResidualOverlapAtBoundary(
-				previousText,
-				normalizedExactOverlap.trimmedText,
-				MIN_OVERLAP,
-				MAX_OVERLAP,
-				SEARCH_RANGE
-			);
-			return { trimmedText: cleanedText, connector: normalizedExactOverlap.connector };
-		}
+			if (normalizedExactOverlap) {
+				const cleanedText = this.trimResidualOverlapAtBoundary(
+					previousText,
+					normalizedExactOverlap.trimmedText,
+					MIN_OVERLAP,
+					MAX_OVERLAP,
+					SEARCH_RANGE
+				);
+				return { trimmedText: cleanedText, connector: normalizedExactOverlap.connector };
+			}
 
-		// 長い候補から短い候補へ順に試す（より多くの重複を除去するため）
-		for (let candidateLength = MAX_OVERLAP; candidateLength >= MIN_OVERLAP; candidateLength -= STEP_SIZE) {
-			// 前のチャンクの末尾から候補テキストを抽出
-			const candidateStart = Math.max(0, previousText.length - candidateLength);
+			// NOTE: Some models follow the prompt well and only repeat a short overlap at the boundary.
+			// If the configured MIN_OVERLAP is too high (or not loaded), fall back to a shorter threshold
+			// but keep boundary constraints strict to avoid false positives.
+			const softMinOverlap = Math.max(20, minMatchLength);
+			if (softMinOverlap < MIN_OVERLAP) {
+				const exactSoft = this.findExactOverlapFallback(
+					previousText,
+					currentText,
+					softMinOverlap,
+					MAX_OVERLAP,
+					SEARCH_RANGE,
+					{
+						maxLeadingGapInCurrent: 250,
+						maxTrailingGapInPrevious: 200
+					}
+				);
+				if (exactSoft) {
+					const cleanedText = this.trimResidualOverlapAtBoundary(
+						previousText,
+						exactSoft.trimmedText,
+						softMinOverlap,
+						MAX_OVERLAP,
+						SEARCH_RANGE
+					);
+					return { trimmedText: cleanedText, connector: exactSoft.connector };
+				}
+
+				const normalizedSoft = this.findNormalizedExactOverlapFallback(
+					previousText,
+					currentText,
+					softMinOverlap,
+					MAX_OVERLAP,
+					SEARCH_RANGE,
+					{
+						maxLeadingGapInCurrent: 250,
+						maxTrailingGapInPrevious: 200
+					}
+				);
+				if (normalizedSoft) {
+					const cleanedText = this.trimResidualOverlapAtBoundary(
+						previousText,
+						normalizedSoft.trimmedText,
+						softMinOverlap,
+						MAX_OVERLAP,
+						SEARCH_RANGE
+					);
+					return { trimmedText: cleanedText, connector: normalizedSoft.connector };
+				}
+			}
+
+			// 長い候補から短い候補へ順に試す（より多くの重複を除去するため）
+			for (let candidateLength = MAX_OVERLAP; candidateLength >= MIN_OVERLAP; candidateLength -= STEP_SIZE) {
+				// 前のチャンクの末尾から候補テキストを抽出
+				const candidateStart = Math.max(0, previousText.length - candidateLength);
 			const candidateText = previousText.slice(candidateStart);
 
 			// 候補が短すぎる場合はスキップ
@@ -325,14 +375,13 @@ export class TranscriptionMerger {
 				if (!lastMatch) {
 					continue;
 				}
-				const matchedText = currentText.slice(lastMatch.position, lastMatch.position + lastMatch.length);
-
-				OverlapDebugger.logMatchFound(
-					lastMatch.length,
-					previousText.length - candidateLength, // previous start position
-					lastMatch.position,
-					matchedText
-				);
+					OverlapDebugger.logMatchFound({
+						kind: 'ngram',
+						matchLength: lastMatch.length,
+						matchPositionInPrevious: previousText.length - candidateLength, // previous start position
+						matchPositionInCurrent: lastMatch.position,
+						similarity: lastMatch.similarity
+					});
 
 				if (matches.length > 1) {
 					this.logger.debug('Multiple overlap matches detected', {
@@ -358,17 +407,17 @@ export class TranscriptionMerger {
 			}
 		}
 
-		OverlapDebugger.logNoMatchFound();
-		return {
-			trimmedText: currentText,
-			connector: '\n\n'
-		};
-	}
+			OverlapDebugger.logNoMatchFound();
+			return {
+				trimmedText: currentText,
+				connector: this.determineConnector(previousText)
+			};
+		}
 
-	// すべての一致を検索するヘルパーメソッド
-	private findAllMatchesInRange(
-		candidateText: string,
-		searchText: string,
+		// すべての一致を検索するヘルパーメソッド
+		private findAllMatchesInRange(
+			candidateText: string,
+			searchText: string,
 		searchStart: number,
 		searchEnd: number,
 		similarityThreshold: number
@@ -384,16 +433,17 @@ export class TranscriptionMerger {
 			const targetText = searchText.slice(pos, pos + candidateLength);
 
 			// 正規化してn-gram類似度を計算
-			const similarity = calculateNormalizedNGramSimilarity(
-				candidateText,
-				targetText,
-				nGramSize,
-				{
-					removeSpaces: true,
-					removePunctuation: true,
-					toLowerCase: true
-					}
-			);
+				const similarity = calculateNormalizedNGramSimilarity(
+					candidateText,
+					targetText,
+					nGramSize,
+					{
+						removeSpaces: true,
+						removePunctuation: true,
+						unifyKana: true,
+						toLowerCase: true
+						}
+				);
 
 			if (similarity >= similarityThreshold) {
 				matches.push({ position: pos, length: candidateLength, similarity });
@@ -408,10 +458,16 @@ export class TranscriptionMerger {
 		return matches;
 	}
 
-	// コネクタ決定のヘルパーメソッド
-	private determineConnector(previousText: string): string {
-		return previousText.match(/[。.!?！？]$/) ? '\n\n' : ' ';
-	}
+		// コネクタ決定のヘルパーメソッド
+		private determineConnector(previousText: string): string {
+			const trimmed = previousText.trimEnd();
+			if (!trimmed) {
+				return '\n\n';
+			}
+
+			// Treat punctuation followed by closing quotes/brackets as sentence-ending.
+			return /[。.!?！？][」』”’"'）)\]】〉》〕］}]*$/.test(trimmed) ? '\n\n' : ' ';
+		}
 
 	private trimResidualOverlapAtBoundary(
 		previousText: string,
@@ -454,21 +510,25 @@ export class TranscriptionMerger {
 		return trimmed;
 	}
 
-	private findExactOverlapFallback(
-		previousText: string,
-		currentText: string,
-		minOverlapLength: number,
-		maxOverlapLength: number,
-		searchRangeInNext: number
-	): { trimmedText: string; connector: string } | null {
+		private findExactOverlapFallback(
+			previousText: string,
+			currentText: string,
+			minOverlapLength: number,
+			maxOverlapLength: number,
+			searchRangeInNext: number,
+			options?: {
+				maxLeadingGapInCurrent?: number;
+				maxTrailingGapInPrevious?: number;
+			}
+		): { trimmedText: string; connector: string } | null {
 		// If the fuzzy suffix-based match fails, try an exact longest-common-substring match
 		// within the previous tail and current head windows. This helps when the overlap exists
 		// but does not reach the very end of the previous chunk due to transcription drift.
 		// Keep this threshold configurable (via overlapDetection.minOverlapLength).
 		// We also apply strict positional constraints to reduce false positives.
-		const minExactLength = Math.max(20, minOverlapLength);
-		const tailWindow = Math.min(previousText.length, Math.max(500, maxOverlapLength));
-		const headWindow = Math.min(currentText.length, Math.max(500, searchRangeInNext));
+			const minExactLength = Math.max(20, minOverlapLength);
+			const tailWindow = Math.min(previousText.length, Math.max(500, maxOverlapLength));
+			const headWindow = Math.min(currentText.length, Math.max(500, searchRangeInNext));
 
 		const previousTailStart = Math.max(0, previousText.length - tailWindow);
 		const previousTail = previousText.slice(previousTailStart);
@@ -477,8 +537,8 @@ export class TranscriptionMerger {
 		// Guardrails to reduce false positives:
 		// - The match must be near the beginning of the current chunk text
 		// - The match must be near the end of the previous chunk text
-		const maxLeadingGapInCurrent = Math.max(60, Math.floor(headWindow * 0.25));
-		const maxTrailingGapInPrevious = Math.max(200, Math.floor(tailWindow * 0.8));
+			const maxLeadingGapInCurrent = options?.maxLeadingGapInCurrent ?? Math.max(60, Math.floor(headWindow * 0.25));
+			const maxTrailingGapInPrevious = options?.maxTrailingGapInPrevious ?? Math.max(200, Math.floor(tailWindow * 0.8));
 
 		const match = this.findLongestCommonSubstringWithConstraints(previousTail, currentHead, {
 			minLength: minExactLength,
@@ -494,8 +554,12 @@ export class TranscriptionMerger {
 		const matchEndInPrevious = positionInPrevious + match.length;
 		const trailingGapInPrevious = previousText.length - matchEndInPrevious;
 
-		const matchedText = currentText.slice(positionInCurrent, positionInCurrent + match.length);
-		OverlapDebugger.logMatchFound(match.length, positionInPrevious, positionInCurrent, matchedText);
+			OverlapDebugger.logMatchFound({
+				kind: 'exact',
+				matchLength: match.length,
+				matchPositionInPrevious: positionInPrevious,
+				matchPositionInCurrent: positionInCurrent
+			});
 
 		const matchEndInCurrent = positionInCurrent + match.length;
 		const trimmedText = currentText.slice(matchEndInCurrent).trimStart();
@@ -513,16 +577,20 @@ export class TranscriptionMerger {
 		return { trimmedText, connector };
 	}
 
-	private findNormalizedExactOverlapFallback(
-		previousText: string,
-		currentText: string,
-		minOverlapLength: number,
-		maxOverlapLength: number,
-		searchRangeInNext: number
-	): { trimmedText: string; connector: string } | null {
-		const minExactLength = Math.max(20, minOverlapLength);
-		const tailWindow = Math.min(previousText.length, Math.max(500, maxOverlapLength));
-		const headWindow = Math.min(currentText.length, Math.max(500, searchRangeInNext));
+		private findNormalizedExactOverlapFallback(
+			previousText: string,
+			currentText: string,
+			minOverlapLength: number,
+			maxOverlapLength: number,
+			searchRangeInNext: number,
+			options?: {
+				maxLeadingGapInCurrent?: number;
+				maxTrailingGapInPrevious?: number;
+			}
+		): { trimmedText: string; connector: string } | null {
+			const minExactLength = Math.max(20, minOverlapLength);
+			const tailWindow = Math.min(previousText.length, Math.max(500, maxOverlapLength));
+			const headWindow = Math.min(currentText.length, Math.max(500, searchRangeInNext));
 
 		const previousTailStart = Math.max(0, previousText.length - tailWindow);
 		const previousTail = previousText.slice(previousTailStart);
@@ -541,8 +609,8 @@ export class TranscriptionMerger {
 			return null;
 		}
 
-		const maxLeadingGapInCurrent = Math.max(60, Math.floor(headWindow * 0.25));
-		const maxTrailingGapInPrevious = Math.max(200, Math.floor(tailWindow * 0.8));
+			const maxLeadingGapInCurrent = options?.maxLeadingGapInCurrent ?? Math.max(60, Math.floor(headWindow * 0.25));
+			const maxTrailingGapInPrevious = options?.maxTrailingGapInPrevious ?? Math.max(200, Math.floor(tailWindow * 0.8));
 
 		const match = this.findLongestCommonSubstringWithConstraints(
 			previousNormalized.normalized,
@@ -575,8 +643,12 @@ export class TranscriptionMerger {
 		const matchEndInPrevious = previousTailStart + originalMatchEndInPrevious + 1;
 		const trailingGapInPrevious = previousText.length - matchEndInPrevious;
 
-		const matchedText = currentText.slice(positionInCurrent, originalMatchEndInCurrent + 1);
-		OverlapDebugger.logMatchFound(match.length, positionInPrevious, positionInCurrent, matchedText);
+			OverlapDebugger.logMatchFound({
+				kind: 'normalizedExact',
+				matchLength: match.length,
+				matchPositionInPrevious: positionInPrevious,
+				matchPositionInCurrent: positionInCurrent
+			});
 
 		const rawMatchEndInCurrentExclusive = this.advancePastSkippableChars(
 			currentText,
@@ -599,75 +671,94 @@ export class TranscriptionMerger {
 		return { trimmedText, connector };
 	}
 
-	private normalizeTextWithIndexMap(
-		text: string,
-		options: {
-			removeSpaces: boolean;
-			removePunctuation: boolean;
-			unifyKana: boolean;
-			toLowerCase: boolean;
-		}
-	): { normalized: string; indexMap: number[] } {
-		const indexMap: number[] = [];
-		const punctuationRegex = /[。、！？「」『』（）｛｝［］【】〈〉《》・…ー.,!?"'(){}[\]<>:;_-]/;
-		const whitespaceRegex = /[\s\u3000]/;
-
-		let normalized = '';
-		for (let i = 0; i < text.length; i++) {
-			let char = text[i];
-			if (!char) {
-				continue;
+		private normalizeTextWithIndexMap(
+			text: string,
+			options: {
+				removeSpaces: boolean;
+				removePunctuation: boolean;
+				unifyKana: boolean;
+				toLowerCase: boolean;
 			}
+		): { normalized: string; indexMap: number[] } {
+			const indexMap: number[] = [];
+			const punctuationRegex = /[。、！？「」『』（）｛｝［］【】〈〉《》・…ー，．：；‐‑‒–—―−.,!?"'’‘“”(){}[\]<>:;_-]/;
+			const whitespaceRegex = /[\s\u3000]/;
+			const formatCharRegex = /\p{Cf}/u;
 
-			if (options.toLowerCase) {
-				char = char.toLowerCase();
-			}
+			let normalized = '';
+			for (let i = 0; i < text.length; i++) {
+				const originalChar = text[i];
+				if (!originalChar) {
+					continue;
+				}
 
-			if (options.removePunctuation && punctuationRegex.test(char)) {
-				continue;
-			}
+				const nfkc = originalChar.normalize('NFKC');
+				for (const rawChar of nfkc) {
+					let char = rawChar;
+					if (!char) {
+						continue;
+					}
 
-			if (options.removeSpaces && whitespaceRegex.test(char)) {
-				continue;
-			}
+					if (formatCharRegex.test(char)) {
+						continue;
+					}
 
-			if (options.unifyKana) {
-				const charCode = char.charCodeAt(0);
-				if (charCode >= 0x30A1 && charCode <= 0x30F6) {
-					char = String.fromCharCode(charCode - 0x60);
+					if (options.toLowerCase) {
+						char = char.toLowerCase();
+					}
+
+					if (options.removePunctuation && punctuationRegex.test(char)) {
+						continue;
+					}
+
+					if (options.removeSpaces && whitespaceRegex.test(char)) {
+						continue;
+					}
+
+					if (options.unifyKana) {
+						const charCode = char.charCodeAt(0);
+						if (charCode >= 0x30A1 && charCode <= 0x30F6) {
+							char = String.fromCharCode(charCode - 0x60);
+						}
+					}
+
+					normalized += char;
+					indexMap.push(i);
 				}
 			}
 
-			normalized += char;
-			indexMap.push(i);
+			return { normalized, indexMap };
 		}
 
-		return { normalized, indexMap };
-	}
-
-	private advancePastSkippableChars(
-		text: string,
-		startIndex: number,
-		options: {
-			removeSpaces: boolean;
-			removePunctuation: boolean;
-		}
-	): number {
-		const punctuationRegex = /[。、！？「」『』（）｛｝［］【】〈〉《》・…ー.,!?"'(){}[\]<>:;_-]/;
-		const whitespaceRegex = /[\s\u3000]/;
-
-		let index = startIndex;
-		while (index < text.length) {
-			const char = text[index];
-			if (!char) {
-				index++;
-				continue;
+		private advancePastSkippableChars(
+			text: string,
+			startIndex: number,
+			options: {
+				removeSpaces: boolean;
+				removePunctuation: boolean;
 			}
+		): number {
+			const punctuationRegex = /[。、！？「」『』（）｛｝［］【】〈〉《》・…ー，．：；‐‑‒–—―−.,!?"'’‘“”(){}[\]<>:;_-]/;
+			const whitespaceRegex = /[\s\u3000]/;
+			const formatCharRegex = /\p{Cf}/u;
 
-			if (options.removeSpaces && whitespaceRegex.test(char)) {
-				index++;
-				continue;
-			}
+			let index = startIndex;
+			while (index < text.length) {
+				const char = text[index];
+				if (!char) {
+					index++;
+					continue;
+				}
+
+				if (formatCharRegex.test(char)) {
+					index++;
+					continue;
+				}
+
+				if (options.removeSpaces && whitespaceRegex.test(char)) {
+					index++;
+					continue;
+				}
 
 			if (options.removePunctuation && punctuationRegex.test(char)) {
 				index++;

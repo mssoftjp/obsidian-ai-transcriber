@@ -38,13 +38,14 @@ export class OverlapAnalyzer {
 			});
 		}
 
-		// Text analysis
-		this.logger.debug('Text Analysis:', {
-			previousTextLength: previousText.length,
-			currentTextLength: currentText.length,
-			previousTextEnd: previousText.slice(-100),
-			currentTextStart: currentText.slice(0, 100)
-		});
+			// Text analysis
+			this.logger.debug('Text Analysis:', {
+				previousTextLength: previousText.length,
+				currentTextLength: currentText.length,
+				previousContainsTranscriptTags: previousText.includes('<TRANSCRIPT>') || previousText.includes('</TRANSCRIPT>'),
+				currentContainsTranscriptTags: currentText.includes('<TRANSCRIPT>') || currentText.includes('</TRANSCRIPT>'),
+				currentStartsWithTranscriptTag: currentText.trimStart().startsWith('<TRANSCRIPT>')
+			});
 
 		// Configuration analysis
 		this.logger.debug('Configuration:', modelConfig);
@@ -63,14 +64,14 @@ export class OverlapAnalyzer {
 	/**
 	 * Find exact duplicate text between two strings
 	 */
-	private static findExactDuplicate(
-		text1: string,
-		text2: string,
-		minLength: number = 10
-	): { text: string; length: number; positionInPrevious: number; positionInCurrent: number } | null {
-		// Look for the longest common substring
-		let bestMatch = null;
-		let maxLength = 0;
+		private static findExactDuplicate(
+			text1: string,
+			text2: string,
+			minLength: number = 10
+		): { length: number; positionInPrevious: number; positionInCurrent: number } | null {
+			// Look for the longest common substring
+			let bestMatch = null;
+			let maxLength = 0;
 
 		// Search in the last part of text1 and first part of text2
 		const searchStart1 = Math.max(0, text1.length - 500);
@@ -87,14 +88,13 @@ export class OverlapAnalyzer {
 					k++;
 				}
 
-				if (k > maxLength && k >= minLength) {
-					maxLength = k;
-					bestMatch = {
-						text: text1.substring(i, i + k),
-						length: k,
-						positionInPrevious: i,
-						positionInCurrent: j
-					};
+					if (k > maxLength && k >= minLength) {
+						maxLength = k;
+						bestMatch = {
+							length: k,
+							positionInPrevious: i,
+							positionInCurrent: j
+						};
 				}
 			}
 		}

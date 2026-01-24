@@ -6,6 +6,7 @@
 import { Logger } from '../../../utils/Logger';
 
 import { PatternCompiler, META_BRACKET } from './utils/PatternCompiler';
+import { sliceHeadGraphemes, splitIntoSentences } from './utils/TextSegmentation';
 
 import type { DictionaryCorrector } from '../DictionaryCorrector';
 import type { TextCleaner, CleaningResult, CleaningContext } from './interfaces/TextCleaner';
@@ -232,7 +233,7 @@ import type {
 
 		// Remove paragraph-level repetitions if enabled
 		if (this.repetitionThresholds.paragraphRepeat?.enabled !== false) {
-			cleanedText = this.removeParagraphRepeats(cleanedText, enableDetailedLogging, removedSections);
+			cleanedText = this.removeParagraphRepeats(cleanedText, language, enableDetailedLogging, removedSections);
 		}
 
 		// Collapse repeating sentences (use configured threshold)
@@ -690,6 +691,7 @@ import type {
 	 */
 	private removeParagraphRepeats(
 		text: string,
+		language: string,
 		enableDetailedLogging: boolean = false,
 		removedSections: Array<{type: string, content: string, reason: string}> = []
 		): string {
@@ -698,20 +700,21 @@ import type {
 				return text;
 			}
 
-			const sentences = text.split(/(?<=[。.!?！？。])/);
+			const sentences = splitIntoSentences(text, language);
 			const headChars = config.headChars;
-			const minRepeatCount = config.minRepeatCount ?? 2;
+			const minRepeatCount = config.minRepeatCount ?? 3;
 			const similarityThreshold = config.similarityThreshold ?? 0.9;
 			const minLength = this.repetitionThresholds.minimumSentenceLengthForSimilarity ?? 6;
 
 			const normalizeForDedup = (s: string): string => {
 				const normalized = s.trim().normalize('NFKC').toLowerCase();
 				return normalized
+					.replace(/\p{Cf}/gu, '')
 					.replace(/[。、！？.!?\s]/g, '')
 					.replace(/[ァ-ヶ]/g, (match) => String.fromCharCode(match.charCodeAt(0) - 0x60));
 			};
 
-			const getFingerprint = (normalized: string): string => normalized.slice(0, headChars);
+			const getFingerprint = (normalized: string): string => sliceHeadGraphemes(normalized, headChars);
 
 			const keep: string[] = [];
 			let run: { items: string[]; fp: string; lastNormalized: string } | null = null;

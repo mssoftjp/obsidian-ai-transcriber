@@ -25,6 +25,13 @@ export interface JapaneseValidationConfig {
 	expectedCharsPerSecond?: number;
 	/** Whether to perform advanced linguistic checks */
 	enableAdvancedChecks?: boolean;
+	/**
+	 * When `language="auto"`, only run the Japanese validator if the text looks Japanese.
+	 * This reduces false positives and prevents unintended pipeline fallback for English/mixed transcripts.
+	 */
+	autoDetectMinKanaRatio?: number;
+	/** Minimum number of kana characters required when `language="auto"` */
+	autoDetectMinKanaCount?: number;
 }
 
 export class JapaneseTextValidator implements TextCleaner {
@@ -43,6 +50,8 @@ export class JapaneseTextValidator implements TextCleaner {
 			maxMergedWords: 5,
 			expectedCharsPerSecond: 1.5,
 			enableAdvancedChecks: true,
+			autoDetectMinKanaRatio: 0.05,
+			autoDetectMinKanaCount: 5,
 			...config
 			};
 
@@ -80,8 +89,8 @@ export class JapaneseTextValidator implements TextCleaner {
 			: undefined;
 		const originalLength = typeof originalLengthValue === 'number' ? originalLengthValue : text.length;
 
-		// Only validate Japanese text
-		if (language !== 'ja' && language !== 'auto') {
+		// Only validate Japanese text (language='auto' is gated by script heuristics)
+		if (!this.shouldValidateJapanese(text, language)) {
 			return {
 				cleanedText: text,
 				issues: [],
@@ -176,6 +185,27 @@ export class JapaneseTextValidator implements TextCleaner {
 				}
 			};
 		}
+
+	private shouldValidateJapanese(text: string, language: string): boolean {
+		if (language === 'ja') {
+			return true;
+		}
+
+		if (language !== 'auto') {
+			return false;
+		}
+
+		const compact = text.replace(/\s+/g, '');
+		if (!compact) {
+			return false;
+		}
+
+		const kanaCount = (compact.match(/[ぁ-ゖァ-ヺ]/g) ?? []).length;
+		const kanaRatio = kanaCount / compact.length;
+
+		return kanaCount >= this.config.autoDetectMinKanaCount &&
+		       kanaRatio >= this.config.autoDetectMinKanaRatio;
+	}
 
 	/**
 	 * Perform advanced linguistic checks for Japanese text

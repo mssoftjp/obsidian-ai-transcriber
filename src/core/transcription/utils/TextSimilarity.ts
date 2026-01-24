@@ -264,7 +264,7 @@ export function normalizeTextForComparison(
 		toLowerCase = true
 	} = options;
 
-	let normalized = text;
+	let normalized = text.normalize('NFKC').replace(/\p{Cf}/gu, '');
 
 	// Convert to lowercase for case-insensitive comparison
 	if (toLowerCase) {
@@ -275,7 +275,8 @@ export function normalizeTextForComparison(
 	if (removePunctuation) {
 		// Japanese punctuation: 。、！？「」『』（）｛｝［］【】〈〉《》・…ー
 		// English punctuation: .,!?"'(){}[]<>:;-_
-		normalized = normalized.replace(/[。、！？「」『』（）｛｝［］【】〈〉《》・…ー.,!?"'(){}[\]<>:;_-]/g, '');
+		// Other common punctuation: curly quotes, long dashes, full-width comma/period
+		normalized = normalized.replace(/[。、！？「」『』（）｛｝［］【】〈〉《》・…ー，．：；‐‑‒–—―−.,!?"'’‘“”(){}[\]<>:;_-]/g, '');
 	}
 
 	// Remove all spaces (including full-width spaces)

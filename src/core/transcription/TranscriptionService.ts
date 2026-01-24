@@ -17,23 +17,23 @@ import {
 	StandardCleaningPipeline
 } from './cleaners';
 
-import type {
-	CleaningPipeline,
-	CleaningContext,
-	PipelineConfig,
-	PipelineResult,
-	TextCleaner
-} from './cleaners';
-import type { ModelCleaningStrategy } from '../../config/ModelCleaningConfig';
-import type { DictionaryCorrector } from './DictionaryCorrector';
-import type {
-	TranscriptionResult,
-	TranscriptionOptions,
+	import type {
+		CleaningPipeline,
+		CleaningContext,
+		PipelineConfig,
+		PipelineResult,
+		TextCleaner
+	} from './cleaners';
+	import type { DictionaryCorrector } from './DictionaryCorrector';
+	import type {
+		TranscriptionResult,
+		TranscriptionOptions,
 	ModelSpecificOptions,
-	TranscriptionRequest,
-	TranscriptionValidation
-} from './TranscriptionTypes';
-import type { AudioChunk } from '../audio/AudioTypes';
+		TranscriptionRequest,
+		TranscriptionValidation
+	} from './TranscriptionTypes';
+	import type { ModelCleaningStrategy } from '../../config/ModelCleaningConfig';
+	import type { AudioChunk } from '../audio/AudioTypes';
 
 export abstract class TranscriptionService {
 	/**
