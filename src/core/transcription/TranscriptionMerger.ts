@@ -479,8 +479,10 @@ export class TranscriptionMerger {
 	): string {
 		// 1回のtrimで取り切れない「残りかす」の重複を、境界上でもう一度だけ落とす
 		// 例: current側で同じフレーズが2回繰り返された場合に、1回目の一致でtrimしても2回目が残ることがある
+		const originalLength = currentText.length;
 		let trimmed = currentText;
 		for (let pass = 0; pass < 2; pass++) {
+			const beforeLength = trimmed.length;
 			const exact = this.findExactOverlapFallback(
 				previousText,
 				trimmed,
@@ -490,6 +492,12 @@ export class TranscriptionMerger {
 			);
 			if (exact && exact.trimmedText.length < trimmed.length) {
 				trimmed = exact.trimmedText;
+				this.logger.debug('Residual overlap trimmed (exact)', {
+					pass: pass + 1,
+					beforeLength,
+					afterLength: trimmed.length,
+					removedChars: beforeLength - trimmed.length
+				});
 				continue;
 			}
 
@@ -502,10 +510,24 @@ export class TranscriptionMerger {
 			);
 			if (normalized && normalized.trimmedText.length < trimmed.length) {
 				trimmed = normalized.trimmedText;
+				this.logger.debug('Residual overlap trimmed (normalizedExact)', {
+					pass: pass + 1,
+					beforeLength,
+					afterLength: trimmed.length,
+					removedChars: beforeLength - trimmed.length
+				});
 				continue;
 			}
 
 			break;
+		}
+
+		if (trimmed.length < originalLength) {
+			this.logger.debug('Residual overlap trimming complete', {
+				originalLength,
+				finalLength: trimmed.length,
+				totalRemovedChars: originalLength - trimmed.length
+			});
 		}
 
 		return trimmed;

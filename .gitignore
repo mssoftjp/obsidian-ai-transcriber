@@ -49,6 +49,7 @@ coverage/
 
 # Local tests (security)
 tests/
+test/
 
 # AI tools configuration
 # Claude
