@@ -22,6 +22,8 @@ export { JapaneseTextValidator } from './JapaneseTextValidator';
 export type { JapaneseValidationConfig } from './JapaneseTextValidator';
 export { TailRepeatCleaner } from './TailRepeatCleaner';
 export type { TailRepeatConfig } from './TailRepeatCleaner';
+export { TimestampsTailRepeatCleaner } from './TimestampsTailRepeatCleaner';
+export type { TimestampsTailRepeatConfig } from './TimestampsTailRepeatCleaner';
 
 // Pipeline implementations
 export { StandardCleaningPipeline } from './StandardCleaningPipeline';

@@ -9,6 +9,7 @@ import { BaseHallucinationCleaner } from './BaseHallucinationCleaner';
 import { JapaneseTextValidator } from './JapaneseTextValidator';
 import { StandardCleaningPipeline } from './StandardCleaningPipeline';
 import { TailRepeatCleaner } from './TailRepeatCleaner';
+import { TimestampsTailRepeatCleaner } from './TimestampsTailRepeatCleaner';
 
 import type { JapaneseValidationConfig } from './JapaneseTextValidator';
 import type { DictionaryCorrector } from '../DictionaryCorrector';
@@ -28,10 +29,17 @@ export class WhisperCleaningPipeline extends StandardCleaningPipeline {
 				// 1. Remove basic hallucinations (repetitions, artifacts)
 				new BaseHallucinationCleaner(dictionaryCorrector, strategy),
 
-				// 2. Compress repeated tail blocks (endless loops)
+				// 2. Compress repeated tail blocks (timestamps-aware)
+				new TimestampsTailRepeatCleaner({
+					enabled: strategy.tailRepeat?.enabled ?? true,
+					minRepeatCount: strategy.tailRepeat?.minRepeatCount ?? 3,
+					similarityThreshold: strategy.tailRepeat?.similarityThreshold ?? 0.9
+				}),
+
+				// 3. Compress repeated tail blocks (endless loops)
 				new TailRepeatCleaner(strategy.tailRepeat),
 
-				// 3. Validate Japanese text quality
+				// 4. Validate Japanese text quality
 				...(strategy.japaneseValidation ? [
 					(() => {
 						const validationConfig: JapaneseValidationConfig = {};

@@ -7,10 +7,10 @@
  * - Avoid touching content in the middle of the transcript (reduce false positives)
  * - Tolerate minor punctuation/whitespace drift via normalization + similarity threshold
  */
+import { Logger } from '../../../utils/Logger';
 
-	import { Logger } from '../../../utils/Logger';
-
-	import { splitIntoSentences } from './utils/TextSegmentation';
+import { splitIntoSentences } from './utils/TextSegmentation';
+import { areSimilarNormalizedText, normalizeForComparison } from './utils/TextSimilarity';
 
 import type { TextCleaner, CleaningResult, CleaningContext } from './interfaces/TextCleaner';
 
@@ -90,7 +90,7 @@ export class TailRepeatCleaner implements TextCleaner {
 		const tailStart = Math.max(0, paragraphs.length - this.config.maxTailParagraphs);
 		const prefix = paragraphs.slice(0, tailStart);
 		const tail = paragraphs.slice(tailStart);
-		const normalizedTail = tail.map(p => this.normalizeForComparison(p));
+		const normalizedTail = tail.map(normalizeForComparison);
 
 		const maxUnit = Math.min(
 			this.config.maxUnitParagraphs,
@@ -140,7 +140,7 @@ export class TailRepeatCleaner implements TextCleaner {
 		const tailStart = Math.max(0, sentences.length - this.config.maxTailSentences);
 		const prefix = sentences.slice(0, tailStart);
 		const tail = sentences.slice(tailStart);
-		const normalizedTail = tail.map(s => this.normalizeForComparison(s));
+		const normalizedTail = tail.map(normalizeForComparison);
 
 		const maxUnit = Math.min(
 			this.config.maxUnitSentences,
@@ -223,43 +223,11 @@ export class TailRepeatCleaner implements TextCleaner {
 		for (let i = 0; i < a.length; i++) {
 			const left = a[i] ?? '';
 			const right = b[i] ?? '';
-			if (!this.isSimilarNormalized(left, right, threshold)) {
+			if (!areSimilarNormalizedText(left, right, threshold)) {
 				return false;
 			}
 		}
 		return true;
-	}
-
-	private isSimilarNormalized(a: string, b: string, threshold: number): boolean {
-		if (a === b) {
-			return true;
-		}
-		if (!a || !b) {
-			return false;
-		}
-		const similarity = this.calculateSimilarity(a, b);
-		return similarity >= threshold;
-	}
-
-	/**
-	 * Character-level similarity (fast, conservative threshold usage).
-	 * Note: This is intentionally simple; tail-only + minRepeatCount>=3 reduce false positives.
-	 */
-	private calculateSimilarity(a: string, b: string): number {
-		const longer = a.length >= b.length ? a : b;
-		const shorter = a.length >= b.length ? b : a;
-		if (longer.length === 0) {
-			return 1;
-		}
-
-		let matches = 0;
-		for (let i = 0; i < shorter.length; i++) {
-			const ch = shorter[i];
-			if (ch && longer.includes(ch)) {
-				matches++;
-			}
-		}
-		return matches / longer.length;
 	}
 
 	private splitParagraphs(text: string): string[] {
@@ -271,28 +239,6 @@ export class TailRepeatCleaner implements TextCleaner {
 
 	private normalizeNewlines(text: string): string {
 		return text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-	}
-
-	private normalizeForComparison(text: string): string {
-		const normalized = text.trim().normalize('NFKC').toLowerCase();
-		let out = '';
-		for (let i = 0; i < normalized.length; i++) {
-			let ch = normalized[i] ?? '';
-			if (!ch) {
-				continue;
-			}
-			// Unify katakana to hiragana for comparison
-			const code = ch.charCodeAt(0);
-			if (code >= 0x30A1 && code <= 0x30F6) {
-				ch = String.fromCharCode(code - 0x60);
-			}
-			// Drop whitespace / punctuation / symbols / format controls (e.g., zero-width chars)
-			if (/[\p{White_Space}\p{P}\p{S}\p{Cf}]/u.test(ch)) {
-				continue;
-			}
-			out += ch;
-		}
-		return out;
 	}
 
 	private buildResult(originalText: string, cleanedText: string, patternsMatched: string[]): CleaningResult {

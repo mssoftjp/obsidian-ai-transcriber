@@ -12,6 +12,7 @@ import {
 	JapaneseTextValidator,
 	PromptContaminationCleaner,
 	TailRepeatCleaner,
+	TimestampsTailRepeatCleaner,
 	WhisperCleaningPipeline,
 	GPT4oCleaningPipeline,
 	StandardCleaningPipeline
@@ -201,6 +202,8 @@ export abstract class TranscriptionService {
 			};
 			const strategy = getModelCleaningStrategy(this.modelId);
 			const result = await this.cleaningPipeline.execute(text, language, pipelineContext);
+			let selectedResult = result;
+			let selectedLabel: 'primary' | 'fallback1' | 'fallback2' = 'primary';
 
 			// Pipeline-level fallback: avoid catastrophic deletion while keeping strong deduplication.
 			// This re-runs the pipeline with safer settings when the output is suspiciously short.
@@ -219,21 +222,27 @@ export abstract class TranscriptionService {
 					// Fallback level 2: preserve more content (omit hallucination cleaner), keep tail repeat + validator.
 					const safePipeline2 = this.buildPipelineForStrategy(safeStrategy1, { omitHallucinationCleaner: true });
 					const safe2 = await safePipeline2.execute(text, language, pipelineContext);
-					return safe2.finalText;
+					selectedResult = safe2;
+					selectedLabel = 'fallback2';
+				} else {
+					selectedResult = safe1;
+					selectedLabel = 'fallback1';
 				}
+			}
 
-				return safe1.finalText;
+			if (pipelineContext.enableDetailedLogging) {
+				this.logger.debug(`[${this.modelId}] Cleaning pipeline audit (${selectedLabel})`, this.buildCleaningAudit(selectedResult));
 			}
 
 			// Log summary if there were significant changes or issues
-			if (result.metadata.totalIssuesFound > 0 || result.metadata.totalReductionRatio > 0.1) {
+			if (selectedResult.metadata.totalIssuesFound > 0 || selectedResult.metadata.totalReductionRatio > 0.1) {
 				this.logger.debug(`[${this.modelId}] Cleaning pipeline made significant adjustments`, {
-					issuesFound: result.metadata.totalIssuesFound,
-					reductionRatio: result.metadata.totalReductionRatio
+					issuesFound: selectedResult.metadata.totalIssuesFound,
+					reductionRatio: selectedResult.metadata.totalReductionRatio
 				});
 			}
 
-			return result.finalText;
+			return selectedResult.finalText;
 		} catch (error) {
 			// Provide more detailed error information
 			const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -250,6 +259,38 @@ export abstract class TranscriptionService {
 			// Return original text as fallback
 			return text;
 		}
+	}
+
+	private buildCleaningAudit(result: PipelineResult): {
+		total: PipelineResult['metadata'];
+		stages: Array<{
+			cleanerName: string;
+			originalLength: number;
+			cleanedLength: number;
+			reductionRatio: number;
+			issuesFound: number;
+			patternsMatchedCount: number;
+			patternsMatchedSample: string[];
+			processingTimeMs: number;
+		}>;
+	} {
+		return {
+			total: result.metadata,
+			stages: result.stageResults.map(stage => {
+				const metadata = stage.result.metadata;
+				const patternsMatched = metadata?.patternsMatched ?? [];
+				return {
+					cleanerName: stage.cleanerName,
+					originalLength: metadata?.originalLength ?? stage.result.cleanedText.length,
+					cleanedLength: metadata?.cleanedLength ?? stage.result.cleanedText.length,
+					reductionRatio: metadata?.reductionRatio ?? 0,
+					issuesFound: stage.result.issues.length,
+					patternsMatchedCount: patternsMatched.length,
+					patternsMatchedSample: patternsMatched.slice(0, 10),
+					processingTimeMs: stage.processingTimeMs ?? 0
+				};
+			})
+		};
 	}
 
 	private shouldRunPipelineFallback(
@@ -352,6 +393,12 @@ export abstract class TranscriptionService {
 				if (!omitHallucinationCleaner) {
 					cleaners.push(new BaseHallucinationCleaner(this.dictionaryCorrector, strategy));
 				}
+
+				cleaners.push(new TimestampsTailRepeatCleaner({
+					enabled: strategy.tailRepeat?.enabled ?? true,
+					minRepeatCount: strategy.tailRepeat?.minRepeatCount ?? 3,
+					similarityThreshold: strategy.tailRepeat?.similarityThreshold ?? 0.9
+				}));
 
 				cleaners.push(new TailRepeatCleaner(strategy.tailRepeat));
 

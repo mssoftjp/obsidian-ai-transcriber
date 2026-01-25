@@ -57,7 +57,7 @@ export class GPT4oTranscriptionStrategy extends TranscriptionStrategy {
 		chunks: AudioChunk[],
 		options: TranscriptionOptions
 	): Promise<TranscriptionResult[]> {
-		this.workflowLanguage = this.normalizeLanguageCode(options.language) ?? 'auto';
+		this.workflowLanguage = options.language;
 
 		if (chunks.length === 0) {
 			return [];
@@ -395,40 +395,6 @@ export class GPT4oTranscriptionStrategy extends TranscriptionStrategy {
 		});
 	}
 
-	private normalizeLanguageCode(language: string | undefined): string | null {
-		if (!language) {
-			return null;
-		}
-		const trimmed = language.trim();
-		if (!trimmed) {
-			return null;
-		}
-		const base = trimmed.split('-')[0] ?? trimmed;
-		return base.toLowerCase();
-	}
-
-	private resolveCleaningLanguage(results: TranscriptionResult[]): string {
-		const requested = this.normalizeLanguageCode(this.workflowLanguage) ?? 'auto';
-		if (requested !== 'auto') {
-			return requested;
-		}
-
-		const detected = results.find(r => r.success && r.language)?.language;
-		const normalizedDetected = this.normalizeLanguageCode(detected);
-		return normalizedDetected ?? 'auto';
-	}
-
-	private getTotalDurationSecondsFromResults(results: TranscriptionResult[]): number {
-		let minStart = Infinity;
-		let maxEnd = 0;
-		for (const result of results) {
-			minStart = Math.min(minStart, result.startTime);
-			maxEnd = Math.max(maxEnd, result.endTime);
-		}
-		const normalizedMinStart = Number.isFinite(minStart) ? minStart : 0;
-		return Math.max(0, maxEnd - normalizedMinStart);
-	}
-
 	/**
 	 * Extract last sentences from text (within token limit)
 	 */
@@ -497,16 +463,7 @@ export class GPT4oTranscriptionStrategy extends TranscriptionStrategy {
 			: valid;
 		let mergedText = this.merger.mergeWithOverlapRemoval(mergeInputs, { separator: '\n\n' });
 
-		// Apply cleaning pipeline to the merged text
-		// This includes duplicate removal and other GPT-4o specific cleaning
-		try {
-			const cleaningLanguage = this.resolveCleaningLanguage(results);
-			const audioDuration = this.getTotalDurationSecondsFromResults(results);
-			mergedText = await this.transcriptionService.cleanText(mergedText, cleaningLanguage, { audioDuration });
-		} catch (error) {
-			this.logger.error('Failed to clean merged text:', error);
-			// Continue with uncleaned text if cleaning fails
-		}
+		mergedText = await this.postProcessMergedText(mergedText, results, this.workflowLanguage);
 
 		// If we have partial results, prepend a notice
 		if (failed.length > 0) {

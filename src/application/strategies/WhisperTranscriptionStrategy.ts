@@ -21,6 +21,7 @@ export class WhisperTranscriptionStrategy extends TranscriptionStrategy {
 
 	private merger: TranscriptionMerger;
 	private rateLimitDelay: number;
+	private workflowLanguage: string = 'auto';
 
 	constructor(
 		transcriptionService: TranscriptionService,
@@ -43,6 +44,8 @@ export class WhisperTranscriptionStrategy extends TranscriptionStrategy {
 		chunks: AudioChunk[],
 		options: TranscriptionOptions
 	): Promise<TranscriptionResult[]> {
+		this.workflowLanguage = options.language;
+
 		const results: TranscriptionResult[] = [];
 		const startTime = Date.now();
 
@@ -108,11 +111,11 @@ export class WhisperTranscriptionStrategy extends TranscriptionStrategy {
 	/**
 	 * Merge results using timestamp-based algorithm
 	 */
-	mergeResults(results: TranscriptionResult[]): Promise<string> {
+	async mergeResults(results: TranscriptionResult[]): Promise<string> {
 		const { valid, failed } = this.filterResults(results);
 
 		if (valid.length === 0 && failed.length === 0) {
-			return Promise.resolve('');
+			return '';
 		}
 
 		// Log statistics
@@ -133,7 +136,7 @@ export class WhisperTranscriptionStrategy extends TranscriptionStrategy {
 			).join('\n');
 			const failedChunks = failed.map(f => f.id).join(', ') || failed.length.toString();
 			const notice = t('modal.transcription.partialFailedChunks', { chunks: failedChunks });
-			return Promise.resolve(`${notice}\n${errorInfo}`);
+			return `${notice}\n${errorInfo}`;
 		}
 
 		// Use timestamp-based merging if available
@@ -167,14 +170,16 @@ export class WhisperTranscriptionStrategy extends TranscriptionStrategy {
 				});
 			}
 
+		mergedText = await this.postProcessMergedText(mergedText, results, this.workflowLanguage);
+
 		// If we have partial results, prepend a notice
 		if (failed.length > 0) {
 			const failedChunks = failed.map(f => f.id).join(', ') || failed.length.toString();
 			const notice = t('modal.transcription.partialFailedChunks', { chunks: failedChunks });
-			return Promise.resolve(`${notice}\n\n${mergedText}`);
+			return `${notice}\n\n${mergedText}`;
 		}
 
-		return Promise.resolve(mergedText);
+		return mergedText;
 	}
 
 	/**

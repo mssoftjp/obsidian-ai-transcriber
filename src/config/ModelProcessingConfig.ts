@@ -159,7 +159,7 @@ export const DEFAULT_TRANSCRIPTION_CONFIG: TranscriptionConfig = {
 				useNGramScreening: true, // Enable fast N-gram screening
 				nGramSize: 3, // Use trigrams for screening
 				duplicateRemoval: {
-					enabled: true, // Enable post-merge duplicate removal
+					enabled: false, // Disabled - post-process cleaning handles deduplication
 					minDuplicateLength: 15, // Lower threshold for Whisper's short chunk duplicates
 					duplicateSimilarityThreshold: 0.75, // Using text normalization for better similarity detection
 					useFuzzyMatching: true // Use fuzzy matching for duplicate detection
@@ -195,7 +195,7 @@ export const DEFAULT_TRANSCRIPTION_CONFIG: TranscriptionConfig = {
 				useNGramScreening: true, // Enable fast N-gram screening
 				nGramSize: 3, // Use trigrams for screening
 				duplicateRemoval: {
-					enabled: true, // Enable post-merge duplicate removal
+					enabled: false, // Disabled - post-process cleaning handles deduplication
 					minDuplicateLength: 15, // Lower threshold for Whisper's short chunk duplicates
 					duplicateSimilarityThreshold: 0.75, // Using text normalization for better similarity detection
 					useFuzzyMatching: true // Use fuzzy matching for duplicate detection

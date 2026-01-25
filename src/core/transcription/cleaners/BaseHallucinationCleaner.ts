@@ -7,6 +7,7 @@ import { Logger } from '../../../utils/Logger';
 
 import { PatternCompiler, META_BRACKET } from './utils/PatternCompiler';
 import { sliceHeadGraphemes, splitIntoSentences } from './utils/TextSegmentation';
+import { calculateInclusionSimilarity, normalizeForComparison } from './utils/TextSimilarity';
 
 import type { DictionaryCorrector } from '../DictionaryCorrector';
 import type { TextCleaner, CleaningResult, CleaningContext } from './interfaces/TextCleaner';
@@ -134,7 +135,7 @@ import type {
 			if (enableDetailedLogging) {
 				removedSections.push({
 					type: 'meta_bracket',
-					content: metaMatches.join(', '),
+					content: `<redacted: ${metaMatches.join(', ').length} chars>`,
 					reason: 'Audio/visual meta information artifacts'
 				});
 			}
@@ -223,8 +224,8 @@ import type {
 			cleanedText = cleanedText.replace(/[ \t]+/g, ' '); // Only collapse spaces/tabs
 			cleanedText = cleanedText.replace(newlineRegex, '\n\n');
 		} else {
-			// For other languages, standard cleanup
-			cleanedText = cleanedText.replace(/\s+/g, ' ');
+			// Preserve paragraph structure across languages (avoid collapsing newlines into spaces)
+			cleanedText = cleanedText.replace(/[ \t]+/g, ' ');
 			cleanedText = cleanedText.replace(newlineRegex, '\n\n');
 		}
 		cleanedText = cleanedText.trim();
@@ -311,7 +312,7 @@ import type {
 					const removed = this.findRemovedText(beforeText, cleanedText);
 					removedSections.push({
 						type: 'short_char_repetition',
-						content: removed.substring(0, 100) + (removed.length > 100 ? '...' : ''),
+						content: `<redacted: ${removed.length} chars>`,
 						reason: 'Excessive short character repetition detected'
 					});
 				}
@@ -352,7 +353,7 @@ import type {
 						for (const match of matches) {
 							removedSections.push({
 								type: isRepetitionPattern ? 'repetition_pattern' : 'phrase_pattern',
-								content: match[0].substring(0, 100) + (match[0].length > 100 ? '...' : ''),
+								content: `<redacted: ${match[0].length} chars>`,
 								reason: `Pattern matched: ${pattern.toString().substring(0, 50)}...`
 							});
 						}
@@ -544,49 +545,13 @@ import type {
 			return false;
 		}
 
-		// Normalize sentences for comparison
-		const normalize = (s: string): string => {
-			return s
-				.replace(/[。、！？\s]/g, '') // Remove punctuation and whitespace
-				.replace(/[ァ-ヶ]/g, (match) => {
-					// Convert katakana to hiragana for comparison
-					return String.fromCharCode(match.charCodeAt(0) - 0x60);
-				});
-		};
+		const norm1 = normalizeForComparison(sent1);
+		const norm2 = normalizeForComparison(sent2);
 
-		const norm1 = normalize(sent1);
-		const norm2 = normalize(sent2);
-
-		// Calculate character-level similarity using Levenshtein distance
-		const similarity = this.calculateSimilarity(norm1, norm2);
+		const similarity = calculateInclusionSimilarity(norm1, norm2);
 
 		// Consider similar if threshold% or more characters match (configurable threshold)
 		return similarity >= this.repetitionThresholds.similarityThreshold;
-	}
-
-	/**
-	 * Calculate similarity ratio between two strings using simplified edit distance
-	 */
-	private calculateSimilarity(str1: string, str2: string): number {
-		const longer = str1.length > str2.length ? str1 : str2;
-		const shorter = str1.length > str2.length ? str2 : str1;
-
-		if (longer.length === 0) {
-			return 1.0;
-		}
-
-		// Simple character matching for efficiency
-		let matches = 0;
-		const shorterLen = shorter.length;
-
-		for (let i = 0; i < shorterLen; i++) {
-			const char = shorter[i] ?? '';
-			if (char && longer.includes(char)) {
-				matches++;
-			}
-		}
-
-		return matches / longer.length;
 	}
 
 	/**
@@ -621,7 +586,7 @@ import type {
 					if (enableDetailedLogging && match !== compressed) {
 						removedSections.push({
 							type: 'enumeration_repetition',
-							content: match.slice(0, 50) + (match.length > 50 ? '...' : ''),
+							content: `<redacted: ${match.length} chars>`,
 							reason: `Enumeration compressed (${match.length}→${compressed.length} chars)`
 						});
 					}
@@ -632,7 +597,7 @@ import type {
 				if (enableDetailedLogging) {
 					removedSections.push({
 						type: 'medium_length_repetition',
-						content: match.slice(0, 50) + (match.length > 50 ? '...' : ''),
+						content: `<redacted: ${match.length} chars>`,
 						reason: `Phrase "${repeatedUnit}" repeated`
 					});
 				}
@@ -706,14 +671,6 @@ import type {
 			const similarityThreshold = config.similarityThreshold ?? 0.9;
 			const minLength = this.repetitionThresholds.minimumSentenceLengthForSimilarity ?? 6;
 
-			const normalizeForDedup = (s: string): string => {
-				const normalized = s.trim().normalize('NFKC').toLowerCase();
-				return normalized
-					.replace(/\p{Cf}/gu, '')
-					.replace(/[。、！？.!?\s]/g, '')
-					.replace(/[ァ-ヶ]/g, (match) => String.fromCharCode(match.charCodeAt(0) - 0x60));
-			};
-
 			const getFingerprint = (normalized: string): string => sliceHeadGraphemes(normalized, headChars);
 
 			const keep: string[] = [];
@@ -732,7 +689,7 @@ import type {
 							const removed = run.items[i] ?? '';
 							removedSections.push({
 								type: 'paragraph_repeat',
-								content: removed.substring(0, 50) + (removed.length > 50 ? '...' : ''),
+								content: `<redacted: ${removed.length} chars>`,
 								reason: `Consecutive sentence repeat compressed (run=${runLength}, min=${minRepeatCount})`
 							});
 						}
@@ -751,7 +708,7 @@ import type {
 					continue;
 				}
 
-				const normalized = normalizeForDedup(sentence);
+				const normalized = normalizeForComparison(sentence);
 				const fp = getFingerprint(normalized);
 
 				if (!run) {
@@ -762,7 +719,7 @@ import type {
 				const fingerprintMatches = fp === run.fp;
 				const isComparable = normalized.length >= minLength && run.lastNormalized.length >= minLength;
 				const isSimilar = fingerprintMatches && isComparable
-					? this.calculateSimilarity(run.lastNormalized, normalized) >= similarityThreshold
+					? calculateInclusionSimilarity(run.lastNormalized, normalized) >= similarityThreshold
 					: false;
 
 				if (isSimilar) {

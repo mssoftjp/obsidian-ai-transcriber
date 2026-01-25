@@ -337,4 +337,53 @@ export abstract class TranscriptionStrategy {
 
 		return { valid, failed };
 	}
+
+	protected normalizeLanguageCode(language: string | undefined): string | null {
+		if (!language) {
+			return null;
+		}
+		const trimmed = language.trim();
+		if (!trimmed) {
+			return null;
+		}
+		const base = trimmed.split('-')[0] ?? trimmed;
+		return base.toLowerCase();
+	}
+
+	protected resolveCleaningLanguage(requestedLanguage: string | undefined, results: TranscriptionResult[]): string {
+		const requested = this.normalizeLanguageCode(requestedLanguage) ?? 'auto';
+		if (requested !== 'auto') {
+			return requested;
+		}
+
+		const detected = results.find(r => r.success && r.language)?.language;
+		const normalizedDetected = this.normalizeLanguageCode(detected);
+		return normalizedDetected ?? 'auto';
+	}
+
+	protected getTotalDurationSecondsFromResults(results: TranscriptionResult[]): number {
+		let minStart = Infinity;
+		let maxEnd = 0;
+		for (const result of results) {
+			minStart = Math.min(minStart, result.startTime);
+			maxEnd = Math.max(maxEnd, result.endTime);
+		}
+		const normalizedMinStart = Number.isFinite(minStart) ? minStart : 0;
+		return Math.max(0, maxEnd - normalizedMinStart);
+	}
+
+	protected async postProcessMergedText(
+		mergedText: string,
+		results: TranscriptionResult[],
+		requestedLanguage: string | undefined
+	): Promise<string> {
+		try {
+			const cleaningLanguage = this.resolveCleaningLanguage(requestedLanguage, results);
+			const audioDuration = this.getTotalDurationSecondsFromResults(results);
+			return await this.transcriptionService.cleanText(mergedText, cleaningLanguage, { audioDuration });
+		} catch (error) {
+			this.logger.error('Failed to clean merged text:', error);
+			return mergedText;
+		}
+	}
 }
