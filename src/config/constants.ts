@@ -28,19 +28,20 @@ export const SUPPORTED_FORMATS = {
 
 	/** サポートする動画ファイル拡張子 */
 	VIDEO_EXTENSIONS: [
-		'mp4', 'mov', 'avi', 'mkv', 'webm'
+		'mp4', 'm4v', 'mov', 'avi', 'mkv', 'webm'
 	] as string[],
 
 	/** 全てのサポートされる拡張子（後方互換性のため） */
 	EXTENSIONS: [
 		'mp3', 'm4a', 'wav', 'flac', 'ogg', 'aac',
-		'mp4', 'mov', 'avi', 'mkv', 'webm'
+		'mp4', 'm4v', 'mov', 'avi', 'mkv', 'webm'
 	] as string[],
 
 	/** MIMEタイプマッピング */
 	MIME_TYPES: {
 		'mp3': 'audio/mpeg',
 		'mp4': 'video/mp4',
+		'm4v': 'video/x-m4v',
 		'm4a': 'audio/mp4',
 		'wav': 'audio/wav',
 		'flac': 'audio/flac',

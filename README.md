@@ -4,9 +4,19 @@ A powerful speech-to-text transcription plugin for Obsidian that uses OpenAI's G
 
 ## Features
 
-- **File Transcription**: Transcribe existing audio files (MP3, WAV, WebM, M4A, etc.)
+- **File Transcription**: Transcribe existing audio and video files (see supported formats below)
 - **Post-Processing**: Optional word correction to improve transcription accuracy
 - **Multi-Language**: Supports multiple languages with automatic detection
+
+## Supported file formats
+
+Supported extensions:
+- **Audio**: `mp3`, `m4a`, `wav`, `flac`, `ogg`, `aac`
+- **Video**: `mp4`, `m4v`, `mov`, `avi`, `mkv`, `webm`
+
+Notes:
+- Video files are processed by extracting the audio track. Support depends on the file codec/DRM and your environment; if it fails, convert to an audio format (e.g., `m4a`, `wav`, `mp3`).
+- The external file picker currently supports up to **500MB** per file. Files already in your vault have no explicit size limit, but very large files may take longer and use more memory, which can affect performance; consider splitting if needed.
 
 ## Requirements
 
@@ -64,10 +74,10 @@ If `fvad.wasm` is not present, the plugin automatically falls back to server-sid
 
 ## Usage
 
-### Transcribing Audio Files
+### Transcribing Audio/Video Files
 
 1. Use the command palette: "AI Transcriber: Transcribe audio file"
-2. Select an audio file from your device
+2. Select an audio or video file from your device
 3. Choose transcription settings
 4. Wait for processing
 5. The transcription text will be saved to your specified folder
@@ -177,9 +187,19 @@ OpenAIのGPT-4o transcribeとWhisper APIを使用したObsidian用の強力な�
 
 ## 機能
 
-- **ファイル文字起こし**: 既存の音声ファイル（MP3、WAV、WebM、M4Aなど）を文字起こし
+- **ファイル文字起こし**: 音声ファイル・動画ファイルを文字起こし（対応形式は下記）
 - **後処理**: 文字起こし精度を向上させるオプションの単語校正機能
 - **多言語対応**: 自動検出による複数言語のサポート
+
+## 対応ファイル形式
+
+対応している拡張子:
+- **音声**: `mp3`, `m4a`, `wav`, `flac`, `ogg`, `aac`
+- **動画**: `mp4`, `m4v`, `mov`, `avi`, `mkv`, `webm`
+
+補足:
+- 動画ファイルは音声トラックを抽出して処理します。コーデック/DRMや環境によっては失敗する場合があるため、その場合は音声形式（例: `m4a`, `wav`, `mp3`）に変換してお試しください。
+- Vault外から選択するファイルは現状 **最大500MB** までです。Vault内のファイルには明示的な上限は設けていませんが、大きいファイルは処理に時間がかかったり、メモリ使用量が増えて動作が重くなることがあります。必要に応じて分割してお試しください。
 
 ## 必要条件
 
@@ -236,10 +256,10 @@ OpenAIのGPT-4o transcribeとWhisper APIを使用したObsidian用の強力な�
 
 ## 使用方法
 
-### 音声ファイルの文字起こし
+### 音声/動画ファイルの文字起こし
 
 1. コマンドパレット: 「AI Transcriber: 音声ファイルを文字起こし」を使用
-2. デバイスから音声ファイルを選択
+2. デバイスから音声/動画ファイルを選択
 3. 文字起こし設定を選択
 4. 処理を待つ
 5. 文字起こしテキストが指定されたフォルダに保存されます

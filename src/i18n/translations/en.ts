@@ -408,7 +408,7 @@ const en: TranslationKeys = {
 		notices: {
 			settingsCheck: 'Please check your API key in settings',
 			settingsConnectionTest: 'Please try the test connection button in settings.',
-			supportedFormats: 'Supported formats include audio (mp3, wav, m4a, flac, aac, ogg) and video (mp4, mov, avi, mkv, webm).',
+			supportedFormats: 'Supported formats include audio (mp3, wav, m4a, flac, aac, ogg) and video (mp4, m4v, mov, avi, mkv, webm).',
 			networkRetry: 'Please check network connection and try again',
 			formatConversion: 'Please convert to wav or mp3 format and try again.',
 			sizeLimit: 'The advanced option supports 20 megabytes per 25 minutes, and the whisper option supports 20 megabytes.',

@@ -408,7 +408,7 @@ const ja: TranslationKeys = {
 		notices: {
 			settingsCheck: '設定画面でAPIキーを確認してください',
 			settingsConnectionTest: '設定画面の「接続テスト」ボタンをお試しください',
-			supportedFormats: '対応形式: 音声(MP3, WAV, M4A, FLAC, AAC, OGG)、動画(MP4, MOV, AVI, MKV, WebM)',
+			supportedFormats: '対応形式: 音声(MP3, WAV, M4A, FLAC, AAC, OGG)、動画(MP4, M4V, MOV, AVI, MKV, WebM)',
 			networkRetry: 'ネットワーク接続を確認してから再度お試しください',
 			formatConversion: 'WAVやMP3形式に変換してから再度お試しください',
 			sizeLimit: 'GPT-4o: 20MB/25分、Whisper: 20MB',

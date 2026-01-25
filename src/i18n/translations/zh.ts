@@ -408,7 +408,7 @@ const zh: TranslationKeys = {
 		notices: {
 			settingsCheck: '请在设置界面检查 API 密钥',
 			settingsConnectionTest: '请尝试设置界面的"连接测试"按钮',
-			supportedFormats: '支持的格式：音频（MP3、WAV、M4A、FLAC、AAC、OGG）、视频（MP4、MOV、AVI、MKV、WebM）',
+			supportedFormats: '支持的格式：音频（MP3、WAV、M4A、FLAC、AAC、OGG）、视频（MP4、M4V、MOV、AVI、MKV、WebM）',
 			networkRetry: '检查网络连接后再试',
 			formatConversion: '请转换为 WAV 或 MP3 格式后再试',
 			sizeLimit: 'GPT-4o：20MB/25分钟，Whisper：20MB',
