@@ -29,6 +29,9 @@ export interface GPT4oPipelineOptions {
 	enableJapaneseValidation?: boolean;
 }
 
+/**
+ * @deprecated Use `TranscriptionService.cleanText()` (pipeline factory) instead.
+ */
 export class GPT4oCleaningPipeline extends StandardCleaningPipeline {
 
 	constructor(dictionaryCorrector?: DictionaryCorrector, options: GPT4oPipelineOptions = {}) {
@@ -93,43 +96,6 @@ export class GPT4oCleaningPipeline extends StandardCleaningPipeline {
 		};
 
 		super(config);
-	}
-
-	/**
-	 * Create a GPT-4o pipeline with default settings
-	 */
-	static createDefault(dictionaryCorrector?: DictionaryCorrector, modelId: string = 'gpt-4o-mini-transcribe'): GPT4oCleaningPipeline {
-		return new GPT4oCleaningPipeline(dictionaryCorrector, {
-			modelId,
-			aggressivePromptCleaning: false,
-			enableDetailedLogging: false,
-			enableJapaneseValidation: true
-		});
-	}
-
-	/**
-	 * Create a GPT-4o pipeline with aggressive cleaning for heavily contaminated text
-	 */
-	static createAggressive(dictionaryCorrector?: DictionaryCorrector, customPrompts: string[] = [], modelId: string = 'gpt-4o-mini-transcribe'): GPT4oCleaningPipeline {
-		return new GPT4oCleaningPipeline(dictionaryCorrector, {
-			modelId,
-			aggressivePromptCleaning: true,
-			customPrompts,
-			enableDetailedLogging: true,
-			enableJapaneseValidation: true
-		});
-	}
-
-	/**
-	 * Create a GPT-4o pipeline with debug logging enabled
-	 */
-	static createWithLogging(dictionaryCorrector?: DictionaryCorrector, modelId: string = 'gpt-4o-mini-transcribe'): GPT4oCleaningPipeline {
-		return new GPT4oCleaningPipeline(dictionaryCorrector, {
-			modelId,
-			aggressivePromptCleaning: false,
-			enableDetailedLogging: true,
-			enableJapaneseValidation: true
-		});
 	}
 
 	/**

@@ -13,28 +13,26 @@ import {
 	PromptContaminationCleaner,
 	TailRepeatCleaner,
 	TimestampsTailRepeatCleaner,
-	WhisperCleaningPipeline,
-	GPT4oCleaningPipeline,
 	StandardCleaningPipeline
 } from './cleaners';
 
-	import type {
-		CleaningPipeline,
-		CleaningContext,
-		PipelineConfig,
-		PipelineResult,
-		TextCleaner
-	} from './cleaners';
-	import type { DictionaryCorrector } from './DictionaryCorrector';
-	import type {
-		TranscriptionResult,
-		TranscriptionOptions,
+import type {
+	CleaningPipeline,
+	CleaningContext,
+	PipelineConfig,
+	PipelineResult,
+	TextCleaner
+} from './cleaners';
+import type { DictionaryCorrector } from './DictionaryCorrector';
+import type {
+	TranscriptionResult,
+	TranscriptionOptions,
 	ModelSpecificOptions,
-		TranscriptionRequest,
-		TranscriptionValidation
-	} from './TranscriptionTypes';
-	import type { ModelCleaningStrategy } from '../../config/ModelCleaningConfig';
-	import type { AudioChunk } from '../audio/AudioTypes';
+	TranscriptionRequest,
+	TranscriptionValidation
+} from './TranscriptionTypes';
+import type { ModelCleaningStrategy } from '../../config/ModelCleaningConfig';
+import type { AudioChunk } from '../audio/AudioTypes';
 
 export abstract class TranscriptionService {
 	/**
@@ -79,11 +77,6 @@ export abstract class TranscriptionService {
 	abstract testConnection(apiKey: string): Promise<boolean>;
 
 	/**
-	 * Format transcription result (remove hallucinations, etc.)
-	 */
-	abstract formatResult(result: TranscriptionResult): Promise<TranscriptionResult>;
-
-	/**
 	 * Estimate transcription cost
 	 */
 	abstract estimateCost(durationSeconds: number): {
@@ -106,6 +99,7 @@ export abstract class TranscriptionService {
 	 * Text cleaning pipeline for this model
 	 */
 	protected cleaningPipeline: CleaningPipeline | undefined;
+	private cleaningDebugMode = false;
 
 	/**
 	 * Logger instance
@@ -134,6 +128,7 @@ export abstract class TranscriptionService {
 	 * Initialize the cleaning pipeline for this model
 	 */
 	protected initializeCleaningPipeline(debugMode: boolean = false): void {
+		this.cleaningDebugMode = debugMode;
 		const strategy = getModelCleaningStrategy(this.modelId, debugMode);
 
 		// CLEANER_DEBUG_START - Remove this block after confirming new cleaner system works
@@ -141,28 +136,7 @@ export abstract class TranscriptionService {
 		//
 		// CLEANER_DEBUG_END
 
-			switch (strategy.pipelineType) {
-			case 'whisper':
-				this.cleaningPipeline = debugMode
-					? WhisperCleaningPipeline.createWithLogging(this.dictionaryCorrector, this.modelId)
-					: WhisperCleaningPipeline.createDefault(this.dictionaryCorrector, this.modelId);
-				break;
-
-			case 'gpt4o':
-				this.cleaningPipeline = debugMode
-					? GPT4oCleaningPipeline.createWithLogging(this.dictionaryCorrector, this.modelId)
-					: GPT4oCleaningPipeline.createDefault(this.dictionaryCorrector, this.modelId);
-				break;
-
-			case 'standard':
-				this.cleaningPipeline = new StandardCleaningPipeline({
-					name: 'StandardPipeline',
-					cleaners: [],
-					modelId: this.modelId,
-					enableDetailedLogging: debugMode
-				});
-				break;
-			}
+		this.cleaningPipeline = this.buildPipelineForStrategy(strategy, { enableDetailedLogging: debugMode });
 
 		// CLEANER_DEBUG_START - Remove this block after confirming new cleaner system works
 		//
@@ -195,12 +169,13 @@ export abstract class TranscriptionService {
 			return text;
 		}
 
-		try {
-			const pipelineContext: CleaningContext = {
-				modelId: this.modelId,
-				...(context ?? {})
-			};
-			const strategy = getModelCleaningStrategy(this.modelId);
+			try {
+				const pipelineContext: CleaningContext = {
+					modelId: this.modelId,
+					...(context ?? {}),
+					enableDetailedLogging: (context?.enableDetailedLogging ?? false) || this.cleaningDebugMode
+				};
+			const strategy = getModelCleaningStrategy(this.modelId, this.cleaningDebugMode);
 			const result = await this.cleaningPipeline.execute(text, language, pipelineContext);
 			let selectedResult = result;
 			let selectedLabel: 'primary' | 'fallback1' | 'fallback2' = 'primary';
@@ -215,12 +190,17 @@ export abstract class TranscriptionService {
 
 				// Fallback level 1: keep hallucination cleaning, but disable paragraph fingerprint dedup.
 				const safeStrategy1 = this.createStrategyWithParagraphRepeatDisabled(strategy);
-				const safePipeline1 = this.buildPipelineForStrategy(safeStrategy1);
+				const safePipeline1 = this.buildPipelineForStrategy(safeStrategy1, {
+					enableDetailedLogging: this.cleaningDebugMode
+				});
 				const safe1 = await safePipeline1.execute(text, language, pipelineContext);
 
 				if (this.shouldRunPipelineFallback(safe1, pipelineContext, safeStrategy1)) {
 					// Fallback level 2: preserve more content (omit hallucination cleaner), keep tail repeat + validator.
-					const safePipeline2 = this.buildPipelineForStrategy(safeStrategy1, { omitHallucinationCleaner: true });
+					const safePipeline2 = this.buildPipelineForStrategy(safeStrategy1, {
+						omitHallucinationCleaner: true,
+						enableDetailedLogging: this.cleaningDebugMode
+					});
 					const safe2 = await safePipeline2.execute(text, language, pipelineContext);
 					selectedResult = safe2;
 					selectedLabel = 'fallback2';
@@ -363,10 +343,11 @@ export abstract class TranscriptionService {
 
 	private buildPipelineForStrategy(
 		strategy: ModelCleaningStrategy,
-		options?: { omitHallucinationCleaner?: boolean }
+		options?: { omitHallucinationCleaner?: boolean; enableDetailedLogging?: boolean }
 	): CleaningPipeline {
 		const cleaners: TextCleaner[] = [];
 		const omitHallucinationCleaner = options?.omitHallucinationCleaner ?? false;
+		const enableDetailedLogging = strategy.enableDetailedLogging || (options?.enableDetailedLogging ?? false);
 
 		switch (strategy.pipelineType) {
 			case 'gpt4o': {
@@ -419,7 +400,7 @@ export abstract class TranscriptionService {
 			cleaners,
 			stopOnCriticalIssue: strategy.stopOnCriticalIssue,
 			maxReductionRatio: strategy.maxReductionRatio,
-			enableDetailedLogging: strategy.enableDetailedLogging
+			enableDetailedLogging
 		};
 
 		return new StandardCleaningPipeline(config);

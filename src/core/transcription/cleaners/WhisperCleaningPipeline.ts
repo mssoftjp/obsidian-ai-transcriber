@@ -15,7 +15,9 @@ import type { JapaneseValidationConfig } from './JapaneseTextValidator';
 import type { DictionaryCorrector } from '../DictionaryCorrector';
 import type { PipelineConfig } from './interfaces/CleaningPipeline';
 
-
+/**
+ * @deprecated Use `TranscriptionService.cleanText()` (pipeline factory) instead.
+ */
 export class WhisperCleaningPipeline extends StandardCleaningPipeline {
 
 	constructor(dictionaryCorrector?: DictionaryCorrector, enableDetailedLogging: boolean = false, modelId: string = 'whisper-1') {
@@ -69,20 +71,6 @@ export class WhisperCleaningPipeline extends StandardCleaningPipeline {
 		};
 
 		super(config);
-	}
-
-	/**
-	 * Create a Whisper pipeline with default settings
-	 */
-	static createDefault(dictionaryCorrector?: DictionaryCorrector, modelId: string = 'whisper-1'): WhisperCleaningPipeline {
-		return new WhisperCleaningPipeline(dictionaryCorrector, false, modelId);
-	}
-
-	/**
-	 * Create a Whisper pipeline with debug logging enabled
-	 */
-	static createWithLogging(dictionaryCorrector?: DictionaryCorrector, modelId: string = 'whisper-1'): WhisperCleaningPipeline {
-		return new WhisperCleaningPipeline(dictionaryCorrector, true, modelId);
 	}
 
 	/**

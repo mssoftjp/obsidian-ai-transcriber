@@ -13,15 +13,13 @@ import type { AudioPipeline } from '../../core/audio/AudioPipeline';
 import type { AudioInput, AudioChunk } from '../../core/audio/AudioTypes';
 import type { ChunkStrategy } from '../../core/chunking/ChunkingTypes';
 import type { TranscriptionStrategy } from '../../core/transcription/TranscriptionStrategy';
-import type { TranscriptionOptions, TranscriptionProgress } from '../../core/transcription/TranscriptionTypes';
+import type { TranscriptionOptions } from '../../core/transcription/TranscriptionTypes';
 import type { TFile } from 'obsidian';
 
 export interface WorkflowOptions {
 	startTime?: number;
 	endTime?: number;
 	language?: string;
-	customPrompt?: string;
-	onProgress?: (progress: TranscriptionProgress) => void;
 	signal?: AbortSignal;
 }
 

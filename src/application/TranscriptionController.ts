@@ -34,6 +34,8 @@ import type { AudioProcessingConfig } from '../core/audio/AudioTypes';
 import type { ChunkingService } from '../core/chunking/ChunkingService';
 import type { ChunkingConfig } from '../core/chunking/ChunkingTypes';
 import type { DictionaryEntry as CorrectionDictionaryEntry } from '../core/transcription/DictionaryCorrector';
+import type { TranscriptionService } from '../core/transcription/TranscriptionService';
+import type { TranscriptionStrategy } from '../core/transcription/TranscriptionStrategy';
 import type { TranscriptionProgress } from '../core/transcription/TranscriptionTypes';
 import type { ProgressTracker } from '../ui/ProgressTracker';
 import type { WorkflowOptions, WorkflowResult } from './workflows/TranscriptionWorkflow';
@@ -138,7 +140,7 @@ export class TranscriptionController {
 			const options = this.prepareWorkflowOptions(effectiveStartTime, effectiveEndTime, abortSignal);
 
 			// Create workflow
-			const workflow = this.createWorkflow();
+			const { workflow, dictionaryCorrector } = this.createWorkflow();
 
 			// Validate
 			const validation = await workflow.validate(audioFile, audioBuffer);
@@ -181,7 +183,7 @@ export class TranscriptionController {
 			}
 
 			// Apply dictionary correction if enabled
-			const correctedText = await this.applyDictionaryCorrection(result.text);
+			const correctedText = await this.applyDictionaryCorrection(result.text, dictionaryCorrector);
 
 			// Return both text and model used if available
 			if (result.modelUsed) {
@@ -390,18 +392,18 @@ export class TranscriptionController {
 	/**
 	 * Create workflow based on model
 	 */
-	private createWorkflow(): TranscriptionWorkflow {
+	private createWorkflow(): { workflow: TranscriptionWorkflow; dictionaryCorrector: DictionaryCorrector } {
 		this.logger.debug('Creating transcription workflow', { model: this.settings.model });
 
 		// Get API key
 		const apiKey = this.getApiKey();
 
 		// Create dictionary corrector with user dictionary
-		const dictionaryCorrector = this.createDictionaryCorrector();
+		const dictionaryCorrector = this.createDictionaryCorrector(apiKey);
 
 		// Create service and strategy
-		let service;
-		let strategy;
+		let service: TranscriptionService;
+		let strategy: TranscriptionStrategy;
 
 		const model = this.settings.model as string; // Cast to string
 
@@ -422,37 +424,40 @@ export class TranscriptionController {
 				gpt4oModel = 'gpt-4o-mini-transcribe';
 			}
 
-			this.logger.debug('Using GPT-4o transcription service', { model: gpt4oModel });
-			service = new GPT4oTranscriptionService(apiKey, gpt4oModel, dictionaryCorrector);
-			strategy = new GPT4oTranscriptionStrategy(
-				service,
-				this.createProgressAdapter()
-			);
-		}
+				this.logger.debug('Using GPT-4o transcription service', { model: gpt4oModel });
+				service = new GPT4oTranscriptionService(apiKey, gpt4oModel, dictionaryCorrector);
+				strategy = new GPT4oTranscriptionStrategy(
+					service,
+					this.createProgressAdapter()
+				);
+			}
 
-		// Create workflow
-			const pipeline = this.audioPipeline ?? this.createAudioPipeline();
-			this.audioPipeline = pipeline;
-			const workflow = new TranscriptionWorkflow(pipeline, strategy);
-			this.logger.debug('Workflow created successfully');
-			return workflow;
-		}
+			if (this.settings.debugMode) {
+				service.enableCleaningDebugMode();
+			}
+
+			// Create workflow
+				const pipeline = this.audioPipeline ?? this.createAudioPipeline();
+				this.audioPipeline = pipeline;
+				const workflow = new TranscriptionWorkflow(pipeline, strategy);
+				this.logger.debug('Workflow created successfully');
+				return { workflow, dictionaryCorrector };
+			}
 
 	/**
 	 * Apply dictionary correction to transcribed text
 	 */
-	private async applyDictionaryCorrection(text: string): Promise<string> {
+	private async applyDictionaryCorrection(text: string, corrector: DictionaryCorrector): Promise<string> {
 		// Only apply if dictionary correction is enabled
 		if (!this.settings.dictionaryCorrectionEnabled) {
 			this.logger.trace('Dictionary correction disabled, skipping');
 			return text;
 		}
 
-		this.logger.debug('Applying dictionary corrections...');
-		try {
-			const corrector = this.createDictionaryCorrector();
-			const currentLanguage = this.settings.language || 'auto';
-			const correctedText = await corrector.correct(text, currentLanguage);
+			this.logger.debug('Applying dictionary corrections...');
+			try {
+				const currentLanguage = this.settings.language || 'auto';
+				const correctedText = await corrector.correct(text, currentLanguage);
 
 			if (correctedText !== text) {
 				this.logger.debug('Dictionary corrections applied');
@@ -462,21 +467,21 @@ export class TranscriptionController {
 		} catch (error) {
 			this.logger.error('Dictionary correction failed', error);
 			// Return original text on error
-			return text;
+				return text;
+			}
 		}
-	}
 
 	/**
 	 * Create dictionary corrector with user dictionary
 	 */
-		private createDictionaryCorrector(): DictionaryCorrector {
-		// Get API key for GPT correction
-		// Enable GPT correction if post-processing is enabled
-		const useGPTCorrection = this.settings.postProcessingEnabled;
-		const resourceManager = ResourceManager.getInstance();
-		const gptService = useGPTCorrection
-			? new GPTDictionaryCorrectionService(this.getApiKey(), resourceManager)
-			: undefined;
+			private createDictionaryCorrector(apiKey: string): DictionaryCorrector {
+			// Get API key for GPT correction
+			// Enable GPT correction if post-processing is enabled
+			const useGPTCorrection = this.settings.postProcessingEnabled;
+			const resourceManager = ResourceManager.getInstance();
+			const gptService = useGPTCorrection
+				? new GPTDictionaryCorrectionService(apiKey, resourceManager)
+				: undefined;
 
 			const corrector = new DictionaryCorrector(useGPTCorrection, gptService);
 
@@ -679,12 +684,11 @@ export class TranscriptionController {
 			startTime?: number,
 			endTime?: number,
 			abortSignal?: AbortSignal
-		): WorkflowOptions {
-			const options: WorkflowOptions = {
-				language: this.settings.language,
-				onProgress: this.createProgressAdapter()
-				// Note: VAD is already applied at the file level before this point
-			};
+			): WorkflowOptions {
+				const options: WorkflowOptions = {
+					language: this.settings.language
+					// Note: VAD is already applied at the file level before this point
+				};
 			if (startTime !== undefined) {
 				options.startTime = startTime;
 			}

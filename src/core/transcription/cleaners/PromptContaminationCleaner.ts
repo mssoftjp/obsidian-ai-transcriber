@@ -38,6 +38,7 @@ export class PromptContaminationCleaner implements TextCleaner {
 
 	private config: PromptContaminationConfig;
 	private contaminationPatterns: ContaminationPatterns;
+	private strategy: ModelCleaningStrategy;
 	private logger: Logger;
 
 	/**
@@ -68,10 +69,11 @@ export class PromptContaminationCleaner implements TextCleaner {
 			modelId: 'gpt-4o-mini-transcribe', // Default fallback
 			...config
 		};
+		this.strategy = strategy ?? getModelCleaningStrategy(this.config.modelId || 'gpt-4o-mini-transcribe');
 		this.logger = Logger.getLogger('PromptContaminationCleaner');
 
 		// Load contamination patterns from strategy or use defaults
-			this.contaminationPatterns = strategy?.contaminationPatterns ?? {
+			this.contaminationPatterns = this.strategy.contaminationPatterns ?? {
 				instructionPatterns: [],
 				xmlPatternGroups: {
 					completeXmlTags: [],
@@ -84,8 +86,8 @@ export class PromptContaminationCleaner implements TextCleaner {
 		};
 
 		// Load and compile patterns
-		if (strategy?.contaminationPatterns) {
-			this.loadPatternsFromStrategy(strategy.contaminationPatterns);
+		if (this.strategy.contaminationPatterns) {
+			this.loadPatternsFromStrategy(this.strategy.contaminationPatterns);
 			this.logger.debug('Loaded contamination patterns', {
 				instructionPatternCount: this.commonInstructionPatterns.length,
 				xmlPatternGroupCount: Object.keys(this.xmlPatternGroups).length,
@@ -182,9 +184,8 @@ export class PromptContaminationCleaner implements TextCleaner {
 		const cleanedLength = cleaned.length;
 		const reductionRatio = originalLength > 0 ? (originalLength - cleanedLength) / originalLength : 0;
 
-		// Apply safety thresholds from configuration
-		const strategy = getModelCleaningStrategy(this.config.modelId || 'gpt-4o-mini-transcribe');
-		const thresholds = strategy.safetyThresholds;
+		// Apply safety thresholds from configuration (strategy injected from pipeline)
+		const thresholds = this.strategy.safetyThresholds;
 
 		// Detect potential issues with configured thresholds
 		if (reductionRatio > thresholds.warningThreshold) {
@@ -204,7 +205,7 @@ export class PromptContaminationCleaner implements TextCleaner {
 		// Check for remaining XML-like patterns
 		const remainingXml = cleaned.match(/<[^>]+>/g);
 		if (remainingXml && remainingXml.length > 0) {
-			issues.push(`Remaining XML-like patterns: ${remainingXml.slice(0, 3).join(', ')}`);
+			issues.push(`Remaining XML-like patterns detected: ${remainingXml.length} instances`);
 		}
 
 		return {
@@ -284,8 +285,7 @@ export class PromptContaminationCleaner implements TextCleaner {
 		_issues: string[]
 	): string {
 		let cleaned = text;
-		const strategy = getModelCleaningStrategy(this.config.modelId || 'gpt-4o-mini-transcribe');
-		const maxReduction = strategy.safetyThresholds.singlePatternMaxReduction;
+		const maxReduction = this.strategy.safetyThresholds.singlePatternMaxReduction;
 
 			// Process pattern groups in priority order
 			const groups = [

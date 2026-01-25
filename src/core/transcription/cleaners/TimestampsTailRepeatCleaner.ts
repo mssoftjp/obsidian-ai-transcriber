@@ -10,6 +10,7 @@ export interface TimestampsTailRepeatConfig {
 	minRepeatCount: number;
 	similarityThreshold: number;
 	maxUnitBlocks: number;
+	minTimestampedRatio: number;
 }
 
 const DEFAULT_CONFIG: TimestampsTailRepeatConfig = {
@@ -17,7 +18,8 @@ const DEFAULT_CONFIG: TimestampsTailRepeatConfig = {
 	maxTailBlocks: 30,
 	minRepeatCount: 3,
 	similarityThreshold: 0.9,
-	maxUnitBlocks: 6
+	maxUnitBlocks: 6,
+	minTimestampedRatio: 0.7
 };
 
 const TIMESTAMP_PREFIX_REGEX = /^\[\d+:\d{2}\s*(?:→|->)\s*\d+:\d{2}\]\s*/u;
@@ -53,14 +55,27 @@ export class TimestampsTailRepeatCleaner implements TextCleaner {
 		const blocks = this.splitBlocks(original);
 		const parsed = blocks.map(block => this.parseTimestampBlock(block));
 
-		const timestampedCount = parsed.filter(p => p.prefix.length > 0).length;
-		if (timestampedCount < this.config.minRepeatCount) {
+		const lastTimestampedIndex = this.findLastTimestampedIndex(parsed);
+		if (lastTimestampedIndex < 0) {
 			return this.buildResult(text, original, []);
 		}
 
-		const tailStart = Math.max(0, parsed.length - this.config.maxTailBlocks);
-		const head = parsed.slice(0, tailStart);
-		const tail = parsed.slice(tailStart);
+		const blocksToAnalyze = parsed.slice(0, lastTimestampedIndex + 1);
+		const trailingBlocks = parsed.slice(lastTimestampedIndex + 1);
+
+		const tailStart = Math.max(0, blocksToAnalyze.length - this.config.maxTailBlocks);
+		const head = blocksToAnalyze.slice(0, tailStart);
+		const tail = blocksToAnalyze.slice(tailStart);
+
+		const timestampedInTail = tail.filter(p => p.prefix.length > 0).length;
+		if (timestampedInTail < this.config.minRepeatCount) {
+			return this.buildResult(text, original, []);
+		}
+
+		const timestampedRatio = tail.length > 0 ? timestampedInTail / tail.length : 0;
+		if (timestampedRatio < this.config.minTimestampedRatio) {
+			return this.buildResult(text, original, []);
+		}
 
 		const normalizedTail = tail.map(block => normalizeForComparison(block.body));
 		const maxUnit = Math.min(
@@ -81,8 +96,8 @@ export class TimestampsTailRepeatCleaner implements TextCleaner {
 		const removeStart = tailLen - repeats * unit;
 		const keepTailPrefix = tail.slice(0, removeStart);
 		const keepPatternOnce = tail.slice(tailLen - unit);
-		const newBlocks = [...head, ...keepTailPrefix, ...keepPatternOnce];
-		const cleanedText = newBlocks.map(b => b.raw).join('\n\n').trim();
+		const newBlocks = [...head, ...keepTailPrefix, ...keepPatternOnce, ...trailingBlocks];
+		const cleanedText = newBlocks.map(b => b.raw).join('\n').trim();
 
 		const patternsMatched = [
 			`timestamps_tail_repeat: unit=${unit}, repeats=${repeats}, removed=${removedItems}`
@@ -100,8 +115,8 @@ export class TimestampsTailRepeatCleaner implements TextCleaner {
 
 	private splitBlocks(text: string): string[] {
 		return text
-			.split(/\n\s*\n+/)
-			.map(block => block.trim())
+			.split(/\n+/)
+			.map(line => line.trim())
 			.filter(Boolean);
 	}
 
@@ -114,6 +129,15 @@ export class TimestampsTailRepeatCleaner implements TextCleaner {
 		const prefix = match[0];
 		const body = block.slice(prefix.length).trimStart();
 		return { prefix, body, raw: block };
+	}
+
+	private findLastTimestampedIndex(blocks: TimestampBlock[]): number {
+		for (let i = blocks.length - 1; i >= 0; i--) {
+			if (blocks[i]?.prefix.length) {
+				return i;
+			}
+		}
+		return -1;
 	}
 
 	private findBestTailRepeat(

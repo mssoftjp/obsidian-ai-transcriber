@@ -27,6 +27,4 @@ export type { TimestampsTailRepeatConfig } from './TimestampsTailRepeatCleaner';
 
 // Pipeline implementations
 export { StandardCleaningPipeline } from './StandardCleaningPipeline';
-export { WhisperCleaningPipeline } from './WhisperCleaningPipeline';
-export { GPT4oCleaningPipeline } from './GPT4oCleaningPipeline';
 export type { GPT4oPipelineOptions } from './GPT4oCleaningPipeline';

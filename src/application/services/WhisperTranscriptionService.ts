@@ -15,8 +15,7 @@ import type {
 	TranscriptionOptions,
 	ModelSpecificOptions,
 	TranscriptionRequest,
-	TranscriptionValidation,
-	TranscriptionSegment
+	TranscriptionValidation
 } from '../../core/transcription/TranscriptionTypes';
 
 
@@ -182,43 +181,6 @@ export class WhisperTranscriptionService extends TranscriptionService {
 			this.logger.error('Connection test failed', error);
 			return false;
 		}
-	}
-
-	/**
-	 * Format transcription result using the new cleaning pipeline
-	 */
-	async formatResult(result: TranscriptionResult): Promise<TranscriptionResult> {
-		if (!result.success || !result.text) {
-			return result;
-		}
-
-		// Use the new cleaning pipeline for main text
-		const cleanedText = await this.cleanText(
-			result.text,
-				result.language || 'auto',
-				{
-					audioDuration: result.endTime - result.startTime,
-					isContinuation: result.id > 0
-				}
-			);
-
-		// Clean up segments if present (also use the new pipeline)
-		if (result.segments) {
-			result.segments = await Promise.all(
-				result.segments.map(async (segment: TranscriptionSegment) => ({
-					...segment,
-					text: await this.cleanText(segment.text, result.language || 'auto', {
-						audioDuration: segment.end - segment.start,
-						isContinuation: false
-					})
-				}))
-			);
-		}
-
-		return {
-			...result,
-			text: cleanedText
-		};
 	}
 
 	/**

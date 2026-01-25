@@ -187,35 +187,6 @@ export class GPT4oTranscriptionService extends TranscriptionService {
 	}
 
 	/**
-	 * Format transcription result using the new cleaning pipeline
-	 */
-	async formatResult(result: TranscriptionResult): Promise<TranscriptionResult> {
-		// CLEANER_DEBUG_START - Remove this block after confirming new cleaner system works
-		// CLEANER_DEBUG_END
-
-		if (!result.success || !result.text) {
-			return result;
-		}
-
-			// Use the new cleaning pipeline
-			const cleanedText = await this.cleanText(result.text, result.language || 'auto', {
-				audioDuration: result.endTime - result.startTime,
-				isContinuation: result.id > 0,
-				originalPrompt: 'GPT-4o transcription prompt' // Could be made more specific
-			});
-
-		// CLEANER_DEBUG_START - Remove this block after confirming new cleaner system works
-		// CLEANER_DEBUG_END
-
-		return {
-			...result,
-			text: cleanedText
-		};
-	}
-
-
-
-	/**
 	 * Estimate transcription cost
 	 */
 	estimateCost(durationSeconds: number): {

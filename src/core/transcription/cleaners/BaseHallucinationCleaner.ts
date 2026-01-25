@@ -238,7 +238,7 @@ import type {
 		}
 
 		// Collapse repeating sentences (use configured threshold)
-		cleanedText = this.collapseRepeatingSentences(cleanedText, this.repetitionThresholds.sentenceRepetition);
+		cleanedText = this.collapseRepeatingSentences(cleanedText, language, this.repetitionThresholds.sentenceRepetition);
 
 		const cleanedLength = cleanedText.length;
 		const reductionRatio = originalLength > 0 ? (originalLength - cleanedLength) / originalLength : 0;
@@ -481,9 +481,9 @@ import type {
 	/**
 	 * Collapse consecutive repeating sentences with similarity detection
 	 */
-	private collapseRepeatingSentences(text: string, threshold: number = 5): string {
-		// Split by sentence endings
-		const sentences = text.split(/(?<=[。.!?！？?])\s*/);
+	private collapseRepeatingSentences(text: string, language: string, threshold: number = 5): string {
+		// Split while preserving whitespace/newlines after sentence endings.
+		const sentences = splitIntoSentences(text, language);
 		const result: string[] = [];
 		let previous = '';
 		let count = 0;
@@ -808,12 +808,13 @@ import type {
 					elements[elements.length - 1] = lastElement.slice(0, -punctuation.length).trim();
 			}
 
-			// Debug log
-			if (this.strategy?.enableDetailedLogging) {
-				this.logger.debug(`[EnumerationDebug] Sentence: ${sentence}`);
-				this.logger.debug(`[EnumerationDebug] Elements: ${JSON.stringify(elements)}`);
-				this.logger.debug(`[EnumerationDebug] Elements length: ${elements.length}`);
-			}
+				// Debug log (do not log raw text)
+				if (this.strategy?.enableDetailedLogging) {
+					this.logger.debug('[EnumerationDebug] Analyzing sentence', {
+						sentenceLength: sentence.length,
+						elementCount: elements.length
+					});
+				}
 
 			// Try to find repeating patterns
 			// Skip patternLength = 1 (single word repetition) and start from 2

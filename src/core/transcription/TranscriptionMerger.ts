@@ -242,6 +242,7 @@ export class TranscriptionMerger {
 		const SEARCH_RANGE = overlapConfig.searchRangeInNext;
 		const STEP_SIZE = overlapConfig.candidateStepSize;
 		const SIMILARITY_THRESHOLD = overlapConfig.similarityThreshold;
+		const residualMinOverlap = Math.max(20, minMatchLength);
 
 			// Validate inputs
 			if (!previousText || !currentText) {
@@ -272,7 +273,7 @@ export class TranscriptionMerger {
 			const cleanedText = this.trimResidualOverlapAtBoundary(
 				previousText,
 				exactOverlap.trimmedText,
-				MIN_OVERLAP,
+				residualMinOverlap,
 				MAX_OVERLAP,
 				SEARCH_RANGE
 			);
@@ -292,7 +293,7 @@ export class TranscriptionMerger {
 				const cleanedText = this.trimResidualOverlapAtBoundary(
 					previousText,
 					normalizedExactOverlap.trimmedText,
-					MIN_OVERLAP,
+					residualMinOverlap,
 					MAX_OVERLAP,
 					SEARCH_RANGE
 				);
@@ -319,7 +320,7 @@ export class TranscriptionMerger {
 					const cleanedText = this.trimResidualOverlapAtBoundary(
 						previousText,
 						exactSoft.trimmedText,
-						softMinOverlap,
+						residualMinOverlap,
 						MAX_OVERLAP,
 						SEARCH_RANGE
 					);
@@ -341,7 +342,7 @@ export class TranscriptionMerger {
 					const cleanedText = this.trimResidualOverlapAtBoundary(
 						previousText,
 						normalizedSoft.trimmedText,
-						softMinOverlap,
+						residualMinOverlap,
 						MAX_OVERLAP,
 						SEARCH_RANGE
 					);
@@ -397,7 +398,7 @@ export class TranscriptionMerger {
 				const trimmedText = this.trimResidualOverlapAtBoundary(
 					previousText,
 					rawTrimmedText,
-					MIN_OVERLAP,
+					residualMinOverlap,
 					MAX_OVERLAP,
 					SEARCH_RANGE
 				);
@@ -1141,11 +1142,16 @@ export class TranscriptionMerger {
 		const formattedSegments = mergedSegments.map(segment => {
 			const startTime = this.formatTime(segment.start);
 			const endTime = this.formatTime(segment.end);
-			return `[${startTime} → ${endTime}] ${segment.text}`;
+			const sanitizedText = segment.text
+				.replace(/\r\n/g, '\n')
+				.replace(/\r/g, '\n')
+				.replace(/\s+/g, ' ')
+				.trim();
+			return `[${startTime} → ${endTime}] ${sanitizedText}`;
 		});
 
-		// Join with line breaks
-		let output = formattedSegments.join('\n\n');
+		// Join with line breaks (one timestamp per line)
+		let output = formattedSegments.join('\n');
 
 		// Apply duplicate removal to the formatted output if enabled
 		// Note: For GPT-4o, this is disabled as overlap removal is handled during merge
