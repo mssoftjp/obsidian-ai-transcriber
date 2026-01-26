@@ -170,12 +170,12 @@ export abstract class TranscriptionService {
 			return text;
 		}
 
-			try {
-				const pipelineContext: CleaningContext = {
-					modelId: this.modelId,
-					...(context ?? {}),
-					enableDetailedLogging: (context?.enableDetailedLogging ?? false) || this.cleaningDebugMode
-				};
+		try {
+			const pipelineContext: CleaningContext = {
+				modelId: this.modelId,
+				...(context ?? {}),
+				enableDetailedLogging: (context?.enableDetailedLogging ?? false) || this.cleaningDebugMode
+			};
 			const strategy = getModelCleaningStrategy(this.modelId, this.cleaningDebugMode);
 			const result = await this.cleaningPipeline.execute(text, language, pipelineContext);
 			let selectedResult = result;
@@ -212,7 +212,10 @@ export abstract class TranscriptionService {
 			}
 
 			if (pipelineContext.enableDetailedLogging) {
-				this.logger.debug(`[${this.modelId}] Cleaning pipeline audit (${selectedLabel})`, this.buildCleaningAudit(selectedResult));
+				this.logger.debug(
+					`[${this.modelId}] Cleaning pipeline audit (${selectedLabel})`,
+					this.buildCleaningAudit(selectedResult)
+				);
 			}
 
 			// Log summary if there were significant changes or issues
@@ -244,6 +247,7 @@ export abstract class TranscriptionService {
 
 	private buildCleaningAudit(result: PipelineResult): {
 		total: PipelineResult['metadata'];
+		stageSequence: string;
 		stages: Array<{
 			cleanerName: string;
 			originalLength: number;
@@ -255,22 +259,25 @@ export abstract class TranscriptionService {
 			processingTimeMs: number;
 		}>;
 	} {
+		const stages = result.stageResults.map(stage => {
+			const metadata = stage.result.metadata;
+			const patternsMatched = metadata?.patternsMatched ?? [];
+			return {
+				cleanerName: stage.cleanerName,
+				originalLength: metadata?.originalLength ?? stage.result.cleanedText.length,
+				cleanedLength: metadata?.cleanedLength ?? stage.result.cleanedText.length,
+				reductionRatio: metadata?.reductionRatio ?? 0,
+				issuesFound: stage.result.issues.length,
+				patternsMatchedCount: patternsMatched.length,
+				patternsMatchedSample: patternsMatched.slice(0, 10),
+				processingTimeMs: stage.processingTimeMs ?? 0
+			};
+		});
+
 		return {
 			total: result.metadata,
-			stages: result.stageResults.map(stage => {
-				const metadata = stage.result.metadata;
-				const patternsMatched = metadata?.patternsMatched ?? [];
-				return {
-					cleanerName: stage.cleanerName,
-					originalLength: metadata?.originalLength ?? stage.result.cleanedText.length,
-					cleanedLength: metadata?.cleanedLength ?? stage.result.cleanedText.length,
-					reductionRatio: metadata?.reductionRatio ?? 0,
-					issuesFound: stage.result.issues.length,
-					patternsMatchedCount: patternsMatched.length,
-					patternsMatchedSample: patternsMatched.slice(0, 10),
-					processingTimeMs: stage.processingTimeMs ?? 0
-				};
-			})
+			stageSequence: stages.map(stage => stage.cleanerName).join(' -> '),
+			stages
 		};
 	}
 
@@ -325,9 +332,6 @@ export abstract class TranscriptionService {
 
 	private createStrategyWithAggressiveDedupDisabled(strategy: ModelCleaningStrategy): ModelCleaningStrategy {
 		const repetitionThresholds = strategy.repetitionThresholds;
-		const consecutiveBlockRepeat = strategy.consecutiveBlockRepeat
-			? { ...strategy.consecutiveBlockRepeat, enabled: false }
-			: undefined;
 
 		const paragraphRepeat = repetitionThresholds?.paragraphRepeat
 			? { ...repetitionThresholds.paragraphRepeat, enabled: false }
@@ -344,8 +348,7 @@ export abstract class TranscriptionService {
 						paragraphRepeat
 					}
 				}
-				: {}),
-			...(consecutiveBlockRepeat ? { consecutiveBlockRepeat } : {})
+				: {})
 		};
 	}
 
@@ -366,15 +369,15 @@ export abstract class TranscriptionService {
 					modelId: strategy.modelId
 				}, strategy));
 
-				if (strategy.consecutiveBlockRepeat?.enabled !== false) {
-					cleaners.push(new ConsecutiveBlockRepeatCleaner(strategy.consecutiveBlockRepeat));
-				}
-
 				if (!omitHallucinationCleaner) {
 					cleaners.push(new BaseHallucinationCleaner(this.dictionaryCorrector, strategy));
 				}
 
 				cleaners.push(new TailRepeatCleaner(strategy.tailRepeat));
+
+				if (strategy.consecutiveBlockRepeat?.enabled !== false) {
+					cleaners.push(new ConsecutiveBlockRepeatCleaner(strategy.consecutiveBlockRepeat));
+				}
 
 				if (strategy.japaneseValidation) {
 					cleaners.push(new JapaneseTextValidator(strategy.japaneseValidation, strategy));

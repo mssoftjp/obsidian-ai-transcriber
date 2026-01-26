@@ -1,7 +1,7 @@
 /**
  * Consecutive block repeat cleaner
  *
- * Compresses consecutive duplicated sentence blocks anywhere in the transcript.
+ * Compresses consecutive duplicated blocks anywhere in the transcript.
  * This targets "A B C A B C" style loops (often seen with GPT models) while
  * keeping false positives low by requiring a minimum normalized block length.
  */
@@ -55,7 +55,11 @@ export class ConsecutiveBlockRepeatCleaner implements TextCleaner {
 
 		const sentences = splitIntoSentences(original, language);
 		if (sentences.length < 2) {
-			return this.buildResult(text, original, []);
+			const fallback = this.compressConsecutiveNormalizedTextBlocks(original, enableDetailedLogging);
+			if (!fallback.changed) {
+				return this.buildResult(text, original, []);
+			}
+			return this.buildResult(text, fallback.text, fallback.patternsMatched);
 		}
 
 		const normalizedSentences = sentences.map(normalizeForComparison);
@@ -103,7 +107,14 @@ export class ConsecutiveBlockRepeatCleaner implements TextCleaner {
 			i++;
 		}
 
-		const cleanedText = output.join('');
+		let cleanedText = output.join('');
+
+		const textBlockCompression = this.compressConsecutiveNormalizedTextBlocks(cleanedText, enableDetailedLogging);
+		if (textBlockCompression.changed) {
+			cleanedText = textBlockCompression.text;
+			patternsMatched.push(...textBlockCompression.patternsMatched);
+		}
+
 		if (cleanedText === original) {
 			return this.buildResult(text, original, []);
 		}
@@ -154,6 +165,209 @@ export class ConsecutiveBlockRepeatCleaner implements TextCleaner {
 		return text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
 	}
 
+	private compressConsecutiveNormalizedTextBlocks(
+		text: string,
+		enableDetailedLogging: boolean
+	): { changed: boolean; text: string; patternsMatched: string[] } {
+		// Covers repeats that are not aligned with sentence segmentation (e.g., chunk boundary cuts).
+		// Uses a normalized-text representation with an index map to safely remove repeats from the original string.
+		const minLen = Math.max(20, this.config.minBlockNormalizedChars);
+		const maxLenCap = 1000;
+
+		const normalized = this.normalizeForComparisonWithIndexMap(text);
+		if (normalized.normalized.length < minLen * 2) {
+			return { changed: false, text, patternsMatched: [] };
+		}
+
+		const { prefix, pow } = this.buildRollingHash(normalized.normalized);
+		const prefixLen = Math.min(20, Math.max(8, Math.floor(minLen / 4)));
+		const patternsMatched: string[] = [];
+		const removalRanges: Array<{ start: number; end: number }> = [];
+
+		let i = 0;
+		while (i <= normalized.normalized.length - minLen * 2) {
+			const remaining = normalized.normalized.length - i;
+			const maxLen = Math.min(maxLenCap, Math.floor(remaining / 2));
+			if (maxLen < minLen) {
+				break;
+			}
+
+			const prefixHash = this.substringHash(prefix, pow, i, i + prefixLen);
+			let best: { unit: number; repeats: number; removed: number } | null = null;
+
+			for (let unit = minLen; unit <= maxLen; unit++) {
+				if (this.substringHash(prefix, pow, i + unit, i + unit + prefixLen) !== prefixHash) {
+					continue;
+				}
+				if (!this.areNormalizedSubstringsEqual(normalized.normalized, prefix, pow, i, i + unit, unit)) {
+					continue;
+				}
+
+				let repeats = 2;
+				for (;;) {
+					const nextStart = i + repeats * unit;
+					if (nextStart + unit > normalized.normalized.length) {
+						break;
+					}
+					if (!this.areNormalizedSubstringsEqual(normalized.normalized, prefix, pow, i, nextStart, unit)) {
+						break;
+					}
+					repeats++;
+				}
+
+				const requiredRepeats = unit >= 160 ? 2 : 3;
+				if (repeats < requiredRepeats) {
+					continue;
+				}
+
+				const removed = (repeats - 1) * unit;
+				if (!best || removed > best.removed || (removed === best.removed && unit > best.unit)) {
+					best = { unit, repeats, removed };
+				}
+			}
+
+			if (best) {
+				const startNorm = i + best.unit;
+				const endNormExclusive = i + best.unit * best.repeats;
+				const startOrigRaw = normalized.indexMap[startNorm];
+				const endOrigRaw = normalized.indexMap[endNormExclusive - 1];
+
+				if (startOrigRaw !== undefined && endOrigRaw !== undefined) {
+					let startOrig = startOrigRaw;
+					while (startOrig > 0 && /\s/u.test(text[startOrig - 1] ?? '')) {
+						startOrig--;
+					}
+
+					let endOrig = endOrigRaw + 1;
+					while (endOrig < text.length && /\s/u.test(text[endOrig] ?? '')) {
+						endOrig++;
+					}
+
+					if (startOrig < endOrig) {
+						removalRanges.push({ start: startOrig, end: endOrig });
+						patternsMatched.push(
+							`consecutive_text_block_repeat: len=${best.unit}, repeats=${best.repeats}`
+						);
+					}
+				}
+
+				i += best.unit * best.repeats;
+				continue;
+			}
+
+			i++;
+		}
+
+		if (removalRanges.length === 0) {
+			return { changed: false, text, patternsMatched: [] };
+		}
+
+		removalRanges.sort((a, b) => a.start - b.start);
+		const mergedRanges: Array<{ start: number; end: number }> = [];
+		for (const range of removalRanges) {
+			const last = mergedRanges[mergedRanges.length - 1];
+			if (!last || range.start > last.end) {
+				mergedRanges.push({ ...range });
+				continue;
+			}
+			last.end = Math.max(last.end, range.end);
+		}
+
+		let out = '';
+		let cursor = 0;
+		for (const range of mergedRanges) {
+			out += text.slice(cursor, range.start);
+			cursor = range.end;
+		}
+		out += text.slice(cursor);
+
+		if (enableDetailedLogging && out !== text) {
+			const removedChars = text.length - out.length;
+			this.logger.debug('Compressed consecutive duplicated text blocks', {
+				compressions: mergedRanges.length,
+				removedChars
+			});
+		}
+
+		return { changed: out !== text, text: out, patternsMatched };
+	}
+
+	private normalizeForComparisonWithIndexMap(text: string): { normalized: string; indexMap: number[] } {
+		const indexMap: number[] = [];
+		let out = '';
+
+		for (let i = 0; i < text.length; i++) {
+			const originalChar = text[i];
+			if (!originalChar) {
+				continue;
+			}
+
+			const nfkc = originalChar.normalize('NFKC');
+			for (const rawChar of nfkc) {
+				let ch = rawChar.toLowerCase();
+				if (!ch) {
+					continue;
+				}
+
+				// Unify katakana to hiragana for comparison
+				const code = ch.charCodeAt(0);
+				if (code >= 0x30A1 && code <= 0x30F6) {
+					ch = String.fromCharCode(code - 0x60);
+				}
+
+				// Drop whitespace / punctuation / symbols / format controls (e.g., zero-width chars)
+				if (/[\p{White_Space}\p{P}\p{S}\p{Cf}]/u.test(ch)) {
+					continue;
+				}
+
+				out += ch;
+				indexMap.push(i);
+			}
+		}
+
+		return { normalized: out, indexMap };
+	}
+
+	private buildRollingHash(text: string): { prefix: Uint32Array; pow: Uint32Array } {
+		const BASE = 911382323;
+		const prefix = new Uint32Array(text.length + 1);
+		const pow = new Uint32Array(text.length + 1);
+		pow[0] = 1;
+
+		for (let i = 0; i < text.length; i++) {
+			const prev = prefix[i] ?? 0;
+			const code = text.charCodeAt(i) + 1;
+			prefix[i + 1] = (Math.imul(prev, BASE) + code) >>> 0;
+			pow[i + 1] = Math.imul(pow[i] ?? 1, BASE) >>> 0;
+		}
+
+		return { prefix, pow };
+	}
+
+	private substringHash(prefix: Uint32Array, pow: Uint32Array, start: number, end: number): number {
+		if (start < 0 || end <= start) {
+			return 0;
+		}
+		const len = end - start;
+		const hash = (prefix[end] ?? 0) - Math.imul(prefix[start] ?? 0, pow[len] ?? 1);
+		return hash >>> 0;
+	}
+
+	private areNormalizedSubstringsEqual(
+		text: string,
+		prefix: Uint32Array,
+		pow: Uint32Array,
+		aStart: number,
+		bStart: number,
+		len: number
+	): boolean {
+		if (this.substringHash(prefix, pow, aStart, aStart + len) !== this.substringHash(prefix, pow, bStart, bStart + len)) {
+			return false;
+		}
+		// Hash collision safety: confirm equality only when hashes match.
+		return text.slice(aStart, aStart + len) === text.slice(bStart, bStart + len);
+	}
+
 	private buildResult(originalText: string, cleanedText: string, patternsMatched: string[]): CleaningResult {
 		const originalLength = originalText.length;
 		const cleanedLength = cleanedText.length;
@@ -172,4 +386,3 @@ export class ConsecutiveBlockRepeatCleaner implements TextCleaner {
 		};
 	}
 }
-

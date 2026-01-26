@@ -60,16 +60,16 @@ export class GPT4oCleaningPipeline extends StandardCleaningPipeline {
 					modelId
 				}, strategy),
 
-				// 2. Compress consecutive duplicated blocks (mid-text loops)
+				// 2. Remove general hallucinations
+				new BaseHallucinationCleaner(dictionaryCorrector, strategy),
+
+				// 3. Compress repeated tail blocks (endless loops)
+				new TailRepeatCleaner(strategy.tailRepeat),
+
+				// 4. Compress consecutive duplicated blocks (mid-text loops)
 				...(strategy.consecutiveBlockRepeat?.enabled !== false ? [
 					new ConsecutiveBlockRepeatCleaner(strategy.consecutiveBlockRepeat)
 				] : []),
-
-				// 3. Remove general hallucinations
-				new BaseHallucinationCleaner(dictionaryCorrector, strategy),
-
-				// 4. Compress repeated tail blocks (endless loops)
-				new TailRepeatCleaner(strategy.tailRepeat),
 
 				// 5. Validate Japanese text quality (if enabled)
 				...(enableJapaneseValidation && strategy.japaneseValidation ? [

@@ -4,6 +4,7 @@
  */
 
 import { getModelConfig } from '../../config/ModelProcessingConfig';
+import { ConsecutiveBlockRepeatCleaner, TailRepeatCleaner } from '../../core/transcription/cleaners';
 import { TranscriptionMerger } from '../../core/transcription/TranscriptionMerger';
 import { TranscriptionStrategy } from '../../core/transcription/TranscriptionStrategy';
 import { planWaveConcurrency } from '../../core/utils/WaveConcurrencyPlanner';
@@ -35,6 +36,21 @@ export class GPT4oTranscriptionStrategy extends TranscriptionStrategy {
 
 	private merger: TranscriptionMerger;
 	private workflowLanguage: string = 'auto';
+	private readonly continuationBlockRepeatCleaner = new ConsecutiveBlockRepeatCleaner({
+		enabled: true,
+		minBlockNormalizedChars: 120,
+		maxUnitSentences: 20,
+		allowSingleSentence: true
+	});
+	private readonly continuationTailRepeatCleaner = new TailRepeatCleaner({
+		enabled: true,
+		maxTailParagraphs: 8,
+		maxTailSentences: 20,
+		minRepeatCount: 3,
+		similarityThreshold: 0.9,
+		maxUnitParagraphs: 3,
+		maxUnitSentences: 5
+	});
 
 	constructor(
 		transcriptionService: TranscriptionService,
@@ -226,22 +242,22 @@ export class GPT4oTranscriptionStrategy extends TranscriptionStrategy {
 
 			// Check chunk size before sending to API
 			const chunkSizeMB = chunk.data.byteLength / (1024 * 1024);
-				if (chunkSizeMB > 25) {
-					const indexLabel = (chunk.id + 1).toString();
-					const errorMessage = `Chunk size ${chunkSizeMB.toFixed(1)}MB exceeds API limit of 25MB`;
-					results.push({
-						id: chunk.id,
+			if (chunkSizeMB > 25) {
+				const indexLabel = (chunk.id + 1).toString();
+				const errorMessage = `Chunk size ${chunkSizeMB.toFixed(1)}MB exceeds API limit of 25MB`;
+				results.push({
+					id: chunk.id,
 					text: t('modal.transcription.chunkFailure', { index: indexLabel, error: errorMessage }),
 					startTime: chunk.startTime,
 					endTime: chunk.endTime,
-						success: false,
-						error: errorMessage
-					});
-					previousChunkText = '';
-					progressState.completedChunks++;
-					this.reportWaveProgress(progressState.completedChunks, groupIndex, totalGroups, chunk.id, totalChunks, startTime);
-					continue;
-				}
+					success: false,
+					error: errorMessage
+				});
+				previousChunkText = '';
+				progressState.completedChunks++;
+				this.reportWaveProgress(progressState.completedChunks, groupIndex, totalGroups, chunk.id, totalChunks, startTime);
+				continue;
+			}
 
 			// Process chunk with previous context (within the group only)
 			let previousContext: string | undefined;
@@ -253,20 +269,51 @@ export class GPT4oTranscriptionStrategy extends TranscriptionStrategy {
 				}
 			}
 
-				const result = await this.transcribeChunkWithSingleRetry(chunk, options, previousContext, adaptiveState);
-				results.push(result);
+			const result = await this.transcribeChunkWithSingleRetry(chunk, options, previousContext, adaptiveState);
+			results.push(result);
 
-				if (result.success && result.text) {
-					previousChunkText = result.text;
-				} else {
-					// If a chunk fails, avoid using stale context from earlier chunks.
-					// Treat the next chunk as a "new start" so it can recover overlap content.
-					previousChunkText = '';
-				}
+			if (result.success && result.text) {
+				previousChunkText = this.sanitizeContinuationContext(result.text, options.language);
+			} else {
+				// If a chunk fails, avoid using stale context from earlier chunks.
+				// Treat the next chunk as a "new start" so it can recover overlap content.
+				previousChunkText = '';
+			}
 
 			progressState.completedChunks++;
 			this.reportWaveProgress(progressState.completedChunks, groupIndex, totalGroups, chunk.id, totalChunks, startTime);
 		}
+	}
+
+	private sanitizeContinuationContext(text: string, language: string): string {
+		const original = text.trim();
+		if (!original) {
+			return '';
+		}
+
+		// Avoid feeding looped/hallucinated output back into the next chunk.
+		const blockResult = this.continuationBlockRepeatCleaner.clean(original, language);
+		const tailResult = this.continuationTailRepeatCleaner.clean(blockResult.cleanedText, language);
+		const cleaned = tailResult.cleanedText.trim();
+
+		if (!cleaned) {
+			return '';
+		}
+
+		if (cleaned !== original) {
+			const removedChars = original.length - cleaned.length;
+			if (removedChars > 0) {
+				this.logger.debug('Sanitized continuation context', {
+					beforeLength: original.length,
+					afterLength: cleaned.length,
+					removedChars,
+					blockPatterns: blockResult.metadata?.patternsMatched?.length ?? 0,
+					tailPatterns: tailResult.metadata?.patternsMatched?.length ?? 0
+				});
+			}
+		}
+
+		return cleaned;
 	}
 
 	private async transcribeChunkWithSingleRetry(

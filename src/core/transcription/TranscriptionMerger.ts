@@ -256,7 +256,7 @@ export class TranscriptionMerger {
 			// Validate inputs
 			if (!previousText || !currentText) {
 				this.logger.warn('Empty text provided to findOverlap');
-				return { trimmedText: currentText || '', connector: this.determineConnector(previousText), matchFound: false };
+				return { trimmedText: currentText || '', connector: ' ', matchFound: false };
 			}
 
 		// Debug logging using OverlapDebugger
@@ -401,8 +401,9 @@ export class TranscriptionMerger {
 				}
 
 				const matchEndInCurrent = lastMatch.position + lastMatch.length;
-				const rawTrimmedText = currentText.slice(matchEndInCurrent).trimStart();
-				const connector = this.determineConnector(previousText);
+				const rawAfterMatch = currentText.slice(matchEndInCurrent);
+				const rawTrimmedText = rawAfterMatch.trimStart();
+				const connector = this.determineInlineConnector(previousText, rawAfterMatch);
 
 				const trimmedText = this.trimResidualOverlapAtBoundary(
 					previousText,
@@ -420,7 +421,7 @@ export class TranscriptionMerger {
 			OverlapDebugger.logNoMatchFound();
 			return {
 				trimmedText: currentText,
-				connector: this.determineConnector(previousText),
+				connector: ' ',
 				matchFound: false
 			};
 		}
@@ -469,15 +470,76 @@ export class TranscriptionMerger {
 		return matches;
 	}
 
-		// コネクタ決定のヘルパーメソッド
-		private determineConnector(previousText: string): string {
-			const trimmed = previousText.trimEnd();
-			if (!trimmed) {
-				return '\n\n';
+		private determineInlineConnector(previousText: string, nextTextRaw: string): string {
+			const previousTrimmed = previousText.trimEnd();
+			if (!previousTrimmed) {
+				return '';
+			}
+			if (/[\s\u3000]$/.test(previousText)) {
+				return '';
+			}
+			if (!nextTextRaw) {
+				return '';
 			}
 
-			// Treat punctuation followed by closing quotes/brackets as sentence-ending.
-			return /[。.!?！？][」』”’"'）)\]】〉》〕］}]*$/.test(trimmed) ? '\n\n' : ' ';
+			const nextTrimmed = nextTextRaw.trimStart();
+			if (nextTrimmed.length === 0) {
+				return '';
+			}
+
+			const hadLeadingWhitespace = nextTextRaw.length !== nextTrimmed.length;
+			if (!hadLeadingWhitespace) {
+				return '';
+			}
+
+			// Preserve a single space between ASCII-ish tokens when the model emitted whitespace.
+			const previousLastSignificant = this.getLastSignificantChar(previousTrimmed);
+			const nextFirst = nextTrimmed[0];
+			if (!previousLastSignificant || !nextFirst) {
+				return '';
+			}
+
+			const nextStartsAsciiWord = /[A-Za-z0-9]/.test(nextFirst);
+			if (!nextStartsAsciiWord) {
+				return '';
+			}
+
+			const previousAsciiWordOrPunct = /[A-Za-z0-9.,!?;:]/.test(previousLastSignificant);
+			return previousAsciiWordOrPunct ? ' ' : '';
+		}
+
+		private getLastSignificantChar(text: string): string | null {
+			let index = text.length - 1;
+			while (index >= 0) {
+				const char = text[index];
+				if (!char) {
+					index--;
+					continue;
+				}
+				if (/[\s\u3000]/.test(char)) {
+					index--;
+					continue;
+				}
+				break;
+			}
+
+			while (index >= 0) {
+				const char = text[index];
+				if (!char) {
+					index--;
+					continue;
+				}
+				if (/[」』”’"'）)\]】〉》〕］}]/.test(char)) {
+					index--;
+					continue;
+				}
+				break;
+			}
+
+			if (index < 0) {
+				return null;
+			}
+			return text[index] ?? null;
 		}
 
 	private trimResidualOverlapAtBoundary(
@@ -595,8 +657,9 @@ export class TranscriptionMerger {
 			});
 
 		const matchEndInCurrent = positionInCurrent + match.length;
-		const trimmedText = currentText.slice(matchEndInCurrent).trimStart();
-		const connector = this.determineConnector(previousText);
+		const rawAfterMatch = currentText.slice(matchEndInCurrent);
+		const trimmedText = rawAfterMatch.trimStart();
+		const connector = this.determineInlineConnector(previousText, rawAfterMatch);
 		this.logger.debug('Exact overlap match used', {
 			matchLength: match.length,
 			positionInPrevious,
@@ -688,8 +751,9 @@ export class TranscriptionMerger {
 			originalMatchEndInCurrent + 1,
 			normalization
 		);
-		const trimmedText = currentText.slice(rawMatchEndInCurrentExclusive).trimStart();
-		const connector = this.determineConnector(previousText);
+		const rawAfterMatch = currentText.slice(rawMatchEndInCurrentExclusive);
+		const trimmedText = rawAfterMatch.trimStart();
+		const connector = this.determineInlineConnector(previousText, rawAfterMatch);
 
 		this.logger.debug('Normalized exact overlap match used', {
 			matchLength: match.length,
@@ -1045,7 +1109,7 @@ export class TranscriptionMerger {
 							{
 								removeSpaces: true,
 								removePunctuation: true,
-								unifyKana: false, // Keep false for now to preserve meaning differences
+								unifyKana: true, // Helps match drift between hiragana/katakana across chunks
 								toLowerCase: true
 							}
 						);
@@ -1083,7 +1147,7 @@ export class TranscriptionMerger {
 									{
 										removeSpaces: true,
 										removePunctuation: true,
-										unifyKana: false,
+										unifyKana: true,
 										toLowerCase: true
 									}
 								);

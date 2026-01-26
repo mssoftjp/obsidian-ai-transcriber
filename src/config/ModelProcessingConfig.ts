@@ -233,9 +233,9 @@ export const DEFAULT_TRANSCRIPTION_CONFIG: TranscriptionConfig = {
 				useNGramScreening: true, // Enable fast N-gram screening
 				nGramSize: 3, // Use trigrams for screening
 				duplicateRemoval: {
-					enabled: false, // Disabled - overlap removal is handled during merge
-					minDuplicateLength: 150, // Minimum length for duplicate detection
-					duplicateSimilarityThreshold: 0.9, // 90% similarity threshold
+					enabled: false, // Disabled - handled by overlap removal + cleaning (avoids UI freezes)
+					minDuplicateLength: 200, // Longer threshold to avoid false positives
+					duplicateSimilarityThreshold: 0.95, // Require high similarity
 					useFuzzyMatching: true // Use fuzzy matching for duplicate detection
 				},
 				overlapDetection: {
@@ -279,9 +279,9 @@ export const DEFAULT_TRANSCRIPTION_CONFIG: TranscriptionConfig = {
 				useNGramScreening: true, // Enable fast N-gram screening
 				nGramSize: 3, // Use trigrams for screening
 				duplicateRemoval: {
-					enabled: false, // Disabled - overlap removal is handled during merge
-					minDuplicateLength: 150, // Minimum length for duplicate detection
-					duplicateSimilarityThreshold: 0.9, // 90% similarity threshold
+					enabled: false, // Disabled - handled by overlap removal + cleaning (avoids UI freezes)
+					minDuplicateLength: 200, // Longer threshold to avoid false positives
+					duplicateSimilarityThreshold: 0.95, // Require high similarity
 					useFuzzyMatching: true // Use fuzzy matching for duplicate detection
 				},
 				overlapDetection: {

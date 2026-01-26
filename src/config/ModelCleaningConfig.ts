@@ -619,7 +619,7 @@ export const MODEL_CLEANING_STRATEGIES: Record<string, ModelCleaningStrategy> = 
 		consecutiveBlockRepeat: {
 			enabled: true,
 			minBlockNormalizedChars: 80,
-			maxUnitSentences: 12,
+			maxUnitSentences: 20,
 			allowSingleSentence: true
 		},
 		validationPatterns: COMMON_VALIDATION_PATTERNS,
@@ -698,7 +698,7 @@ export const MODEL_CLEANING_STRATEGIES: Record<string, ModelCleaningStrategy> = 
 		consecutiveBlockRepeat: {
 			enabled: true,
 			minBlockNormalizedChars: 80,
-			maxUnitSentences: 12,
+			maxUnitSentences: 20,
 			allowSingleSentence: true
 		},
 		validationPatterns: COMMON_VALIDATION_PATTERNS,
