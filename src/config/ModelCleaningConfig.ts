@@ -9,7 +9,8 @@ import type {
 	PromptContaminationConfig,
 	JapaneseValidationConfig,
 	GPT4oPipelineOptions,
-	TailRepeatConfig
+	TailRepeatConfig,
+	ConsecutiveBlockRepeatConfig
 } from '../core/transcription/cleaners';
 
 /**
@@ -200,6 +201,8 @@ export interface ModelCleaningStrategy {
 	contaminationPatterns?: ContaminationPatterns;
 	/** Tail-repeat (endless loop) compression configuration */
 	tailRepeat?: TailRepeatConfig;
+	/** Consecutive duplicated block compression configuration */
+	consecutiveBlockRepeat?: ConsecutiveBlockRepeatConfig;
 	/** Pipeline-level fallback configuration (avoid catastrophic deletion) */
 	pipelineFallback?: PipelineFallbackConfig;
 }
@@ -613,6 +616,12 @@ export const MODEL_CLEANING_STRATEGIES: Record<string, ModelCleaningStrategy> = 
 				minRepeatCount: 3
 			}
 		},
+		consecutiveBlockRepeat: {
+			enabled: true,
+			minBlockNormalizedChars: 80,
+			maxUnitSentences: 12,
+			allowSingleSentence: true
+		},
 		validationPatterns: COMMON_VALIDATION_PATTERNS,
 		validationThresholds: {
 			...COMMON_VALIDATION_THRESHOLDS,
@@ -685,6 +694,12 @@ export const MODEL_CLEANING_STRATEGIES: Record<string, ModelCleaningStrategy> = 
 				enabled: true,
 				minRepeatCount: 3
 			}
+		},
+		consecutiveBlockRepeat: {
+			enabled: true,
+			minBlockNormalizedChars: 80,
+			maxUnitSentences: 12,
+			allowSingleSentence: true
 		},
 		validationPatterns: COMMON_VALIDATION_PATTERNS,
 		validationThresholds: {

@@ -145,7 +145,7 @@ export const PROMPT_CONSTANTS = {
 	/** コンテキストスニペットのバッファ (文字) */
 	CONTEXT_SNIPPET_BUFFER: 50,
 	/** コンテキストの末尾長 (文字) */
-	CONTEXT_TAIL_LENGTH: 200,
+	CONTEXT_TAIL_LENGTH: 500,
 	/** チャンクのオーバーラップ時間 (秒) */
 	CHUNK_OVERLAP_SECONDS: 30
 } as const;

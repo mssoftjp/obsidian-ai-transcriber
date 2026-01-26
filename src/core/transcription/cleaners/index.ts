@@ -22,6 +22,8 @@ export { JapaneseTextValidator } from './JapaneseTextValidator';
 export type { JapaneseValidationConfig } from './JapaneseTextValidator';
 export { TailRepeatCleaner } from './TailRepeatCleaner';
 export type { TailRepeatConfig } from './TailRepeatCleaner';
+export { ConsecutiveBlockRepeatCleaner } from './ConsecutiveBlockRepeatCleaner';
+export type { ConsecutiveBlockRepeatConfig } from './ConsecutiveBlockRepeatCleaner';
 export { TimestampsTailRepeatCleaner } from './TimestampsTailRepeatCleaner';
 export type { TimestampsTailRepeatConfig } from './TimestampsTailRepeatCleaner';
 

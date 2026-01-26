@@ -146,7 +146,16 @@ export class TranscriptionMerger {
 					opts.minMatchLength
 				);
 
-				mergedText += overlap.connector + overlap.trimmedText;
+				const connector = overlap.matchFound ? overlap.connector : opts.separator;
+				if (!overlap.matchFound) {
+					this.logger.warn('Overlap expected but no match found; keeping separator', {
+						overlapDuration,
+						previousTextLength: mergedText.length,
+						currentTextLength: current.text.length,
+						minMatchLength: opts.minMatchLength
+					});
+				}
+				mergedText += connector + overlap.trimmedText;
 			} else {
 				// No overlap, simple concatenation
 				mergedText += opts.separator + current.text;
@@ -227,7 +236,7 @@ export class TranscriptionMerger {
 		currentText: string,
 		overlapDuration: number,
 		minMatchLength: number
-	): { trimmedText: string; connector: string } {
+	): { trimmedText: string; connector: string; matchFound: boolean } {
 		// Get overlap detection settings from config
 		const overlapConfig = this.mergingConfig.overlapDetection ?? {
 			minOverlapLength: 150,
@@ -247,7 +256,7 @@ export class TranscriptionMerger {
 			// Validate inputs
 			if (!previousText || !currentText) {
 				this.logger.warn('Empty text provided to findOverlap');
-				return { trimmedText: currentText || '', connector: this.determineConnector(previousText) };
+				return { trimmedText: currentText || '', connector: this.determineConnector(previousText), matchFound: false };
 			}
 
 		// Debug logging using OverlapDebugger
@@ -277,7 +286,7 @@ export class TranscriptionMerger {
 				MAX_OVERLAP,
 				SEARCH_RANGE
 			);
-			return { trimmedText: cleanedText, connector: exactOverlap.connector };
+			return { trimmedText: cleanedText, connector: exactOverlap.connector, matchFound: true };
 		}
 
 		// 正規化（空白/句読点除去）した上で「境界近傍の最長完全一致」を探す
@@ -297,7 +306,7 @@ export class TranscriptionMerger {
 					MAX_OVERLAP,
 					SEARCH_RANGE
 				);
-				return { trimmedText: cleanedText, connector: normalizedExactOverlap.connector };
+				return { trimmedText: cleanedText, connector: normalizedExactOverlap.connector, matchFound: true };
 			}
 
 			// NOTE: Some models follow the prompt well and only repeat a short overlap at the boundary.
@@ -324,7 +333,7 @@ export class TranscriptionMerger {
 						MAX_OVERLAP,
 						SEARCH_RANGE
 					);
-					return { trimmedText: cleanedText, connector: exactSoft.connector };
+					return { trimmedText: cleanedText, connector: exactSoft.connector, matchFound: true };
 				}
 
 				const normalizedSoft = this.findNormalizedExactOverlapFallback(
@@ -346,7 +355,7 @@ export class TranscriptionMerger {
 						MAX_OVERLAP,
 						SEARCH_RANGE
 					);
-					return { trimmedText: cleanedText, connector: normalizedSoft.connector };
+					return { trimmedText: cleanedText, connector: normalizedSoft.connector, matchFound: true };
 				}
 			}
 
@@ -404,14 +413,15 @@ export class TranscriptionMerger {
 				);
 
 				OverlapDebugger.logFinalResult(trimmedText, connector);
-				return { trimmedText, connector };
+				return { trimmedText, connector, matchFound: true };
 			}
 		}
 
 			OverlapDebugger.logNoMatchFound();
 			return {
 				trimmedText: currentText,
-				connector: this.determineConnector(previousText)
+				connector: this.determineConnector(previousText),
+				matchFound: false
 			};
 		}
 

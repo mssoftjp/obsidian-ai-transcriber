@@ -9,6 +9,7 @@ import { Logger } from '../../utils/Logger';
 
 import {
 	BaseHallucinationCleaner,
+	ConsecutiveBlockRepeatCleaner,
 	JapaneseTextValidator,
 	PromptContaminationCleaner,
 	TailRepeatCleaner,
@@ -189,7 +190,7 @@ export abstract class TranscriptionService {
 				});
 
 				// Fallback level 1: keep hallucination cleaning, but disable paragraph fingerprint dedup.
-				const safeStrategy1 = this.createStrategyWithParagraphRepeatDisabled(strategy);
+				const safeStrategy1 = this.createStrategyWithAggressiveDedupDisabled(strategy);
 				const safePipeline1 = this.buildPipelineForStrategy(safeStrategy1, {
 					enableDetailedLogging: this.cleaningDebugMode
 				});
@@ -322,22 +323,29 @@ export abstract class TranscriptionService {
 		return false;
 	}
 
-	private createStrategyWithParagraphRepeatDisabled(strategy: ModelCleaningStrategy): ModelCleaningStrategy {
+	private createStrategyWithAggressiveDedupDisabled(strategy: ModelCleaningStrategy): ModelCleaningStrategy {
 		const repetitionThresholds = strategy.repetitionThresholds;
-		if (!repetitionThresholds) {
-			return strategy;
-		}
+		const consecutiveBlockRepeat = strategy.consecutiveBlockRepeat
+			? { ...strategy.consecutiveBlockRepeat, enabled: false }
+			: undefined;
 
-		const paragraphRepeat = repetitionThresholds.paragraphRepeat
+		const paragraphRepeat = repetitionThresholds?.paragraphRepeat
 			? { ...repetitionThresholds.paragraphRepeat, enabled: false }
-			: { headChars: 15, enabled: false };
+			: repetitionThresholds
+				? { headChars: 15, enabled: false }
+				: undefined;
 
 		return {
 			...strategy,
-			repetitionThresholds: {
-				...repetitionThresholds,
-				paragraphRepeat
-			}
+			...(repetitionThresholds && paragraphRepeat
+				? {
+					repetitionThresholds: {
+						...repetitionThresholds,
+						paragraphRepeat
+					}
+				}
+				: {}),
+			...(consecutiveBlockRepeat ? { consecutiveBlockRepeat } : {})
 		};
 	}
 
@@ -357,6 +365,10 @@ export abstract class TranscriptionService {
 					aggressiveMatching: strategy.promptContamination?.aggressiveMatching ?? false,
 					modelId: strategy.modelId
 				}, strategy));
+
+				if (strategy.consecutiveBlockRepeat?.enabled !== false) {
+					cleaners.push(new ConsecutiveBlockRepeatCleaner(strategy.consecutiveBlockRepeat));
+				}
 
 				if (!omitHallucinationCleaner) {
 					cleaners.push(new BaseHallucinationCleaner(this.dictionaryCorrector, strategy));
