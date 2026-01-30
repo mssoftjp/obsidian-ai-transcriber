@@ -10,8 +10,8 @@ A powerful speech-to-text transcription plugin for Obsidian that uses OpenAI's G
 
 ## Screenshots
 
-<img src="docs/screenshots/transcription-dialog.png" width="520" alt="Transcription dialog" style="vertical-align: top;">
-<img src="docs/screenshots/file-picker.png" width="520" alt="File picker" style="vertical-align: top;">
+<img src="docs/screenshots/transcription-dialog.png" width="312" alt="Transcription dialog" style="vertical-align: top;">
+<img src="docs/screenshots/file-picker.png" width="312" alt="File picker" style="vertical-align: top;">
 <img src="docs/screenshots/settings-panel.png" width="520" alt="Settings panel" style="vertical-align: top;">
 
 ## Supported file formats
@@ -199,8 +199,8 @@ OpenAIのGPT-4o transcribeとWhisper APIを使用したObsidian用の強力な�
 
 ## スクリーンショット
 
-<img src="docs/screenshots/transcription-dialog.png" width="520" alt="文字起こしダイアログ" style="vertical-align: top;">
-<img src="docs/screenshots/file-picker.png" width="520" alt="ファイル選択" style="vertical-align: top;">
+<img src="docs/screenshots/transcription-dialog.png" width="312" alt="文字起こしダイアログ" style="vertical-align: top;">
+<img src="docs/screenshots/file-picker.png" width="312" alt="ファイル選択" style="vertical-align: top;">
 <img src="docs/screenshots/settings-panel.png" width="520" alt="設定画面" style="vertical-align: top;">
 
 ## 対応ファイル形式
