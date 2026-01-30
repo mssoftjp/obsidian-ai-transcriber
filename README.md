@@ -8,6 +8,12 @@ A powerful speech-to-text transcription plugin for Obsidian that uses OpenAI's G
 - **Post-Processing**: Optional word correction to improve transcription accuracy
 - **Multi-Language**: Supports multiple languages with automatic detection
 
+## Screenshots
+
+<img src="docs/screenshots/transcription-dialog.png" width="520" alt="Transcription dialog" style="vertical-align: top;">
+<img src="docs/screenshots/file-picker.png" width="520" alt="File picker" style="vertical-align: top;">
+<img src="docs/screenshots/settings-panel.png" width="520" alt="Settings panel" style="vertical-align: top;">
+
 ## Supported file formats
 
 Supported extensions:
@@ -190,6 +196,12 @@ OpenAIのGPT-4o transcribeとWhisper APIを使用したObsidian用の強力な�
 - **ファイル文字起こし**: 音声ファイル・動画ファイルを文字起こし（対応形式は下記）
 - **後処理**: 文字起こし精度を向上させるオプションの単語校正機能
 - **多言語対応**: 自動検出による複数言語のサポート
+
+## スクリーンショット
+
+<img src="docs/screenshots/transcription-dialog.png" width="520" alt="文字起こしダイアログ" style="vertical-align: top;">
+<img src="docs/screenshots/file-picker.png" width="520" alt="ファイル選択" style="vertical-align: top;">
+<img src="docs/screenshots/settings-panel.png" width="520" alt="設定画面" style="vertical-align: top;">
 
 ## 対応ファイル形式
 
