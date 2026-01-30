@@ -1,6 +1,6 @@
 # AI Transcriber
 
-A powerful speech-to-text transcription plugin for Obsidian that uses OpenAI's GPT-4o and Whisper APIs.
+A powerful speech-to-text transcription plugin for Obsidian that uses OpenAI's GPT-4o Transcribe / GPT-4o Mini Transcribe and Whisper APIs.
 
 ## Features
 
@@ -64,9 +64,9 @@ Notes:
 1. Open Obsidian Settings → AI Transcriber
 2. Enter your OpenAI API key
 3. Choose your preferred transcription model:
-   - **GPT-4o Transcribe**: Highest quality transcription (recommended)
-   - **GPT-4o Mini Transcribe**: Fast and cost-effective
-   - **Whisper**: Traditional transcription model
+   - **GPT-4o Transcribe** (`gpt-4o-transcribe`): Highest quality transcription (recommended)
+   - **GPT-4o Mini Transcribe** (`gpt-4o-mini-transcribe`): Fast and cost-effective
+   - **Whisper** (`whisper-1`): Traditional transcription model
 
 #### Optional: Local VAD (fvad.wasm)
 
@@ -92,7 +92,7 @@ If `fvad.wasm` is not present, the plugin automatically falls back to server-sid
 
 ### API Settings
 - **API Key**: Your OpenAI API key (stored securely)
-- **Model Selection**: Choose between GPT-4o Transcribe, GPT-4o Mini Transcribe, and Whisper
+- **Model Selection**: Choose between GPT-4o Transcribe (`gpt-4o-transcribe`), GPT-4o Mini Transcribe (`gpt-4o-mini-transcribe`), and Whisper (`whisper-1`)
 - **Language**: Specify a language (settings serve as a baseline, but the API will detect as appropriate)
 
 ### Output Settings
@@ -189,7 +189,7 @@ Notable third-party components:
 
 # AI Transcriber
 
-OpenAIのGPT-4o transcribeとWhisper APIを使用したObsidian用の強力な音声認識テキスト変換プラグインです。
+OpenAIのGPT-4o Transcribe / GPT-4o Mini TranscribeとWhisper APIを使用したObsidian用の強力な音声認識テキスト変換プラグインです。
 
 ## 機能
 
@@ -253,9 +253,9 @@ OpenAIのGPT-4o transcribeとWhisper APIを使用したObsidian用の強力な�
 1. Obsidian設定 → AI Transcriberを開く
 2. OpenAI APIキーを入力
 3. 希望の文字起こしモデルを選択:
-   - **GPT-4o Transcribe**: 最高品質の文字起こし（推奨）
-   - **GPT-4o Mini Transcribe**: 高速でコスト効率が良い
-   - **Whisper**: 従来の文字起こしモデル
+   - **GPT-4o Transcribe** (`gpt-4o-transcribe`): 最高品質の文字起こし（推奨）
+   - **GPT-4o Mini Transcribe** (`gpt-4o-mini-transcribe`): 高速でコスト効率が良い
+   - **Whisper** (`whisper-1`): 従来の文字起こしモデル
 
 #### ローカルVAD（任意 / fvad.wasm）
 
@@ -280,7 +280,7 @@ OpenAIのGPT-4o transcribeとWhisper APIを使用したObsidian用の強力な�
 
 ### API設定
 - **APIキー**: OpenAI APIキー（安全に保存）
-- **モデル選択**: GPT-4o Transcribe、GPT-4o Mini Transcribe、Whisperから選択
+- **モデル選択**: GPT-4o Transcribe（`gpt-4o-transcribe`）、GPT-4o Mini Transcribe（`gpt-4o-mini-transcribe`）、Whisper（`whisper-1`）から選択
 - **言語**: 言語を指定（設定を基本としつつもAPI側で適宜判別）
 
 ### 出力設定
