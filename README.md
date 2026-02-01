@@ -10,9 +10,9 @@ A powerful speech-to-text transcription plugin for Obsidian that uses OpenAI's G
 
 ## Screenshots
 
-<img src="docs/screenshots/transcription-dialog.png" width="312" alt="Transcription dialog" style="vertical-align: top;">
-<img src="docs/screenshots/file-picker.png" width="312" alt="File picker" style="vertical-align: top;">
-<img src="docs/screenshots/settings-panel.png" width="520" alt="Settings panel" style="vertical-align: top;">
+| Transcription dialog | File picker | Settings panel |
+| --- | --- | --- |
+| <img src="docs/screenshots/transcription-dialog.png" width="312" alt="Transcription dialog"> | <img src="docs/screenshots/file-picker.png" width="312" alt="File picker"> | <img src="docs/screenshots/settings-panel.png" width="520" alt="Settings panel"> |
 
 ## Supported file formats
 
@@ -199,9 +199,9 @@ OpenAIのGPT-4o Transcribe / GPT-4o Mini TranscribeとWhisper APIを使用した
 
 ## スクリーンショット
 
-<img src="docs/screenshots/transcription-dialog.png" width="312" alt="文字起こしダイアログ" style="vertical-align: top;">
-<img src="docs/screenshots/file-picker.png" width="312" alt="ファイル選択" style="vertical-align: top;">
-<img src="docs/screenshots/settings-panel.png" width="520" alt="設定画面" style="vertical-align: top;">
+| 文字起こしダイアログ | ファイル選択 | 設定画面 |
+| --- | --- | --- |
+| <img src="docs/screenshots/transcription-dialog.png" width="312" alt="文字起こしダイアログ"> | <img src="docs/screenshots/file-picker.png" width="312" alt="ファイル選択"> | <img src="docs/screenshots/settings-panel.png" width="520" alt="設定画面"> |
 
 ## 対応ファイル形式
 
