@@ -241,7 +241,7 @@ const en: TranslationKeys = {
 		postProcessingSuffix: ' (post-processing: {model})',
 		transcriptionAppendedFallback: 'Transcription appended to the end of the file due to an insertion error.',
 		transcriptionSavedToNewFile: 'Transcription saved to new file: {fileName}',
-		transcriptionCopyFallback: 'Failed to insert transcription. Content copied to clipboard.'
+		transcriptionManualRecovery: 'Failed to save transcription. A recovery window shows the generated content.'
 	},
 
 	// Transcription Modal
@@ -315,7 +315,12 @@ const en: TranslationKeys = {
 			partialFailedChunks: 'Some chunks ({chunks}) failed.',
 			chunkFailure: 'Chunk {index} failed: {error}',
 			chunkFailureSummary: 'Chunk {id}: {error}',
-			costEstimateSummary: 'Approximately {minutes} minutes @ {rate}/min'
+			costEstimateSummary: 'Approximately {minutes} minutes @ {rate}/min',
+			manualRecoveryTitle: 'Recover transcription',
+			manualRecoveryDescription: 'The plugin could not save the generated note. Use the text below to restore the transcription manually.',
+			manualRecoveryTarget: 'Target file: {path}',
+			manualRecoveryError: 'Save error: {error}',
+			manualRecoverySelectText: 'Select text'
 		},
 		postProcessing: {
 			titlePre: 'Pre-transcription related information',
@@ -397,7 +402,7 @@ const en: TranslationKeys = {
 			invalidTimeRange: 'Start time must be earlier than end time.',
 			endTimeExceedsDuration: 'End time ({end}) exceeds audio duration ({duration}).',
 			unableToOpenFile: 'Unable to open the created file.',
-			fileInsertionFailed: 'File insertion failed. Transcription copied to clipboard.'
+			fileInsertionFailed: 'File insertion failed. The recovery window shows the transcription text.'
 		},
 		recoveryActions: {
 			openSettings: 'Open settings',

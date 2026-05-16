@@ -239,7 +239,7 @@ export interface TranslationKeys {
 		postProcessingSuffix: string;
 		transcriptionAppendedFallback: string;
 		transcriptionSavedToNewFile: string;
-		transcriptionCopyFallback: string;
+		transcriptionManualRecovery: string;
 	};
 
 	// Transcription Modal
@@ -314,6 +314,11 @@ export interface TranslationKeys {
 			chunkFailure: string;
 			chunkFailureSummary: string;
 			costEstimateSummary: string;
+			manualRecoveryTitle: string;
+			manualRecoveryDescription: string;
+			manualRecoveryTarget: string;
+			manualRecoveryError: string;
+			manualRecoverySelectText: string;
 		};
 		postProcessing: {
 			titlePre: string;

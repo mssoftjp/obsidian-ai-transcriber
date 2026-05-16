@@ -241,7 +241,7 @@ const zh: TranslationKeys = {
 		postProcessingSuffix: '（后处理: {model}）',
 		transcriptionAppendedFallback: '由于插入错误，已将转录附加在文件末尾。',
 		transcriptionSavedToNewFile: '转录已保存为新文件：{fileName}',
-		transcriptionCopyFallback: '插入转录失败。内容已复制到剪贴板。'
+		transcriptionManualRecovery: '保存转录失败。恢复窗口会显示生成的内容。'
 	},
 
 	// Transcription Modal
@@ -315,7 +315,12 @@ const zh: TranslationKeys = {
 			partialFailedChunks: '部分区块失败（{chunks}）。',
 			chunkFailure: '[区块 {index} 失败: {error}]',
 			chunkFailureSummary: '区块 {id}: {error}',
-			costEstimateSummary: '约 {minutes} 分钟 @ {rate}/分钟'
+			costEstimateSummary: '约 {minutes} 分钟 @ {rate}/分钟',
+			manualRecoveryTitle: '恢复转录',
+			manualRecoveryDescription: '插件无法保存生成的笔记。请使用下方文本手动恢复转录。',
+			manualRecoveryTarget: '目标文件：{path}',
+			manualRecoveryError: '保存错误：{error}',
+			manualRecoverySelectText: '选择文本'
 		},
 		postProcessing: {
 			titlePre: '相关信息预输入',
@@ -397,7 +402,7 @@ const zh: TranslationKeys = {
 			invalidTimeRange: '开始时间必须早于结束时间。',
 			endTimeExceedsDuration: '结束时间（{end}）超过了音频时长（{duration}）。',
 			unableToOpenFile: '无法打开创建的文件。',
-			fileInsertionFailed: '写入文件失败。已将转录复制到剪贴板。'
+			fileInsertionFailed: '写入文件失败。恢复窗口会显示转录文本。'
 		},
 		recoveryActions: {
 			openSettings: '打开设置',

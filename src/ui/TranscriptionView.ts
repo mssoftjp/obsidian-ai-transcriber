@@ -16,6 +16,10 @@ interface TranscriptionPlugin {
 	};
 }
 
+interface MetadataCacheWithCachedFiles {
+	getCachedFiles?: () => unknown;
+}
+
 export class TranscriptionView extends ItemView {
 	private progressTracker: ProgressTracker;
 	private plugin: TranscriptionPlugin;
@@ -416,12 +420,12 @@ export class TranscriptionView extends ItemView {
 	/**
 	 * Handle missing transcription file
 	 */
-		private handleMissingFile(task: TranscriptionTask): void {
-			const timestampSource = task.endTime ?? task.startTime;
-			const searchQuery = task.transcriptionTimestamp ??
-				new Date(timestampSource).toLocaleString(getLanguage());
+	private handleMissingFile(task: TranscriptionTask): void {
+		const timestampSource = task.endTime ?? task.startTime;
+		const searchQuery = task.transcriptionTimestamp ??
+			new Date(timestampSource).toLocaleString(getLanguage());
 
-			new Notice(t('errors.fileNotFound'));
+		new Notice(t('errors.fileNotFound'));
 
 		// 検索モーダルを開くか確認
 		const modal = new ConfirmModal(
@@ -431,26 +435,14 @@ export class TranscriptionView extends ItemView {
 			t('common.search'),
 			() => {
 				// タイムスタンプで文字起こしファイルを検索
-				const files = this.app.vault.getFiles();
-				const matchingFiles = files.filter(file => {
-					if (file.extension !== 'md') {
-						return false;
-					}
-					const cache: CachedMetadata | null = this.app.metadataCache.getFileCache(file);
-					const transcriptionTimestampValue: unknown = cache?.frontmatter?.['transcription_timestamp'];
-					return typeof transcriptionTimestampValue === 'string' && transcriptionTimestampValue.includes(searchQuery);
-				});
+				const matchingFiles = this.findCachedTranscriptionFiles(searchQuery);
 
 				if (matchingFiles.length > 0) {
 					// ファイル選択モーダルを表示
 					void this.showFileSelectionModal(task, matchingFiles);
 				} else {
 					// 見つからない場合は全文検索を開く
-					const searchPlugin: unknown = ((this.app as unknown) as ObsidianApp).internalPlugins?.getPluginById('global-search');
-					if (this.isSearchPlugin(searchPlugin)) {
-						const globalSearch: { openGlobalSearch: (query: string) => void } = searchPlugin.instance;
-						globalSearch.openGlobalSearch(`"${searchQuery}"`);
-					}
+					this.openGlobalSearch(searchQuery);
 					new Notice(t('common.manualSearchRequired'));
 				}
 			}
@@ -497,30 +489,89 @@ export class TranscriptionView extends ItemView {
 		const frontmatter = this.app.metadataCache.getFileCache(selectedFile)?.frontmatter;
 		const sourceFilePathValue: unknown = frontmatter?.['source_file'];
 		const sourceFilePath = typeof sourceFilePathValue === 'string' ? sourceFilePathValue : null;
+		const audioSourceValue: unknown = frontmatter?.['audio_source'];
+		const audioSourceName = typeof audioSourceValue === 'string' ? audioSourceValue : '';
+		let recoveredAudioFile: TFile | null = null;
+
 		if (sourceFilePath) {
 			const audioFile = this.app.vault.getAbstractFileByPath(sourceFilePath);
 			if (audioFile instanceof TFile) {
-				updatedTask.inputFilePath = audioFile.path;
-				updatedTask.inputFileName = audioFile.name;
-			} else {
-				const searchFileName = task.inputFileName || '';
-				const audioFiles = this.app.vault.getFiles().filter(f =>
-					f.name === searchFileName && this.isAudioFile(f.extension)
-				);
-				if (audioFiles.length === 1) {
-					const [singleAudioFile] = audioFiles;
-					if (singleAudioFile) {
-						updatedTask.inputFilePath = singleAudioFile.path;
-						updatedTask.inputFileName = singleAudioFile.name;
-					}
-				} else if (audioFiles.length > 1) {
-					new Notice(t('common.multipleAudioFilesFound'));
-				}
+				recoveredAudioFile = audioFile;
 			}
+		}
+
+		if (!recoveredAudioFile) {
+			const searchFileName = task.inputFileName || audioSourceName;
+			const audioFiles = this.findCachedAudioFilesByName(searchFileName);
+			if (audioFiles.length === 1) {
+				const [singleAudioFile] = audioFiles;
+				if (singleAudioFile) {
+					recoveredAudioFile = singleAudioFile;
+				}
+			} else if (audioFiles.length > 1) {
+				new Notice(t('common.multipleAudioFilesFound'));
+			}
+		}
+
+		if (recoveredAudioFile) {
+			updatedTask.inputFilePath = recoveredAudioFile.path;
+			updatedTask.inputFileName = recoveredAudioFile.name;
 		}
 
 		await this.updateTaskInHistory(updatedTask);
 		await this.app.workspace.openLinkText(selectedFile.path, '', true);
+	}
+
+	private findCachedTranscriptionFiles(searchQuery: string): TFile[] {
+		return this.getCachedVaultFiles().filter((file) => {
+			if (file.extension !== 'md') {
+				return false;
+			}
+
+			const cache: CachedMetadata | null = this.app.metadataCache.getFileCache(file);
+			const transcriptionTimestampValue: unknown = cache?.frontmatter?.['transcription_timestamp'];
+			return typeof transcriptionTimestampValue === 'string' && transcriptionTimestampValue.includes(searchQuery);
+		});
+	}
+
+	private findCachedAudioFilesByName(fileName: string): TFile[] {
+		if (!fileName) {
+			return [];
+		}
+
+		return this.getCachedVaultFiles().filter((file) =>
+			file.name === fileName && this.isAudioFile(file.extension)
+		);
+	}
+
+	private getCachedVaultFiles(): TFile[] {
+		const metadataCache = this.app.metadataCache as MetadataCacheWithCachedFiles;
+		const cachedFiles = metadataCache.getCachedFiles?.() ?? [];
+		const cachedPaths = Array.isArray(cachedFiles)
+			? cachedFiles.filter((path): path is string => typeof path === 'string')
+			: [];
+		const files: TFile[] = [];
+
+		for (const path of cachedPaths) {
+			const file = this.app.vault.getAbstractFileByPath(path);
+			if (file instanceof TFile) {
+				files.push(file);
+			}
+		}
+
+		return files;
+	}
+
+	private openGlobalSearch(searchQuery: string): void {
+		const searchPlugin: unknown = ((this.app as unknown) as ObsidianApp).internalPlugins?.getPluginById('global-search');
+		if (this.isSearchPlugin(searchPlugin)) {
+			searchPlugin.instance.openGlobalSearch(this.quoteSearchQuery(searchQuery));
+		}
+	}
+
+	private quoteSearchQuery(searchQuery: string): string {
+		const escaped = searchQuery.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+		return `"${escaped}"`;
 	}
 
 	/**

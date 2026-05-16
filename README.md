@@ -118,9 +118,9 @@ Links to GitHub, OpenAI documentation, and Buy Me a Coffee are documentation or 
 
 ## Local data and permissions
 
-- **Vault file listing**: The plugin lists vault files to show selectable audio/video files and recent transcription history. File lists are filtered to supported media formats for transcription workflows.
+- **Cached vault paths**: The plugin uses Obsidian's metadata cache to show selectable audio/video files and recover recent transcription history. Candidate paths are resolved only when needed and filtered to supported transcription formats.
 - **Vault writes**: The plugin creates or updates transcription notes in the output folder you choose. It may also create temporary working files and place `fvad.wasm` in the plugin folder when you explicitly choose a local VAD file.
-- **Clipboard writes**: If inserting or saving a transcription fails, the plugin may copy the transcription text to the clipboard as a recovery fallback. It does not read clipboard contents.
+- **Manual recovery display**: If saving a transcription fails after the built-in vault write retries, the plugin shows the generated transcription in a visible recovery window so you can restore it manually.
 - **Local VAD WASM**: `fvad.wasm` is an optional WebRTC VAD module from `@echogarden/fvad-wasm`. It is used only for local voice activity detection when configured.
 - **Base64 encoding**: Base64 is used for API-key storage wrappers and realtime audio encoding. It is not used to hide network endpoints or telemetry.
 
@@ -315,9 +315,9 @@ GitHub、OpenAIドキュメント、Buy Me a Coffeeへのリンクは、ドキ�
 
 ## ローカルデータと権限
 
-- **Vault内ファイルの一覧取得**: 音声/動画ファイルの選択や文字起こし履歴の表示のため、vault内のファイル一覧を取得します。文字起こしの選択画面では対応メディア形式に絞り込みます。
+- **キャッシュ済みVaultパスの参照**: 音声/動画ファイルの選択や文字起こし履歴の復旧のため、Obsidianのメタデータキャッシュを使用します。候補パスは必要時のみ解決し、文字起こし対応形式に絞り込みます。
 - **Vaultへの書き込み**: 選択した出力フォルダに文字起こしノートを作成または更新します。また、一時作業ファイルを作成したり、ユーザーがローカルVADファイルを明示的に選択した場合に `fvad.wasm` をプラグインフォルダへ配置することがあります。
-- **クリップボードへの書き込み**: 文字起こし結果の挿入または保存に失敗した場合、復旧手段として文字起こしテキストをクリップボードへコピーすることがあります。クリップボード内容の読み取りは行いません。
+- **手動復旧表示**: 組み込みのvault書き込み再試行後も文字起こしの保存に失敗した場合、生成済みの文字起こし本文を復旧用ウィンドウに表示し、手動で復元できるようにします。
 - **ローカルVAD WASM**: `fvad.wasm` は `@echogarden/fvad-wasm` 由来の任意のWebRTC VADモジュールです。ローカル音声区間検出を設定した場合にのみ使用します。
 - **Base64エンコード**: Base64はAPIキー保存用ラッパーとリアルタイム音声エンコードに使用します。通信先やテレメトリーを隠す目的では使用していません。
 

@@ -241,7 +241,7 @@ const ko: TranslationKeys = {
 		postProcessingSuffix: ' (후처리: {model})',
 		transcriptionAppendedFallback: '삽입 오류로 인해 전사를 파일 끝에 추가했습니다.',
 		transcriptionSavedToNewFile: '전사를 새 파일에 저장했습니다: {fileName}',
-		transcriptionCopyFallback: '전사를 삽입하지 못했습니다. 내용을 클립보드에 복사했습니다.'
+		transcriptionManualRecovery: '전사를 저장하지 못했습니다. 복구 창에 생성된 내용이 표시됩니다.'
 	},
 
 	// Transcription Modal
@@ -315,7 +315,12 @@ const ko: TranslationKeys = {
 			partialFailedChunks: '일부 청크({chunks})에서 실패했습니다.',
 			chunkFailure: '[청크 {index} 실패: {error}]',
 			chunkFailureSummary: '청크 {id}: {error}',
-			costEstimateSummary: '약 {minutes}분 @ {rate}/분'
+			costEstimateSummary: '약 {minutes}분 @ {rate}/분',
+			manualRecoveryTitle: '전사 복구',
+			manualRecoveryDescription: '생성된 노트를 저장하지 못했습니다. 아래 텍스트를 사용해 전사를 수동으로 복구하세요.',
+			manualRecoveryTarget: '대상 파일: {path}',
+			manualRecoveryError: '저장 오류: {error}',
+			manualRecoverySelectText: '텍스트 선택'
 		},
 		postProcessing: {
 			titlePre: '전사 전 관련 정보',
@@ -397,7 +402,7 @@ const ko: TranslationKeys = {
 			invalidTimeRange: '시작 시간은 종료 시간보다 앞서야 합니다.',
 			endTimeExceedsDuration: '종료 시간({end})이 오디오 길이({duration})를 초과합니다.',
 			unableToOpenFile: '생성된 파일을 열 수 없습니다.',
-			fileInsertionFailed: '파일에 쓰지 못했습니다. 전사를 클립보드에 복사했습니다.'
+			fileInsertionFailed: '파일에 쓰지 못했습니다. 복구 창에 전사 텍스트가 표시됩니다.'
 		},
 		recoveryActions: {
 			openSettings: '설정 열기',

@@ -241,7 +241,7 @@ const ja: TranslationKeys = {
 		postProcessingSuffix: '（後処理: {model}）',
 		transcriptionAppendedFallback: '挿入エラーが発生したため、文字起こしをファイル末尾に追記しました。',
 		transcriptionSavedToNewFile: '文字起こしを新規ファイルに保存しました: {fileName}',
-		transcriptionCopyFallback: '文字起こしの挿入に失敗したため、内容をクリップボードにコピーしました。'
+		transcriptionManualRecovery: '文字起こしの保存に失敗しました。復旧用ウィンドウに生成内容を表示しています。'
 	},
 
 	// Transcription Modal
@@ -315,7 +315,12 @@ const ja: TranslationKeys = {
 			partialFailedChunks: '一部のチャンク（{chunks}）で失敗しました。',
 			chunkFailure: '[チャンク{index}で失敗: {error}]',
 			chunkFailureSummary: 'チャンク{ id }: {error}',
-			costEstimateSummary: '約{minutes}分 @ {rate}/分'
+			costEstimateSummary: '約{minutes}分 @ {rate}/分',
+			manualRecoveryTitle: '文字起こしを復旧',
+			manualRecoveryDescription: '生成したノートを保存できませんでした。以下のテキストを使って、文字起こしを手動で復旧してください。',
+			manualRecoveryTarget: '保存予定ファイル: {path}',
+			manualRecoveryError: '保存エラー: {error}',
+			manualRecoverySelectText: 'テキストを選択'
 		},
 		postProcessing: {
 			titlePre: '関連情報の事前入力',
@@ -397,7 +402,7 @@ const ja: TranslationKeys = {
 			invalidTimeRange: '開始時刻は終了時刻より前である必要があります。',
 			endTimeExceedsDuration: '終了時刻（{end}）が音声の長さ（{duration}）を超えています。',
 			unableToOpenFile: '作成したファイルを開けませんでした。',
-			fileInsertionFailed: 'ファイルへの挿入に失敗しました。文字起こしをクリップボードにコピーしました。'
+			fileInsertionFailed: 'ファイルへの挿入に失敗しました。復旧用ウィンドウに文字起こし本文を表示しています。'
 		},
 		recoveryActions: {
 			openSettings: '設定を開く',

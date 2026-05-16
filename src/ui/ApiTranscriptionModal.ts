@@ -907,11 +907,10 @@ export class APITranscriptionModal extends Modal {
 				} catch (fallbackError) {
 					this.logger.error('All insertion methods failed', fallbackError);
 
-					// Last resort: Copy to clipboard
-					await navigator.clipboard.writeText(transcription);
-					new Notice(t('notices.transcriptionCopyFallback'), 10000);
+					const err = fallbackError instanceof Error ? fallbackError : new Error(this.formatUnknownError(fallbackError));
+					new TranscriptionRecoveryModal(this.app, formattedTranscription, filePath, err.message).open();
+					new Notice(t('notices.transcriptionManualRecovery'), 10000);
 
-					// Log the formatted content for debugging
 					throw new Error(t('errors.messages.fileInsertionFailed'));
 				}
 			}
@@ -1678,5 +1677,62 @@ export class APITranscriptionModal extends Modal {
 		}
 		// Release wake lock if still held
 		this.releaseWakeLock();
+	}
+}
+
+class TranscriptionRecoveryModal extends Modal {
+	private readonly transcriptionContent: string;
+	private readonly targetFilePath: string;
+	private readonly failureMessage: string;
+	private recoveryTextEl!: HTMLTextAreaElement;
+
+	constructor(app: App, transcriptionContent: string, targetFilePath: string, failureMessage: string) {
+		super(app);
+		this.transcriptionContent = transcriptionContent;
+		this.targetFilePath = targetFilePath;
+		this.failureMessage = failureMessage;
+	}
+
+	override onOpen(): void {
+		const { contentEl } = this;
+		contentEl.empty();
+		this.modalEl.addClass('ai-transcriber-modal');
+		contentEl.addClass('transcription-meta-modal');
+
+		contentEl.createEl('h2', { text: t('modal.transcription.manualRecoveryTitle') });
+		contentEl.createEl('p', {
+			text: t('modal.transcription.manualRecoveryDescription'),
+			cls: 'setting-item-description'
+		});
+		contentEl.createEl('p', {
+			text: t('modal.transcription.manualRecoveryTarget', { path: this.targetFilePath }),
+			cls: 'setting-item-description'
+		});
+		contentEl.createEl('p', {
+			text: t('modal.transcription.manualRecoveryError', { error: this.failureMessage }),
+			cls: 'setting-item-description'
+		});
+
+		this.recoveryTextEl = contentEl.createEl('textarea', {
+			cls: 'ait-meta-input-textarea',
+			attr: {
+				readonly: 'true',
+				rows: '16',
+				spellcheck: 'false'
+			}
+		});
+		this.recoveryTextEl.value = this.transcriptionContent;
+
+		const buttonContainer = contentEl.createEl('div', { cls: 'ai-transcriber-modal-buttons' });
+		new ButtonComponent(buttonContainer)
+			.setButtonText(t('modal.transcription.manualRecoverySelectText'))
+			.onClick(() => {
+				this.recoveryTextEl.focus();
+				this.recoveryTextEl.select();
+			});
+		new ButtonComponent(buttonContainer)
+			.setButtonText(t('modal.button.ok'))
+			.setCta()
+			.onClick(() => this.close());
 	}
 }

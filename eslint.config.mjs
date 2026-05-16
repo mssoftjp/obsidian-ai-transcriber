@@ -3,7 +3,7 @@ import tsParser from '@typescript-eslint/parser';
 import tsPlugin from '@typescript-eslint/eslint-plugin';
 import obsidianmd from 'eslint-plugin-obsidianmd';
 import globals from 'globals';
-import importPlugin from 'eslint-plugin-import';
+import importXPlugin from 'eslint-plugin-import-x';
 
 const typescriptRules = {
   '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
@@ -57,14 +57,14 @@ const typescriptRules = {
   'object-curly-spacing': ['error', 'always'],
   'array-bracket-spacing': ['error', 'never'],
   'no-implicit-coercion': ['error', { boolean: true, number: true, string: true, disallowTemplateShorthand: true }],
-  'import/order': ['error', {
+  'import-x/order': ['error', {
     groups: ['builtin', 'external', 'internal', 'parent', 'sibling', 'index', 'object', 'type'],
     'newlines-between': 'always',
     alphabetize: { order: 'asc', caseInsensitive: true }
   }],
-  'import/no-duplicates': 'error',
-  'import/no-mutable-exports': 'error',
-  'import/no-cycle': 'off'
+  'import-x/no-duplicates': 'error',
+  'import-x/no-mutable-exports': 'error',
+  'import-x/no-cycle': 'off'
 };
 
 const artifactRules = {
@@ -102,7 +102,7 @@ export default [
     },
     plugins: {
       '@typescript-eslint': tsPlugin,
-      import: importPlugin
+      'import-x': importXPlugin
     },
     rules: typescriptRules
   },

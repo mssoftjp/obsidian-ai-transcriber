@@ -7,6 +7,10 @@ import { Logger } from '../utils/Logger';
 
 import type { App } from 'obsidian';
 
+interface MetadataCacheWithCachedFiles {
+	getCachedFiles?: () => unknown;
+}
+
 export class AudioFileSelectionModal extends Modal {
 	private files: TFile[] = [];
 	private filteredFiles: TFile[] = [];
@@ -30,34 +34,23 @@ export class AudioFileSelectionModal extends Modal {
 	}
 
 	private loadAudioFilesFromCache(): void {
-		const metadataCache = this.app.metadataCache as { getCachedFiles?: () => string[]; fileCache?: unknown };
-		const cacheReady = Boolean(metadataCache.fileCache);
-		const cachedFiles: unknown = cacheReady && typeof metadataCache.getCachedFiles === 'function'
-			? metadataCache.getCachedFiles()
-			: [];
-
-		if (!cacheReady) {
-			this.logger.debug('Metadata cache not ready; falling back to vault.getFiles()');
-		}
+		const metadataCache = this.app.metadataCache as MetadataCacheWithCachedFiles;
+		const cachedFiles = metadataCache.getCachedFiles?.() ?? [];
 		const cachedPaths = Array.isArray(cachedFiles)
 			? cachedFiles.filter((path): path is string => typeof path === 'string')
 			: [];
-		const allowedExtensions = SUPPORTED_FORMATS.EXTENSIONS.map((ext) => ext.toLowerCase());
+		const allowedExtensions = new Set(SUPPORTED_FORMATS.EXTENSIONS.map((ext) => ext.toLowerCase()));
 		const audioFiles: TFile[] = [];
 
 		for (const path of cachedPaths) {
 			const abstract = this.app.vault.getAbstractFileByPath(path);
-			if (abstract instanceof TFile && allowedExtensions.includes(abstract.extension.toLowerCase())) {
+			if (abstract instanceof TFile && allowedExtensions.has(abstract.extension.toLowerCase())) {
 				audioFiles.push(abstract);
 			}
 		}
 
 		if (audioFiles.length === 0) {
-			audioFiles.push(
-				...this.app.vault.getFiles().filter((file) =>
-					allowedExtensions.includes(file.extension.toLowerCase())
-				)
-			);
+			this.logger.debug('No audio files found from metadata cache');
 		}
 
 		this.files = audioFiles;
@@ -400,19 +393,19 @@ export class AudioFileSelectionModal extends Modal {
 }
 
 class AudioFileSuggest extends AbstractInputSuggest<TFile> {
-	private readonly getFiles: () => TFile[];
+	private readonly getCandidateFiles: () => TFile[];
 	private readonly onChooseFile: (file: TFile) => void;
 	private readonly inputElRef: HTMLInputElement;
 
-	constructor(app: App, inputEl: HTMLInputElement, getFiles: () => TFile[], onChooseFile: (file: TFile) => void) {
+	constructor(app: App, inputEl: HTMLInputElement, getCandidateFiles: () => TFile[], onChooseFile: (file: TFile) => void) {
 		super(app, inputEl);
-		this.getFiles = getFiles;
+		this.getCandidateFiles = getCandidateFiles;
 		this.onChooseFile = onChooseFile;
 		this.inputElRef = inputEl;
 	}
 
 	getSuggestions(query: string): TFile[] {
-		const files = this.getFiles();
+		const files = this.getCandidateFiles();
 		const normalized = query.trim().toLowerCase();
 		const candidates = normalized
 			? files.filter((file) =>
