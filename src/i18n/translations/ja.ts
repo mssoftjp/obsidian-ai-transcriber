@@ -281,6 +281,7 @@ const ja: TranslationKeys = {
 			costEstimate: '推定コスト',
 			costNote: '実際のコストは処理内容により変動する可能性があります',
 			costDetails: 'モデル: {model} • レート: {rate}',
+			additionalProcessingCostNote: 'この金額は文字起こし分のみです。AI後処理やユーザー辞書補正を使うと、追加のAPI費用が発生し、推定コストを上回る場合があります。',
 			timeRange: '時間範囲',
 			selectTimeRange: '特定の時間範囲を選択（オプション）',
 			startTime: '開始',
@@ -291,7 +292,9 @@ const ja: TranslationKeys = {
 			processingOptions: {
 				title: '処理オプション',
 				enablePostProcessing: 'AI後処理を有効化',
+				enablePostProcessingDesc: '追加のAPI呼び出しを行うため、上記の推定コストを上回る場合があります。',
 				enableDictionaryCorrection: 'ユーザー辞書を後処理に使う',
+				enableDictionaryCorrectionDesc: '辞書補正にも追加のAPI費用が発生する場合があります。',
 				outputFolder: '出力フォルダ',
 				relatedInfo: '関連情報'
 			},

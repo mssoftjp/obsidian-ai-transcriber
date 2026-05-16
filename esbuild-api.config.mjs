@@ -1,8 +1,8 @@
 import esbuild from "esbuild";
 import process from "process";
-import builtins from "builtin-modules";
+import { builtinModules } from "node:module";
 import path from "node:path";
-import { readFileSync, mkdirSync, copyFileSync, existsSync } from "fs";
+import { readFileSync, mkdirSync, copyFileSync, existsSync, rmSync } from "fs";
 import { execSync } from "child_process";
 
 const banner =
@@ -58,8 +58,8 @@ function deployToObsidianPluginsDir(outputDir) {
 	}
 
 	// Allow either:
-	// - OBSIDIAN_PLUGINS_DIR="<vault>/.obsidian/plugins"
-	// - OBSIDIAN_PLUGINS_DIR="<vault>/.obsidian/plugins/<pluginId>"
+	// - OBSIDIAN_PLUGINS_DIR="<vault community plugins directory>"
+	// - OBSIDIAN_PLUGINS_DIR="<vault community plugins directory>/<pluginId>"
 	const targetDir = path.basename(pluginsDir) === pluginId
 		? pluginsDir
 		: path.join(pluginsDir, pluginId);
@@ -113,7 +113,7 @@ const buildOptions = {
 		'@lezer/common',
 		'@lezer/highlight',
 		'@lezer/lr',
-	...builtins],
+	...builtinModules],
 	format: 'cjs',
 	target: 'es2020',
 	logLevel: "error",
@@ -148,6 +148,13 @@ if (isWatch) {
 	await esbuild.build(buildOptions);
 
 	if (isProduction) {
+		const commonBuildDir = 'build';
+		mkdirSync(commonBuildDir, { recursive: true });
+		['main.js', 'manifest.json', 'styles.css'].forEach(file => {
+			if (existsSync(`${outputDir}/${file}`)) {
+				copyFileSync(`${outputDir}/${file}`, `${commonBuildDir}/${file}`);
+			}
+		});
 	
 	// Copy additional files to build directory
 	console.log('Copying additional files...');
@@ -171,10 +178,13 @@ if (includeWasm) {
     }
 } else {
     console.log('  • fvad.wasm intentionally not included (default)');
+    rmSync(`${outputDir}/fvad.wasm`, { force: true });
 }
 
 	// Prepare release artifacts (Community distribution requires only 3 files)
 	const releaseDir = `${outputDir}/release`;
+	rmSync(`${outputDir}/release.zip`, { force: true });
+	rmSync(releaseDir, { recursive: true, force: true });
 	mkdirSync(releaseDir, { recursive: true });
 	['main.js', 'manifest.json', 'styles.css'].forEach(file => {
 		try {

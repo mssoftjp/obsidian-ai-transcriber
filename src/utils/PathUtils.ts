@@ -4,7 +4,7 @@ import type { App } from 'obsidian';
 
 /**
  * Utility functions for dynamic path resolution
- * Replaces hardcoded .obsidian paths with dynamic resolution
+ * Replaces hardcoded config-directory paths with dynamic resolution
  */
 export class PathUtils {
 	private static cachedPluginDir: string | null = null;

@@ -68,7 +68,7 @@ export class TranscriptionView extends ItemView {
 		this.unsubscribeProgress = this.progressTracker.addListener(this.handleProgressUpdate);
 
 		// Start update interval
-		this.registerInterval(window.setInterval(() => {
+		this.registerInterval(this.getTimerWindow().setInterval(() => {
 			this.updateView();
 		}, 1000));
 
@@ -154,7 +154,7 @@ export class TranscriptionView extends ItemView {
 		if (currentTask && ['completed', 'error', 'partial', 'cancelled'].includes(currentTask.status)) {
 			this.updateView();
 			// 履歴を確実に更新
-			setTimeout(() => this.updateHistoryDisplay(), 100);
+			this.getTimerWindow().setTimeout(() => this.updateHistoryDisplay(), 100);
 		} else {
 			this.updateView();
 		}
@@ -385,8 +385,12 @@ export class TranscriptionView extends ItemView {
 		// 即座にUIを更新
 		this.updateHistoryDisplay();
 		// 少し待ってから成功メッセージを表示
-		await new Promise(resolve => setTimeout(resolve, 100));
+		await new Promise(resolve => this.getTimerWindow().setTimeout(resolve, 100));
 		new Notice(t('common.historyCleared'));
+	}
+
+	private getTimerWindow(): Window {
+		return this.contentEl.ownerDocument.defaultView ?? activeWindow;
 	}
 
 	private async showTranscriptionResult(task: TranscriptionTask) {

@@ -26,7 +26,7 @@ Notes:
 
 ## Requirements
 
-- Obsidian v1.8.0 or higher (Desktop only)
+- Obsidian v1.8.7 or higher (Desktop only)
 - OpenAI API account with API key
 - Internet connection for API calls
 
@@ -43,7 +43,7 @@ Notes:
 ### Manual Installation
 
 1. Download the latest release from the [GitHub releases page](https://github.com/mssoftjp/obsidian-ai-transcriber/releases)
-2. Extract the files to your vault's plugins folder: `<vault>/.obsidian/plugins/ai-transcriber/`
+2. Extract `main.js`, `manifest.json`, and `styles.css` to the AI Transcriber folder inside your vault's community plugins folder.
 3. Reload Obsidian
 4. Enable the plugin in Settings → Community plugins
 
@@ -73,7 +73,7 @@ Notes:
 By default, the plugin uses server-side VAD. If you prefer local VAD (WebRTC VAD) for on-device speech/silence detection:
 
 1. Download `fvad.wasm` from the echogarden project: https://github.com/echogarden-project/fvad-wasm
-2. In the plugin settings, select "Local" from the VAD Mode dropdown and load the file using the file loader (alternatively, place the file at: `<vault>/.obsidian/plugins/ai-transcriber/fvad.wasm`)
+2. In the plugin settings, select "Local" from the VAD Mode dropdown and load the file using the file loader. For manual installs, this places `fvad.wasm` in the same plugin folder that contains `manifest.json`.
 3. Set VAD Mode to "Local" in the plugin settings
 
 If `fvad.wasm` is not present, the plugin automatically falls back to server-side VAD (or no VAD depending on your settings).
@@ -114,9 +114,19 @@ This plugin requires an internet connection and communicates with the following 
   - API key is sent with each request for authentication
   - No data is stored permanently by the plugin beyond the transcribed text
 
+Links to GitHub, OpenAI documentation, and Buy Me a Coffee are documentation or support links. They are not contacted by the plugin during transcription unless you open those links yourself.
+
+## Local data and permissions
+
+- **Vault file listing**: The plugin lists vault files to show selectable audio/video files and recent transcription history. File lists are filtered to supported media formats for transcription workflows.
+- **Vault writes**: The plugin creates or updates transcription notes in the output folder you choose. It may also create temporary working files and place `fvad.wasm` in the plugin folder when you explicitly choose a local VAD file.
+- **Clipboard writes**: If inserting or saving a transcription fails, the plugin may copy the transcription text to the clipboard as a recovery fallback. It does not read clipboard contents.
+- **Local VAD WASM**: `fvad.wasm` is an optional WebRTC VAD module from `@echogarden/fvad-wasm`. It is used only for local voice activity detection when configured.
+- **Base64 encoding**: Base64 is used for API-key storage wrappers and realtime audio encoding. It is not used to hide network endpoints or telemetry.
+
 ## Privacy and Security
 
-- Your OpenAI API key is stored securely using Obsidian's built-in encryption
+- Your OpenAI API key is stored with Electron safeStorage when available, with legacy settings migrated on load when possible
 - Audio recordings are processed locally before being sent to OpenAI
 - No telemetry or usage data is collected by this plugin
 - Transcribed text is saved only to your local vault
@@ -176,7 +186,6 @@ Notable third-party components:
 
 - **WebRTC VAD** - Google's voice activity detection algorithm
 - **@echogarden/fvad-wasm** - WASM port of WebRTC VAD
-- **@noble/hashes** - Cryptographic hash functions by Paul Miller
 
 ### Development Tools
 
@@ -215,7 +224,7 @@ OpenAIのGPT-4o Transcribe / GPT-4o Mini TranscribeとWhisper APIを使用した
 
 ## 必要条件
 
-- Obsidian v1.8.0以上（デスクトップ版のみ）
+- Obsidian v1.8.7以上（デスクトップ版のみ）
 - OpenAI APIキー
 - API呼び出し用のインターネット接続
 
@@ -232,7 +241,7 @@ OpenAIのGPT-4o Transcribe / GPT-4o Mini TranscribeとWhisper APIを使用した
 ### 手動インストール
 
 1. [GitHubリリースページ](https://github.com/mssoftjp/obsidian-ai-transcriber/releases)から最新リリースをダウンロード
-2. ファイルをvaultのプラグインフォルダに展開: `<vault>/.obsidian/plugins/ai-transcriber/`
+2. `main.js`、`manifest.json`、`styles.css` を、vault内のCommunity plugin用AI Transcriberフォルダに展開
 3. Obsidianを再読み込み
 4. 設定 → Community pluginsでプラグインを有効化
 
@@ -262,7 +271,7 @@ OpenAIのGPT-4o Transcribe / GPT-4o Mini TranscribeとWhisper APIを使用した
 既定ではサーバーサイドVADを使用します。端末内で音声/無音判定（WebRTC VAD）を行いたい場合は以下の手順でローカルVADを有効化できます。
 
 1. echogardenプロジェクトから `fvad.wasm` をダウンロード: https://github.com/echogarden-project/fvad-wasm
-2. 設定の無音検出方式のプルダウンでローカルを選択し、ファイルの読み込みでfvad.wasmを導入（もしくは次の場所に配置: `<vault>/.obsidian/plugins/ai-transcriber/fvad.wasm`）
+2. 設定の無音検出方式のプルダウンでローカルを選択し、ファイルの読み込みで `fvad.wasm` を導入。手動インストールでは、`manifest.json` と同じプラグインフォルダに配置されます。
 3. プラグイン設定で VAD モードを「ローカル」に設定
 
 
@@ -302,9 +311,19 @@ OpenAIのGPT-4o Transcribe / GPT-4o Mini TranscribeとWhisper APIを使用した
   - APIキーは認証のため各リクエストと共に送信されます
   - プラグインによって文字起こしされたテキスト以外のデータは永続的に保存されません
 
+GitHub、OpenAIドキュメント、Buy Me a Coffeeへのリンクは、ドキュメントまたはサポート用リンクです。ユーザーがリンクを開かない限り、文字起こし処理中にプラグインがそれらへ通信することはありません。
+
+## ローカルデータと権限
+
+- **Vault内ファイルの一覧取得**: 音声/動画ファイルの選択や文字起こし履歴の表示のため、vault内のファイル一覧を取得します。文字起こしの選択画面では対応メディア形式に絞り込みます。
+- **Vaultへの書き込み**: 選択した出力フォルダに文字起こしノートを作成または更新します。また、一時作業ファイルを作成したり、ユーザーがローカルVADファイルを明示的に選択した場合に `fvad.wasm` をプラグインフォルダへ配置することがあります。
+- **クリップボードへの書き込み**: 文字起こし結果の挿入または保存に失敗した場合、復旧手段として文字起こしテキストをクリップボードへコピーすることがあります。クリップボード内容の読み取りは行いません。
+- **ローカルVAD WASM**: `fvad.wasm` は `@echogarden/fvad-wasm` 由来の任意のWebRTC VADモジュールです。ローカル音声区間検出を設定した場合にのみ使用します。
+- **Base64エンコード**: Base64はAPIキー保存用ラッパーとリアルタイム音声エンコードに使用します。通信先やテレメトリーを隠す目的では使用していません。
+
 ## プライバシーとセキュリティ
 
-- OpenAI APIキーはObsidianの組み込み暗号化を使用して安全に保存されます
+- OpenAI APIキーは利用可能な場合Electron safeStorageで保存され、既存形式は読み込み時に可能な範囲で移行されます
 - 音声録音はOpenAIに送信される前にローカルで処理されます
 - このプラグインによるテレメトリーや使用データの収集はありません
 - 文字起こしされたテキストはローカルのvaultにのみ保存されます
@@ -364,7 +383,6 @@ OpenAIのGPT-4o Transcribe / GPT-4o Mini TranscribeとWhisper APIを使用した
 
 - **WebRTC VAD** - Googleの音声区間検出アルゴリズム
 - **@echogarden/fvad-wasm** - WebRTC VADのWASMポート
-- **@noble/hashes** - Paul Miller氏による暗号化ハッシュ関数
 
 ### 開発ツール
 

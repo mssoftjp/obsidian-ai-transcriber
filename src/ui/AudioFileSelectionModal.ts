@@ -140,7 +140,8 @@ export class AudioFileSelectionModal extends Modal {
 		this.buildSuggest(searchInput);
 		// Prevent auto-focus stealing when the modal opens (especially on ribbon click)
 		this.modalEl.tabIndex = -1;
-		requestAnimationFrame(() => this.modalEl.focus({ preventScroll: true }));
+		const animationWindow = this.modalEl.ownerDocument.defaultView ?? activeWindow;
+		animationWindow.requestAnimationFrame(() => this.modalEl.focus({ preventScroll: true }));
 
 		// Sort dropdown
 		const sortDiv = controlsDiv.createDiv({ cls: 'sort-container' });
@@ -324,38 +325,42 @@ export class AudioFileSelectionModal extends Modal {
 	}
 
 	private onExternalFileSelect() {
-		const input = document.createElement('input');
-		input.type = 'file';
-		input.accept = SUPPORTED_FORMATS.EXTENSIONS.map(ext => `.${ext}`).join(',');
+		const input = this.contentEl.createEl('input', {
+			type: 'file',
+			cls: 'ait-hidden',
+			attr: {
+				accept: SUPPORTED_FORMATS.EXTENSIONS.map(ext => `.${ext}`).join(',')
+			}
+		});
 
 		input.onchange = async (e) => {
-			const file = (e.target as HTMLInputElement).files?.[0];
-			if (!file) {
-				return;
-			}
-
-			if (!this.tempFileManager.checkFileSize(file, 500)) {
-				new Notice(t('errors.fileSizeExceeded'));
-				return;
-			}
-
-			const spaceCheck = await this.tempFileManager.estimateAvailableSpace();
-			if (!spaceCheck.available) {
-				new Notice(spaceCheck.message || t('errors.diskSpaceLow', { available: '0' }));
-				return;
-			}
-
-			this.contentEl.empty();
-			const progressContainer = this.contentEl.createDiv({ cls: 'copy-progress-container' });
-			progressContainer.createEl('h3', { text: t('modal.audioFileSelection.copying') });
-
-			const progressBar = progressContainer.createEl('progress', {
-				cls: 'ai-transcriber-progress',
-				attr: { max: '100', value: '0' }
-			});
-			const progressText = progressContainer.createDiv({ cls: 'ai-transcriber-progress-text' });
-
 			try {
+				const file = (e.target as HTMLInputElement).files?.[0];
+				if (!file) {
+					return;
+				}
+
+				if (!this.tempFileManager.checkFileSize(file, 500)) {
+					new Notice(t('errors.fileSizeExceeded'));
+					return;
+				}
+
+				const spaceCheck = await this.tempFileManager.estimateAvailableSpace();
+				if (!spaceCheck.available) {
+					new Notice(spaceCheck.message || t('errors.diskSpaceLow', { available: '0' }));
+					return;
+				}
+
+				this.contentEl.empty();
+				const progressContainer = this.contentEl.createDiv({ cls: 'copy-progress-container' });
+				progressContainer.createEl('h3', { text: t('modal.audioFileSelection.copying') });
+
+				const progressBar = progressContainer.createEl('progress', {
+					cls: 'ai-transcriber-progress',
+					attr: { max: '100', value: '0' }
+				});
+				const progressText = progressContainer.createDiv({ cls: 'ai-transcriber-progress-text' });
+
 				const result = await this.tempFileManager.copyExternalFile(file, (progress) => {
 					this.updateProgress(progressBar, progress);
 					progressText.setText(`${Math.round(progress)}%`);
@@ -371,6 +376,8 @@ export class AudioFileSelectionModal extends Modal {
 						: 'Unknown error';
 				new Notice(`${t('errors.general')}: ${errorMessage}`);
 				this.close();
+			} finally {
+				input.remove();
 			}
 		};
 

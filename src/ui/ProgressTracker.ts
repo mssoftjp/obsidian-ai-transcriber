@@ -136,7 +136,7 @@ export class ProgressTracker {
 		this.notifyListeners();
 
 		// Clear current task after a delay
-		setTimeout(() => {
+		this.getTimerWindow().setTimeout(() => {
 			if (this.currentTask?.id === taskId) {
 				this.currentTask = null;
 				this.notifyListeners();
@@ -168,7 +168,7 @@ export class ProgressTracker {
 		this.notifyListeners();
 
 		// Clear current task after a delay
-		setTimeout(() => {
+		this.getTimerWindow().setTimeout(() => {
 			if (this.currentTask?.id === taskId) {
 				this.currentTask = null;
 				this.notifyListeners();
@@ -193,7 +193,7 @@ export class ProgressTracker {
 		this.notifyListeners();
 
 		// Clear current task after a delay
-		setTimeout(() => {
+		this.getTimerWindow().setTimeout(() => {
 			if (this.currentTask?.id === taskId) {
 				this.currentTask = null;
 				this.notifyListeners();
@@ -392,6 +392,10 @@ export class ProgressTracker {
 		this.stateRepo.saveHistory(this.history).catch(error => {
 			this.logger.error('Failed to save history', error);
 		});
+	}
+
+	private getTimerWindow(): Pick<Window, 'setTimeout'> {
+		return activeWindow;
 	}
 
 	// setMaxHistoryItems removed - using fixed constant from UI_CONSTANTS

@@ -308,7 +308,11 @@ export abstract class ApiClient {
 	 * Delay helper for retries
 	 */
 	private delay(ms: number): Promise<void> {
-		return new Promise(resolve => setTimeout(resolve, ms));
+		return new Promise(resolve => this.getTimerWindow().setTimeout(resolve, ms));
+	}
+
+	protected getTimerWindow(): Window {
+		return activeWindow;
 	}
 
 	/**

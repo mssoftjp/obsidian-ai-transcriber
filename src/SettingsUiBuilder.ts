@@ -1,4 +1,4 @@
-import { Setting, Notice, Platform, ButtonComponent, TFile } from 'obsidian';
+import { Setting, Notice, Platform, ButtonComponent, FileSystemAdapter, TFile } from 'obsidian';
 
 import { MODEL_NAMES } from './config/constants';
 import { MODEL_OPTIONS, getModelOption } from './config/ModelOptions';
@@ -80,7 +80,8 @@ export class SettingsUIBuilder {
 						button.setButtonText(t('common.error'));
 						button.removeCta();
 					} finally {
-						setTimeout(() => {
+						const timerWindow = containerEl.ownerDocument.defaultView ?? SettingsUIBuilder.getFallbackWindow();
+						timerWindow.setTimeout(() => {
 							button.setButtonText(t('settings.apiKey.testButton'));
 							button.setDisabled(false);
 							button.removeCta();
@@ -222,64 +223,54 @@ export class SettingsUIBuilder {
 
 			helperBtn.onClick(() => {
 				try {
-					const input = document.createElement('input');
-					input.type = 'file';
-					input.accept = '.wasm,application/wasm';
+					const input = helperContainer.createEl('input', {
+						type: 'file',
+						cls: 'ait-hidden',
+						attr: { accept: '.wasm,application/wasm' }
+					});
 					input.onchange = () => {
 						void (async () => {
-							const file = input.files?.[0];
-							if (!file) {
-								return;
-							}
-							if (file.name !== 'fvad.wasm') {
-								new Notice(t('settings.vadMode.installWasm.invalidName'));
-								return;
-							}
-							const buffer = await file.arrayBuffer();
-							const bytes = new Uint8Array(buffer);
-							const isWasm = bytes.length >= 4 &&
-								bytes[0] === 0x00 &&
-								bytes[1] === 0x61 &&
-								bytes[2] === 0x73 &&
-								bytes[3] === 0x6d;
-							if (!isWasm) {
-								new Notice(t('settings.vadMode.installWasm.invalidType'));
-								return;
-							}
-
 							try {
+								const file = input.files?.[0];
+								if (!file) {
+									return;
+								}
+								if (file.name !== 'fvad.wasm') {
+									new Notice(t('settings.vadMode.installWasm.invalidName'));
+									return;
+								}
+								const buffer = await file.arrayBuffer();
+								const bytes = new Uint8Array(buffer);
+								const isWasm = bytes.length >= 4 &&
+									bytes[0] === 0x00 &&
+									bytes[1] === 0x61 &&
+									bytes[2] === 0x73 &&
+									bytes[3] === 0x6d;
+								if (!isWasm) {
+									new Notice(t('settings.vadMode.installWasm.invalidType'));
+									return;
+								}
+
 								const pluginDir = PathUtils.getPluginDir(app);
 								const targetPath = PathUtils.getPluginFilePath(app, 'fvad.wasm');
 								const wasmData = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
 
-								const adapter = app.vault.adapter as unknown as {
-									mkdir?: (path: string) => Promise<void>;
-									writeBinary?: (path: string, data: ArrayBuffer) => Promise<void>;
-								};
+								const { adapter } = app.vault;
+								if (!(adapter instanceof FileSystemAdapter)) {
+									throw new Error('Placing fvad.wasm requires the desktop FileSystemAdapter.');
+								}
 
 								// Ensure plugin directory exists; ignore "already exists" errors
-								if (typeof adapter.mkdir === 'function') {
-									try {
-										await adapter.mkdir(pluginDir);
-									} catch (mkdirError) {
-										if (!SettingsUIBuilder.isAlreadyExistsError(mkdirError)) {
-											throw mkdirError;
-										}
+								try {
+									await adapter.mkdir(pluginDir);
+								} catch (mkdirError) {
+									if (!SettingsUIBuilder.isAlreadyExistsError(mkdirError)) {
+										throw mkdirError;
 									}
 								}
 
-								if (typeof adapter.writeBinary === 'function') {
-									// Overwrite or create without relying on vault indexing of configDir
-									await adapter.writeBinary(targetPath, wasmData);
-								} else {
-									// Fallback: use Vault API if adapter.writeBinary is unavailable
-									const existing = app.vault.getAbstractFileByPath(targetPath);
-									if (existing instanceof TFile) {
-										await app.vault.modifyBinary(existing, wasmData);
-									} else {
-										await app.vault.createBinary(targetPath, wasmData);
-									}
-								}
+								// Plugin assets live under Obsidian's config/plugin directory, which is hidden from Vault indexing.
+								await adapter.writeBinary(targetPath, wasmData);
 								new Notice(t('settings.vadMode.installWasm.success'));
 								// Reflect installed state for local mode
 								vadModeSetting.setDesc(this.createVADDescription(t('settings.vadMode.desc'), false, true));
@@ -288,6 +279,8 @@ export class SettingsUIBuilder {
 							} catch (error) {
 								const errorMessage = SettingsUIBuilder.formatErrorMessage(error);
 								new Notice(t('settings.vadMode.installWasm.writeError', { error: errorMessage }));
+							} finally {
+								input.remove();
 							}
 						})();
 					};
@@ -363,14 +356,13 @@ export class SettingsUIBuilder {
 	 * Create API key description with link
 	 */
 	private static createApiKeyDescription(provider: string, url: string): DocumentFragment {
-		const fragment = document.createDocumentFragment();
+		const fragment = SettingsUIBuilder.createObsidianFragment();
 		fragment.appendText(t('settings.apiKey.desc') + ' ');
 
-		const link = document.createElement('a');
+		const link = fragment.createEl('a');
 		link.href = url;
-		link.textContent = provider;
+		link.setText(provider);
 		link.target = '_blank';
-		fragment.appendChild(link);
 
 		fragment.appendText('.');
 
@@ -407,10 +399,11 @@ export class SettingsUIBuilder {
 			if (Platform.isMobileApp) {
 				return false;
 			}
-			if (!isElectronWindow(window) || typeof window.require !== 'function') {
+			const electronWindow = SettingsUIBuilder.getFallbackWindow();
+			if (!isElectronWindow(electronWindow) || typeof electronWindow.require !== 'function') {
 				return false;
 			}
-				const electronRequire = window.require as (moduleName: string) => ElectronRenderer;
+				const electronRequire = electronWindow.require as (moduleName: string) => ElectronRenderer;
 				const electronModule: ElectronRenderer = electronRequire('electron');
 				// remote.safeStorage を優先的に確認
 				const safeStorage = electronModule.remote?.safeStorage ?? electronModule.safeStorage;
@@ -424,10 +417,7 @@ export class SettingsUIBuilder {
 	}
 	private static async checkLocalWasm(app: App): Promise<boolean> {
 		const possiblePaths = PathUtils.getWasmFilePaths(app, 'fvad.wasm');
-		const adapter = app.vault.adapter as unknown as {
-			stat?: (path: string) => Promise<unknown>;
-			readBinary?: (path: string) => Promise<ArrayBuffer>;
-		};
+		const { adapter } = app.vault;
 
 		for (const path of possiblePaths) {
 			const normalizedPath = PathUtils.normalizeUserPath(path);
@@ -436,26 +426,15 @@ export class SettingsUIBuilder {
 				return true;
 			}
 
-			if (typeof adapter.stat === 'function') {
-				try {
-					const stat = await adapter.stat(normalizedPath);
-					if (stat) {
-						return true;
-					}
-				} catch {
-					// not found
-				}
+			if (!(adapter instanceof FileSystemAdapter)) {
 				continue;
 			}
 
-			// Fallback: attempt read if stat() is unavailable
-			if (typeof adapter.readBinary === 'function') {
-				try {
-					await adapter.readBinary(normalizedPath);
-					return true;
-				} catch {
-					// not found
-				}
+			try {
+				await adapter.readBinary(normalizedPath);
+				return true;
+			} catch {
+				// not found
 			}
 		}
 
@@ -472,26 +451,25 @@ export class SettingsUIBuilder {
 	 * Create VAD description with optional inline missing-wasm note and link
 	 */
 	private static createVADDescription(baseDesc: string, includeMissingNote: boolean, includeLocalNote: boolean): DocumentFragment {
-		const fragment = document.createDocumentFragment();
+		const fragment = SettingsUIBuilder.createObsidianFragment();
 		fragment.appendText(baseDesc);
 		// Always show concise summaries for both selectable modes on the next line
-		fragment.appendChild(document.createElement('br'));
+		fragment.createEl('br');
 		const summaryLine = `${t('settings.vadMode.options.server')}（${t('settings.vadMode.summaries.server')}）、` +
           `${t('settings.vadMode.options.local')}（${t('settings.vadMode.summaries.local')}）`;
 		fragment.appendText(summaryLine);
 		if (includeMissingNote) {
 			// Add a light separator (empty line) before the missing-note block
-			fragment.appendChild(document.createElement('br'));
-			fragment.appendChild(document.createElement('br'));
+			fragment.createEl('br');
+			fragment.createEl('br');
 			fragment.appendText(t('settings.vadMode.missingInlineNote') + ' ');
-			const link = document.createElement('a');
+			const link = fragment.createEl('a');
 			link.href = SettingsUIBuilder.FVAD_DOWNLOAD_URL;
-			link.textContent = SettingsUIBuilder.FVAD_DOWNLOAD_URL;
+			link.setText(SettingsUIBuilder.FVAD_DOWNLOAD_URL);
 			link.target = '_blank';
-			fragment.appendChild(link);
 		}
 		if (includeLocalNote) {
-			fragment.appendChild(document.createElement('br'));
+			fragment.createEl('br');
 			fragment.appendText(t('settings.vadMode.localNote'));
 		}
 		return fragment;
@@ -499,6 +477,14 @@ export class SettingsUIBuilder {
 
 	private static isValidVadMode(value: string): value is VADMode {
 		return value === 'server' || value === 'local' || value === 'disabled';
+	}
+
+	private static getFallbackWindow(): Window {
+		return activeWindow;
+	}
+
+	private static createObsidianFragment(): DocumentFragment {
+		return createFragment();
 	}
 
 	private static formatErrorMessage(error: unknown): string {

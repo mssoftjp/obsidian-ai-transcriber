@@ -44,7 +44,8 @@ export class SettingsConnectionTest {
 						button.setButtonText(t('settings.connection.errorButton'));
 						button.removeCta();
 					} finally {
-						setTimeout(() => {
+						const timerWindow = containerEl.ownerDocument.defaultView ?? activeWindow;
+						timerWindow.setTimeout(() => {
 							button.setButtonText(t('settings.connection.testButton'));
 							button.setDisabled(false);
 							button.removeCta();

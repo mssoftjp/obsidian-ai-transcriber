@@ -279,6 +279,7 @@ export interface TranslationKeys {
 			costEstimate: string;
 			costNote: string;
 			costDetails: string;
+			additionalProcessingCostNote: string;
 			timeRange: string;
 			selectTimeRange: string;
 			startTime: string;
@@ -289,7 +290,9 @@ export interface TranslationKeys {
 			processingOptions: {
 				title: string;
 				enablePostProcessing: string;
+				enablePostProcessingDesc: string;
 				enableDictionaryCorrection: string;
+				enableDictionaryCorrectionDesc: string;
 				outputFolder: string;
 				relatedInfo: string;
 			};

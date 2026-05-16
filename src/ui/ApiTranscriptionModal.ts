@@ -269,6 +269,10 @@ export class APITranscriptionModal extends Modal {
 
 			const detailsEl = this.costEl.createEl('small', { cls: 'cost-details' });
 			detailsEl.setText(adjustedDetails);
+			if (this.settings.postProcessingEnabled || this.settings.dictionaryCorrectionEnabled) {
+				const extraCostEl = this.costEl.createEl('small', { cls: 'cost-details' });
+				extraCostEl.setText(t('modal.transcription.additionalProcessingCostNote'));
+			}
 		} catch (error) {
 			const err = error instanceof Error ? error : new Error(this.formatUnknownError(error));
 			this.logger.error('Failed to calculate cost estimate', err);
@@ -333,7 +337,7 @@ export class APITranscriptionModal extends Modal {
 			}
 
 			// Close modal after a short delay
-			setTimeout(() => {
+			this.getTimerWindow().setTimeout(() => {
 				this.close();
 			}, 1000);
 		} catch (error) {
@@ -611,7 +615,7 @@ export class APITranscriptionModal extends Modal {
 			this.updateProgress(100);
 		}
 
-		setTimeout(() => {
+		this.getTimerWindow().setTimeout(() => {
 			this.close();
 		}, 2000);
 	}
@@ -729,10 +733,7 @@ export class APITranscriptionModal extends Modal {
 		// Always create a new file for transcription
 
 		// Generate readable timestamp format for filename
-		const fileTimestamp = new Date().toISOString()
-			.replace(/T/, '-')
-			.replace(/:/g, '-')
-			.replace(/\..+/, '');
+		const fileTimestamp = this.getLocalFilenameTimestamp();
 
 		// Create filename with readable timestamp
 		const fileName = `AI-Transcription-${this.audioFile.basename}-${fileTimestamp}.md`;
@@ -946,7 +947,11 @@ export class APITranscriptionModal extends Modal {
 	}
 
 	private delay(ms: number): Promise<void> {
-		return new Promise(resolve => setTimeout(resolve, ms));
+		return new Promise(resolve => this.getTimerWindow().setTimeout(resolve, ms));
+	}
+
+	private getTimerWindow(): Window {
+		return this.modalEl.ownerDocument.defaultView ?? activeWindow;
 	}
 
 	private updateStatus(_status: string) {
@@ -1046,7 +1051,8 @@ export class APITranscriptionModal extends Modal {
 						modal.open();
 						}));
 
-			const aiDependentContainer = document.createElement('div');
+			const aiDependentContainer = optionsSection.createDiv();
+			aiDependentContainer.detach();
 		if (!this.settings.postProcessingEnabled) {
 			aiDependentContainer.classList.add('ait-hidden');
 		}
@@ -1054,6 +1060,7 @@ export class APITranscriptionModal extends Modal {
 		// Post-processing toggle - updates visibility of dependent options
 		new Setting(optionsSection)
 			.setName(t('modal.transcription.processingOptions.enablePostProcessing'))
+			.setDesc(t('modal.transcription.processingOptions.enablePostProcessingDesc'))
 			.addToggle(toggle => toggle
 				.setValue(this.settings.postProcessingEnabled)
 				.onChange(async (value) => {
@@ -1070,6 +1077,7 @@ export class APITranscriptionModal extends Modal {
 					}
 					// Update related info button visibility
 					this.updateRelatedInfoButton();
+					void this.displayCostEstimate();
 				}));
 
 		// Container for AI post-processing dependent options (created after toggle for proper DOM order)
@@ -1080,7 +1088,8 @@ export class APITranscriptionModal extends Modal {
 
 		// Dictionary correction toggle - inside dependent container
 		const dictSetting = new Setting(aiDependentContainer)
-			.setName(t('modal.transcription.processingOptions.enableDictionaryCorrection'));
+			.setName(t('modal.transcription.processingOptions.enableDictionaryCorrection'))
+			.setDesc(t('modal.transcription.processingOptions.enableDictionaryCorrectionDesc'));
 
 		// Add manage dictionary button before the toggle
 		dictSetting.addButton(button => button
@@ -1106,6 +1115,7 @@ export class APITranscriptionModal extends Modal {
 				if (this.saveSettings) {
 					await this.saveSettings();
 				}
+				void this.displayCostEstimate();
 			}));
 
 		// Related info row - inside dependent container
@@ -1614,6 +1624,17 @@ export class APITranscriptionModal extends Modal {
 	private getLocalTimestamp(): string {
 		const userLocale = getLanguage();
 		return new Date().toLocaleString(userLocale || 'en');
+	}
+
+	private getLocalFilenameTimestamp(date = new Date()): string {
+		const pad = (value: number) => value.toString().padStart(2, '0');
+		const year = date.getFullYear();
+		const month = pad(date.getMonth() + 1);
+		const day = pad(date.getDate());
+		const hours = pad(date.getHours());
+		const minutes = pad(date.getMinutes());
+		const seconds = pad(date.getSeconds());
+		return `${year}-${month}-${day}-${hours}-${minutes}-${seconds}`;
 	}
 
 	private async loadTimeRangeControls(loadingEl: HTMLElement) {

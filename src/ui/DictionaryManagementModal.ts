@@ -448,18 +448,16 @@ export class DictionaryManagementModal extends Modal {
 			const dataStr = JSON.stringify(exportData, null, 2);
 			const dataBlob = new Blob([dataStr], { type: 'application/json' });
 
-			const link = document.createElement('a');
+			const link = this.contentEl.createEl('a', { cls: 'ait-hidden' });
 			const url = URL.createObjectURL(dataBlob);
 			link.href = url;
 			link.download = `dictionary-all-${new Date().toISOString().slice(0, 10)}.json`;
-
-			// Add link to document temporarily
-			document.body.appendChild(link);
 			link.click();
 
 			// Clean up
-			setTimeout(() => {
-				document.body.removeChild(link);
+			const timerWindow = this.contentEl.ownerDocument.defaultView ?? activeWindow;
+			timerWindow.setTimeout(() => {
+				link.remove();
 				URL.revokeObjectURL(url);
 			}, 100);
 
@@ -472,17 +470,19 @@ export class DictionaryManagementModal extends Modal {
 	}
 
 	private importDictionary(): void {
-		const input = document.createElement('input');
-		input.type = 'file';
-		input.accept = '.json';
+		const input = this.contentEl.createEl('input', {
+			type: 'file',
+			cls: 'ait-hidden',
+			attr: { accept: '.json' }
+		});
 
 		input.onchange = async (e: Event) => {
-			const file = (e.target as HTMLInputElement).files?.[0];
-			if (!file) {
-				return;
-			}
-
 			try {
+				const file = (e.target as HTMLInputElement).files?.[0];
+				if (!file) {
+					return;
+				}
+
 				const text = await file.text();
 				const imported = JSON.parse(text) as unknown;
 
@@ -533,6 +533,8 @@ export class DictionaryManagementModal extends Modal {
 			} catch (error) {
 				this.logger.error('Failed to import dictionary:', error);
 				new Notice(t('settings.dictionary.importError'));
+			} finally {
+				input.remove();
 			}
 		};
 

@@ -48,7 +48,7 @@ export class StatusBarManager {
 
 		// Start update interval for elapsed time and animation
 		this.updateInterval = this.plugin.registerInterval(
-			window.setInterval(() => {
+			this.getTimerWindow().setInterval(() => {
 				if (this.currentTask?.status === 'processing') {
 					this.updateDisplay(this.currentTask);
 				}
@@ -65,7 +65,7 @@ export class StatusBarManager {
 		}
 
 		if (this.updateInterval !== null) {
-			window.clearInterval(this.updateInterval);
+			this.getTimerWindow().clearInterval(this.updateInterval);
 			this.updateInterval = null;
 		}
 
@@ -204,5 +204,9 @@ export class StatusBarManager {
 
 		statusBarItem.setAttribute('aria-label', `${t('statusBar.cancelled')}: ${fileName}`);
 		statusBarItem.removeClass('is-processing', 'is-completed', 'is-error');
+	}
+
+	private getTimerWindow(): Window {
+		return this.statusBarItem?.ownerDocument.defaultView ?? activeWindow;
 	}
 }

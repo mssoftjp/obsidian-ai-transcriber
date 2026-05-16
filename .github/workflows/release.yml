@@ -1,0 +1,85 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - '*'
+
+permissions:
+  contents: write
+  id-token: write
+  attestations: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Read manifest version
+        id: manifest
+        shell: bash
+        run: |
+          version="$(node -p "JSON.parse(require('fs').readFileSync('manifest.json', 'utf8')).version")"
+          if [ "${GITHUB_REF_NAME}" != "${version}" ]; then
+            echo "Tag ${GITHUB_REF_NAME} does not match manifest version ${version}" >&2
+            exit 1
+          fi
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+
+      - name: Build release artifacts
+        env:
+          OBSIDIAN_PLUGINS_DIR: ''
+          OBSIDIAN_DEPLOY_LOG: ''
+        run: npm run build:release
+
+      - name: Verify release artifacts
+        shell: bash
+        run: |
+          version="${{ steps.manifest.outputs.version }}"
+          test -f "build/${version}/main.js"
+          test -f "build/${version}/manifest.json"
+          test -f "build/${version}/styles.css"
+
+      - name: Create or update GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          version="${{ steps.manifest.outputs.version }}"
+          tag="${GITHUB_REF_NAME}"
+          previous_tag="$(git tag --sort=-v:refname | grep -v "^${tag}$" | head -n 1 || true)"
+          if [ -n "${previous_tag}" ]; then
+            notes="**Full Changelog**: https://github.com/${GITHUB_REPOSITORY}/compare/${previous_tag}...${tag}"
+          else
+            notes="**Full Changelog**: https://github.com/${GITHUB_REPOSITORY}/commits/${tag}"
+          fi
+          if ! gh release view "${tag}" >/dev/null 2>&1; then
+            gh release create "${tag}" --title "${tag}" --notes "${notes}"
+          fi
+          gh release upload "${tag}" \
+            "build/${version}/main.js" \
+            "build/${version}/manifest.json" \
+            "build/${version}/styles.css" \
+            --clobber
+
+      - name: Attest release artifacts
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: |
+            build/${{ steps.manifest.outputs.version }}/main.js
+            build/${{ steps.manifest.outputs.version }}/manifest.json
+            build/${{ steps.manifest.outputs.version }}/styles.css

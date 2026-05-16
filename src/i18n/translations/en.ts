@@ -100,9 +100,9 @@ const en: TranslationKeys = {
 		advanced: {
 			title: 'Advanced settings',
 			chunkInfo: 'Chunk settings guide:',
-			chunk180s: '180s (3 min): recommended - avoids timeouts',
-			chunk300s: '300s (5 min): default - balanced performance',
-			chunk600s: '600s (10 min): maximum - may cause timeouts',
+				chunk180s: 'Recommended setting: 180 seconds (3 minutes), avoids timeouts',
+				chunk300s: 'Default setting: 300 seconds (5 minutes), balanced performance',
+				chunk600s: 'Maximum setting: 600 seconds (10 minutes), may cause timeouts',
 			chunkNote: 'Note: smaller chunks are more reliable but may increase API calls'
 		},
 		progressUI: {
@@ -281,6 +281,7 @@ const en: TranslationKeys = {
 			costEstimate: 'Estimated cost',
 			costNote: 'Actual cost may vary based on processing',
 			costDetails: 'Model: {model} • Rate: {rate}',
+			additionalProcessingCostNote: 'This amount covers transcription only. AI post-processing or user dictionary correction can add API usage and may exceed the estimate.',
 			timeRange: 'Time range',
 			selectTimeRange: 'Select specific time range (optional)',
 			startTime: 'Start',
@@ -291,7 +292,9 @@ const en: TranslationKeys = {
 			processingOptions: {
 				title: 'Processing options',
 				enablePostProcessing: 'Enable AI post-processing',
+				enablePostProcessingDesc: 'Uses an additional API request, so the final cost may exceed the estimate above.',
 				enableDictionaryCorrection: 'Use user dictionary in post-processing',
+				enableDictionaryCorrectionDesc: 'Dictionary correction can also add API usage.',
 				outputFolder: 'Output folder',
 				relatedInfo: 'Related information'
 			},

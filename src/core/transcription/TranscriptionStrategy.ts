@@ -281,23 +281,28 @@ export abstract class TranscriptionStrategy {
 	 */
 	protected delay(ms: number): Promise<void> {
 		return new Promise((resolve, reject) => {
-			const timeoutId = setTimeout(resolve, ms);
+			const timerWindow = this.getTimerWindow();
+			const timeoutId = timerWindow.setTimeout(resolve, ms);
 
 			// Check if already aborted
 			if (this.abortSignal?.aborted) {
-				clearTimeout(timeoutId);
+				timerWindow.clearTimeout(timeoutId);
 				reject(new Error(t('errors.cancelled')));
 				return;
 			}
 
 			// Listen for abort
 			const abortHandler = () => {
-				clearTimeout(timeoutId);
+				timerWindow.clearTimeout(timeoutId);
 				reject(new Error(t('errors.cancelled')));
 			};
 
 			this.abortSignal?.addEventListener('abort', abortHandler, { once: true });
 		});
+	}
+
+	private getTimerWindow(): Window {
+		return activeWindow;
 	}
 
 	/**

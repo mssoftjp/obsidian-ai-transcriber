@@ -16,12 +16,11 @@ export class AudioWaveformSelector {
 
 	constructor(container: HTMLElement, width = 600, height = 100) {
 		// Create canvas
-		this.canvas = document.createElement('canvas');
+		this.canvas = container.createEl('canvas');
 		this.canvas.width = width;
 		this.canvas.height = height;
 		// Set canvas dimensions via properties
 		this.canvas.className = 'audio-waveform-canvas ait-canvas-size ait-width-full ait-max-width-full';
-		container.appendChild(this.canvas);
 
 		this.ctx = this.canvas.getContext('2d')!;
 
@@ -82,11 +81,11 @@ export class AudioWaveformSelector {
 		const ctx = this.ctx;
 
 		// Clear canvas with proper background
-		ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--background-secondary') || '#f5f5f5';
+		ctx.fillStyle = this.getCssVariable('--background-secondary', '#f5f5f5');
 		ctx.fillRect(0, 0, width, height);
 
 		// Draw center line
-		ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--background-modifier-border') || '#ccc';
+		ctx.strokeStyle = this.getCssVariable('--background-modifier-border', '#ccc');
 		ctx.lineWidth = 1;
 		ctx.beginPath();
 		ctx.moveTo(0, height / 2);
@@ -104,7 +103,8 @@ export class AudioWaveformSelector {
 	}
 
 	private requestDraw() {
-		this.animationFrameId ??= requestAnimationFrame(() => {
+		const animationWindow = this.getWindow();
+		this.animationFrameId ??= animationWindow.requestAnimationFrame(() => {
 			this.drawInternal();
 			this.animationFrameId = null;
 		});
@@ -123,7 +123,7 @@ export class AudioWaveformSelector {
 		const amp = height / 2;
 
 		// Draw waveform as filled shape
-		ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--text-normal') || '#333';
+		ctx.fillStyle = this.getCssVariable('--text-normal', '#333');
 		ctx.globalAlpha = 0.7;
 
 		for (let i = 0; i < width; i++) {
@@ -195,13 +195,13 @@ export class AudioWaveformSelector {
 		const endX = (this.endTime / duration) * width;
 
 		// Draw selection area
-		ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--interactive-accent') || '#7c3aed';
+		ctx.fillStyle = this.getCssVariable('--interactive-accent', '#7c3aed');
 		ctx.globalAlpha = 0.2;
 		ctx.fillRect(startX, 0, endX - startX, height);
 		ctx.globalAlpha = 1.0;
 
 		// Draw selection borders
-		ctx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--interactive-accent') || '#7c3aed';
+		ctx.strokeStyle = this.getCssVariable('--interactive-accent', '#7c3aed');
 		ctx.lineWidth = 2;
 		ctx.beginPath();
 		ctx.moveTo(startX, 0);
@@ -229,14 +229,14 @@ export class AudioWaveformSelector {
 		const handleHeight = 30; // Taller for easier grabbing
 
 		// Start handle
-		ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--interactive-accent') || '#7c3aed';
+		ctx.fillStyle = this.getCssVariable('--interactive-accent', '#7c3aed');
 		ctx.fillRect(startX - handleWidth/2, height/2 - handleHeight/2, handleWidth, handleHeight);
 
 		// End handle
 		ctx.fillRect(endX - handleWidth/2, height/2 - handleHeight/2, handleWidth, handleHeight);
 
 		// Time labels
-		ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--text-normal') || '#333';
+		ctx.fillStyle = this.getCssVariable('--text-normal', '#333');
 		ctx.font = '12px sans-serif';
 		ctx.textAlign = 'center';
 
@@ -388,6 +388,18 @@ export class AudioWaveformSelector {
 		this.handleMouseUp();
 	};
 
+	private getWindow(): Window {
+		return this.canvas.ownerDocument.defaultView ?? activeWindow;
+	}
+
+	private getCssVariable(name: string, fallback: string): string {
+		const value = this.getWindow()
+			.getComputedStyle(this.canvas.ownerDocument.documentElement)
+			.getPropertyValue(name)
+			.trim();
+		return value || fallback;
+	}
+
 	/**
 	 * Format time in MM:SS
 	 */
@@ -401,6 +413,10 @@ export class AudioWaveformSelector {
 	 * Cleanup
 	 */
 	destroy() {
+		if (this.animationFrameId !== null) {
+			this.getWindow().cancelAnimationFrame(this.animationFrameId);
+			this.animationFrameId = null;
+		}
 		this.canvas.remove();
 	}
 }

@@ -281,6 +281,7 @@ const zh: TranslationKeys = {
 			costEstimate: '预估成本',
 			costNote: '基于文件大小的估算',
 			costDetails: '详细说明',
+			additionalProcessingCostNote: '此金额仅包含转录。启用AI后处理或用户字典校正会产生额外API用量，最终费用可能高于该估算。',
 			timeRange: '时间范围（可选）',
 			selectTimeRange: '选择音频的特定部分进行转录',
 			startTime: '开始时间',
@@ -291,7 +292,9 @@ const zh: TranslationKeys = {
 			processingOptions: {
 				title: '处理选项',
 				enablePostProcessing: '启用AI后处理',
+				enablePostProcessingDesc: '会发起额外的API请求，最终费用可能高于上方估算。',
 				enableDictionaryCorrection: '在后处理中使用用户字典',
+				enableDictionaryCorrectionDesc: '字典校正也可能产生额外API用量。',
 				outputFolder: '输出文件夹',
 				relatedInfo: '相关信息'
 			},

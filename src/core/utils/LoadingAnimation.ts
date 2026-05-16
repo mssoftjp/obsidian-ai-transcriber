@@ -31,14 +31,14 @@ export class LoadingAnimation extends Component {
 
 		// Clear any existing interval
 		if (this.animationInterval !== null) {
-			window.clearInterval(this.animationInterval);
+			this.getTimerWindow().clearInterval(this.animationInterval);
 		}
 
 		// Initial call
 		callback();
 
 		// Set up interval
-		const intervalId = window.setInterval(() => {
+		const intervalId = this.getTimerWindow().setInterval(() => {
 			if (this.isAnimating) {
 				callback();
 			}
@@ -54,7 +54,7 @@ export class LoadingAnimation extends Component {
 		this.isAnimating = false;
 
 		if (this.animationInterval !== null) {
-			window.clearInterval(this.animationInterval);
+			this.getTimerWindow().clearInterval(this.animationInterval);
 			this.animationInterval = null;
 		}
 
@@ -84,5 +84,9 @@ export class LoadingAnimation extends Component {
 
 	override onunload(): void {
 		this.stop();
+	}
+
+	private getTimerWindow(): Window {
+		return activeWindow;
 	}
 }
