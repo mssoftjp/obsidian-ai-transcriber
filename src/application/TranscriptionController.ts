@@ -5,11 +5,12 @@
 
 import { Notice } from 'obsidian';
 
-import { AUDIO_CONSTANTS } from '../config/constants';
+import { AUDIO_CONSTANTS, SUPPORTED_FORMATS } from '../config/constants';
 import { getModelConfig, getTranscriptionConfig, logAllModelConfigs } from '../config/ModelProcessingConfig';
 import { AudioPipeline } from '../core/audio/AudioPipeline';
 import { ResourceManager } from '../core/resources/ResourceManager';
 import { DictionaryCorrector } from '../core/transcription/DictionaryCorrector';
+import { createTranscriptionJobPlan } from '../core/transcription/TranscriptionJobPlan';
 import { SimpleProgressCalculator } from '../core/utils/SimpleProgressCalculator';
 import { t } from '../i18n';
 import { GPTDictionaryCorrectionService } from '../infrastructure/api/dictionary/GPTDictionaryCorrectionService';
@@ -36,7 +37,7 @@ import type { ChunkingConfig } from '../core/chunking/ChunkingTypes';
 import type { DictionaryEntry as CorrectionDictionaryEntry } from '../core/transcription/DictionaryCorrector';
 import type { TranscriptionService } from '../core/transcription/TranscriptionService';
 import type { TranscriptionStrategy } from '../core/transcription/TranscriptionStrategy';
-import type { TranscriptionProgress } from '../core/transcription/TranscriptionTypes';
+import type { TranscriptionOptions, TranscriptionProgress } from '../core/transcription/TranscriptionTypes';
 import type { ProgressTracker } from '../ui/ProgressTracker';
 import type { WorkflowOptions, WorkflowResult } from './workflows/TranscriptionWorkflow';
 import type { App, TFile } from 'obsidian';
@@ -91,6 +92,23 @@ export class TranscriptionController {
 				size: `${(audioBuffer.byteLength / 1024 / 1024).toFixed(2)}MB`,
 				loadTime: `${timings['fileLoad'].toFixed(0)}ms`
 			});
+
+			const jobPlan = createTranscriptionJobPlan({
+				model: this.settings.model,
+				vadMode: this.getVadMode(),
+				fileSizeBytes: audioFile.stat.size,
+				extension: audioFile.extension,
+				...(startTime !== undefined ? { startTime } : {}),
+				...(endTime !== undefined ? { endTime } : {})
+			});
+			if (jobPlan.mode === 'direct') {
+				return await this.transcribeDirectFile(
+					audioFile,
+					audioBuffer,
+					abortSignal,
+					jobPlan.chunkingStrategy
+				);
+			}
 
 			// Initialize components
 			await this.initialize();
@@ -424,7 +442,7 @@ export class TranscriptionController {
 				gpt4oModel = 'gpt-4o-mini-transcribe';
 			}
 
-				this.logger.debug('Using GPT-4o transcription service', { model: gpt4oModel });
+					this.logger.debug('Using GPT-4o transcription service', { model: gpt4oModel });
 				service = new GPT4oTranscriptionService(apiKey, gpt4oModel, dictionaryCorrector);
 				strategy = new GPT4oTranscriptionStrategy(
 					service,
@@ -441,8 +459,62 @@ export class TranscriptionController {
 				this.audioPipeline = pipeline;
 				const workflow = new TranscriptionWorkflow(pipeline, strategy);
 				this.logger.debug('Workflow created successfully');
-				return { workflow, dictionaryCorrector };
+					return { workflow, dictionaryCorrector };
+				}
+
+	private async transcribeDirectFile(
+		audioFile: TFile,
+		audioBuffer: ArrayBuffer,
+		abortSignal?: AbortSignal,
+		chunkingStrategy?: 'auto'
+	): Promise<{ text: string; modelUsed: string }> {
+		if (abortSignal?.aborted) {
+			throw new DOMException('Transcription cancelled', 'AbortError');
+		}
+
+		const apiKey = this.getApiKey();
+		const dictionaryCorrector = this.createDictionaryCorrector(apiKey);
+		const model = this.settings.model === 'gpt-4o-transcribe'
+			? 'gpt-4o-transcribe'
+			: 'gpt-4o-mini-transcribe';
+		const service = new GPT4oTranscriptionService(apiKey, model, dictionaryCorrector);
+		const mimeTypes = SUPPORTED_FORMATS.MIME_TYPES as Record<string, string>;
+		const mimeType = mimeTypes[audioFile.extension.toLowerCase()] ?? 'application/octet-stream';
+		const options: TranscriptionOptions = {
+			language: this.settings.language || 'auto',
+			timestamps: false,
+			...(abortSignal ? { signal: abortSignal } : {})
+		};
+		const result = await service.transcribeFile(
+			audioBuffer,
+			audioFile.name,
+			mimeType,
+			options,
+			chunkingStrategy
+		);
+		if (abortSignal?.aborted) {
+			throw new DOMException('Transcription cancelled', 'AbortError');
+		}
+		if (!result.success) {
+			throw new Error(result.error || t('errors.noTranscriptionResults'));
+		}
+
+		if (this.progressTracker) {
+			const currentTask = this.progressTracker.getCurrentTask();
+			if (currentTask) {
+				this.progressTracker.updateTotalChunks(currentTask.id, 1);
+				this.progressTracker.updateProgress(currentTask.id, 1, t('modal.transcription.savingResults'), 70);
 			}
+		}
+
+		const correctedText = await this.applyDictionaryCorrection(result.text, dictionaryCorrector);
+		this.logger.info('Direct server-chunked transcription completed', {
+			file: audioFile.name,
+			textLength: correctedText.length,
+			model
+		});
+		return { text: correctedText, modelUsed: model };
+	}
 
 	/**
 	 * Apply dictionary correction to transcribed text
@@ -695,11 +767,19 @@ export class TranscriptionController {
 			if (endTime !== undefined) {
 				options.endTime = endTime;
 			}
-			if (abortSignal) {
-				options.signal = abortSignal;
+				if (abortSignal) {
+					options.signal = abortSignal;
+				}
+				if (this.shouldUseServerChunking()) {
+					options.chunkingStrategy = 'auto';
+				}
+				return options;
 			}
-			return options;
-		}
+
+	private shouldUseServerChunking(): boolean {
+		return this.settings.vadMode === 'server'
+			|| (this.settings.vadMode === 'local' && this.serverSideVADFallback);
+	}
 
 
 	/**

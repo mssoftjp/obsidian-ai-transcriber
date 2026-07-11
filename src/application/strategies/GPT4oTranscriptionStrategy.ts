@@ -26,7 +26,7 @@ interface AdaptiveWaveState {
 export class GPT4oTranscriptionStrategy extends TranscriptionStrategy {
 	readonly strategyName = 'GPT-4o Wave Parallel Processing';
 	readonly processingMode = 'batch' as const;
-	readonly maxConcurrency = 4;
+	readonly maxConcurrency = 1;
 
 	private static readonly WAVE_MIN_GROUP_SIZE = 3;
 	private static readonly WAVE_MAX_GROUP_SIZE = 5;

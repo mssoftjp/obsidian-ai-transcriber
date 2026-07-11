@@ -20,6 +20,16 @@ describe('GPT4oTranscriptionStrategy', () => {
     console.warn = originalConsoleWarn;
   });
 
+  it('defaults to serial chunk processing for stability', () => {
+    const service = {
+      modelId: 'gpt-4o-transcribe'
+    } as unknown as TranscriptionService;
+
+    const strategy = new GPT4oTranscriptionStrategy(service);
+
+    expect(strategy.maxConcurrency).toBe(1);
+  });
+
   it('passes requested language to cleanText when language is explicit', async () => {
     const cleanText = jest.fn(async (text: string, _language: string) => text);
     const service = {

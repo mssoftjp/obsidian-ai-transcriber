@@ -66,35 +66,62 @@ export class GPT4oClient extends ApiClient {
 		options: TranscriptionOptions,
 		modelOptions?: ModelSpecificOptions
 	): Promise<TranscriptionResult> {
-		const formData = new FormData();
-
-		// Create file from chunk data
 		const fileName = `chunk_${chunk.id}.wav`;
 		const file = new File([chunk.data], fileName, { type: 'audio/wav' });
+		return await this.executeTranscription(file, chunk, options, modelOptions);
+	}
+
+	async transcribeFile(
+		data: ArrayBuffer,
+		fileName: string,
+		mimeType: string,
+		options: TranscriptionOptions,
+		chunkingStrategy?: 'auto'
+	): Promise<TranscriptionResult> {
+		const file = new File([data], fileName, { type: mimeType });
+		const chunk: AudioChunk = {
+			id: 0,
+			data,
+			startTime: 0,
+			endTime: 0,
+			hasOverlap: false,
+			overlapDuration: 0
+		};
+		const directOptions: TranscriptionOptions = { ...options };
+		if (chunkingStrategy) {
+			directOptions.chunkingStrategy = chunkingStrategy;
+		}
+		return await this.executeTranscription(file, chunk, directOptions);
+	}
+
+	private async executeTranscription(
+		file: File,
+		chunk: AudioChunk,
+		options: TranscriptionOptions,
+		modelOptions?: ModelSpecificOptions
+	): Promise<TranscriptionResult> {
+		const formData = new FormData();
 		formData.append('file', file);
-
-		// Use custom prompt if provided, otherwise let buildGPT4oTranscribeRequest handle it
 		const customPrompt = modelOptions?.gpt4o?.customPrompt;
+		const requestInput: Partial<GPT4oTranscribeParams> = {
+			model: this.model as 'gpt-4o-transcribe' | 'gpt-4o-mini-transcribe',
+			response_format: 'json',
+			language: options.language === 'auto' ? 'auto' : options.language,
+			stream: false
+		};
+		if (customPrompt) {
+			requestInput.prompt = customPrompt;
+		}
+		const previousContext = modelOptions?.gpt4o?.previousContext;
+		if (previousContext) {
+			requestInput.previousContext = previousContext;
+		}
+		if (options.chunkingStrategy) {
+			requestInput.chunkingStrategy = options.chunkingStrategy;
+		}
 
+		const requestParams = buildGPT4oTranscribeRequest(requestInput, chunk.id === 0 && !previousContext);
 
-			// Build request parameters using the new config
-			const requestInput: Partial<GPT4oTranscribeParams> = {
-				model: this.model as 'gpt-4o-transcribe' | 'gpt-4o-mini-transcribe',
-				response_format: 'json', // GPT-4o only supports json/text
-				language: options.language === 'auto' ? 'auto' : options.language,
-				stream: false // No streaming for now
-			};
-			if (customPrompt) {
-				requestInput.prompt = customPrompt;
-			}
-			const previousContext = modelOptions?.gpt4o?.previousContext;
-			if (previousContext) {
-				requestInput.previousContext = previousContext;
-			}
-
-			const requestParams = buildGPT4oTranscribeRequest(requestInput, chunk.id === 0 && !previousContext);
-
-		// Append all parameters to FormData
 		const paramEntries = Object.entries(requestParams) as Array<
 			[keyof GPT4oTranscribeRequestPayload, GPT4oTranscribeRequestPayload[keyof GPT4oTranscribeRequestPayload]]
 		>;
@@ -130,6 +157,9 @@ export class GPT4oClient extends ApiClient {
 			return this.parseResponse(response, chunk);
 
 		} catch (error) {
+			if (options.signal?.aborted) {
+				throw error;
+			}
 			this.logger.error('GPT-4o transcription failed', {
 				chunkId: chunk.id,
 				error: error instanceof Error ? error.message : 'Unknown error'

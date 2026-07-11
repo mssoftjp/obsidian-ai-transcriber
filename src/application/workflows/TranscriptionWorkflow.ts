@@ -21,6 +21,7 @@ export interface WorkflowOptions {
 	endTime?: number;
 	language?: string;
 	signal?: AbortSignal;
+	chunkingStrategy?: 'auto';
 }
 
 export interface WorkflowResult {
@@ -222,6 +223,9 @@ export class TranscriptionWorkflow {
 		const signal = this.abortController?.signal ?? options.signal;
 		if (signal) {
 			transcriptionOptions.signal = signal;
+		}
+		if (options.chunkingStrategy) {
+			transcriptionOptions.chunkingStrategy = options.chunkingStrategy;
 		}
 		return transcriptionOptions;
 	}

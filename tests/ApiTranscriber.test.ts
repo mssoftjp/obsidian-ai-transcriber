@@ -29,6 +29,20 @@ function createFile(name: string): TFile {
 }
 
 describe('APITranscriber job ownership', () => {
+	it('estimates cost from file metadata without reading the audio body', async () => {
+		const app = new App();
+		const readBinary = jest.fn().mockRejectedValue(new Error('audio body should not be read'));
+		Object.assign(app.vault, { readBinary });
+		const transcriber = new APITranscriber(app, structuredClone(DEFAULT_API_SETTINGS));
+		const file = createFile('estimate');
+		file.stat.size = 10 * 1024 * 1024;
+
+		const estimate = await transcriber.estimateCost(file);
+
+		expect(readBinary).not.toHaveBeenCalled();
+		expect(estimate.cost).toBeGreaterThan(0);
+	});
+
 	it('rejects a second transcription while the first job owns the facade', async () => {
 		const controllerResult = deferred<string>();
 		const app = new App();

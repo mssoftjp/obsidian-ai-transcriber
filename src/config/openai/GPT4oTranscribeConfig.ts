@@ -34,6 +34,9 @@ export interface GPT4oTranscribeParams {
 
 	/** Include log probabilities (streaming only) */
 	include?: ('logprobs')[];
+
+	/** Let OpenAI split the uploaded audio using server-side VAD. */
+	chunkingStrategy?: 'auto';
 }
 
 export interface GPT4oTranscribeConfig {
@@ -130,6 +133,7 @@ export interface GPT4oTranscribeRequestPayload {
 	prompt?: string;
 	stream?: boolean;
 	include?: string[];
+	chunking_strategy?: 'auto';
 }
 
 /**
@@ -152,6 +156,9 @@ export function buildGPT4oTranscribeRequest(
 	// Optional parameters
 	if (params.response_format && params.response_format !== config.defaults.response_format) {
 		result.response_format = params.response_format;
+	}
+	if (params.chunkingStrategy) {
+		result.chunking_strategy = params.chunkingStrategy;
 	}
 
 	// Always use the fixed temperature from config

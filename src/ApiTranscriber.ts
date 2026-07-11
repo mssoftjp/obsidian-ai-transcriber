@@ -23,7 +23,6 @@ import type { App, TFile } from 'obsidian';
  * All functionality is delegated to the new TranscriptionController
  */
 export class APITranscriber {
-	private app: App;
 	private settings: APITranscriptionSettings;
 	private controller: TranscriptionController;
 	private progressTracker: ProgressTracker | null = null;
@@ -32,7 +31,6 @@ export class APITranscriber {
 	private activeJob: ActiveTranscriptionJob | null = null;
 
 	constructor(app: App, settings: APITranscriptionSettings, progressTracker?: ProgressTracker) {
-		this.app = app;
 		this.settings = settings;
 		this.progressTracker = progressTracker ?? null;
 
@@ -287,11 +285,10 @@ export class APITranscriber {
 	 * Estimate transcription cost
 	 * Returns both old format (for backward compatibility) and new format
 	 */
-	async estimateCost(audioFile: TFile): Promise<{ cost: number; currency: string; details: unknown }> {
+	estimateCost(audioFile: TFile): Promise<{ cost: number; currency: string; details: unknown }> {
 		try {
-			// Get audio duration (rough estimate based on file size)
-			const audioBuffer = await this.app.vault.readBinary(audioFile);
-			const sizeMB = audioBuffer.byteLength / (1024 * 1024);
+			// Estimate from metadata without loading the audio body into memory.
+			const sizeMB = audioFile.stat.size / (1024 * 1024);
 
 			// Rough estimate: 1MB ≈ 1 minute for compressed audio
 			const estimatedMinutes = sizeMB * 1.2; // Conservative estimate
@@ -305,7 +302,7 @@ export class APITranscriber {
 			const rateDisplay = this.formatCostRate(currency, costPerMinute);
 
 			// Return format that supports both old and new interface
-			return {
+			return Promise.resolve({
 				cost: Math.round(totalCost * 100) / 100,
 				currency,
 				details: {
@@ -316,10 +313,10 @@ export class APITranscriber {
 						rate: rateDisplay
 					})
 				}
-			};
+			});
 		} catch (error) {
 			this.logger.error('Error estimating cost', error);
-			return {
+			return Promise.resolve({
 				cost: 0,
 				currency: 'USD',
 				details: {
@@ -327,7 +324,7 @@ export class APITranscriber {
 					costPerMinute: 0,
 					toString: () => t('errors.costEstimateUnavailable')
 				}
-			};
+			});
 		}
 	}
 
