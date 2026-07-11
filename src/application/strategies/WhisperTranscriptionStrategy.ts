@@ -139,36 +139,27 @@ export class WhisperTranscriptionStrategy extends TranscriptionStrategy {
 			return `${notice}\n${errorInfo}`;
 		}
 
-		// Use timestamp-based merging if available
-		const hasTimestamps = valid.some(r => r.segments && r.segments.length > 0);
-
 		let mergedText: string;
-		if (hasTimestamps) {
-			// Use formatted merge for whisper-1-ts model to include timestamps in output
-			const isTimestampModel = this.transcriptionService.modelId === 'whisper-1-ts';
-			if (isTimestampModel) {
-				mergedText = this.merger.mergeWithTimestampsFormatted(results, {
-					includeFailures: true,
-					useTimestamps: true
-				});
-			} else {
-				mergedText = this.merger.mergeWithTimestamps(results, {
-					includeFailures: true,
-					useTimestamps: true
-				});
-			}
-			} else {
-				// Get model-specific merge config
-				const modelConfig = getModelConfig(this.transcriptionService.modelId);
-				const mergeConfig = modelConfig.merging;
+		const isTimestampModel = this.transcriptionService.modelId === 'whisper-1-ts';
+		if (isTimestampModel) {
+			mergedText = this.merger.mergeWithTimestampsFormatted(results, {
+				includeFailures: true,
+				useTimestamps: true
+			});
+		} else {
+			// Whisper returns segments in verbose_json even when the user selected
+			// non-timestamp output. Use chunk text in that mode so textual overlap
+			// removal handles recognition drift at chunk boundaries.
+			const modelConfig = getModelConfig(this.transcriptionService.modelId);
+			const mergeConfig = modelConfig.merging;
 
-				mergedText = this.merger.mergeWithOverlapRemoval(results, {
-					removeOverlaps: true,
-					minMatchLength: mergeConfig.minMatchLength ?? 20,
-					separator: '\n\n',
-					includeFailures: true
-				});
-			}
+			mergedText = this.merger.mergeWithOverlapRemoval(results, {
+				removeOverlaps: true,
+				minMatchLength: mergeConfig.minMatchLength ?? 20,
+				separator: '\n\n',
+				includeFailures: true
+			});
+		}
 
 		mergedText = await this.postProcessMergedText(mergedText, results, this.workflowLanguage);
 

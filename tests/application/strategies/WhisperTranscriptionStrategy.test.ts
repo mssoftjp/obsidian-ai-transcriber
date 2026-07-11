@@ -88,6 +88,11 @@ function createResult(
 		text,
 		startTime,
 		endTime,
-		success: true
+		success: true,
+		segments: [{
+			text,
+			start: startTime,
+			end: endTime
+		}]
 	};
 }
