@@ -381,16 +381,18 @@ export class TranscriptionMerger {
 
 			if (matches.length > 0) {
 				// Log match details
-				const lastMatch = matches[matches.length - 1];
-				if (!lastMatch) {
+				// The overlap belongs at the head of the current chunk. Choosing a later
+				// repeated phrase can silently discard valid text between the two matches.
+				const boundaryMatch = matches[0];
+				if (!boundaryMatch) {
 					continue;
 				}
 					OverlapDebugger.logMatchFound({
 						kind: 'ngram',
-						matchLength: lastMatch.length,
+						matchLength: boundaryMatch.length,
 						matchPositionInPrevious: previousText.length - candidateLength, // previous start position
-						matchPositionInCurrent: lastMatch.position,
-						similarity: lastMatch.similarity
+						matchPositionInCurrent: boundaryMatch.position,
+						similarity: boundaryMatch.similarity
 					});
 
 				if (matches.length > 1) {
@@ -400,7 +402,7 @@ export class TranscriptionMerger {
 					});
 				}
 
-				const matchEndInCurrent = lastMatch.position + lastMatch.length;
+				const matchEndInCurrent = boundaryMatch.position + boundaryMatch.length;
 				const rawAfterMatch = currentText.slice(matchEndInCurrent);
 				const rawTrimmedText = rawAfterMatch.trimStart();
 				const connector = this.determineInlineConnector(previousText, rawAfterMatch);
@@ -560,7 +562,8 @@ export class TranscriptionMerger {
 				trimmed,
 				minOverlapLength,
 				maxOverlapLength,
-				searchRangeInNext
+				searchRangeInNext,
+				{ maxLeadingGapInCurrent: 0 }
 			);
 			if (exact && exact.trimmedText.length < trimmed.length) {
 				trimmed = exact.trimmedText;
@@ -578,7 +581,8 @@ export class TranscriptionMerger {
 				trimmed,
 				minOverlapLength,
 				maxOverlapLength,
-				searchRangeInNext
+				searchRangeInNext,
+				{ maxLeadingGapInCurrent: 0 }
 			);
 			if (normalized && normalized.trimmedText.length < trimmed.length) {
 				trimmed = normalized.trimmedText;
@@ -887,6 +891,7 @@ export class TranscriptionMerger {
 		let bestLength = 0;
 		let bestEndPosInText1 = 0;
 		let bestEndPosInText2 = 0;
+		let bestStartPosInText2 = Number.POSITIVE_INFINITY;
 
 		for (let i = 1; i <= text1.length; i++) {
 			let prevDiagonal = 0;
@@ -902,15 +907,18 @@ export class TranscriptionMerger {
 						const startsNearText2Head = startInText2 <= constraints.maxStartInText2;
 
 						if (endsNearText1Tail && startsNearText2Head) {
+							// A later, slightly longer repeated phrase is not a safer boundary:
+							// trimming through it would delete everything before that repetition.
 							const isBetter =
-								newValue > bestLength ||
-								(newValue === bestLength && i > bestEndPosInText1) ||
-								(newValue === bestLength && i === bestEndPosInText1 && j > bestEndPosInText2);
+								startInText2 < bestStartPosInText2 ||
+								(startInText2 === bestStartPosInText2 && i > bestEndPosInText1) ||
+								(startInText2 === bestStartPosInText2 && i === bestEndPosInText1 && newValue > bestLength);
 
 							if (isBetter) {
 								bestLength = newValue;
 								bestEndPosInText1 = i;
 								bestEndPosInText2 = j;
+								bestStartPosInText2 = startInText2;
 							}
 						}
 					}

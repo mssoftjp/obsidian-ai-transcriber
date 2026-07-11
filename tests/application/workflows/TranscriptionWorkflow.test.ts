@@ -1,10 +1,14 @@
 import { TFile } from 'obsidian';
 
+import { GPT4oTranscriptionStrategy } from '../../../src/application/strategies/GPT4oTranscriptionStrategy';
 import { TranscriptionWorkflow } from '../../../src/application/workflows/TranscriptionWorkflow';
 import { ResourceManager } from '../../../src/core/resources/ResourceManager';
 
+import type { AudioChunk } from '../../../src/core/audio/AudioTypes';
 import type { AudioPipeline } from '../../../src/core/audio/AudioPipeline';
+import type { TranscriptionService } from '../../../src/core/transcription/TranscriptionService';
 import type { TranscriptionStrategy } from '../../../src/core/transcription/TranscriptionStrategy';
+import type { ModelSpecificOptions, TranscriptionOptions, TranscriptionResult } from '../../../src/core/transcription/TranscriptionTypes';
 
 describe('TranscriptionWorkflow cancellation', () => {
 	it('does not begin audio processing when the external signal is already aborted', async () => {
@@ -79,7 +83,90 @@ describe('TranscriptionWorkflow cancellation', () => {
 		expect(process).toHaveBeenCalledTimes(1);
 		expect(execute).toHaveBeenCalledTimes(1);
 	});
+
+	it('merges a long multi-chunk transcription once and in timeline order without an API call', async () => {
+		const firstOverlap = '境界一では固有語アルファと時刻十二時三十四分を確認し、次の話題へ安全に引き継ぎます。';
+		const secondOverlap = '境界二では固有語ベータと番号五六七八を確認し、結論へ安全に引き継ぎます。';
+		const chunkTexts = [
+			`第一部の本文です。${firstOverlap}`,
+			`${firstOverlap}第二部の本文です。${secondOverlap}`,
+			`${secondOverlap}第三部の本文です。`
+		];
+		const chunks: AudioChunk[] = [
+			createChunk(0, 0, 300, false),
+			createChunk(1, 270, 570, true),
+			createChunk(2, 540, 840, true)
+		];
+		const chunkStrategy = {
+			needsChunking: true,
+			totalChunks: chunks.length,
+			chunkDuration: 300,
+			overlapDuration: 30,
+			totalDuration: 840
+		};
+		const process = jest.fn().mockResolvedValue({
+			chunks,
+			strategy: chunkStrategy,
+			processedAudio: {
+				pcmData: new Float32Array(1),
+				sampleRate: 16_000,
+				duration: 840,
+				channels: 1,
+				source: {}
+			}
+		});
+		const transcribe = jest.fn(async (
+			chunk: AudioChunk,
+			_options: TranscriptionOptions,
+			_modelOptions?: ModelSpecificOptions
+		): Promise<TranscriptionResult> => ({
+			id: chunk.id,
+			text: chunkTexts[chunk.id] ?? '',
+			startTime: chunk.startTime,
+			endTime: chunk.endTime,
+			success: true
+		}));
+		const cleanText = jest.fn(async (text: string) => text);
+		const service = {
+			modelId: 'gpt-4o-transcribe',
+			transcribe,
+			cleanText
+		} as unknown as TranscriptionService;
+		const strategy = new GPT4oTranscriptionStrategy(service);
+		const workflow = new TranscriptionWorkflow(
+			{ process } as unknown as AudioPipeline,
+			strategy
+		);
+
+		const result = await workflow.execute(
+			createAudioFile(),
+			new ArrayBuffer(8),
+			{ language: 'ja' }
+		);
+
+		expect(result.text).toBe(
+			`第一部の本文です。${firstOverlap}第二部の本文です。${secondOverlap}第三部の本文です。`
+		);
+		expect(result.chunks).toBe(3);
+		expect(result.partial).toBeUndefined();
+		expect(transcribe).toHaveBeenCalledTimes(3);
+		expect(transcribe.mock.calls.map(([chunk]) => chunk.id)).toEqual([0, 1, 2]);
+		expect(transcribe.mock.calls[0]?.[2]).toBeUndefined();
+		expect(transcribe.mock.calls[1]?.[2]?.gpt4o?.previousContext).toContain(firstOverlap);
+		expect(transcribe.mock.calls[2]?.[2]?.gpt4o?.previousContext).toContain(secondOverlap);
+	});
 });
+
+function createChunk(id: number, startTime: number, endTime: number, hasOverlap: boolean): AudioChunk {
+	return {
+		id,
+		data: new ArrayBuffer(8),
+		startTime,
+		endTime,
+		hasOverlap,
+		overlapDuration: hasOverlap ? 30 : 0
+	};
+}
 
 function createAudioFile(): TFile {
 	const file = new TFile();

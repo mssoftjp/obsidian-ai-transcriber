@@ -151,4 +151,70 @@ describe('GPT4oTranscriptionStrategy', () => {
     expect(cleanText).toHaveBeenCalledTimes(1);
     expect((cleanText as jest.Mock).mock.calls[0][1]).toBe('zh');
   });
+
+  it('merges successful chunks in timeline order even when results arrive out of order', async () => {
+    const overlap = 'この境界文は十分に長く、順序が乱れた場合でも一度だけ残ることを確認するための固有文章です。';
+    const cleanText = jest.fn(async (text: string) => text);
+    const service = {
+      modelId: 'gpt-4o-transcribe',
+      cleanText
+    } as unknown as TranscriptionService;
+    const strategy = new GPT4oTranscriptionStrategy(service);
+    const results: TranscriptionResult[] = [
+      createResult(2, `${overlap}第三部です。`, 540, 840),
+      createResult(0, `第一部です。${overlap}`, 0, 300),
+      createResult(1, `${overlap}第二部です。${overlap}`, 270, 570)
+    ];
+
+    const firstBoundary = await strategy.mergeResults([results[1]!, results[2]!]);
+    const merged = await strategy.mergeResults(results);
+
+    expect(firstBoundary).toBe(`第一部です。${overlap}第二部です。${overlap}`);
+    expect(merged).toBe(`第一部です。${overlap}第二部です。${overlap}第三部です。`);
+  });
+
+  it('keeps a visible timeline gap when a middle chunk fails', async () => {
+    const cleanText = jest.fn(async (text: string) => text);
+    const service = {
+      modelId: 'gpt-4o-transcribe',
+      cleanText
+    } as unknown as TranscriptionService;
+    const strategy = new GPT4oTranscriptionStrategy(service);
+    const results: TranscriptionResult[] = [
+      createResult(0, '第一部です。', 0, 300),
+      {
+        id: 1,
+        text: '',
+        startTime: 270,
+        endTime: 570,
+        success: false,
+        error: 'network unavailable'
+      },
+      createResult(2, '第三部です。', 540, 840)
+    ];
+
+    const merged = await strategy.mergeResults(results);
+
+    expect(merged).toContain('第一部です。');
+    expect(merged).toContain('【欠損: チャンク2 (00:04:30–00:09:30)】');
+    expect(merged).toContain('network unavailable');
+    expect(merged).toContain('第三部です。');
+    expect(merged.indexOf('第一部です。')).toBeLessThan(merged.indexOf('【欠損:'));
+    expect(merged.indexOf('【欠損:')).toBeLessThan(merged.indexOf('第三部です。'));
+  });
 });
+
+function createResult(
+  id: number,
+  text: string,
+  startTime: number,
+  endTime: number
+): TranscriptionResult {
+  return {
+    id,
+    text,
+    startTime,
+    endTime,
+    success: true
+  };
+}
