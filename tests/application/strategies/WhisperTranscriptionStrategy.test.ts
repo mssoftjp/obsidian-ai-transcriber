@@ -75,6 +75,34 @@ describe('WhisperTranscriptionStrategy', () => {
 			'青い資料と丸い時計について確認しました。\n\n赤い資料と三角の時計について確認しました。次へ進みます。'
 		);
 	});
+
+	it('uses internal segment times to discard overlap fully covered by the previous chunk', async () => {
+		const service = {
+			modelId: 'whisper-1',
+			cleanText: jest.fn(async (text: string) => text)
+		} as unknown as TranscriptionService;
+		const strategy = new WhisperTranscriptionStrategy(service);
+		const results: TranscriptionResult[] = [
+			{
+				...createResult(0, '第一章の本文です。境界の文章です。', 0, 25),
+				segments: [
+					{ text: '第一章の本文です。', start: 0, end: 20 },
+					{ text: '境界の文章です。', start: 20, end: 25 }
+				]
+			},
+			{
+				...createResult(1, '表記が大きく異なる境界文です。第二章の本文です。', 20, 45),
+				segments: [
+					{ text: '表記が大きく異なる境界文です。', start: 20, end: 24.8 },
+					{ text: '第二章の本文です。', start: 24.8, end: 45 }
+				]
+			}
+		];
+
+		const merged = await strategy.mergeResults(results);
+
+		expect(merged).toBe('第一章の本文です。境界の文章です。\n\n第二章の本文です。');
+	});
 });
 
 function createResult(

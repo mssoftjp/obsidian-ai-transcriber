@@ -148,12 +148,13 @@ export class WhisperTranscriptionStrategy extends TranscriptionStrategy {
 			});
 		} else {
 			// Whisper returns segments in verbose_json even when the user selected
-			// non-timestamp output. Use chunk text in that mode so textual overlap
-			// removal handles recognition drift at chunk boundaries.
+			// non-timestamp output. Remove segments fully covered by the preceding
+			// successful chunk before textual overlap removal handles boundary drift.
 			const modelConfig = getModelConfig(this.transcriptionService.modelId);
 			const mergeConfig = modelConfig.merging;
+			const textMergeResults = this.trimCoveredSegmentsForTextMerge(results);
 
-			mergedText = this.merger.mergeWithOverlapRemoval(results, {
+			mergedText = this.merger.mergeWithOverlapRemoval(textMergeResults, {
 				removeOverlaps: true,
 				minMatchLength: mergeConfig.minMatchLength ?? 20,
 				separator: '\n\n',
@@ -171,6 +172,32 @@ export class WhisperTranscriptionStrategy extends TranscriptionStrategy {
 		}
 
 		return mergedText;
+	}
+
+	private trimCoveredSegmentsForTextMerge(results: TranscriptionResult[]): TranscriptionResult[] {
+		const sorted = [...results].sort((left, right) => left.startTime - right.startTime);
+		let coveredUntil = Number.NEGATIVE_INFINITY;
+
+		return sorted.map(result => {
+			if (!result.success) {
+				return result;
+			}
+
+			const segments = result.segments;
+			let prepared = result;
+			if (segments && segments.length > 0 && result.startTime < coveredUntil) {
+				const uncoveredSegments = segments.filter(segment => segment.end > coveredUntil);
+				if (uncoveredSegments.length > 0 && uncoveredSegments.length < segments.length) {
+					prepared = {
+						...result,
+						text: uncoveredSegments.map(segment => segment.text).join(' ').trim()
+					};
+				}
+			}
+
+			coveredUntil = Math.max(coveredUntil, result.endTime);
+			return prepared;
+		});
 	}
 
 	/**
