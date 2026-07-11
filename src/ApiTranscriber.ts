@@ -71,7 +71,7 @@ export class APITranscriber {
 			// Progress setup belongs to this job and must release ownership if it fails.
 			if (this.progressTracker) {
 				const provider = this.getProviderDisplayName();
-				const costEstimate = await this.estimateCost(audioFile);
+				const costEstimate = await this.estimateCost(audioFile, startTime, endTime);
 
 				this.throwIfAborted(job);
 				job.taskId = this.progressTracker.startTask(
@@ -293,13 +293,22 @@ export class APITranscriber {
 	 * Estimate transcription cost
 	 * Returns both old format (for backward compatibility) and new format
 	 */
-	estimateCost(audioFile: TFile): Promise<{ cost: number; currency: string; details: unknown }> {
+	estimateCost(
+		audioFile: TFile,
+		startTime?: number,
+		endTime?: number
+	): Promise<{ cost: number; currency: string; details: unknown }> {
 		try {
 			// Estimate from metadata without loading the audio body into memory.
 			const sizeMB = audioFile.stat.size / (1024 * 1024);
 
 			// Rough estimate: 1MB ≈ 1 minute for compressed audio
-			const estimatedMinutes = sizeMB * 1.2; // Conservative estimate
+			const rangeDurationSeconds = endTime !== undefined
+				? Math.max(0, endTime - (startTime ?? 0))
+				: 0;
+			const estimatedMinutes = rangeDurationSeconds > 0
+				? rangeDurationSeconds / 60
+				: sizeMB * 1.2; // Conservative estimate
 
 			// Cost per minute based on model configuration
 			const model = this.settings.model as string; // Cast to string to avoid type errors

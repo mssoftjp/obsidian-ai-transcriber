@@ -46,6 +46,20 @@ describe('APITranscriber job ownership', () => {
 		expect(estimate.cost).toBeGreaterThan(0);
 	});
 
+	it('estimates a selected range instead of the full file size', async () => {
+		const app = new App();
+		const settings = structuredClone(DEFAULT_API_SETTINGS);
+		settings.model = 'gpt-4o-mini-transcribe';
+		const transcriber = new APITranscriber(app, settings);
+		const file = createFile('range-estimate');
+		file.stat.size = 100 * 1024 * 1024;
+
+		const estimate = await transcriber.estimateCost(file, 60, 16 * 60 + 60);
+
+		expect(estimate.cost).toBe(0.05);
+		expect(estimate.details).toMatchObject({ minutes: 16 });
+	});
+
 	it('rejects a second transcription while the first job owns the facade', async () => {
 		const controllerResult = deferred<string>();
 		const app = new App();
