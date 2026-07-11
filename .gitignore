@@ -47,10 +47,6 @@ dist/
 # Test coverage reports
 coverage/
 
-# Local tests (security)
-tests/
-test/
-
 # AI tools configuration
 # Claude
 CLAUDE.md
