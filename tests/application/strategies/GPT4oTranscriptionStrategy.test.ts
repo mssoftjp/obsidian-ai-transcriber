@@ -71,6 +71,58 @@ describe('GPT4oTranscriptionStrategy', () => {
     }
   });
 
+  it('does not resend a chunk after an indeterminate local request timeout', async () => {
+    const transcribe = jest.fn(async (chunk: AudioChunk): Promise<TranscriptionResult> => ({
+      id: chunk.id,
+      text: '',
+      startTime: chunk.startTime,
+      endTime: chunk.endTime,
+      success: false,
+      error: 'API request exceeded the local 90000ms timeout'
+    }));
+    const service = {
+      modelId: 'gpt-4o-mini-transcribe',
+      transcribe
+    } as unknown as TranscriptionService;
+    const chunk = createChunk();
+
+    const results = await new GPT4oTranscriptionStrategy(service)
+      .processChunks([chunk], { language: 'ja' });
+
+    expect(transcribe).toHaveBeenCalledTimes(1);
+    expect(results).toHaveLength(1);
+    expect(results[0]?.success).toBe(false);
+  });
+
+  it('retries once after an explicit HTTP 408 response without duplicating the result', async () => {
+    const transcribe = jest.fn(async (chunk: AudioChunk): Promise<TranscriptionResult> => {
+      if (transcribe.mock.calls.length === 1) {
+        return {
+          id: chunk.id,
+          text: '',
+          startTime: chunk.startTime,
+          endTime: chunk.endTime,
+          success: false,
+          error: 'API Error 408: Request timeout'
+        };
+      }
+      return createResult(chunk.id, '再試行後の結果です。', chunk.startTime, chunk.endTime);
+    });
+    const service = {
+      modelId: 'gpt-4o-mini-transcribe',
+      transcribe
+    } as unknown as TranscriptionService;
+    const chunk = createChunk();
+
+    const results = await new GPT4oTranscriptionStrategy(service)
+      .processChunks([chunk], { language: 'ja' });
+
+    expect(transcribe).toHaveBeenCalledTimes(2);
+    expect(results).toEqual([
+      createResult(chunk.id, '再試行後の結果です。', chunk.startTime, chunk.endTime)
+    ]);
+  });
+
   it('passes requested language to cleanText when language is explicit', async () => {
     const cleanText = jest.fn(async (text: string, _language: string) => text);
     const service = {
@@ -361,6 +413,17 @@ function createMergeStrategy(): GPT4oTranscriptionStrategy {
     cleanText: jest.fn(async (text: string) => text)
   } as unknown as TranscriptionService;
   return new GPT4oTranscriptionStrategy(service);
+}
+
+function createChunk(): AudioChunk {
+  return {
+    id: 0,
+    data: new ArrayBuffer(8),
+    startTime: 0,
+    endTime: 240,
+    hasOverlap: false,
+    overlapDuration: 0
+  };
 }
 
 function countOccurrences(text: string, needle: string): number {

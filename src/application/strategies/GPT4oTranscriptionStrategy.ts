@@ -27,6 +27,14 @@ interface ContinuationState {
 	previousChunkText: string;
 }
 
+type ChunkErrorKind =
+	| 'rate_limit'
+	| 'timeout'
+	| 'indeterminate_timeout'
+	| 'server'
+	| 'cancelled'
+	| 'unknown';
+
 export class GPT4oTranscriptionStrategy extends TranscriptionStrategy {
 	readonly strategyName = 'GPT-4o Wave Parallel Processing';
 	readonly processingMode = 'batch' as const;
@@ -392,7 +400,7 @@ export class GPT4oTranscriptionStrategy extends TranscriptionStrategy {
 		};
 	}
 
-	private classifyChunkError(errorMessage: string | undefined): 'rate_limit' | 'timeout' | 'server' | 'cancelled' | 'unknown' {
+	private classifyChunkError(errorMessage: string | undefined): ChunkErrorKind {
 		if (!errorMessage) {
 			return 'unknown';
 		}
@@ -402,6 +410,9 @@ export class GPT4oTranscriptionStrategy extends TranscriptionStrategy {
 		}
 		if (lower.includes('api error 429') || /\b429\b/.test(lower) || lower.includes('rate limit')) {
 			return 'rate_limit';
+		}
+		if (lower.includes('api request exceeded the local')) {
+			return 'indeterminate_timeout';
 		}
 		if (lower.includes('api error 408') || lower.includes('timeout') || lower.includes('timed out')) {
 			return 'timeout';
@@ -413,7 +424,7 @@ export class GPT4oTranscriptionStrategy extends TranscriptionStrategy {
 	}
 
 	private getRetryBackoffMs(
-		errorKind: 'rate_limit' | 'timeout' | 'server' | 'cancelled' | 'unknown',
+		errorKind: ChunkErrorKind,
 		adaptiveState: AdaptiveWaveState
 	): number {
 		if (errorKind === 'rate_limit') {
