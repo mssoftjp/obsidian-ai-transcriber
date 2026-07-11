@@ -52,8 +52,14 @@ export interface AudioProcessingOptions {
 export interface AudioChunk {
 	/** Unique chunk identifier */
 	id: number;
-	/** Audio data as WAV format ArrayBuffer */
+	/** Encoded audio data ready for transcription upload. */
 	data: ArrayBuffer;
+	/** File extension matching the encoded data. Legacy chunks default to WAV. */
+	fileExtension?: 'wav' | 'webm';
+	/** MIME type matching the encoded data. Legacy chunks default to WAV. */
+	mimeType?: 'audio/wav' | 'audio/webm';
+	/** Audio codec contained in the encoded data. */
+	codec?: 'pcm' | 'opus';
 	/** Start time in seconds from original audio */
 	startTime: number;
 	/** End time in seconds from original audio */

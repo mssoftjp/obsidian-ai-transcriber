@@ -66,8 +66,10 @@ export class GPT4oClient extends ApiClient {
 		options: TranscriptionOptions,
 		modelOptions?: ModelSpecificOptions
 	): Promise<TranscriptionResult> {
-		const fileName = `chunk_${chunk.id}.wav`;
-		const file = new File([chunk.data], fileName, { type: 'audio/wav' });
+		const fileExtension = chunk.fileExtension ?? 'wav';
+		const mimeType = chunk.mimeType ?? 'audio/wav';
+		const fileName = `chunk_${chunk.id}.${fileExtension}`;
+		const file = new File([chunk.data], fileName, { type: mimeType });
 		return await this.executeTranscription(file, chunk, options, modelOptions);
 	}
 

@@ -13,6 +13,29 @@ interface DirectFileClient {
 }
 
 describe('GPT4oClient direct file transcription', () => {
+	it('uploads encoded chunks with their declared extension and MIME type', async () => {
+		const client = new GPT4oClient('test-key', 'gpt-4o-mini-transcribe');
+		const post = jest.fn().mockResolvedValue({ text: '<TRANSCRIPT>hello</TRANSCRIPT>' });
+		(client as unknown as { post: jest.Mock }).post = post;
+
+		await client.transcribe({
+			id: 3,
+			data: Uint8Array.of(1, 2, 3).buffer,
+			startTime: 0,
+			endTime: 20,
+			hasOverlap: false,
+			overlapDuration: 0,
+			fileExtension: 'webm',
+			mimeType: 'audio/webm',
+			codec: 'opus'
+		}, { language: 'ja' });
+
+		const formData = post.mock.calls[0]?.[1] as FormData;
+		const uploadedFile = formData.get('file') as File;
+		expect(uploadedFile.name).toBe('chunk_3.webm');
+		expect(uploadedFile.type).toBe('audio/webm');
+	});
+
 	it('uploads the original file with server chunking enabled', async () => {
 		const client = new GPT4oClient('test-key', 'gpt-4o-transcribe');
 		const post = jest.fn().mockResolvedValue({ text: '<TRANSCRIPT>hello</TRANSCRIPT>' });

@@ -67,8 +67,10 @@ export class WhisperClient extends ApiClient {
 			const formData = new FormData();
 
 		// Create file from chunk data
-		const fileName = `chunk_${chunk.id}.wav`;
-		const file = new File([chunk.data], fileName, { type: 'audio/wav' });
+		const fileExtension = chunk.fileExtension ?? 'wav';
+		const mimeType = chunk.mimeType ?? 'audio/wav';
+		const fileName = `chunk_${chunk.id}.${fileExtension}`;
+		const file = new File([chunk.data], fileName, { type: mimeType });
 		formData.append('file', file);
 
 			// Build request parameters using the new config

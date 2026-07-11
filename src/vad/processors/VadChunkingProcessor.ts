@@ -1,7 +1,8 @@
 
 import { AUDIO_CONSTANTS } from '../../config/constants';
 import { getModelConfig } from '../../config/ModelProcessingConfig';
-import { COOPERATIVE_BATCH_SIZE, isAbortError, throwIfAborted, yieldToEventLoop } from '../../core/utils/CooperativeTask';
+import { encodePcmForTranscription } from '../../core/audio/TranscriptionAudioEncoder';
+import { isAbortError, throwIfAborted, yieldToEventLoop } from '../../core/utils/CooperativeTask';
 
 import { WebRTCVADProcessor } from './WebrtcVadProcessor';
 
@@ -342,68 +343,21 @@ export class VADChunkingProcessor extends WebRTCVADProcessor {
 			return null;
 		}
 
-		// Convert to WAV
-		const wavData = await this.pcmToWav(chunkAudio, sampleRate, signal);
+		const encoding = await encodePcmForTranscription(chunkAudio, sampleRate, signal);
 
 		// Determine if this chunk has overlap with next
 		const hasOverlap = chunkInfo.endTime > lastChunkEndTime + this.overlapDuration;
 
 		return {
 			id: chunkId,
-			data: wavData,
+			data: encoding.data,
+			fileExtension: encoding.fileExtension,
+			mimeType: encoding.mimeType,
+			codec: encoding.codec,
 			startTime: chunkInfo.startTime,
 			endTime: chunkInfo.endTime,
 			hasOverlap,
 			overlapDuration: hasOverlap ? this.overlapDuration : 0
 		};
-	}
-
-	/**
-	 * Convert PCM to WAV format
-	 */
-	private async pcmToWav(
-		pcmData: Float32Array,
-		sampleRate: number,
-		signal?: AbortSignal
-	): Promise<ArrayBuffer> {
-		throwIfAborted(signal);
-		const length = pcmData.length;
-		const arrayBuffer = new ArrayBuffer(44 + length * 2);
-		const view = new DataView(arrayBuffer);
-
-		// WAV header
-		const writeString = (offset: number, string: string) => {
-			for (let i = 0; i < string.length; i++) {
-				view.setUint8(offset + i, string.charCodeAt(i));
-			}
-		};
-
-		writeString(0, 'RIFF');
-		view.setUint32(4, 36 + length * 2, true);
-		writeString(8, 'WAVE');
-		writeString(12, 'fmt ');
-		view.setUint32(16, 16, true); // fmt chunk size
-		view.setUint16(20, 1, true); // PCM format
-		view.setUint16(22, 1, true); // mono
-		view.setUint32(24, sampleRate, true);
-		view.setUint32(28, sampleRate * 2, true); // byte rate
-		view.setUint16(32, 2, true); // block align
-		view.setUint16(34, 16, true); // bits per sample
-		writeString(36, 'data');
-		view.setUint32(40, length * 2, true);
-
-			// Convert float32 to int16
-			let offset = 44;
-			for (let i = 0; i < length; i++) {
-				if (i > 0 && i % COOPERATIVE_BATCH_SIZE === 0) {
-					await yieldToEventLoop(signal);
-				}
-				const sample = Math.max(-1, Math.min(1, pcmData[i] ?? 0));
-				view.setInt16(offset, sample < 0 ? sample * 0x8000 : sample * 0x7FFF, true);
-				offset += 2;
-			}
-
-		throwIfAborted(signal);
-		return arrayBuffer;
 	}
 }

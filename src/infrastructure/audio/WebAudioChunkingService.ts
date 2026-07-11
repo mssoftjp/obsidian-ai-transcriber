@@ -4,7 +4,7 @@
  */
 
 import { assertRetainedChunkBytesWithinBudget } from '../../core/audio/MediaWorkBudget';
-import { calculatePcmWavBytes, encodePcmToWav } from '../../core/audio/PcmWavEncoder';
+import { encodePcmForTranscription } from '../../core/audio/TranscriptionAudioEncoder';
 import { ChunkingService } from '../../core/chunking/ChunkingService';
 import { throwIfAborted } from '../../core/utils/CooperativeTask';
 
@@ -120,10 +120,9 @@ export class WebAudioChunkingService extends ChunkingService {
 				continue;
 			}
 
-			// Convert to WAV
-			retainedChunkBytes += calculatePcmWavBytes(chunkPcm.length);
+			const encoding = await encodePcmForTranscription(chunkPcm, sampleRate, signal);
+			retainedChunkBytes += encoding.data.byteLength;
 			assertRetainedChunkBytesWithinBudget(retainedChunkBytes);
-			const wavData = await encodePcmToWav(chunkPcm, sampleRate, signal);
 
 			// Calculate timing
 			const startTime = startSample / sampleRate;
@@ -133,7 +132,10 @@ export class WebAudioChunkingService extends ChunkingService {
 
 			chunks.push({
 				id: chunks.length, // Use actual chunk count, not loop index
-				data: wavData,
+				data: encoding.data,
+				fileExtension: encoding.fileExtension,
+				mimeType: encoding.mimeType,
+				codec: encoding.codec,
 				startTime,
 				endTime,
 				hasOverlap,
@@ -174,12 +176,15 @@ export class WebAudioChunkingService extends ChunkingService {
 	 * Create a single chunk from all audio
 	 */
 	private async createSingleChunk(audio: ProcessedAudio, signal?: AbortSignal): Promise<AudioChunk> {
-		assertRetainedChunkBytesWithinBudget(calculatePcmWavBytes(audio.pcmData.length));
-		const wavData = await encodePcmToWav(audio.pcmData, audio.sampleRate, signal);
+		const encoding = await encodePcmForTranscription(audio.pcmData, audio.sampleRate, signal);
+		assertRetainedChunkBytesWithinBudget(encoding.data.byteLength);
 
 		return {
 			id: 0,
-			data: wavData,
+			data: encoding.data,
+			fileExtension: encoding.fileExtension,
+			mimeType: encoding.mimeType,
+			codec: encoding.codec,
 			startTime: 0,
 			endTime: audio.duration,
 			hasOverlap: false,

@@ -6,7 +6,7 @@
 import { AUDIO_CONSTANTS } from '../../config/constants';
 import { Logger } from '../../utils/Logger';
 
-import { encodePcmToWav } from './PcmWavEncoder';
+import { encodePcmForTranscription } from './TranscriptionAudioEncoder';
 
 import type { AudioProcessor } from './AudioProcessor';
 import type { AudioInput, ProcessedAudio, AudioChunk, AudioProcessingConfig } from './AudioTypes';
@@ -110,12 +110,14 @@ export class AudioPipeline {
 	private async createSingleChunk(audio: ProcessedAudio, signal?: AbortSignal): Promise<AudioChunk> {
 		this.logger.trace('Creating single chunk from audio');
 
-		// Convert to WAV format
-		const wavData = await encodePcmToWav(audio.pcmData, audio.sampleRate, signal);
+		const encoding = await encodePcmForTranscription(audio.pcmData, audio.sampleRate, signal);
 
 		const chunk: AudioChunk = {
 			id: 0,
-			data: wavData,
+			data: encoding.data,
+			fileExtension: encoding.fileExtension,
+			mimeType: encoding.mimeType,
+			codec: encoding.codec,
 			startTime: 0,
 			endTime: audio.duration,
 			hasOverlap: false,
@@ -123,7 +125,8 @@ export class AudioPipeline {
 		};
 
 		this.logger.trace('Single chunk created', {
-			chunkSize: wavData.byteLength,
+			chunkSize: encoding.data.byteLength,
+			codec: encoding.codec,
 			duration: `${audio.duration.toFixed(2)}s`
 		});
 
