@@ -152,7 +152,7 @@ export const DEFAULT_TRANSCRIPTION_CONFIG: TranscriptionConfig = {
 			},
 			merging: {
 				duplicateWindowSeconds: 30, // Time window for duplicate text detection
-				minMatchLength: 20, // Minimum characters to consider as duplicate
+				minMatchLength: 12, // Short 5-second overlaps can normalize below 20 Japanese characters
 				overlapThreshold: 0.5, // 50% overlap threshold for segment merging
 				estimatedCharsPerSecond: 15, // Estimated characters per second of speech
 				fuzzyMatchSimilarity: 0.85, // 85% similarity threshold for fuzzy matching
@@ -188,7 +188,7 @@ export const DEFAULT_TRANSCRIPTION_CONFIG: TranscriptionConfig = {
 			},
 			merging: {
 				duplicateWindowSeconds: 30, // Time window for duplicate text detection
-				minMatchLength: 20, // Minimum characters to consider as duplicate
+				minMatchLength: 12, // Short 5-second overlaps can normalize below 20 Japanese characters
 				overlapThreshold: 0.5, // 50% overlap threshold for segment merging
 				estimatedCharsPerSecond: 15, // Estimated characters per second of speech
 				fuzzyMatchSimilarity: 0.85, // 85% similarity threshold for fuzzy matching

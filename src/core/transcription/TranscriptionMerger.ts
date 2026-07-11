@@ -268,6 +268,49 @@ export class TranscriptionMerger {
 			minMatchLength
 		);
 
+		// Prefer a strict suffix-to-prefix match before wider window searches. This
+		// safely handles short Whisper overlaps after punctuation/spacing normalization
+		// without allowing a later repeated phrase to consume intervening text.
+		const strictBoundaryMin = Math.max(12, Math.min(minMatchLength, 20));
+		const strictNormalizedOverlap = this.findNormalizedExactOverlapFallback(
+			previousText,
+			currentText,
+			strictBoundaryMin,
+			MAX_OVERLAP,
+			SEARCH_RANGE,
+			{
+				maxLeadingGapInCurrent: 0,
+				maxTrailingGapInPrevious: 0
+			}
+		);
+		if (strictNormalizedOverlap) {
+			return {
+				trimmedText: strictNormalizedOverlap.trimmedText,
+				connector: strictNormalizedOverlap.connector,
+				matchFound: true
+			};
+		}
+
+		if (minMatchLength < 20) {
+			const fuzzyBoundaryOverlap = this.findFuzzyBoundaryOverlap(
+				previousText,
+				currentText,
+				strictBoundaryMin,
+				Math.min(
+					MAX_OVERLAP,
+					Math.ceil(overlapDuration * (this.mergingConfig.estimatedCharsPerSecond ?? 15) * 1.5)
+				),
+				this.mergingConfig.fuzzyMatchSimilarity ?? 0.85
+			);
+			if (fuzzyBoundaryOverlap) {
+				return {
+					trimmedText: fuzzyBoundaryOverlap.trimmedText,
+					connector: fuzzyBoundaryOverlap.connector,
+					matchFound: true
+				};
+			}
+		}
+
 		// まずは「境界近傍の最長完全一致」を探す（軽いブレがあっても、どこかに長い一致が残ることが多い）
 		// - 末尾に追加文があり overlap が suffix に届かないケースに強い
 		// - candidateStepSize の粒度に依存しない
@@ -625,7 +668,7 @@ export class TranscriptionMerger {
 		// but does not reach the very end of the previous chunk due to transcription drift.
 		// Keep this threshold configurable (via overlapDetection.minOverlapLength).
 		// We also apply strict positional constraints to reduce false positives.
-			const minExactLength = Math.max(20, minOverlapLength);
+			const minExactLength = Math.max(12, minOverlapLength);
 			const tailWindow = Math.min(previousText.length, Math.max(500, maxOverlapLength));
 			const headWindow = Math.min(currentText.length, Math.max(500, searchRangeInNext));
 
@@ -688,7 +731,7 @@ export class TranscriptionMerger {
 				maxTrailingGapInPrevious?: number;
 			}
 		): { trimmedText: string; connector: string } | null {
-			const minExactLength = Math.max(20, minOverlapLength);
+			const minExactLength = Math.max(12, minOverlapLength);
 			const tailWindow = Math.min(previousText.length, Math.max(500, maxOverlapLength));
 			const headWindow = Math.min(currentText.length, Math.max(500, searchRangeInNext));
 
@@ -770,6 +813,89 @@ export class TranscriptionMerger {
 		});
 		OverlapDebugger.logFinalResult(trimmedText, connector);
 		return { trimmedText, connector };
+	}
+
+	private findFuzzyBoundaryOverlap(
+		previousText: string,
+		currentText: string,
+		minOverlapLength: number,
+		maxOverlapLength: number,
+		similarityThreshold: number
+	): { trimmedText: string; connector: string } | null {
+		const normalization = {
+			removeSpaces: true,
+			removePunctuation: true,
+			unifyKana: true,
+			toLowerCase: true
+		} as const;
+		const previousNormalized = this.normalizeTextWithIndexMap(previousText, normalization);
+		const currentNormalized = this.normalizeTextWithIndexMap(currentText, normalization);
+		const maxLength = Math.min(
+			maxOverlapLength,
+			previousNormalized.normalized.length,
+			currentNormalized.normalized.length
+		);
+
+		for (let length = maxLength; length >= minOverlapLength; length--) {
+			const previousSuffix = previousNormalized.normalized.slice(-length);
+			const currentPrefix = currentNormalized.normalized.slice(0, length);
+			const anchorLength = Math.min(8, length);
+			if (previousSuffix.slice(0, anchorLength) !== currentPrefix.slice(0, anchorLength)) {
+				continue;
+			}
+			const similarity = this.calculateEditSimilarity(previousSuffix, currentPrefix);
+			if (similarity < similarityThreshold) {
+				continue;
+			}
+
+			const originalMatchEnd = currentNormalized.indexMap[length - 1];
+			if (originalMatchEnd === undefined) {
+				continue;
+			}
+			const rawMatchEndExclusive = this.advancePastSkippableChars(
+				currentText,
+				originalMatchEnd + 1,
+				normalization
+			);
+			const rawAfterMatch = currentText.slice(rawMatchEndExclusive);
+			this.logger.debug('Fuzzy boundary overlap match used', {
+				matchLength: length,
+				similarity
+			});
+			return {
+				trimmedText: rawAfterMatch.trimStart(),
+				connector: this.determineInlineConnector(previousText, rawAfterMatch)
+			};
+		}
+
+		return null;
+	}
+
+	private calculateEditSimilarity(left: string, right: string): number {
+		if (left === right) {
+			return 1;
+		}
+		if (!left || !right) {
+			return 0;
+		}
+
+		let previousRow = Array.from({ length: right.length + 1 }, (_, index) => index);
+		for (let leftIndex = 1; leftIndex <= left.length; leftIndex++) {
+			const currentRow = new Array<number>(right.length + 1).fill(0);
+			currentRow[0] = leftIndex;
+			for (let rightIndex = 1; rightIndex <= right.length; rightIndex++) {
+				const substitutionCost = left[leftIndex - 1] === right[rightIndex - 1] ? 0 : 1;
+				currentRow[rightIndex] = Math.min(
+					(previousRow[rightIndex] ?? 0) + 1,
+					(currentRow[rightIndex - 1] ?? 0) + 1,
+					(previousRow[rightIndex - 1] ?? 0) + substitutionCost
+				);
+			}
+			previousRow = currentRow;
+		}
+
+		const distance = previousRow[right.length] ?? Math.max(left.length, right.length);
+		return 1 - distance / Math.max(left.length, right.length);
 	}
 
 		private normalizeTextWithIndexMap(
