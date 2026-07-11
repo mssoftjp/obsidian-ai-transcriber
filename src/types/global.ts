@@ -52,41 +52,6 @@ export interface NavigatorWakeLock {
 	wakeLock?: WakeLockAPI;
 }
 
-// Obsidian App interfaces (partial definitions for what we actually use)
-export interface ObsidianVaultConfig {
-	locale?: string;
-}
-
-export interface ObsidianVault {
-	config?: ObsidianVaultConfig;
-}
-
-export interface ObsidianPlugin {
-	saveSettings?: () => Promise<void>;
-}
-
-export interface ObsidianPluginCollection {
-	[pluginId: string]: ObsidianPlugin;
-}
-
-export interface ObsidianPlugins {
-	plugins: ObsidianPluginCollection;
-}
-
-export interface ObsidianInternalPlugin {
-	getPluginById: (id: string) => unknown;
-}
-
-export interface ObsidianInternalPlugins {
-	getPluginById: (id: string) => unknown;
-}
-
-export interface ObsidianApp {
-	vault?: ObsidianVault;
-	plugins?: ObsidianPlugins;
-	internalPlugins?: ObsidianInternalPlugins;
-}
-
 // Module import types
 export interface FvadWasmInstance {
 	HEAP16: Int16Array;

@@ -1,15 +1,13 @@
-import { Modal, TFile, Setting, Notice, ButtonComponent, getLanguage, AbstractInputSuggest } from 'obsidian';
+import { Modal, Setting, Notice, ButtonComponent, getLanguage, AbstractInputSuggest } from 'obsidian';
 
 import { SUPPORTED_FORMATS } from '../config/constants';
 import { t } from '../i18n';
 import { TempFileManager } from '../infrastructure/storage/TempFileManager';
 import { Logger } from '../utils/Logger';
 
-import type { App } from 'obsidian';
+import { collectAudioFiles } from './AudioFileCollection';
 
-interface MetadataCacheWithCachedFiles {
-	getCachedFiles?: () => unknown;
-}
+import type { App, TFile } from 'obsidian';
 
 export class AudioFileSelectionModal extends Modal {
 	private files: TFile[] = [];
@@ -33,24 +31,10 @@ export class AudioFileSelectionModal extends Modal {
 		this.tempFileManager = new TempFileManager(app);
 	}
 
-	private loadAudioFilesFromCache(): void {
-		const metadataCache = this.app.metadataCache as MetadataCacheWithCachedFiles;
-		const cachedFiles = metadataCache.getCachedFiles?.() ?? [];
-		const cachedPaths = Array.isArray(cachedFiles)
-			? cachedFiles.filter((path): path is string => typeof path === 'string')
-			: [];
-		const allowedExtensions = new Set(SUPPORTED_FORMATS.EXTENSIONS.map((ext) => ext.toLowerCase()));
-		const audioFiles: TFile[] = [];
-
-		for (const path of cachedPaths) {
-			const abstract = this.app.vault.getAbstractFileByPath(path);
-			if (abstract instanceof TFile && allowedExtensions.has(abstract.extension.toLowerCase())) {
-				audioFiles.push(abstract);
-			}
-		}
-
+	private loadAudioFiles(): void {
+		const audioFiles = collectAudioFiles(this.app.vault);
 		if (audioFiles.length === 0) {
-			this.logger.debug('No audio files found from metadata cache');
+			this.logger.debug('No supported audio or video files found in the vault');
 		}
 
 		this.files = audioFiles;
@@ -92,7 +76,7 @@ export class AudioFileSelectionModal extends Modal {
 		contentEl.empty();
 		this.modalEl.addClass('ai-transcriber-modal');
 
-		this.loadAudioFilesFromCache();
+		this.loadAudioFiles();
 
 		// Debug: Log file count for edge case testing
 		if (this.files.length > 100) {

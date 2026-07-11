@@ -21,7 +21,7 @@ import type { ProgressTracker } from './ProgressTracker';
 import type { APITranscriptionSettings } from '../ApiSettings';
 import type { APITranscriber } from '../ApiTranscriber';
 import type { TranscriptionMetaInfo } from '../core/transcription/TranscriptionTypes';
-import type { ObsidianApp, WakeLockSentinel } from '../types/global';
+import type { WakeLockSentinel } from '../types/global';
 
 export class APITranscriptionModal extends Modal {
 	private parentComponent: Component;
@@ -57,13 +57,22 @@ export class APITranscriptionModal extends Modal {
 	private loadingAnimation: LoadingAnimation;
 	private logger: Logger;
 
-	constructor(app: App, parentComponent: Component, transcriber: APITranscriber, audioFile: TFile, settings: APITranscriptionSettings, progressTracker?: ProgressTracker) {
+	constructor(
+		app: App,
+		parentComponent: Component,
+		transcriber: APITranscriber,
+		audioFile: TFile,
+		settings: APITranscriptionSettings,
+		progressTracker?: ProgressTracker,
+		saveSettings?: () => Promise<void>
+	) {
 		super(app);
 		this.parentComponent = parentComponent;
 		this.transcriber = transcriber;
 		this.audioFile = audioFile;
 		this.settings = settings;
 		this.progressTracker = progressTracker ?? null;
+		this.saveSettings = saveSettings ?? null;
 		this.loadingAnimation = this.parentComponent.addChild(new LoadingAnimation());
 		this.logger = Logger.getLogger('APITranscriptionModal');
 					this.logger.debug('APITranscriptionModal created', {
@@ -299,14 +308,8 @@ export class APITranscriptionModal extends Modal {
 		try {
 			if (this.saveSettings) {
 				await this.saveSettings();
-				} else {
-					const obsidianApp = this.app as ObsidianApp;
-					const plugin = obsidianApp.plugins?.plugins[PathUtils.getCurrentPluginId()];
-					if (plugin?.saveSettings && typeof plugin.saveSettings === 'function') {
-						await plugin.saveSettings();
-					} else {
-						this.logger.warn('Unable to save settings - saveSettings callback or plugin instance not found');
-				}
+			} else {
+				this.logger.warn('Unable to save settings because no save callback was provided');
 			}
 		} catch (error) {
 			this.logger.error('Failed to persist model change', error);

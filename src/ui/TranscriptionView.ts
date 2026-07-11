@@ -3,8 +3,9 @@ import { ItemView, TFile, Notice, Modal, ButtonComponent, getLanguage } from 'ob
 import { LoadingAnimation } from '../core/utils/LoadingAnimation';
 import { t } from '../i18n';
 
+import { collectAudioFiles } from './AudioFileCollection';
+
 import type { ProgressTracker, TranscriptionTask } from './ProgressTracker';
-import type { ObsidianApp } from '../types/global';
 import type { WorkspaceLeaf, App, CachedMetadata } from 'obsidian';
 
 export const VIEW_TYPE_TRANSCRIPTION = 'ai-transcriber-view';
@@ -14,10 +15,6 @@ interface TranscriptionPlugin {
 	transcriber?: {
 		cancelTranscription?: () => Promise<void>;
 	};
-}
-
-interface MetadataCacheWithCachedFiles {
-	getCachedFiles?: () => unknown;
 }
 
 export class TranscriptionView extends ItemView {
@@ -442,7 +439,7 @@ export class TranscriptionView extends ItemView {
 					void this.showFileSelectionModal(task, matchingFiles);
 				} else {
 					// 見つからない場合は全文検索を開く
-					this.openGlobalSearch(searchQuery);
+					new Notice(t('errors.fileNotFound'));
 					new Notice(t('common.manualSearchRequired'));
 				}
 			}
@@ -523,11 +520,7 @@ export class TranscriptionView extends ItemView {
 	}
 
 	private findCachedTranscriptionFiles(searchQuery: string): TFile[] {
-		return this.getCachedVaultFiles().filter((file) => {
-			if (file.extension !== 'md') {
-				return false;
-			}
-
+		return this.app.vault.getMarkdownFiles().filter((file) => {
 			const cache: CachedMetadata | null = this.app.metadataCache.getFileCache(file);
 			const transcriptionTimestampValue: unknown = cache?.frontmatter?.['transcription_timestamp'];
 			return typeof transcriptionTimestampValue === 'string' && transcriptionTimestampValue.includes(searchQuery);
@@ -539,39 +532,9 @@ export class TranscriptionView extends ItemView {
 			return [];
 		}
 
-		return this.getCachedVaultFiles().filter((file) =>
+		return collectAudioFiles(this.app.vault).filter((file) =>
 			file.name === fileName && this.isAudioFile(file.extension)
 		);
-	}
-
-	private getCachedVaultFiles(): TFile[] {
-		const metadataCache = this.app.metadataCache as MetadataCacheWithCachedFiles;
-		const cachedFiles = metadataCache.getCachedFiles?.() ?? [];
-		const cachedPaths = Array.isArray(cachedFiles)
-			? cachedFiles.filter((path): path is string => typeof path === 'string')
-			: [];
-		const files: TFile[] = [];
-
-		for (const path of cachedPaths) {
-			const file = this.app.vault.getAbstractFileByPath(path);
-			if (file instanceof TFile) {
-				files.push(file);
-			}
-		}
-
-		return files;
-	}
-
-	private openGlobalSearch(searchQuery: string): void {
-		const searchPlugin: unknown = ((this.app as unknown) as ObsidianApp).internalPlugins?.getPluginById('global-search');
-		if (this.isSearchPlugin(searchPlugin)) {
-			searchPlugin.instance.openGlobalSearch(this.quoteSearchQuery(searchQuery));
-		}
-	}
-
-	private quoteSearchQuery(searchQuery: string): string {
-		const escaped = searchQuery.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
-		return `"${escaped}"`;
 	}
 
 	/**
@@ -582,25 +545,6 @@ export class TranscriptionView extends ItemView {
 		return audioExtensions.includes(extension.toLowerCase());
 	}
 
-	private isSearchPlugin(plugin: unknown): plugin is { enabled: boolean; instance: { openGlobalSearch: (query: string) => void } } {
-		if (typeof plugin !== 'object' || plugin === null) {
-			return false;
-		}
-
-		const candidate = plugin as Record<string, unknown>;
-		const { enabled, instance } = candidate;
-
-		if (typeof enabled !== 'boolean' || enabled === false) {
-			return false;
-		}
-
-		if (typeof instance !== 'object' || instance === null) {
-			return false;
-		}
-
-		const searchInstance = instance as { openGlobalSearch?: unknown };
-		return typeof searchInstance.openGlobalSearch === 'function';
-	}
 }
 
 /**

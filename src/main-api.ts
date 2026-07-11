@@ -25,16 +25,20 @@ import { PathUtils } from './utils/PathUtils';
 
 export default class AITranscriberPlugin extends Plugin {
 	settings!: APITranscriptionSettings;
-	transcriber!: APITranscriber;
+	transcriber?: APITranscriber;
 	progressTracker!: ProgressTracker;
 	statusBarManager?: StatusBarManager;
 	private stateRepo!: PluginStateRepository;
 	private logger = Logger.getLogger('Plugin');
+	private isUnloading = false;
 
-	override onload(): void {
-		void this.initializePlugin().catch(error => {
+	override async onload(): Promise<void> {
+		try {
+			await this.initializePlugin();
+		} catch (error) {
 			this.logger.error('Failed to load AI Transcriber plugin', error);
-		});
+			throw error;
+		}
 	}
 
 	private async initializePlugin(): Promise<void> {
@@ -59,10 +63,14 @@ export default class AITranscriberPlugin extends Plugin {
 
 		// Initialize the API transcriber with progress tracker
 		this.transcriber = new APITranscriber(this.app, this.settings, this.progressTracker);
+		this.registerView(
+			VIEW_TYPE_TRANSCRIPTION,
+			(leaf) => new TranscriptionView(leaf, this, this.progressTracker)
+		);
 
 		// Run UI setup after workspace is ready
-		this.app.workspace.onLayoutReady(async () => {
-			await this.handleLayoutReady();
+		this.app.workspace.onLayoutReady(() => {
+			void this.handleLayoutReady();
 		});
 
 		// Add command to transcribe selected audio file
@@ -90,12 +98,16 @@ export default class AITranscriberPlugin extends Plugin {
 	}
 
 	override onunload(): void {
+		this.isUnloading = true;
 		void this.disposePlugin().catch(error => {
 			this.logger.error('Failed to unload AI Transcriber plugin', error);
 		});
 	}
 
 	private async handleLayoutReady(): Promise<void> {
+		if (this.shouldSkipLayoutSetup()) {
+			return;
+		}
 		// Clean up temporary files from previous sessions
 		try {
 			const tempFileManager = new TempFileManager(this.app);
@@ -104,16 +116,8 @@ export default class AITranscriberPlugin extends Plugin {
 		} catch (error) {
 			this.logger.error('Failed to clean up temporary files', error);
 		}
-
-		// Register the transcription view
-		try {
-			this.registerView(
-				VIEW_TYPE_TRANSCRIPTION,
-				(leaf) => new TranscriptionView(leaf, this, this.progressTracker)
-			);
-			this.logger.debug('TranscriptionView registered successfully');
-		} catch (error) {
-			this.logger.error('Failed to register view', error);
+		if (this.shouldSkipLayoutSetup()) {
+			return;
 		}
 
 		// Initialize status bar only on desktop
@@ -163,13 +167,18 @@ export default class AITranscriberPlugin extends Plugin {
 			this.statusBarManager.destroy();
 		}
 
-			// Clean up API transcriber resources
+		if (this.transcriber) {
 			await this.transcriber.cleanup();
+		}
 
 		// Clean up all global resources via ResourceManager
 		await ResourceManager.getInstance().cleanupAll();
 
 		this.logger.info('AI Transcriber plugin unloaded');
+	}
+
+	private shouldSkipLayoutSetup(): boolean {
+		return this.isUnloading;
 	}
 
 	async loadSettings() {
@@ -256,7 +265,7 @@ export default class AITranscriberPlugin extends Plugin {
 		});
 
 			// Update transcriber with new settings
-			this.transcriber.updateSettings(this.settings);
+		this.transcriber?.updateSettings(this.settings);
 
 		const elapsedTime = performance.now() - startTime;
 		this.logger.info('Settings saved', { elapsedTime: `${elapsedTime.toFixed(2)}ms` });
@@ -318,9 +327,21 @@ export default class AITranscriberPlugin extends Plugin {
 			return;
 		}
 
-			const modal = new APITranscriptionModal(this.app, this, this.transcriber, file, this.settings, this.progressTracker);
-		// Set save callback
-		(modal as unknown as { saveSettings: () => Promise<void> }).saveSettings = () => this.saveSettings();
+		const transcriber = this.transcriber;
+		if (!transcriber) {
+			this.logger.error('Transcriber is not initialized');
+			new Notice(t('errors.general'));
+			return;
+		}
+		const modal = new APITranscriptionModal(
+			this.app,
+			this,
+			transcriber,
+			file,
+			this.settings,
+			this.progressTracker,
+			() => this.saveSettings()
+		);
 		modal.open();
 		this.logger.debug('Transcription modal opened');
 	}
@@ -341,7 +362,11 @@ export default class AITranscriberPlugin extends Plugin {
 	// Public method for external access (e.g., from settings tab)
 	async testApiConnection(): Promise<boolean> {
 		this.logger.debug('Testing API connection...');
-		const result = await this.transcriber.checkApiConnection();
+		const transcriber = this.transcriber;
+		if (!transcriber) {
+			return false;
+		}
+		const result = await transcriber.checkApiConnection();
 		this.logger.debug('API connection test result', { success: result });
 		return result;
 	}
