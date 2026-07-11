@@ -4,6 +4,12 @@ import { t } from './i18n';
 
 import type { APITranscriptionSettings } from './ApiSettings';
 import type { APITranscriber } from './ApiTranscriber';
+import type { ButtonComponent } from 'obsidian';
+
+interface DestructiveButtonCompatibility {
+	setDestructive?: () => unknown;
+	setWarning?: () => unknown;
+}
 
 export class SettingsConnectionTest {
 	/**
@@ -57,14 +63,21 @@ export class SettingsConnectionTest {
 		new Setting(containerEl)
 			.setName(t('settings.connection.clearTitle'))
 			.setDesc(t('settings.connection.clearDesc'))
-			.addButton(button => button
-				.setButtonText(t('settings.connection.clearButton'))
-				.setWarning()
-				.onClick(async () => {
+			.addButton(button => {
+				button.setButtonText(t('settings.connection.clearButton'));
+				this.setDestructiveCompatibility(button);
+				button.onClick(async () => {
 					settings.openaiApiKey = '';
 					await saveSettings();
 					new Notice(t('settings.connection.clearedNotice'));
 					refreshDisplay(); // Refresh display
-				}));
+				});
+			});
+	}
+
+	private static setDestructiveCompatibility(button: ButtonComponent): void {
+		const compatibleButton: DestructiveButtonCompatibility = button;
+		const setDestructive = compatibleButton.setDestructive ?? compatibleButton.setWarning;
+		setDestructive?.call(button);
 	}
 }

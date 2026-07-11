@@ -68,6 +68,45 @@ export class App {
 	}
 }
 
+export class PluginSettingTab {
+	app: App;
+	plugin: unknown;
+	containerEl = {
+		empty: jest.fn(),
+		addClass: jest.fn()
+	};
+
+	constructor(app: App, plugin: unknown) {
+		this.app = app;
+		this.plugin = plugin;
+	}
+}
+
+export class Modal {
+	app: App;
+
+	constructor(app: App) {
+		this.app = app;
+	}
+
+	open(): void {}
+}
+
+export class FuzzySuggestModal<T> extends Modal {
+	declare protected suggestionType: T;
+}
+
+export class AbstractInputSuggest<T> {
+	app: App;
+	declare protected suggestionType: T;
+
+	constructor(app: App, _inputEl: HTMLInputElement | HTMLDivElement) {
+		this.app = app;
+	}
+
+	setValue(_value: string): void {}
+}
+
 export class Vault {
 	private files: Map<string, TFile | TFolder> = new Map();
 

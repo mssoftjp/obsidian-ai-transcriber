@@ -24,7 +24,7 @@ import { PathUtils } from './utils/PathUtils';
 	import type { Menu, TAbstractFile } from 'obsidian';
 
 export default class AITranscriberPlugin extends Plugin {
-	settings!: APITranscriptionSettings;
+	override settings: APITranscriptionSettings = structuredClone(DEFAULT_API_SETTINGS);
 	transcriber?: APITranscriber;
 	progressTracker!: ProgressTracker;
 	statusBarManager?: StatusBarManager;

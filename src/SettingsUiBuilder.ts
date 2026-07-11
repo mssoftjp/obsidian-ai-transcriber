@@ -20,42 +20,47 @@ export class SettingsUIBuilder {
 	 * Create API settings section
 	 */
 	static displayAPISettings(containerEl: HTMLElement, settings: APITranscriptionSettings, saveSettings: () => Promise<void>, app: App): void {
-		// API settings heading removed as requested
-		let apiKeyInput: HTMLInputElement | null = null;
+		this.configureApiKeySetting(new Setting(containerEl), settings, saveSettings);
+		this.configureModelSetting(new Setting(containerEl), settings, saveSettings);
+		this.configureVadModeSetting(new Setting(containerEl), settings, saveSettings, app);
+	}
 
-		// API Key setting
-		new Setting(containerEl)
+	static configureApiKeySetting(
+		setting: Setting,
+		settings: APITranscriptionSettings,
+		saveSettings: () => Promise<void>
+	): void {
+		let apiKeyInput: HTMLInputElement | null = null;
+		let storageWarningShown = false;
+		const containerEl = setting.settingEl;
+
+		setting
 			.setName(t('settings.apiKey.name'))
 			.setDesc(this.createApiKeyDescription(t('providers.openai'), 'https://platform.openai.com/api-keys'))
 			.addText(text => {
-				let storageWarningShown = false;
 				apiKeyInput = text.inputEl;
 				text.inputEl.type = 'password';
 				text.inputEl.autocomplete = 'off';
-				// Retrieve stored API key
 				const apiKey = SafeStorageService.decryptFromStore(settings.openaiApiKey);
-
 				if (apiKey) {
-					// Show masked key
 					text.setValue(SecurityUtils.maskApiKey(apiKey));
 				}
-				// If no valid key, leave the field empty
-
-				text.setPlaceholder(t('settings.apiKey.placeholder'))
+				return text
+					.setPlaceholder(t('settings.apiKey.placeholder'))
 					.onChange(async (value) => {
-						// Skip if it's the masked value
-						if (value && !value.includes('*')) {
-							const encryptedKey = SafeStorageService.encryptForStore(value);
-							if (!encryptedKey) {
-								if (!storageWarningShown) {
-									new Notice(t('settings.apiKey.insecureWarning'));
-									storageWarningShown = true;
-								}
-								return;
-							}
-							settings.openaiApiKey = encryptedKey;
-							await saveSettings();
+						if (!value || value.includes('*')) {
+							return;
 						}
+						const encryptedKey = SafeStorageService.encryptForStore(value);
+						if (!encryptedKey) {
+							if (!storageWarningShown) {
+								new Notice(t('settings.apiKey.insecureWarning'));
+								storageWarningShown = true;
+							}
+							return;
+						}
+						settings.openaiApiKey = encryptedKey;
+						await saveSettings();
 					});
 			})
 			.addButton(button => button
@@ -63,15 +68,10 @@ export class SettingsUIBuilder {
 				.onClick(async () => {
 					button.setButtonText(t('common.processing'));
 					button.setDisabled(true);
-
-					// Get the actual API key
 					const apiKey = SafeStorageService.decryptFromStore(settings.openaiApiKey);
-
 					try {
 						this.logger.debug('Testing API key connection');
-						// Use SecurityUtils for complete validation (format + API test)
 						const result = await SecurityUtils.validateApiKey(apiKey, true);
-
 						if (result.valid) {
 							this.logger.info('API key validation successful');
 							button.setButtonText(t('common.success'));
@@ -95,222 +95,232 @@ export class SettingsUIBuilder {
 						}, 3000);
 					}
 				}))
-			.addExtraButton(button => {
-				button.setTooltip(t('common.delete'))
-					.setIcon('trash-2')
-					.onClick(async () => {
-						settings.openaiApiKey = '';
-						await saveSettings();
-						// Removed Notice - clear action is obvious from UI
-						clearApiKeyInput(apiKeyInput);
-					});
-			});
+			.addExtraButton(button => button
+				.setTooltip(t('common.delete'))
+				.setIcon('trash-2')
+				.onClick(async () => {
+					settings.openaiApiKey = '';
+					await saveSettings();
+					clearApiKeyInput(apiKeyInput);
+				}));
+	}
 
-		new Setting(containerEl)
+	static configureModelSetting(
+		setting: Setting,
+		settings: APITranscriptionSettings,
+		saveSettings: () => Promise<void>
+	): void {
+		setting
 			.setName(t('settings.model.name'))
-			.setDesc(t('settings.model.desc'))
+			.setDesc(this.createModelDescription())
 			.addDropdown(dropdown => {
-				MODEL_OPTIONS.forEach(opt => {
-					// Generate label from translation keys
-					let label: string;
-					switch (opt.value) {
-					case 'whisper-1':
-						label = t('settings.model.whisperNoTimestamp');
-						break;
-					case 'whisper-1-ts':
-						label = t('settings.model.whisperWithTimestamp');
-						break;
-					case MODEL_NAMES.GPT4O:
-						label = t('settings.model.gpt4oHigh');
-						break;
-					case MODEL_NAMES.GPT4O_MINI:
-						label = t('settings.model.gpt4oMiniCost');
-						break;
-					default:
-						label = opt.value; // Fallback to value if no translation
-					}
-					dropdown.addOption(opt.value, label);
+				MODEL_OPTIONS.forEach(option => {
+					dropdown.addOption(option.value, this.getModelLabel(option.value));
 				});
-
 				dropdown.setValue(settings.model);
-
 				dropdown.onChange(async (value) => {
 					const option = getModelOption(value);
 					if (!option) {
 						return;
 					}
-
 					settings.model = option.model;
 					await saveSettings();
 				});
 			});
+	}
 
-		// Temperature setting removed - now configured in config files only
-
-		// Model comparison info - simplified as requested
-		const modelInfoEl = containerEl.createDiv({ cls: 'setting-item-description' });
-		// Clear and rebuild model info element
-		modelInfoEl.empty();
-
-		const titleEl = modelInfoEl.createEl('strong');
-		titleEl.setText(t('settings.model.comparison'));
-		modelInfoEl.createEl('br');
-
-		// Whisper model info
-		modelInfoEl.appendText('• ');
-		const whisperLabel = modelInfoEl.createEl('strong');
-		whisperLabel.setText(t('settings.model.whisper') + ':');
-		modelInfoEl.appendText(' ' + t('settings.model.whisperDesc'));
-		modelInfoEl.createEl('br');
-
-		// GPT-4o model info
-		modelInfoEl.appendText('• ');
-		const gpt4oLabel = modelInfoEl.createEl('strong');
-		gpt4oLabel.setText(t('settings.model.gpt4o') + ':');
-		modelInfoEl.appendText(' ' + t('settings.model.gpt4oDesc'));
-		modelInfoEl.createEl('br');
-
-		// GPT-4o Mini model info
-		modelInfoEl.appendText('• ');
-		const gpt4oMiniLabel = modelInfoEl.createEl('strong');
-		gpt4oMiniLabel.setText(t('settings.model.gpt4oMini') + ':');
-		modelInfoEl.appendText(' ' + t('settings.model.gpt4oMiniDesc'));
-
-			const initialVadMode = settings.vadMode;
-			const vadModeSetting = new Setting(containerEl)
-				.setName(t('settings.vadMode.name'))
-				.setDesc(this.createVADDescription(t('settings.vadMode.desc'), false, false))
-				.addDropdown(dropdown => {
-				dropdown.addOption('server', t('settings.vadMode.options.server'));
-				dropdown.addOption('local', t('settings.vadMode.options.local'));
-				dropdown.addOption('disabled', t('settings.vadMode.options.disabled'));
-				dropdown.setValue(initialVadMode);
-				dropdown.onChange(async (value) => {
+	static configureVadModeSetting(
+		setting: Setting,
+		settings: APITranscriptionSettings,
+		saveSettings: () => Promise<void>,
+		app: App
+	): void {
+		const initialVadMode = settings.vadMode;
+		setting
+			.setName(t('settings.vadMode.name'))
+			.setDesc(this.createVADDescription(t('settings.vadMode.desc'), false, false))
+			.addDropdown(dropdown => dropdown
+				.addOption('server', t('settings.vadMode.options.server'))
+				.addOption('local', t('settings.vadMode.options.local'))
+				.addOption('disabled', t('settings.vadMode.options.disabled'))
+				.setValue(initialVadMode)
+				.onChange(async (value) => {
 					if (!SettingsUIBuilder.isValidVadMode(value)) {
 						this.logger.warn('Invalid VAD mode selection ignored', { value });
 						return;
 					}
-					const mode: VADMode = value;
-					if (mode === 'local') {
+					if (value === 'local') {
 						const hasLocalWasm = await this.checkLocalWasm(app);
-						const includeMissing = !hasLocalWasm;
-						const includeLocal = hasLocalWasm;
-						vadModeSetting.setDesc(this.createVADDescription(t('settings.vadMode.desc'), includeMissing, includeLocal));
-						if (includeMissing && !Platform.isMobileApp) {
-							this.setHelperVisibility(helperContainer, helperNote, true, t('settings.vadMode.installWasm.desc'));
-						} else {
-							this.setHelperVisibility(helperContainer, helperNote, false);
-						}
+						setting.setDesc(this.createVADDescription(
+							t('settings.vadMode.desc'),
+							!hasLocalWasm,
+							hasLocalWasm
+						));
+						this.setHelperVisibility(
+							helperState.container,
+							helperState.note,
+							!hasLocalWasm && !Platform.isMobileApp,
+							t('settings.vadMode.installWasm.desc')
+						);
 					} else {
-						// Non-local: show base desc only and hide helper
-						vadModeSetting.setDesc(this.createVADDescription(t('settings.vadMode.desc'), false, false));
-						this.setHelperVisibility(helperContainer, helperNote, false);
+						setting.setDesc(this.createVADDescription(t('settings.vadMode.desc'), false, false));
+						this.setHelperVisibility(helperState.container, helperState.note, false);
 					}
-					settings.vadMode = mode;
+					settings.vadMode = value;
 					await saveSettings();
-				});
-			});
+				}));
 
-		// Inline helper elements (place under the description, left column)
-		const infoEl = vadModeSetting.settingEl.querySelector('.setting-item-info');
-		const helperContainer = infoEl instanceof HTMLElement
-			? infoEl.createDiv({ cls: 'ai-vad-inline-helper ait-hidden' })
-			: null;
-		const helperNote = helperContainer?.createDiv({ cls: 'setting-item-description' }) ?? null;
-		let helperBtn: ButtonComponent | null = null;
-
+		const helperState = this.createVadHelper(setting);
+		const helperContainer = helperState.container;
 		if (helperContainer) {
-			helperBtn = new ButtonComponent(helperContainer)
+			new ButtonComponent(helperContainer)
 				.setButtonText(t('settings.vadMode.installWasm.button'))
-				.setCta();
-
-			helperBtn.onClick(() => {
-				try {
-					const input = helperContainer.createEl('input', {
-						type: 'file',
-						cls: 'ait-hidden',
-						attr: { accept: '.wasm,application/wasm' }
-					});
-					input.onchange = () => {
-						void (async () => {
-							try {
-								const file = input.files?.[0];
-								if (!file) {
-									return;
-								}
-								if (file.name !== 'fvad.wasm') {
-									new Notice(t('settings.vadMode.installWasm.invalidName'));
-									return;
-								}
-								const buffer = await file.arrayBuffer();
-								const bytes = new Uint8Array(buffer);
-								const isWasm = bytes.length >= 4 &&
-									bytes[0] === 0x00 &&
-									bytes[1] === 0x61 &&
-									bytes[2] === 0x73 &&
-									bytes[3] === 0x6d;
-								if (!isWasm) {
-									new Notice(t('settings.vadMode.installWasm.invalidType'));
-									return;
-								}
-
-								const pluginDir = PathUtils.getPluginDir(app);
-								const targetPath = PathUtils.getPluginFilePath(app, 'fvad.wasm');
-								const wasmData = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
-
-								const { adapter } = app.vault;
-								if (!(adapter instanceof FileSystemAdapter)) {
-									throw new Error('Placing fvad.wasm requires the desktop FileSystemAdapter.');
-								}
-
-								// Ensure plugin directory exists; ignore "already exists" errors
-								try {
-									await adapter.mkdir(pluginDir);
-								} catch (mkdirError) {
-									if (!SettingsUIBuilder.isAlreadyExistsError(mkdirError)) {
-										throw mkdirError;
-									}
-								}
-
-								// Plugin assets live under Obsidian's config/plugin directory, which is hidden from Vault indexing.
-								await adapter.writeBinary(targetPath, wasmData);
-								new Notice(t('settings.vadMode.installWasm.success'));
-								// Reflect installed state for local mode
-								vadModeSetting.setDesc(this.createVADDescription(t('settings.vadMode.desc'), false, true));
-								// Hide helper after successful installation
-								this.setHelperVisibility(helperContainer, helperNote, false);
-							} catch (error) {
-								const errorMessage = SettingsUIBuilder.formatErrorMessage(error);
-								new Notice(t('settings.vadMode.installWasm.writeError', { error: errorMessage }));
-							} finally {
-								input.remove();
-							}
-						})();
-					};
-					input.click();
-				} catch (error) {
-					const errorMessage = SettingsUIBuilder.formatErrorMessage(error);
-					new Notice(t('settings.vadMode.installWasm.writeError', { error: errorMessage }));
-				}
-			});
+				.setCta()
+				.onClick(() => {
+					this.openVadWasmPicker(app, setting, helperContainer, helperState.note);
+				});
 		}
 
-		// If current mode is local but wasm is missing (e.g., manual config edit), show the inline note
-		this.checkLocalWasm(app).then((exists) => {
-			const includeMissing = initialVadMode === 'local' && !exists;
-			const includeLocal = initialVadMode === 'local' && exists;
-			vadModeSetting.setDesc(this.createVADDescription(t('settings.vadMode.desc'), includeMissing, includeLocal));
-			// Helper visibility: show only when local mode AND wasm is missing
-			if (initialVadMode === 'local' && includeMissing && !Platform.isMobileApp) {
-				this.setHelperVisibility(helperContainer, helperNote, true, t('settings.vadMode.installWasm.desc'));
-			} else {
-				this.setHelperVisibility(helperContainer, helperNote, false);
-			}
-		}).catch(error => {
-			this.logger.warn('Failed to check local wasm on settings load', error);
-		});
+		void this.refreshVadAvailability(app, setting, initialVadMode, helperState.container, helperState.note);
 	}
 
+	private static createVadHelper(setting: Setting): {
+		container: HTMLDivElement | null;
+		note: HTMLDivElement | null;
+	} {
+		const infoEl = setting.settingEl.querySelector('.setting-item-info');
+		const container = infoEl instanceof HTMLElement
+			? infoEl.createDiv({ cls: 'ai-vad-inline-helper ait-hidden' })
+			: null;
+		return {
+			container,
+			note: container?.createDiv({ cls: 'setting-item-description' }) ?? null
+		};
+	}
+
+	private static openVadWasmPicker(
+		app: App,
+		setting: Setting,
+		helperContainer: HTMLDivElement,
+		helperNote: HTMLDivElement | null
+	): void {
+		try {
+			const input = helperContainer.createEl('input', {
+				type: 'file',
+				cls: 'ait-hidden',
+				attr: { accept: '.wasm,application/wasm' }
+			});
+			input.onchange = () => {
+				void this.installSelectedVadWasm(app, setting, helperContainer, helperNote, input);
+			};
+			input.click();
+		} catch (error) {
+			const errorMessage = SettingsUIBuilder.formatErrorMessage(error);
+			new Notice(t('settings.vadMode.installWasm.writeError', { error: errorMessage }));
+		}
+	}
+
+	private static async installSelectedVadWasm(
+		app: App,
+		setting: Setting,
+		helperContainer: HTMLDivElement,
+		helperNote: HTMLDivElement | null,
+		input: HTMLInputElement
+	): Promise<void> {
+		try {
+			const file = input.files?.[0];
+			if (!file) {
+				return;
+			}
+			if (file.name !== 'fvad.wasm') {
+				new Notice(t('settings.vadMode.installWasm.invalidName'));
+				return;
+			}
+			const bytes = new Uint8Array(await file.arrayBuffer());
+			const isWasm = bytes.length >= 4
+				&& bytes[0] === 0x00
+				&& bytes[1] === 0x61
+				&& bytes[2] === 0x73
+				&& bytes[3] === 0x6d;
+			if (!isWasm) {
+				new Notice(t('settings.vadMode.installWasm.invalidType'));
+				return;
+			}
+
+			const pluginDir = PathUtils.getPluginDir(app);
+			const targetPath = PathUtils.getPluginFilePath(app, 'fvad.wasm');
+			const wasmData = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
+			const { adapter } = app.vault;
+			if (!(adapter instanceof FileSystemAdapter)) {
+				throw new Error('Placing fvad.wasm requires the desktop FileSystemAdapter.');
+			}
+			try {
+				await adapter.mkdir(pluginDir);
+			} catch (mkdirError) {
+				if (!SettingsUIBuilder.isAlreadyExistsError(mkdirError)) {
+					throw mkdirError;
+				}
+			}
+			await adapter.writeBinary(targetPath, wasmData);
+			new Notice(t('settings.vadMode.installWasm.success'));
+			setting.setDesc(this.createVADDescription(t('settings.vadMode.desc'), false, true));
+			this.setHelperVisibility(helperContainer, helperNote, false);
+		} catch (error) {
+			const errorMessage = SettingsUIBuilder.formatErrorMessage(error);
+			new Notice(t('settings.vadMode.installWasm.writeError', { error: errorMessage }));
+		} finally {
+			input.remove();
+		}
+	}
+
+	private static async refreshVadAvailability(
+		app: App,
+		setting: Setting,
+		mode: VADMode,
+		helperContainer: HTMLDivElement | null,
+		helperNote: HTMLDivElement | null
+	): Promise<void> {
+		try {
+			const exists = await this.checkLocalWasm(app);
+			const includeMissing = mode === 'local' && !exists;
+			const includeLocal = mode === 'local' && exists;
+			setting.setDesc(this.createVADDescription(t('settings.vadMode.desc'), includeMissing, includeLocal));
+			this.setHelperVisibility(
+				helperContainer,
+				helperNote,
+				includeMissing && !Platform.isMobileApp,
+				t('settings.vadMode.installWasm.desc')
+			);
+		} catch (error) {
+			this.logger.warn('Failed to check local wasm on settings load', error);
+		}
+	}
+
+	private static createModelDescription(): DocumentFragment {
+		const fragment = SettingsUIBuilder.createObsidianFragment();
+		fragment.appendText(t('settings.model.desc'));
+		fragment.createEl('br');
+		fragment.appendText(t('settings.model.comparison') + ' ');
+		fragment.appendText('• ' + t('settings.model.whisper') + ': ' + t('settings.model.whisperDesc') + ' ');
+		fragment.appendText('• ' + t('settings.model.gpt4o') + ': ' + t('settings.model.gpt4oDesc') + ' ');
+		fragment.appendText('• ' + t('settings.model.gpt4oMini') + ': ' + t('settings.model.gpt4oMiniDesc'));
+		return fragment;
+	}
+
+	private static getModelLabel(value: string): string {
+		switch (value) {
+		case 'whisper-1':
+			return t('settings.model.whisperNoTimestamp');
+		case 'whisper-1-ts':
+			return t('settings.model.whisperWithTimestamp');
+		case MODEL_NAMES.GPT4O:
+			return t('settings.model.gpt4oHigh');
+		case MODEL_NAMES.GPT4O_MINI:
+			return t('settings.model.gpt4oMiniCost');
+		default:
+			return value;
+		}
+	}
 
 	/**
 	 * Create advanced settings section

@@ -1,4 +1,4 @@
-import { PluginSettingTab, Setting, Notice } from 'obsidian';
+import { Notice, PluginSettingTab, Setting } from 'obsidian';
 
 import { t } from './i18n';
 import { SettingsUIBuilder } from './SettingsUiBuilder';
@@ -8,10 +8,18 @@ import { FolderSuggestModal } from './ui/FolderSuggestModal';
 import { PathUtils } from './utils/PathUtils';
 
 import type AITranscriberPlugin from './main-api';
-import type { App, ToggleComponent, TextComponent } from 'obsidian';
+import type { App, SettingDefinitionItem, TextComponent, ToggleComponent } from 'obsidian';
+
+interface SettingsRowDefinition {
+	name: string;
+	desc: string;
+	aliases: string[];
+	render: (setting: Setting) => void;
+}
 
 export class APISettingsTab extends PluginSettingTab {
 	plugin: AITranscriberPlugin;
+	private dictionaryToggle?: ToggleComponent;
 	private updateDictionaryDesc?: () => void;
 
 	constructor(app: App, plugin: AITranscriberPlugin) {
@@ -19,29 +27,100 @@ export class APISettingsTab extends PluginSettingTab {
 		this.plugin = plugin;
 	}
 
-	display(): void {
+	override getSettingDefinitions(): SettingDefinitionItem[] {
+		return this.getSettingsRows().map(row => ({
+			name: row.name,
+			desc: row.desc,
+			aliases: row.aliases,
+			render: row.render
+		}));
+	}
+
+	override display(): void {
 		const { containerEl } = this;
 		containerEl.empty();
 		containerEl.addClass('ai-transcriber-settings');
+		this.getSettingsRows().forEach(row => {
+			row.render(new Setting(containerEl));
+		});
+	}
 
-		// Remove the main title as requested
+	private getSettingsRows(): SettingsRowDefinition[] {
+		return [
+			{
+				name: t('settings.apiKey.name'),
+				desc: t('settings.apiKey.desc'),
+				aliases: ['OpenAI', 'API key'],
+				render: setting => SettingsUIBuilder.configureApiKeySetting(
+					setting,
+					this.plugin.settings,
+					async () => this.plugin.saveSettings()
+				)
+			},
+			{
+				name: t('settings.model.name'),
+				desc: t('settings.model.desc'),
+				aliases: ['Whisper', 'GPT-4o'],
+				render: setting => SettingsUIBuilder.configureModelSetting(
+					setting,
+					this.plugin.settings,
+					async () => this.plugin.saveSettings()
+				)
+			},
+			{
+				name: t('settings.vadMode.name'),
+				desc: t('settings.vadMode.desc'),
+				aliases: ['VAD', 'voice activity detection'],
+				render: setting => SettingsUIBuilder.configureVadModeSetting(
+					setting,
+					this.plugin.settings,
+					async () => this.plugin.saveSettings(),
+					this.app
+				)
+			},
+			{
+				name: t('settings.language.name'),
+				desc: this.getLanguageDescription(),
+				aliases: ['transcription language'],
+				render: setting => this.configureLanguageSetting(setting)
+			},
+			{
+				name: t('settings.outputFormat.name'),
+				desc: t('settings.outputFormat.desc'),
+				aliases: ['callout', 'quote', 'plain text'],
+				render: setting => this.configureOutputFormatSetting(setting)
+			},
+			{
+				name: t('settings.postProcessing.name'),
+				desc: t('settings.postProcessing.desc'),
+				aliases: ['post-processing'],
+				render: setting => this.configurePostProcessingSetting(setting)
+			},
+			{
+				name: t('settings.dictionaryCorrection.name'),
+				desc: t('settings.dictionaryCorrection.desc'),
+				aliases: ['dictionary correction'],
+				render: setting => this.configureDictionaryCorrectionSetting(setting)
+			},
+			{
+				name: t('settings.outputFolder.name'),
+				desc: t('settings.outputFolder.desc'),
+				aliases: ['save folder', 'output path'],
+				render: setting => this.configureOutputFolderSetting(setting)
+			},
+			{
+				name: t('settings.dictionary.manageDictionary'),
+				desc: this.getDictionaryDescription(),
+				aliases: ['custom dictionary', 'corrections'],
+				render: setting => this.configureDictionaryManagementSetting(setting)
+			}
+		];
+	}
 
-		// API settings (unified for all models)
-		SettingsUIBuilder.displayAPISettings(containerEl, this.plugin.settings, async () => {
-			await this.plugin.saveSettings();
-		}, this.app);
-
-		// Transcription settings - no heading needed
-
-		// Show current Obsidian language if available
-		const obsidianLang = this.plugin.getObsidianLanguage();
-		const languageDesc = obsidianLang && obsidianLang !== 'auto' && this.plugin.settings.language !== 'auto'
-			? `${t('settings.language.desc')} (${t('settings.language.useObsidianLang')}: ${obsidianLang})`
-			: t('settings.language.desc');
-
-		new Setting(containerEl)
+	private configureLanguageSetting(setting: Setting): void {
+		setting
 			.setName(t('settings.language.name'))
-			.setDesc(languageDesc)
+			.setDesc(this.getLanguageDescription())
 			.addDropdown(dropdown => dropdown
 				.addOption('auto', t('settings.language.autoDetect'))
 				.addOption('ja', t('settings.language.options.ja'))
@@ -52,24 +131,25 @@ export class APISettingsTab extends PluginSettingTab {
 				.onChange(async (value) => {
 					this.plugin.settings.language = value;
 					await this.plugin.saveSettings();
-					// Update dictionary description immediately
 					this.updateDictionaryDesc?.();
 				}))
 			.addExtraButton(button => button
 				.setIcon('reset')
 				.setTooltip(t('settings.language.useObsidianLang'))
 				.onClick(async () => {
-					const obsidianLanguage = this.plugin.getObsidianLanguage();
-					if (obsidianLanguage) {
-						this.plugin.settings.language = obsidianLanguage;
-						await this.plugin.saveSettings();
-						// Update dictionary description immediately
-						this.updateDictionaryDesc?.();
-						new Notice(t('notices.languageSet', { language: obsidianLanguage }));
+					const language = this.plugin.getObsidianLanguage();
+					if (!language) {
+						return;
 					}
+					this.plugin.settings.language = language;
+					await this.plugin.saveSettings();
+					this.updateDictionaryDesc?.();
+					new Notice(t('notices.languageSet', { language }));
 				}));
+	}
 
-		new Setting(containerEl)
+	private configureOutputFormatSetting(setting: Setting): void {
+		setting
 			.setName(t('settings.outputFormat.name'))
 			.setDesc(t('settings.outputFormat.desc'))
 			.addDropdown(dropdown => dropdown
@@ -81,12 +161,10 @@ export class APISettingsTab extends PluginSettingTab {
 					this.plugin.settings.outputFormat = value;
 					await this.plugin.saveSettings();
 				}));
+	}
 
-		// Store toggle reference for later use
-		let dictionaryToggle: ToggleComponent | undefined;
-
-		// Post-processing settings
-		new Setting(containerEl)
+	private configurePostProcessingSetting(setting: Setting): void {
+		setting
 			.setName(t('settings.postProcessing.name'))
 			.setDesc(t('settings.postProcessing.desc'))
 			.addToggle(toggle => toggle
@@ -94,18 +172,16 @@ export class APISettingsTab extends PluginSettingTab {
 				.onChange(async (value) => {
 					this.plugin.settings.postProcessingEnabled = value;
 					await this.plugin.saveSettings();
-					// Update dictionary toggle disabled state
-					if (dictionaryToggle !== undefined) {
-						dictionaryToggle.setDisabled(!value);
-					}
+					this.dictionaryToggle?.setDisabled(!value);
 				}));
+	}
 
-		// Dictionary correction settings
-		new Setting(containerEl)
+	private configureDictionaryCorrectionSetting(setting: Setting): void {
+		setting
 			.setName(t('settings.dictionaryCorrection.name'))
 			.setDesc(t('settings.dictionaryCorrection.desc'))
 			.addToggle(toggle => {
-				dictionaryToggle = toggle;
+				this.dictionaryToggle = toggle;
 				return toggle
 					.setValue(this.plugin.settings.dictionaryCorrectionEnabled)
 					.setDisabled(!this.plugin.settings.postProcessingEnabled)
@@ -114,25 +190,26 @@ export class APISettingsTab extends PluginSettingTab {
 						await this.plugin.saveSettings();
 					});
 			});
+	}
 
-			// Output folder setting with typeahead suggestions
-			let outputFolderText: TextComponent | null = null;
-			new Setting(containerEl)
-				.setName(t('settings.outputFolder.name'))
-				.setDesc(t('settings.outputFolder.desc'))
-				.addText(text => {
-					outputFolderText = text;
-					new FolderInputSuggest(this.app, text.inputEl, (folderPath) => {
-						const normalized = PathUtils.normalizeUserPath(folderPath);
-						this.plugin.settings.transcriptionOutputFolder = normalized;
-						void this.plugin.saveSettings();
-						text.setValue(normalized);
-					});
-					return text
-						.setPlaceholder(t('settings.outputFolder.placeholder'))
-						.setValue(PathUtils.normalizeUserPath(this.plugin.settings.transcriptionOutputFolder))
-						.onChange(async (value) => {
-							this.plugin.settings.transcriptionOutputFolder = PathUtils.normalizeUserPath(value);
+	private configureOutputFolderSetting(setting: Setting): void {
+		let outputFolderText: TextComponent | null = null;
+		setting
+			.setName(t('settings.outputFolder.name'))
+			.setDesc(t('settings.outputFolder.desc'))
+			.addText(text => {
+				outputFolderText = text;
+				new FolderInputSuggest(this.app, text.inputEl, (folderPath) => {
+					const normalized = PathUtils.normalizeUserPath(folderPath);
+					this.plugin.settings.transcriptionOutputFolder = normalized;
+					void this.plugin.saveSettings();
+					text.setValue(normalized);
+				});
+				return text
+					.setPlaceholder(t('settings.outputFolder.placeholder'))
+					.setValue(PathUtils.normalizeUserPath(this.plugin.settings.transcriptionOutputFolder))
+					.onChange(async (value) => {
+						this.plugin.settings.transcriptionOutputFolder = PathUtils.normalizeUserPath(value);
 						await this.plugin.saveSettings();
 					});
 			})
@@ -143,52 +220,39 @@ export class APISettingsTab extends PluginSettingTab {
 					const currentFolder = PathUtils.normalizeUserPath(this.plugin.settings.transcriptionOutputFolder);
 					const modal = new FolderSuggestModal(this.app, currentFolder);
 					modal.onChooseFolderPath = (folder: string) => {
-						const normalizedFolder = PathUtils.normalizeUserPath(folder);
-						this.plugin.settings.transcriptionOutputFolder = normalizedFolder;
+						const normalized = PathUtils.normalizeUserPath(folder);
+						this.plugin.settings.transcriptionOutputFolder = normalized;
 						void this.plugin.saveSettings();
-						outputFolderText?.setValue(normalizedFolder);
+						outputFolderText?.setValue(normalized);
 					};
 					modal.open();
-					}));
+				}));
+	}
 
-			// Advanced settings
-			SettingsUIBuilder.displayAdvancedSettings(containerEl, this.plugin.settings, async () => {
-				await this.plugin.saveSettings();
-			}, () => this.display());
-
-		// Dictionary management button
-		const dictionarySetting = new Setting(containerEl)
+	private configureDictionaryManagementSetting(setting: Setting): void {
+		setting
 			.setName(t('settings.dictionary.manageDictionary'))
+			.setDesc(this.getDictionaryDescription())
 			.addButton(button => button
 				.setButtonText(t('settings.dictionary.openManager'))
 				.onClick(() => {
-					const modal = new DictionaryManagementModal(this.app, this.plugin.settings, this.plugin);
-					modal.open();
+					new DictionaryManagementModal(this.app, this.plugin.settings, this.plugin).open();
 				}));
-
-		// Function to update dictionary description
-		const updateDictionaryDesc = () => {
-			const desc = this.plugin.settings.language === 'auto'
-				? t('settings.dictionary.autoModeDesc')
-				: t('settings.dictionary.languageModeDesc', { lang: this.plugin.settings.language });
-			dictionarySetting.setDesc(desc);
+		this.updateDictionaryDesc = () => {
+			setting.setDesc(this.getDictionaryDescription());
 		};
+	}
 
-		// Set initial description
-		updateDictionaryDesc();
+	private getLanguageDescription(): string {
+		const obsidianLanguage = this.plugin.getObsidianLanguage();
+		return obsidianLanguage && obsidianLanguage !== 'auto' && this.plugin.settings.language !== 'auto'
+			? t('settings.language.desc') + ' (' + t('settings.language.useObsidianLang') + ': ' + obsidianLanguage + ')'
+			: t('settings.language.desc');
+	}
 
-		// Store the update function for language change
-		this.updateDictionaryDesc = updateDictionaryDesc;
-
-		// Progress UI settings
-		SettingsUIBuilder.displayProgressUISettings(containerEl, this.plugin.settings, async () => {
-			await this.plugin.saveSettings();
-		});
-
-		// Debug settings - commented out for production release
-		// SettingsUIBuilder.displayDebugSettings(containerEl, this.plugin.settings, () => {
-		// 	void this.plugin.saveSettings();
-		// });
-
+	private getDictionaryDescription(): string {
+		return this.plugin.settings.language === 'auto'
+			? t('settings.dictionary.autoModeDesc')
+			: t('settings.dictionary.languageModeDesc', { lang: this.plugin.settings.language });
 	}
 }
