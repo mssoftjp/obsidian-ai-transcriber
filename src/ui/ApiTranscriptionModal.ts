@@ -915,7 +915,7 @@ export class APITranscriptionModal extends Modal {
 	}
 
 	private async ensureFolderPath(folderPath: string): Promise<void> {
-		const normalizedPath = normalizePath(folderPath);
+		const normalizedPath = PathUtils.normalizeVaultRelativePath(folderPath);
 		if (!normalizedPath) {
 			return;
 		}
@@ -933,7 +933,9 @@ export class APITranscriptionModal extends Modal {
 	}
 
 	private getNormalizedOutputFolder(): string {
-		const normalized = PathUtils.normalizeUserPath(this.settings.transcriptionOutputFolder);
+		const normalized = this.settings.transcriptionOutputFolder
+			? PathUtils.normalizeVaultRelativePath(this.settings.transcriptionOutputFolder)
+			: '';
 		this.settings.transcriptionOutputFolder = normalized;
 		return normalized;
 	}

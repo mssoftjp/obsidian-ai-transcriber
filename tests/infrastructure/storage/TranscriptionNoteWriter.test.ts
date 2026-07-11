@@ -137,6 +137,29 @@ describe('TranscriptionNoteWriter', () => {
 		expect(harness.processFrontMatter).not.toHaveBeenCalled();
 	});
 
+	it.each([
+		'../outside.md',
+		'/tmp/outside.md',
+		'C:\\tmp\\outside.md',
+		'folder\\..\\outside.md'
+	])('rejects a non-contained output path before creating: %s', async (requestedPath) => {
+		const Writer = loadWriter();
+		expect(Writer).not.toBeNull();
+		if (!Writer) {
+			return;
+		}
+		const harness = createHarness();
+		const writer = new Writer(harness.app);
+
+		await expect(writer.create({
+			requestedPath,
+			content: '# should not be written',
+			frontmatter: {}
+		})).rejects.toThrow();
+		expect(harness.create).not.toHaveBeenCalled();
+		expect(harness.processFrontMatter).not.toHaveBeenCalled();
+	});
+
 	it('does not begin a metadata write when cancellation wins during note creation', async () => {
 		const Writer = loadWriter();
 		expect(Writer).not.toBeNull();

@@ -1,6 +1,5 @@
-import { normalizePath } from 'obsidian';
-
 import { Logger } from '../../utils/Logger';
+import { PathUtils } from '../../utils/PathUtils';
 
 import type { App, TFile } from 'obsidian';
 
@@ -27,7 +26,7 @@ export class TranscriptionNoteWriter {
 			throw new DOMException('Transcription operation was cancelled', 'AbortError');
 		}
 
-		const requestedPath = normalizePath(input.requestedPath);
+		const requestedPath = PathUtils.normalizeVaultRelativePath(input.requestedPath);
 		if (!requestedPath) {
 			throw new Error('A transcription output path is required');
 		}
@@ -71,7 +70,7 @@ export class TranscriptionNoteWriter {
 		const extension = hasExtension ? fileName.slice(dotIndex) : '';
 
 		for (let suffix = 2; suffix <= 10_000; suffix += 1) {
-			const candidate = normalizePath(`${directory}${stem}-${suffix}${extension}`);
+			const candidate = PathUtils.normalizeVaultRelativePath(`${directory}${stem}-${suffix}${extension}`);
 			if (!this.app.vault.getAbstractFileByPath(candidate)) {
 				return candidate;
 			}

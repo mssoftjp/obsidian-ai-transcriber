@@ -67,6 +67,38 @@ export class PathUtils {
 	}
 
 	/**
+	 * Normalize a user-selected Vault path without relying on adapter containment.
+	 */
+	static normalizeVaultRelativePath(path?: string | null): string {
+		const trimmed = path?.trim();
+		if (!trimmed) {
+			return '';
+		}
+
+		const portablePath = trimmed.replace(/\\/g, '/');
+		if (portablePath.startsWith('/') || portablePath.includes(':')) {
+			throw new Error('Vault paths must be relative');
+		}
+		if (portablePath.split('/').some(segment => {
+			const compactDots = segment.replace(/ /g, '');
+			return segment === '..' || (/^\.+$/.test(compactDots) && compactDots.length >= 2);
+		})) {
+			throw new Error('Vault paths cannot contain parent directory segments');
+		}
+		for (const character of portablePath) {
+			if (character.charCodeAt(0) < 32) {
+				throw new Error('Vault paths cannot contain control characters');
+			}
+		}
+
+		const normalized = normalizePath(portablePath);
+		if (!normalized || normalized === '.' || normalized.startsWith('/')) {
+			throw new Error('Vault path is invalid');
+		}
+		return normalized;
+	}
+
+	/**
 	 * Get the transcription history file path
 	 * @param app Obsidian App instance
 	 * @returns History file path

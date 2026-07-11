@@ -40,4 +40,23 @@ describe('PathUtils', () => {
     expect(PathUtils.normalizeUserPath('   ')).toBe('');
     expect(PathUtils.normalizeUserPath(undefined)).toBe('');
   });
+
+  it('normalizes only Vault-relative output paths', () => {
+    expect(PathUtils.normalizeVaultRelativePath('  Transcriptions\\daily//note.md  '))
+      .toBe('Transcriptions/daily/note.md');
+    expect(PathUtils.normalizeVaultRelativePath('')).toBe('');
+  });
+
+  it.each([
+    '/tmp/out.md',
+    'C:\\tmp\\out.md',
+    '\\\\server\\share\\out.md',
+    '..\\outside.md',
+    'folder/.. /outside.md',
+    'folder/../outside.md',
+    'file://outside.md',
+    'folder/\u0000outside.md'
+  ])('rejects a non-contained Vault path: %s', (path) => {
+    expect(() => PathUtils.normalizeVaultRelativePath(path)).toThrow();
+  });
 });
