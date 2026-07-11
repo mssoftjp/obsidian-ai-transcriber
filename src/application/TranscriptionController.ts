@@ -12,6 +12,7 @@ import { assertEncodedMediaWithinBudget } from '../core/audio/MediaWorkBudget';
 import { ResourceManager } from '../core/resources/ResourceManager';
 import { DictionaryCorrector } from '../core/transcription/DictionaryCorrector';
 import { createTranscriptionJobPlan } from '../core/transcription/TranscriptionJobPlan';
+import { isAbortError } from '../core/utils/CooperativeTask';
 import { SimpleProgressCalculator } from '../core/utils/SimpleProgressCalculator';
 import { t } from '../i18n';
 import { GPTDictionaryCorrectionService } from '../infrastructure/api/dictionary/GPTDictionaryCorrectionService';
@@ -222,7 +223,7 @@ export class TranscriptionController {
 				}
 
 			// Apply dictionary correction if enabled
-			const correctedText = await this.applyDictionaryCorrection(result.text, dictionaryCorrector);
+			const correctedText = await this.applyDictionaryCorrection(result.text, dictionaryCorrector, abortSignal);
 
 			// Return both text and model used if available
 			if (result.modelUsed) {
@@ -520,7 +521,7 @@ export class TranscriptionController {
 			}
 		}
 
-		const correctedText = await this.applyDictionaryCorrection(result.text, dictionaryCorrector);
+		const correctedText = await this.applyDictionaryCorrection(result.text, dictionaryCorrector, abortSignal);
 		this.logger.info('Direct server-chunked transcription completed', {
 			file: audioFile.name,
 			textLength: correctedText.length,
@@ -532,7 +533,11 @@ export class TranscriptionController {
 	/**
 	 * Apply dictionary correction to transcribed text
 	 */
-	private async applyDictionaryCorrection(text: string, corrector: DictionaryCorrector): Promise<string> {
+	private async applyDictionaryCorrection(
+		text: string,
+		corrector: DictionaryCorrector,
+		signal?: AbortSignal
+	): Promise<string> {
 		// Only apply if dictionary correction is enabled
 		if (!this.settings.dictionaryCorrectionEnabled) {
 			this.logger.trace('Dictionary correction disabled, skipping');
@@ -542,7 +547,7 @@ export class TranscriptionController {
 			this.logger.debug('Applying dictionary corrections...');
 			try {
 				const currentLanguage = this.settings.language || 'auto';
-				const correctedText = await corrector.correct(text, currentLanguage);
+				const correctedText = await corrector.correct(text, currentLanguage, signal);
 
 			if (correctedText !== text) {
 				this.logger.debug('Dictionary corrections applied');
@@ -550,6 +555,9 @@ export class TranscriptionController {
 
 			return correctedText;
 		} catch (error) {
+			if (isAbortError(error, signal)) {
+				throw error;
+			}
 			this.logger.error('Dictionary correction failed', error);
 			// Return original text on error
 				return text;

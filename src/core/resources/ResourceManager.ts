@@ -108,6 +108,9 @@ export class ResourceManager {
 	cleanupAbortController(id: string): void {
 		const controller = this.abortControllers.get(id);
 			if (controller) {
+				if (!controller.signal.aborted) {
+					controller.abort();
+				}
 
 				// Execute cleanup handlers
 				const handlers = this.cleanupHandlers.get(id) ?? [];

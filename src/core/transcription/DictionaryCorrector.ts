@@ -5,6 +5,7 @@
 
 import { DICTIONARY_CONSTANTS } from '../../config/constants';
 import { Logger } from '../../utils/Logger';
+import { isAbortError } from '../utils/CooperativeTask';
 
 import type { DictionaryEntry as UserDictionaryEntry, ContextualCorrection, DictionaryCategory } from '../../ApiSettings';
 
@@ -52,7 +53,12 @@ export interface CorrectionDictionary {
  * GPT correction service interface
  */
 export interface IGPTCorrectionService {
-	correctWithGPT: (text: string, language: string, hints: string[]) => Promise<string>;
+	correctWithGPT: (
+		text: string,
+		language: string,
+		hints: string[],
+		signal?: AbortSignal
+	) => Promise<string>;
 }
 
 export class DictionaryCorrector {
@@ -86,11 +92,17 @@ export class DictionaryCorrector {
 	/**
 	 * Apply all enabled dictionaries to text
 	 */
-	async correct(text: string, language: string = 'ja'): Promise<string> {
+	async correct(text: string, language: string = 'ja', signal?: AbortSignal): Promise<string> {
+		if (signal?.aborted) {
+			throw new DOMException('Dictionary correction was cancelled', 'AbortError');
+		}
 		let correctedText = text;
 
 		// Apply rule-based corrections first
 		for (const dictionary of this.dictionaries.values()) {
+			if (signal?.aborted) {
+				throw new DOMException('Dictionary correction was cancelled', 'AbortError');
+			}
 			if (!dictionary.enabled) {
 				continue;
 			}
@@ -105,8 +117,11 @@ export class DictionaryCorrector {
 		if (this.useGPTCorrection && this.gptService) {
 			try {
 				const hints = this.generateCorrectionHints(text, language);
-				correctedText = await this.gptService.correctWithGPT(correctedText, language, hints);
+				correctedText = await this.gptService.correctWithGPT(correctedText, language, hints, signal);
 			} catch (error) {
+				if (isAbortError(error, signal)) {
+					throw error;
+				}
 				this.logger.error('GPT correction failed:', error);
 				// Fall back to rule-based correction only
 			}

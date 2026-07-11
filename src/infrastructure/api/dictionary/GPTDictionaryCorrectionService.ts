@@ -30,7 +30,12 @@ export class GPTDictionaryCorrectionService extends ApiClient implements IGPTCor
 	/**
 	 * Correct text using GPT model
 	 */
-	async correctWithGPT(text: string, language: string, hints: string[]): Promise<string> {
+	async correctWithGPT(
+		text: string,
+		language: string,
+		hints: string[],
+		signal?: AbortSignal
+	): Promise<string> {
 		const startTime = performance.now();
 		this.logger.debug('Starting GPT correction', {
 			language,
@@ -55,6 +60,12 @@ export class GPTDictionaryCorrectionService extends ApiClient implements IGPTCor
 
 		// Create abort controller for timeout
 		const controller = this.resourceManager.getAbortController('dictionary-gpt-correction');
+		const externalAbortHandler = () => controller.abort();
+		if (signal?.aborted) {
+			controller.abort();
+		} else {
+			signal?.addEventListener('abort', externalAbortHandler, { once: true });
+		}
 		const timerWindow = this.getTimerWindow();
 		const timeoutId = timerWindow.setTimeout(() => {
 			controller.abort();
@@ -98,6 +109,7 @@ export class GPTDictionaryCorrectionService extends ApiClient implements IGPTCor
 			}
 			throw error;
 		} finally {
+			signal?.removeEventListener('abort', externalAbortHandler);
 			this.resourceManager.cleanupAbortController('dictionary-gpt-correction');
 		}
 	}
