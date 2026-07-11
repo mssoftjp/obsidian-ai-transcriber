@@ -89,24 +89,30 @@ export class TranscriptionWorkflow {
 		this.externalSignal = options.signal;
 
 		if (options.signal) {
-			// Link external abort signal
 			const abortHandler = () => {
 				this.abortController?.abort();
 			};
-			options.signal.addEventListener('abort', abortHandler);
 
-			// Register cleanup handler
-			this.resourceManager.registerCleanupHandler(this.resourceId, () => {
-				if (this.externalSignal) {
-					this.externalSignal.removeEventListener('abort', abortHandler);
-				}
-			});
+			// AbortSignal does not replay an abort event to listeners added after the
+			// signal was aborted, so mirror its state before beginning any audio work.
+			if (options.signal.aborted) {
+				abortHandler();
+			} else {
+				options.signal.addEventListener('abort', abortHandler);
+
+				// Register cleanup handler only when a listener was attached.
+				this.resourceManager.registerCleanupHandler(this.resourceId, () => {
+					this.externalSignal?.removeEventListener('abort', abortHandler);
+				});
+			}
 		}
 
 		let chunks: AudioChunk[] = [];
 		let chunkStrategy: ChunkStrategy;
 
 		try {
+			this.checkAborted();
+
 			// Step 1: Prepare audio input
 			this.logger.debug('Step 1: Preparing audio input');
 			const audioInput = this.createAudioInput(file, audioBuffer);

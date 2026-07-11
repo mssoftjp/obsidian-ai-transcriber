@@ -69,6 +69,24 @@ export class SafeStorageService {
 		return '';
 	}
 
+	/**
+	 * Re-encrypt a legacy stored value with the OS-backed storage format.
+	 * Returns null when the value is current, invalid, or encryption is unavailable.
+	 */
+	static migrateLegacyStoredValue(stored: string): string | null {
+		if (!this.isLegacyStoredValue(stored)) {
+			return null;
+		}
+
+		const apiKey = this.decryptFromStore(stored);
+		if (!apiKey) {
+			return null;
+		}
+
+		const encrypted = this.encryptForStore(apiKey);
+		return encrypted || null;
+	}
+
 	/** 保存文字列 -> 平文 API キー */
 	static decryptFromStore(stored: string): string {
 		if (!stored) {
@@ -131,6 +149,12 @@ export class SafeStorageService {
 			this.logger.error('XOR decryption failed', { error: this.formatError(error) });
 			return '';
 		}
+	}
+
+	private static isLegacyStoredValue(stored: string): boolean {
+		return stored.startsWith(LEGACY_XOR)
+			|| stored.startsWith(LEGACY_PLAIN)
+			|| (stored.startsWith('sk-') && stored.length > 40);
 	}
 
 	private static formatError(error: unknown): string {

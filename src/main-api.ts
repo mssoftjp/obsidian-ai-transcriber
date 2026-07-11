@@ -191,19 +191,17 @@ export default class AITranscriberPlugin extends Plugin {
 			this.normalizeSettingsPaths();
 			this.logger.debug('Settings loaded', { debugMode: this.settings.debugMode });
 
-			// Migrate from old XOR encryption to new SafeStorage format
-			if (this.settings.openaiApiKey.startsWith('XOR_V1::')) {
-				const { SafeStorageService } = await import('./infrastructure/storage/SafeStorageService');
-				const apiKey = SafeStorageService.decryptFromStore(this.settings.openaiApiKey);
-				if (apiKey) {
-					const encryptedKey = SafeStorageService.encryptForStore(apiKey);
-					if (encryptedKey) {
-						this.settings.openaiApiKey = encryptedKey;
-						await this.stateRepo.saveSettings(this.settings);
-						new Notice(t('settings.apiKey.migrated'));
-					}
+			// Migrate all supported legacy key formats without discarding a key when
+			// OS-backed encryption is temporarily unavailable.
+			const { SafeStorageService } = await import('./infrastructure/storage/SafeStorageService');
+			const migratedApiKey = SafeStorageService.migrateLegacyStoredValue(
+				this.settings.openaiApiKey
+			);
+			if (migratedApiKey) {
+				this.settings.openaiApiKey = migratedApiKey;
+				await this.stateRepo.saveSettings(this.settings);
+				new Notice(t('settings.apiKey.migrated'));
 			}
-		}
 
 			// If no language setting exists, use Obsidian's locale
 			if (!storedSettings.language) {
