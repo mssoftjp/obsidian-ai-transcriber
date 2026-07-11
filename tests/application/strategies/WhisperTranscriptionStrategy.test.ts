@@ -133,6 +133,29 @@ describe('WhisperTranscriptionStrategy', () => {
 		expect(merged).toContain('[0:25 → 0:45] 第二章です。');
 		expect(merged).not.toContain('異なる表記の境界文です。');
 	});
+
+	it('compresses a long consecutive block repeated three times in merged text', async () => {
+		const service = {
+			modelId: 'whisper-1',
+			cleanText: jest.fn(async (text: string) => text)
+		} as unknown as TranscriptionService;
+		const strategy = new WhisperTranscriptionStrategy(service);
+		const repeatedBlock = [
+			'緑の資料と四角い時計について確認しました。',
+			'次の文章は境界付近の欠落を見つけるため固有語アルファと番号五六七八を含みます。',
+			'ただしこの直後にある第二章固有の本文は消えてはいけません。'
+		].join('');
+		const result = createResult(
+			0,
+			`第二章です。${repeatedBlock}${repeatedBlock}${repeatedBlock}第二章の結論です。`,
+			0,
+			25
+		);
+
+		const merged = await strategy.mergeResults([result]);
+
+		expect(merged).toBe(`第二章です。${repeatedBlock}第二章の結論です。`);
+	});
 });
 
 function createResult(

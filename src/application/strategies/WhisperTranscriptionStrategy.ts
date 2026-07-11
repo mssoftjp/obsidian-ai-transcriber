@@ -4,6 +4,7 @@
  */
 
 import { getModelConfig } from '../../config/ModelProcessingConfig';
+import { ConsecutiveBlockRepeatCleaner } from '../../core/transcription/cleaners';
 import { TranscriptionMerger } from '../../core/transcription/TranscriptionMerger';
 import { TranscriptionStrategy } from '../../core/transcription/TranscriptionStrategy';
 import { t } from '../../i18n';
@@ -22,6 +23,12 @@ export class WhisperTranscriptionStrategy extends TranscriptionStrategy {
 	private merger: TranscriptionMerger;
 	private rateLimitDelay: number;
 	private workflowLanguage: string = 'auto';
+	private readonly mergedRepeatCleaner = new ConsecutiveBlockRepeatCleaner({
+		enabled: true,
+		minBlockNormalizedChars: 80,
+		maxUnitSentences: 20,
+		allowSingleSentence: true
+	});
 
 	constructor(
 		transcriptionService: TranscriptionService,
@@ -163,6 +170,10 @@ export class WhisperTranscriptionStrategy extends TranscriptionStrategy {
 			});
 		}
 
+		const repeatResult = this.mergedRepeatCleaner.clean(mergedText, this.workflowLanguage);
+		if ((repeatResult.metadata?.patternsMatched?.length ?? 0) > 0) {
+			mergedText = repeatResult.cleanedText;
+		}
 		mergedText = await this.postProcessMergedText(mergedText, results, this.workflowLanguage);
 
 		// If we have partial results, prepend a notice
