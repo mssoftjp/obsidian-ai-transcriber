@@ -243,6 +243,72 @@ describe('GPT4oTranscriptionStrategy', () => {
     expect(countOccurrences(merged, '次に予防策の話をします')).toBe(1);
   });
 
+  it('reconciles a varied overlap that continues after an exact boundary anchor', async () => {
+    const anchor = '今回のサンプルは三種類あり、そのうち二種類はすでに使用されています。';
+    const previousTail = '完全に安価品に置き換える話ではなく、もう一つ増やしても問題ないかを確認します。それにあたって、匂いを定量的に示せるか検討します。';
+    const variedTail = '完全に安価品に置き換える話ではなくもう一つ増やしても問題ないか確認します。それにあたってにおいを定量的に示せるかを検討します。';
+    const novelText = '次に分析装置の選定について説明します。';
+    const left = `冒頭の説明です。${anchor}${previousTail}`;
+    const right = `${anchor}${variedTail}${novelText}`;
+    const strategy = createMergeStrategy();
+
+    const merged = await strategy.mergeResults([
+      createResult(0, left, 0, 240),
+      createResult(1, right, 210, 450)
+    ]);
+
+    expect(merged).toBe(`${left}${novelText}`);
+  });
+
+  it('removes repeated varied copies of the same boundary while preserving novel speech', async () => {
+    const anchor = '今回のサンプルは三種類あり、そのうち二種類はすでに使用されています。';
+    const previousTail = '完全に安価品に置き換える話ではなく、もう一つ増やしても問題ないかを確認します。それにあたって、匂いを定量的に示せるか検討します。';
+    const variedTailA = '完全に安価品に置き換える話ではなくもう一つ増やしても問題ないか確認します。それにあたってにおいを定量的に示せるかを検討します。';
+    const variedTailB = '完全に安価品に置き換える話ではなく、もう一つ増やして問題ないかを確認します。それにあたって匂いを定量的に示せるか検討します。';
+    const novelText = 'ここから新しい分析条件の説明に進みます。';
+    const left = `冒頭の説明です。${anchor}${previousTail}`;
+    const right = `${anchor}${variedTailA}${anchor}${variedTailB}${novelText}`;
+    const strategy = createMergeStrategy();
+
+    const merged = await strategy.mergeResults([
+      createResult(0, left, 0, 240),
+      createResult(1, right, 210, 450)
+    ]);
+
+    expect(merged).toBe(`${left}${novelText}`);
+  });
+
+  it('keeps unrelated text when an audio overlap has no confident text match', async () => {
+    const left = '前半では原料の調達経路と品質確認の手順について詳しく説明しました。';
+    const right = '後半では分析装置の校正方法と測定結果の保存方法について説明します。';
+    const strategy = createMergeStrategy();
+
+    const merged = await strategy.mergeResults([
+      createResult(0, left, 0, 240),
+      createResult(1, right, 210, 450)
+    ]);
+
+    expect(merged).toBe(`${left}\n\n${right}`);
+  });
+
+  it('preserves a short phrase genuinely repeated after the reconciled boundary', async () => {
+    const anchor = '今回のサンプルは三種類あり、そのうち二種類はすでに使用されています。';
+    const previousTail = '完全に置き換える話ではなく、追加して問題ないかを確認します。';
+    const variedTail = '完全に置き換える話ではなく追加して問題ないか確認します。';
+    const repeatedSpeech = '確認します。確認します。';
+    const novelText = '次に分析条件を説明します。';
+    const left = `冒頭の説明です。${anchor}${previousTail}`;
+    const right = `${anchor}${variedTail}${repeatedSpeech}${novelText}`;
+    const strategy = createMergeStrategy();
+
+    const merged = await strategy.mergeResults([
+      createResult(0, left, 0, 240),
+      createResult(1, right, 210, 450)
+    ]);
+
+    expect(merged).toBe(`${left}${repeatedSpeech}${novelText}`);
+  });
+
   it('keeps a visible timeline gap when a middle chunk fails', async () => {
     const cleanText = jest.fn(async (text: string) => text);
     const service = {

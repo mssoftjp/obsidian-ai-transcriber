@@ -291,24 +291,39 @@ export class TranscriptionMerger {
 			};
 		}
 
-		if (minMatchLength < 20) {
-			const fuzzyBoundaryOverlap = this.findFuzzyBoundaryOverlap(
-				previousText,
-				currentText,
-				strictBoundaryMin,
-				Math.min(
-					MAX_OVERLAP,
-					Math.ceil(overlapDuration * (this.mergingConfig.estimatedCharsPerSecond ?? 15) * 1.5)
-				),
-				this.mergingConfig.fuzzyMatchSimilarity ?? 0.85
+		const fuzzyBoundaryMin = minMatchLength < 20 ? strictBoundaryMin : MIN_OVERLAP;
+		const fuzzyBoundaryMax = minMatchLength < 20
+			? Math.min(
+				MAX_OVERLAP,
+				Math.ceil(overlapDuration * (this.mergingConfig.estimatedCharsPerSecond ?? 15) * 1.5)
+			)
+			: MAX_OVERLAP;
+		const fuzzyBoundaryThreshold = minMatchLength < 20
+			? (this.mergingConfig.fuzzyMatchSimilarity ?? 0.85)
+			: Math.min(
+				this.mergingConfig.fuzzyMatchSimilarity ?? 0.85,
+				SIMILARITY_THRESHOLD
 			);
-			if (fuzzyBoundaryOverlap) {
-				return {
-					trimmedText: fuzzyBoundaryOverlap.trimmedText,
-					connector: fuzzyBoundaryOverlap.connector,
-					matchFound: true
-				};
-			}
+		const fuzzyBoundaryOverlap = this.findFuzzyBoundaryOverlap(
+			previousText,
+			currentText,
+			fuzzyBoundaryMin,
+			fuzzyBoundaryMax,
+			fuzzyBoundaryThreshold
+		);
+		if (fuzzyBoundaryOverlap) {
+			const cleanedText = this.trimResidualOverlapAtBoundary(
+				previousText,
+				fuzzyBoundaryOverlap.trimmedText,
+				residualMinOverlap,
+				MAX_OVERLAP,
+				SEARCH_RANGE
+			);
+			return {
+				trimmedText: cleanedText,
+				connector: fuzzyBoundaryOverlap.connector,
+				matchFound: true
+			};
 		}
 
 		// まずは「境界近傍の最長完全一致」を探す（軽いブレがあっても、どこかに長い一致が残ることが多い）
@@ -638,6 +653,24 @@ export class TranscriptionMerger {
 				continue;
 			}
 
+			const fuzzy = this.findFuzzyBoundaryOverlap(
+				previousText,
+				trimmed,
+				Math.max(40, minOverlapLength),
+				maxOverlapLength,
+				0.9
+			);
+			if (fuzzy && fuzzy.trimmedText.length < trimmed.length) {
+				trimmed = fuzzy.trimmedText;
+				this.logger.debug('Residual overlap trimmed (fuzzy)', {
+					pass: pass + 1,
+					beforeLength,
+					afterLength: trimmed.length,
+					removedChars: beforeLength - trimmed.length
+				});
+				continue;
+			}
+
 			break;
 		}
 
@@ -830,61 +863,166 @@ export class TranscriptionMerger {
 		} as const;
 		const previousNormalized = this.normalizeTextWithIndexMap(previousText, normalization);
 		const currentNormalized = this.normalizeTextWithIndexMap(currentText, normalization);
-		const maxLength = Math.min(
+		const previousTailLength = Math.min(
 			maxOverlapLength,
-			previousNormalized.normalized.length,
-			currentNormalized.normalized.length
+			previousNormalized.normalized.length
+		);
+		const currentHeadLength = Math.min(
+			currentNormalized.normalized.length,
+			Math.max(maxOverlapLength + 32, Math.ceil(maxOverlapLength * 1.5))
+		);
+		if (previousTailLength < minOverlapLength || currentHeadLength < minOverlapLength) {
+			return null;
+		}
+
+		const previousTail = previousNormalized.normalized.slice(-previousTailLength);
+		const currentHead = currentNormalized.normalized.slice(0, currentHeadLength);
+		const candidateLengths = this.collectFuzzySuffixCandidateLengths(
+			previousTail,
+			currentHead,
+			minOverlapLength,
+			previousTailLength
 		);
 
-		for (let length = maxLength; length >= minOverlapLength; length--) {
-			const previousSuffix = previousNormalized.normalized.slice(-length);
-			const currentPrefix = currentNormalized.normalized.slice(0, length);
-			const anchorLength = Math.min(8, length);
-			if (previousSuffix.slice(0, anchorLength) !== currentPrefix.slice(0, anchorLength)) {
-				continue;
-			}
-			const similarity = this.calculateEditSimilarity(previousSuffix, currentPrefix);
-			if (similarity < similarityThreshold) {
+		let best: {
+			previousLength: number;
+			currentPrefixLength: number;
+			similarity: number;
+		} | null = null;
+
+		for (const previousLength of candidateLengths) {
+			const previousSuffix = previousTail.slice(-previousLength);
+			const minPrefixLength = Math.max(
+				minOverlapLength,
+				Math.floor(previousLength * 0.65)
+			);
+			const maxPrefixLength = Math.min(
+				currentHead.length,
+				Math.ceil(previousLength * 1.35) + 16
+			);
+			if (minPrefixLength > maxPrefixLength) {
 				continue;
 			}
 
-			const originalMatchEnd = currentNormalized.indexMap[length - 1];
-			if (originalMatchEnd === undefined) {
+			const alignment = this.findBestPrefixEditAlignment(
+				previousSuffix,
+				currentHead,
+				minPrefixLength,
+				maxPrefixLength
+			);
+			if (!alignment) {
 				continue;
 			}
-			const rawMatchEndExclusive = this.advancePastSkippableChars(
-				currentText,
-				originalMatchEnd + 1,
-				normalization
-			);
-			const rawAfterMatch = currentText.slice(rawMatchEndExclusive);
-			this.logger.debug('Fuzzy boundary overlap match used', {
-				matchLength: length,
-				similarity
-			});
-			return {
-				trimmedText: rawAfterMatch.trimStart(),
-				connector: this.determineInlineConnector(previousText, rawAfterMatch)
-			};
+
+			const isBetter = !best ||
+				alignment.similarity > best.similarity + 0.001 ||
+				(
+					Math.abs(alignment.similarity - best.similarity) <= 0.001 &&
+					previousLength > best.previousLength
+				);
+			if (isBetter) {
+				best = {
+					previousLength,
+					currentPrefixLength: alignment.prefixLength,
+					similarity: alignment.similarity
+				};
+			}
 		}
 
-		return null;
+		if (!best || best.similarity < similarityThreshold) {
+			return null;
+		}
+
+		const originalMatchEnd = currentNormalized.indexMap[best.currentPrefixLength - 1];
+		if (originalMatchEnd === undefined) {
+			return null;
+		}
+		const rawMatchEndExclusive = this.advancePastSkippableChars(
+			currentText,
+			originalMatchEnd + 1,
+			normalization
+		);
+		const rawAfterMatch = currentText.slice(rawMatchEndExclusive);
+		this.logger.debug('Fuzzy boundary overlap match used', {
+			previousLength: best.previousLength,
+			currentPrefixLength: best.currentPrefixLength,
+			similarity: best.similarity,
+			similarityThreshold
+		});
+		return {
+			trimmedText: rawAfterMatch.trimStart(),
+			connector: this.determineInlineConnector(previousText, rawAfterMatch)
+		};
 	}
 
-	private calculateEditSimilarity(left: string, right: string): number {
-		if (left === right) {
-			return 1;
-		}
-		if (!left || !right) {
-			return 0;
+	private collectFuzzySuffixCandidateLengths(
+		previousTail: string,
+		currentHead: string,
+		minOverlapLength: number,
+		maxOverlapLength: number
+	): number[] {
+		const candidates = new Set<number>();
+		const anchorLength = Math.min(8, minOverlapLength);
+		const currentAnchorLimit = Math.min(
+			64,
+			Math.max(0, currentHead.length - anchorLength + 1)
+		);
+		const currentAnchors = new Map<string, number[]>();
+
+		for (let position = 0; position < currentAnchorLimit; position++) {
+			const anchor = currentHead.slice(position, position + anchorLength);
+			const positions = currentAnchors.get(anchor) ?? [];
+			positions.push(position);
+			currentAnchors.set(anchor, positions);
 		}
 
-		let previousRow = Array.from({ length: right.length + 1 }, (_, index) => index);
+		for (let position = 0; position <= previousTail.length - anchorLength; position++) {
+			const anchor = previousTail.slice(position, position + anchorLength);
+			const currentPositions = currentAnchors.get(anchor);
+			if (!currentPositions) {
+				continue;
+			}
+			for (const currentPosition of currentPositions) {
+				const estimatedStart = position - currentPosition;
+				if (estimatedStart < 0) {
+					continue;
+				}
+				const estimatedLength = previousTail.length - estimatedStart;
+				for (let adjustment = -12; adjustment <= 12; adjustment += 4) {
+					const candidate = estimatedLength + adjustment;
+					if (candidate >= minOverlapLength && candidate <= maxOverlapLength) {
+						candidates.add(candidate);
+					}
+				}
+			}
+		}
+
+		const coarseStep = 16;
+		for (let length = minOverlapLength; length <= maxOverlapLength; length += coarseStep) {
+			candidates.add(length);
+		}
+		candidates.add(maxOverlapLength);
+
+		return [...candidates].sort((left, right) => right - left);
+	}
+
+	private findBestPrefixEditAlignment(
+		left: string,
+		right: string,
+		minPrefixLength: number,
+		maxPrefixLength: number
+	): { prefixLength: number; similarity: number } | null {
+		if (!left || !right || minPrefixLength > maxPrefixLength) {
+			return null;
+		}
+
+		const boundedRight = right.slice(0, maxPrefixLength);
+		let previousRow = Array.from({ length: boundedRight.length + 1 }, (_, index) => index);
 		for (let leftIndex = 1; leftIndex <= left.length; leftIndex++) {
-			const currentRow = new Array<number>(right.length + 1).fill(0);
+			const currentRow = new Array<number>(boundedRight.length + 1).fill(0);
 			currentRow[0] = leftIndex;
-			for (let rightIndex = 1; rightIndex <= right.length; rightIndex++) {
-				const substitutionCost = left[leftIndex - 1] === right[rightIndex - 1] ? 0 : 1;
+			for (let rightIndex = 1; rightIndex <= boundedRight.length; rightIndex++) {
+				const substitutionCost = left[leftIndex - 1] === boundedRight[rightIndex - 1] ? 0 : 1;
 				currentRow[rightIndex] = Math.min(
 					(previousRow[rightIndex] ?? 0) + 1,
 					(currentRow[rightIndex - 1] ?? 0) + 1,
@@ -894,8 +1032,23 @@ export class TranscriptionMerger {
 			previousRow = currentRow;
 		}
 
-		const distance = previousRow[right.length] ?? Math.max(left.length, right.length);
-		return 1 - distance / Math.max(left.length, right.length);
+		let best: { prefixLength: number; similarity: number } | null = null;
+		for (let prefixLength = minPrefixLength; prefixLength <= boundedRight.length; prefixLength++) {
+			const distance = previousRow[prefixLength];
+			if (distance === undefined) {
+				continue;
+			}
+			const similarity = 1 - distance / Math.max(left.length, prefixLength);
+			if (
+				!best ||
+				similarity > best.similarity + 0.001 ||
+				(Math.abs(similarity - best.similarity) <= 0.001 && prefixLength > best.prefixLength)
+			) {
+				best = { prefixLength, similarity };
+			}
+		}
+
+		return best;
 	}
 
 		private normalizeTextWithIndexMap(
