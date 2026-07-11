@@ -167,29 +167,26 @@ export function buildGPT4oTranscribeRequest(
 		result.language = params.language;
 	}
 
-	// Prompt handling
-	if (params.prompt) {
-		result.prompt = params.prompt;
-	} else if (params.language) {
-		const hasPreviousContext = Boolean(params.previousContext?.trim());
-		const shouldUseFirstChunkPrompt = isFirstChunk || !hasPreviousContext;
-
-		const prompts = shouldUseFirstChunkPrompt ? config.prompts.firstChunk : config.prompts.continuation;
-		const promptKey = params.language;
-		let prompt = prompts[promptKey] ?? prompts['auto'] ?? '';
-
-		// Replace {previousTail} placeholder if we have previous context and it's a continuation chunk
-		if (!shouldUseFirstChunkPrompt && params.previousContext) {
-			// Extract last characters from previous context based on config
-			const tailLength = PROMPT_CONSTANTS.CONTEXT_TAIL_LENGTH;
-			const previousTail = params.previousContext.length > tailLength
-				? params.previousContext.slice(-tailLength).trim()
-				: params.previousContext.trim();
-
-			prompt = prompt.replace('{previousTail}', previousTail);
+	// The API prompt is optional and supports continuation text directly. Keep
+	// only the user prompt and the bounded tail of the immediately preceding
+	// chunk; do not resend a large instruction template for every chunk.
+	const promptParts: string[] = [];
+	const customPrompt = params.prompt?.trim();
+	if (customPrompt) {
+		promptParts.push(customPrompt);
+	}
+	const previousContext = params.previousContext?.trim();
+	if (!isFirstChunk && previousContext) {
+		const tailLength = PROMPT_CONSTANTS.CONTEXT_TAIL_LENGTH;
+		const previousTail = previousContext.length > tailLength
+			? previousContext.slice(-tailLength).trim()
+			: previousContext;
+		if (previousTail) {
+			promptParts.push(previousTail);
 		}
-
-		result.prompt = prompt || config.prompts.firstChunk['auto'] || '';
+	}
+	if (promptParts.length > 0) {
+		result.prompt = promptParts.join('\n\n');
 	}
 
 	// Streaming support

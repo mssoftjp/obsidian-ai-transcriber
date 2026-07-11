@@ -144,8 +144,8 @@ export const PROMPT_CONSTANTS = {
 	CONTEXT_SNIPPET_MIN_LENGTH: 30,
 	/** コンテキストスニペットのバッファ (文字) */
 	CONTEXT_SNIPPET_BUFFER: 50,
-	/** コンテキストの末尾長 (文字) */
-	CONTEXT_TAIL_LENGTH: 500,
+	/** APIへ送る直前チャンク末尾の最大長 (文字) */
+	CONTEXT_TAIL_LENGTH: 300,
 	/** チャンクのオーバーラップ時間 (秒) */
 	CHUNK_OVERLAP_SECONDS: 30
 } as const;
