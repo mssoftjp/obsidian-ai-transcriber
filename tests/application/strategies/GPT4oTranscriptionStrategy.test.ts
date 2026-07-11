@@ -35,7 +35,7 @@ describe('GPT4oTranscriptionStrategy', () => {
     expect(strategy.maxConcurrency).toBe(1);
   });
 
-  it('preserves previous context across internal wave-group boundaries', async () => {
+  it('does not send previous transcript text as prompt context', async () => {
     const transcribe = jest.fn(async (
       chunk: AudioChunk,
       _options: TranscriptionOptions,
@@ -64,10 +64,8 @@ describe('GPT4oTranscriptionStrategy', () => {
     await strategy.processChunks(chunks, { language: 'ja' });
 
     expect(transcribe).toHaveBeenCalledTimes(6);
-    expect(transcribe.mock.calls[0]?.[2]).toBeUndefined();
-    for (let i = 1; i < transcribe.mock.calls.length; i++) {
-      expect(transcribe.mock.calls[i]?.[2]?.gpt4o?.previousContext)
-        .toContain(`チャンク${i}の本文と固有語です。`);
+    for (const call of transcribe.mock.calls) {
+      expect(call[2]?.gpt4o?.previousContext).toBeUndefined();
     }
   });
 

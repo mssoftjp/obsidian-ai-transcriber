@@ -151,9 +151,9 @@ describe('TranscriptionWorkflow cancellation', () => {
 		expect(result.partial).toBeUndefined();
 		expect(transcribe).toHaveBeenCalledTimes(3);
 		expect(transcribe.mock.calls.map(([chunk]) => chunk.id)).toEqual([0, 1, 2]);
-		expect(transcribe.mock.calls[0]?.[2]).toBeUndefined();
-		expect(transcribe.mock.calls[1]?.[2]?.gpt4o?.previousContext).toContain(firstOverlap);
-		expect(transcribe.mock.calls[2]?.[2]?.gpt4o?.previousContext).toContain(secondOverlap);
+		for (const call of transcribe.mock.calls) {
+			expect(call[2]?.gpt4o?.previousContext).toBeUndefined();
+		}
 	});
 });
 

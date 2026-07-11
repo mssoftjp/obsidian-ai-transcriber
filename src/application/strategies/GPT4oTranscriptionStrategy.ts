@@ -1,10 +1,9 @@
 /**
  * GPT-4o-specific transcription strategy
- * Implements wave-parallel processing with bounded context preservation
+ * Implements stable serial chunk processing with overlap-aware merging
  */
 
 import { getModelConfig } from '../../config/ModelProcessingConfig';
-import { ConsecutiveBlockRepeatCleaner, TailRepeatCleaner } from '../../core/transcription/cleaners';
 import { TranscriptionMerger } from '../../core/transcription/TranscriptionMerger';
 import { TranscriptionStrategy } from '../../core/transcription/TranscriptionStrategy';
 import { planWaveConcurrency } from '../../core/utils/WaveConcurrencyPlanner';
@@ -21,10 +20,6 @@ interface AdaptiveWaveState {
 	inFlightGroups: number;
 	rateLimitHits: number;
 	cooldownUntilMs: number;
-}
-
-interface ContinuationState {
-	previousChunkText: string;
 }
 
 type ChunkErrorKind =
@@ -48,21 +43,6 @@ export class GPT4oTranscriptionStrategy extends TranscriptionStrategy {
 
 	private merger: TranscriptionMerger;
 	private workflowLanguage: string = 'auto';
-	private readonly continuationBlockRepeatCleaner = new ConsecutiveBlockRepeatCleaner({
-		enabled: true,
-		minBlockNormalizedChars: 120,
-		maxUnitSentences: 20,
-		allowSingleSentence: true
-	});
-	private readonly continuationTailRepeatCleaner = new TailRepeatCleaner({
-		enabled: true,
-		maxTailParagraphs: 8,
-		maxTailSentences: 20,
-		minRepeatCount: 3,
-		similarityThreshold: 0.9,
-		maxUnitParagraphs: 3,
-		maxUnitSentences: 5
-	});
 
 	constructor(
 		transcriptionService: TranscriptionService,
@@ -78,7 +58,7 @@ export class GPT4oTranscriptionStrategy extends TranscriptionStrategy {
 
 	/**
 	 * Process chunks using wave-parallel grouping:
-	 * - Within a group: sequential with previousContext
+	 * - Within a group: sequential without transcript prompt carry-over
 	 * - Across groups: run in parallel up to maxConcurrency
 	 */
 	async processChunks(
@@ -106,7 +86,6 @@ export class GPT4oTranscriptionStrategy extends TranscriptionStrategy {
 		const totalDurationSeconds = this.getTotalDurationSeconds(chunks);
 
 		const progressState = { completedChunks: 0 };
-		const continuationState: ContinuationState = { previousChunkText: '' };
 		let nextGroupIndex = 0;
 		const initialConcurrency = planWaveConcurrency(totalDurationSeconds, totalGroups, this.maxConcurrency);
 		const adaptiveState: AdaptiveWaveState = {
@@ -134,7 +113,7 @@ export class GPT4oTranscriptionStrategy extends TranscriptionStrategy {
 					continue;
 				}
 				try {
-					await this.processGroup(group, currentGroupIndex, totalGroups, totalChunks, options, startTime, results, progressState, adaptiveState, continuationState);
+					await this.processGroup(group, currentGroupIndex, totalGroups, totalChunks, options, startTime, results, progressState, adaptiveState);
 				} finally {
 					this.releaseGroupSlot(adaptiveState);
 				}
@@ -239,8 +218,7 @@ export class GPT4oTranscriptionStrategy extends TranscriptionStrategy {
 		startTime: number,
 		results: TranscriptionResult[],
 		progressState: { completedChunks: number },
-		adaptiveState: AdaptiveWaveState,
-		continuationState: ContinuationState
+		adaptiveState: AdaptiveWaveState
 	): Promise<void> {
 		for (let i = 0; i < group.length; i++) {
 			if (this.abortSignal?.aborted) {
@@ -265,74 +243,24 @@ export class GPT4oTranscriptionStrategy extends TranscriptionStrategy {
 					success: false,
 					error: errorMessage
 				});
-				continuationState.previousChunkText = '';
 				progressState.completedChunks++;
 				this.reportWaveProgress(progressState.completedChunks, groupIndex, totalGroups, chunk.id, totalChunks, startTime);
 				continue;
 			}
 
-			// Serial processing preserves the immediately preceding chunk context
-			// across internal group boundaries.
-			let previousContext: string | undefined;
-			if (continuationState.previousChunkText) {
-				const maxContextChars = getModelConfig(this.transcriptionService.modelId).contextWindowSize;
-				const lastSentences = this.extractLastSentences(continuationState.previousChunkText, maxContextChars);
-				if (lastSentences) {
-					previousContext = lastSentences;
-				}
-			}
-
-			const result = await this.transcribeChunkWithSingleRetry(chunk, options, previousContext, adaptiveState);
+			// The audio overlap supplies boundary context. Sending the preceding
+			// transcript as a prompt can cause the model to echo it into this chunk.
+			const result = await this.transcribeChunkWithSingleRetry(chunk, options, adaptiveState);
 			results.push(result);
-
-			if (result.success && result.text) {
-				continuationState.previousChunkText = this.sanitizeContinuationContext(result.text, options.language);
-			} else {
-				// If a chunk fails, avoid using stale context from earlier chunks.
-				// Treat the next chunk as a "new start" so it can recover overlap content.
-				continuationState.previousChunkText = '';
-			}
 
 			progressState.completedChunks++;
 			this.reportWaveProgress(progressState.completedChunks, groupIndex, totalGroups, chunk.id, totalChunks, startTime);
 		}
 	}
 
-	private sanitizeContinuationContext(text: string, language: string): string {
-		const original = text.trim();
-		if (!original) {
-			return '';
-		}
-
-		// Avoid feeding looped/hallucinated output back into the next chunk.
-		const blockResult = this.continuationBlockRepeatCleaner.clean(original, language);
-		const tailResult = this.continuationTailRepeatCleaner.clean(blockResult.cleanedText, language);
-		const cleaned = tailResult.cleanedText.trim();
-
-		if (!cleaned) {
-			return '';
-		}
-
-		if (cleaned !== original) {
-			const removedChars = original.length - cleaned.length;
-			if (removedChars > 0) {
-				this.logger.debug('Sanitized continuation context', {
-					beforeLength: original.length,
-					afterLength: cleaned.length,
-					removedChars,
-					blockPatterns: blockResult.metadata?.patternsMatched?.length ?? 0,
-					tailPatterns: tailResult.metadata?.patternsMatched?.length ?? 0
-				});
-			}
-		}
-
-		return cleaned;
-	}
-
 	private async transcribeChunkWithSingleRetry(
 		chunk: AudioChunk,
 		options: TranscriptionOptions,
-		previousContext: string | undefined,
 		adaptiveState: AdaptiveWaveState
 	): Promise<TranscriptionResult> {
 		let attempt = 0;
@@ -356,7 +284,7 @@ export class GPT4oTranscriptionStrategy extends TranscriptionStrategy {
 				this.logger.warn('Retrying GPT-4o chunk transcription', { chunkId: chunk.id, attempt });
 			}
 
-			const result = await this.processSingleChunk(chunk, options, previousContext);
+			const result = await this.processSingleChunk(chunk, options);
 			lastResult = result;
 
 			if (result.success) {
@@ -459,49 +387,7 @@ export class GPT4oTranscriptionStrategy extends TranscriptionStrategy {
 	}
 
 	/**
-	 * Extract last sentences from text (within token limit)
-	 */
-	private extractLastSentences(text: string, maxLength: number): string {
-		const sentences: string[] = [];
-		let current = '';
-		for (const ch of text) {
-			current += ch;
-			if (ch === '。' || ch === '.' || ch === '!' || ch === '?' || ch === '！' || ch === '？' || ch === '\n') {
-				sentences.push(current);
-				current = '';
-			}
-		}
-		if (current) {
-			sentences.push(current);
-		}
-
-		const selectedSentences: string[] = [];
-		let totalLength = 0;
-		for (let i = sentences.length - 1; i >= 0; i--) {
-			const raw = sentences[i];
-			if (!raw) {
-				continue;
-			}
-			const sentence = raw.trim();
-			if (!sentence) {
-				continue;
-			}
-
-			const additionalLength = selectedSentences.length > 0 ? sentence.length + 1 : sentence.length;
-			if (totalLength + additionalLength <= maxLength) {
-				selectedSentences.unshift(sentence);
-				totalLength += additionalLength;
-			} else {
-				break;
-			}
-		}
-
-		const result = selectedSentences.join(' ');
-		return result || text.slice(-maxLength);
-	}
-
-	/**
-	 * Merge results with simple concatenation (context already handled)
+	 * Merge results with overlap removal
 	 */
 	async mergeResults(results: TranscriptionResult[]): Promise<string> {
 		const { valid, failed } = this.filterResults(results);
