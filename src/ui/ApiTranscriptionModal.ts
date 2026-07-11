@@ -106,11 +106,11 @@ export class APITranscriptionModal extends Modal {
 		contentEl.createEl('h2', { text: t('modal.transcription.title') });
 
 		// Provider info with model selection
-		const providerInfo = contentEl.createEl('div', { cls: 'transcription-provider-info' });
-		const providerRow = providerInfo.createEl('div', { cls: 'ai-transcriber-provider-row' });
+		const providerInfo = contentEl.createDiv({ cls: 'transcription-provider-info' });
+		const providerRow = providerInfo.createDiv({ cls: 'ai-transcriber-provider-row' });
 
 		// Label
-		providerRow.createEl('span', {
+		providerRow.createSpan({
 			text: t('modal.transcription.modelLabel') + ': ',
 			cls: 'ai-transcriber-provider-label'
 		});
@@ -148,36 +148,36 @@ export class APITranscriptionModal extends Modal {
 		});
 
 		// File info with integrated cost estimation
-		const fileInfo = contentEl.createEl('div', { cls: 'transcription-file-info' });
+		const fileInfo = contentEl.createDiv({ cls: 'transcription-file-info' });
 
 		// First row: File name only
-		const fileNameRow = fileInfo.createEl('div', { cls: 'file-info-row' });
-		fileNameRow.createEl('span', {
+		const fileNameRow = fileInfo.createDiv({ cls: 'file-info-row' });
+		fileNameRow.createSpan({
 			text: `${t('modal.transcription.fileInfo')}: ${this.audioFile.name}`,
 			cls: 'file-name',
 			attr: { title: this.audioFile.path }
 		});
 
 		// Second row: File type and size
-		const fileDetailsRow = fileInfo.createEl('div', { cls: 'file-info-row' });
+		const fileDetailsRow = fileInfo.createDiv({ cls: 'file-info-row' });
 		const fileExt = this.audioFile.extension.toLowerCase();
 		const isVideo = FileTypeUtils.isVideoFile(fileExt);
 		const fileTypeText = isVideo ? t('modal.transcription.videoFile') : t('modal.transcription.audioFile');
 		// Display as "Audio File | 27.32 MB" format
-		fileDetailsRow.createEl('span', {
+		fileDetailsRow.createSpan({
 			text: `${fileTypeText} | ${this.formatFileSize(this.audioFile.stat.size)}`,
 			cls: 'file-details'
 		});
 
 		// Third row: Cost estimation (integrated)
-		const costRow = fileInfo.createEl('div', { cls: 'file-info-row cost-row' });
-		this.costEl = costRow.createEl('div', { cls: 'cost-info' });
+		const costRow = fileInfo.createDiv({ cls: 'file-info-row cost-row' });
+		this.costEl = costRow.createDiv({ cls: 'cost-info' });
 		void this.displayCostEstimate();
 
 		// Show warning for large files
 		const sizeMB = this.audioFile.stat.size / (1024 * 1024);
 		if (sizeMB > 500) {
-			fileInfo.createEl('div', {
+			fileInfo.createDiv({
 				text: t('modal.transcription.largeFileWarning', { size: sizeMB.toFixed(1) }),
 				cls: 'file-size-warning'
 			});
@@ -187,11 +187,11 @@ export class APITranscriptionModal extends Modal {
 		this.createProcessingOptions(contentEl);
 
 		// Time range selection with pre-allocated space
-		this.timeRangeEl = contentEl.createEl('div', { cls: 'ait-transcription-time-range' });
+		this.timeRangeEl = contentEl.createDiv({ cls: 'ait-transcription-time-range' });
 		// Pre-allocate space to prevent layout shift
 		this.timeRangeEl.classList.add('ait-min-height-280');
 		// Add loading indicator
-		const loadingEl = this.timeRangeEl.createEl('div', {
+		const loadingEl = this.timeRangeEl.createDiv({
 			cls: 'ait-time-range-loading',
 			text: t('common.loading')
 		});
@@ -204,7 +204,7 @@ export class APITranscriptionModal extends Modal {
 		}
 
 		// Buttons
-		const buttonContainer = contentEl.createEl('div', { cls: 'transcription-buttons' });
+		const buttonContainer = contentEl.createDiv({ cls: 'transcription-buttons' });
 
 		// キャンセルボタン（左側）
 		this.normalCancelBtn = buttonContainer.createEl('button', {
@@ -443,32 +443,18 @@ export class APITranscriptionModal extends Modal {
 			const { startTime, endTime } = this.getTimeRange();
 
 			// Transcribe using API
-			let transcription = '';
-			let modelUsed = '';
-			const partialMarker = this.getPartialResultMarker();
-			try {
+				let transcription = '';
+				let modelUsed = '';
+				let isPartialResult = false;
 				const result = await this.transcriber.transcribe(this.audioFile, startTime, endTime);
 				if (typeof result === 'string') {
 					transcription = result;
-					modelUsed = this.settings.model; // Fallback to settings
+					modelUsed = this.settings.model;
 				} else {
 					transcription = result.text;
 					modelUsed = result.modelUsed;
+					isPartialResult = result.partial === true;
 				}
-			} catch (error) {
-				// Check if error contains partial results
-				const errorMessage = error instanceof Error ? error.message : '';
-				if (errorMessage.includes(partialMarker)) {
-					// This is a partial result, use it
-					transcription = errorMessage;
-				} else {
-					// Re-throw if it's a different error
-					throw error;
-				}
-			}
-
-			// Check if this is a partial result
-			const isPartialResult = transcription.includes(partialMarker);
 
 			if (!transcription || (transcription.trim().length === 0 && !isPartialResult)) {
 				throw new Error(t('errors.messages.noTranscriptionText'));
@@ -484,7 +470,7 @@ export class APITranscriptionModal extends Modal {
 				}
 
 			// Insert transcription to the active note
-			await this.insertTranscription(transcription, modelUsed);
+				await this.insertTranscription(transcription, modelUsed, isPartialResult);
 
 				// Update to 100% after completion
 				if (this.progressTracker) {
@@ -559,36 +545,22 @@ export class APITranscriptionModal extends Modal {
 		this.updateStatus(t('modal.transcription.transcribing'));
 
 		// Transcribe using API with dictionary context
-		let transcription = '';
-		let modelUsed = '';
-		const partialMarker = this.getPartialResultMarker();
-		try {
+			let transcription = '';
+			let modelUsed = '';
+			let isPartialResult = false;
 			const result = await this.transcriber.transcribe(this.audioFile, startTime, endTime);
 			if (typeof result === 'string') {
 				transcription = result;
-				modelUsed = this.settings.model; // Fallback to settings
+				modelUsed = this.settings.model;
 			} else {
 				transcription = result.text;
 				modelUsed = result.modelUsed;
+				isPartialResult = result.partial === true;
 			}
-		} catch (error) {
-			// Check if error contains partial results
-			const errorMessage = error instanceof Error ? error.message : '';
-			if (errorMessage.includes(partialMarker)) {
-				// This is a partial result, use it
-				transcription = errorMessage;
-			} else {
-				// Re-throw if it's a different error
-				throw error;
-			}
-		}
 
 		if (!transcription || transcription.trim().length === 0) {
 			throw new Error(t('errors.messages.noTranscriptionText'));
 		}
-
-		// Check if this is a partial result
-		const isPartialResult = transcription.includes(partialMarker);
 
 			// Adjust progress based on whether post-processing is enabled
 			// If post-processing is enabled and will be performed: 70%
@@ -599,7 +571,7 @@ export class APITranscriptionModal extends Modal {
 			this.updateProgress(saveProgress);
 
 
-		await this.insertTranscription(transcription, modelUsed);
+			await this.insertTranscription(transcription, modelUsed, isPartialResult);
 
 		// Only update to 100% if post-processing is not happening (it will be updated in insertTranscription)
 		const shouldShowCompletionNotice = !this.settings.postProcessingEnabled || !this.metaInfo?.enablePostProcessing;
@@ -653,8 +625,7 @@ export class APITranscriptionModal extends Modal {
 
 
 
-	private async insertTranscription(transcription: string, modelUsed?: string) {
-		const partialMarker = this.getPartialResultMarker();
+	private async insertTranscription(transcription: string, modelUsed?: string, isPartialResult: boolean = false) {
 		this.logger.info('Starting transcription insertion', {
 			modelUsed,
 			transcriptionLength: transcription.length,
@@ -847,7 +818,6 @@ export class APITranscriptionModal extends Modal {
 		if (this.progressTracker && !this.processInBackground) {
 			const currentTask = this.progressTracker.getCurrentTask();
 			if (currentTask) {
-				const isPartialResult = transcription.includes(partialMarker);
 				if (isPartialResult) {
 					// Mark as partial
 					this.progressTracker.updateTaskStatus(currentTask.id, 'partial');
@@ -900,7 +870,7 @@ export class APITranscriptionModal extends Modal {
 	}
 
 	private createProcessingOptions(containerEl: HTMLElement): void {
-		const optionsSection = containerEl.createEl('div', { cls: 'processing-options-section' });
+		const optionsSection = containerEl.createDiv({ cls: 'processing-options-section' });
 		const updateOutputFolder = async (value: string) => {
 			const normalized = PathUtils.normalizeUserPath(value);
 			this.settings.transcriptionOutputFolder = normalized;
@@ -997,7 +967,7 @@ export class APITranscriptionModal extends Modal {
 		optionsSection.appendChild(aiDependentContainer);
 
 		// Add separator between AI post-processing and dictionary correction
-		optionsSection.createEl('div', { cls: 'setting-item-separator' });
+		optionsSection.createDiv({ cls: 'setting-item-separator' });
 
 		// Dictionary correction toggle - inside dependent container
 		const dictSetting = new Setting(aiDependentContainer)
@@ -1032,14 +1002,14 @@ export class APITranscriptionModal extends Modal {
 			}));
 
 		// Related info row - inside dependent container
-		const relatedInfoContainer = aiDependentContainer.createEl('div', { cls: 'setting-item' });
-		const relatedInfoLeft = relatedInfoContainer.createEl('div', { cls: 'setting-item-info' });
-		relatedInfoLeft.createEl('div', {
+		const relatedInfoContainer = aiDependentContainer.createDiv({ cls: 'setting-item' });
+		const relatedInfoLeft = relatedInfoContainer.createDiv({ cls: 'setting-item-info' });
+		relatedInfoLeft.createDiv({
 			text: t('modal.transcription.processingOptions.relatedInfo'),
 			cls: 'setting-item-name'
 		});
 
-		const relatedInfoControl = relatedInfoContainer.createEl('div', { cls: 'setting-item-control' });
+		const relatedInfoControl = relatedInfoContainer.createDiv({ cls: 'setting-item-control' });
 		// Store button reference for visibility updates
 		this.createRelatedInfoButton(relatedInfoControl);
 
@@ -1106,7 +1076,7 @@ export class APITranscriptionModal extends Modal {
 
 
 	private async createTimeRangeControls() {
-		const headerEl = this.timeRangeEl.createEl('div');
+		const headerEl = this.timeRangeEl.createDiv();
 		headerEl.createEl('h4', { text: t('audioRange.title') });
 
 		// Try to get audio duration and show waveform
@@ -1127,7 +1097,7 @@ export class APITranscriptionModal extends Modal {
 			void this.displayCostEstimate();
 
 			// Add waveform selector
-			const waveformContainer = this.timeRangeEl.createEl('div', {
+			const waveformContainer = this.timeRangeEl.createDiv({
 				cls: 'waveform-container'
 			});
 
@@ -1195,7 +1165,7 @@ export class APITranscriptionModal extends Modal {
 		}
 
 		// Enable checkbox
-		const checkboxContainer = this.timeRangeEl.createEl('div', { cls: 'ait-time-range-checkbox-container' });
+		const checkboxContainer = this.timeRangeEl.createDiv({ cls: 'ait-time-range-checkbox-container' });
 		const checkboxLabel = checkboxContainer.createEl('label', { cls: 'checkbox-label' });
 		const enableCheckbox = checkboxLabel.createEl('input', {
 			type: 'checkbox',
@@ -1211,17 +1181,17 @@ export class APITranscriptionModal extends Modal {
 		});
 
 		// Time inputs with separate fields for better UX
-		const timeContainer = this.timeRangeEl.createEl('div', { cls: 'ait-time-range-controls' });
+		const timeContainer = this.timeRangeEl.createDiv({ cls: 'ait-time-range-controls' });
 
 		// Start time inputs
-		const startContainer = timeContainer.createEl('div', { cls: 'ait-time-input-group' });
+		const startContainer = timeContainer.createDiv({ cls: 'ait-time-input-group' });
 		startContainer.createEl('label', { text: t('modal.transcription.startTime') + ':' });
 
-		const startInputs = startContainer.createEl('div', { cls: 'ait-time-inputs' });
+		const startInputs = startContainer.createDiv({ cls: 'ait-time-inputs' });
 		this.startHourInput = this.createTimeInput(startInputs, 'H', 2, true);
-		startInputs.createEl('span', { text: ':', cls: 'ait-time-separator' });
+		startInputs.createSpan({ text: ':', cls: 'ait-time-separator' });
 		this.startMinInput = this.createTimeInput(startInputs, 'M', 2);
-		startInputs.createEl('span', { text: ':', cls: 'ait-time-separator' });
+		startInputs.createSpan({ text: ':', cls: 'ait-time-separator' });
 		this.startSecInput = this.createTimeInput(startInputs, 'S', 2);
 
 		// Set initial values to 0
@@ -1230,14 +1200,14 @@ export class APITranscriptionModal extends Modal {
 		this.startSecInput.value = '0';
 
 		// End time inputs
-		const endContainer = timeContainer.createEl('div', { cls: 'ait-time-input-group' });
+		const endContainer = timeContainer.createDiv({ cls: 'ait-time-input-group' });
 		endContainer.createEl('label', { text: t('modal.transcription.endTime') + ':' });
 
-		const endInputs = endContainer.createEl('div', { cls: 'ait-time-inputs' });
+		const endInputs = endContainer.createDiv({ cls: 'ait-time-inputs' });
 		this.endHourInput = this.createTimeInput(endInputs, 'H', 2, true);
-		endInputs.createEl('span', { text: ':', cls: 'ait-time-separator' });
+		endInputs.createSpan({ text: ':', cls: 'ait-time-separator' });
 		this.endMinInput = this.createTimeInput(endInputs, 'M', 2);
-		endInputs.createEl('span', { text: ':', cls: 'ait-time-separator' });
+		endInputs.createSpan({ text: ':', cls: 'ait-time-separator' });
 		this.endSecInput = this.createTimeInput(endInputs, 'S', 2);
 
 		// Set default end time if duration is known
@@ -1477,10 +1447,6 @@ export class APITranscriptionModal extends Modal {
 		}
 	}
 
-	private getPartialResultMarker(): string {
-		return t('modal.transcription.partialResult');
-	}
-
 	private formatFileSize(bytes: number): string {
 		if (bytes === 0) {
 			return t('common.fileSize.zero');
@@ -1637,7 +1603,7 @@ class TranscriptionRecoveryModal extends Modal {
 		});
 		this.recoveryTextEl.value = this.transcriptionContent;
 
-		const buttonContainer = contentEl.createEl('div', { cls: 'ai-transcriber-modal-buttons' });
+		const buttonContainer = contentEl.createDiv({ cls: 'ai-transcriber-modal-buttons' });
 		new ButtonComponent(buttonContainer)
 			.setButtonText(t('modal.transcription.manualRecoverySelectText'))
 			.onClick(() => {

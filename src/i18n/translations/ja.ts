@@ -20,7 +20,7 @@ const ja: TranslationKeys = {
 			testButton: '接続テスト',
 			testSuccess: '接続成功',
 			testFailed: '接続に失敗しました。APIキーを確認してください。',
-			insecureWarning: 'OS暗号化が利用できません。代替の暗号化方式を使用します。',
+			insecureWarning: 'OS暗号化が利用できないため、APIキーは保存されませんでした。',
 			migrated: 'APIキーを新しい暗号化方式へ自動移行しました。'
 		},
 		model: {

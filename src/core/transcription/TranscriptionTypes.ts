@@ -62,6 +62,13 @@ export interface TranscriptionOptions {
 	chunkingStrategy?: 'auto';
 }
 
+export interface TranscriptionOutcome {
+	text: string;
+	modelUsed: string;
+	partial?: boolean;
+	error?: string;
+}
+
 /**
  * Model-specific transcription options
  */

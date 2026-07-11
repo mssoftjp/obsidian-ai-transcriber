@@ -50,10 +50,10 @@ export class DictionaryManagementModal extends Modal {
 		contentEl.createEl('h2', { text: t('settings.dictionary.title') });
 
 		// Tab container with buttons
-		const tabBarContainer = contentEl.createEl('div', { cls: 'dictionary-tab-bar' });
+		const tabBarContainer = contentEl.createDiv({ cls: 'dictionary-tab-bar' });
 
 		// Language tabs
-		this.tabsContainer = tabBarContainer.createEl('div', { cls: 'dictionary-language-tabs' });
+		this.tabsContainer = tabBarContainer.createDiv({ cls: 'dictionary-language-tabs' });
 		const languages = [
 			{ code: 'ja', name: t('settings.language.options.ja') },
 			{ code: 'en', name: t('settings.language.options.en') },
@@ -74,7 +74,7 @@ export class DictionaryManagementModal extends Modal {
 		});
 
 		// Import/Export buttons on the right side
-		const importExportContainer = tabBarContainer.createEl('div', { cls: 'dictionary-import-export' });
+		const importExportContainer = tabBarContainer.createDiv({ cls: 'dictionary-import-export' });
 
 		const importButton = importExportContainer.createEl('button', {
 			text: t('settings.dictionary.import'),
@@ -91,13 +91,13 @@ export class DictionaryManagementModal extends Modal {
 		exportButton.addEventListener('click', () => this.exportDictionary());
 
 		// Dictionary content container
-		this.dictionaryContentEl = contentEl.createEl('div', { cls: 'dictionary-content' });
+		this.dictionaryContentEl = contentEl.createDiv({ cls: 'dictionary-content' });
 
 		// Display dictionary sections
 		this.displayDictionary();
 
 		// Close button
-		const buttonContainer = contentEl.createEl('div', { cls: 'modal-button-container ai-transcriber-modal-buttons' });
+		const buttonContainer = contentEl.createDiv({ cls: 'modal-button-container ai-transcriber-modal-buttons' });
 		const closeBtn = buttonContainer.createEl('button', {
 			text: t('common.close')
 		});
@@ -134,20 +134,20 @@ export class DictionaryManagementModal extends Modal {
 	}
 
 	private displayDefiniteCorrections(): void {
-		const section = this.dictionaryContentEl.createEl('div', { cls: 'dictionary-section' });
-		const header = section.createEl('div', { cls: 'dictionary-section-header' });
+		const section = this.dictionaryContentEl.createDiv({ cls: 'dictionary-section' });
+		const header = section.createDiv({ cls: 'dictionary-section-header' });
 		header.createEl('h3', { text: t('settings.dictionary.definiteCorrections') });
 
 			// Add count and limit info
 			const dict = this.getCurrentDictionary();
 			const currentCount = dict.definiteCorrections.length;
-			header.createEl('span', {
+			header.createSpan({
 				cls: 'dictionary-limit-info',
 				text: `(${currentCount} / ${DICTIONARY_CONSTANTS.MAX_DEFINITE_CORRECTIONS})`
 			});
 
 		// Create table
-		const tableContainer = section.createEl('div', { cls: 'dictionary-table-container' });
+		const tableContainer = section.createDiv({ cls: 'dictionary-table-container' });
 		const table = tableContainer.createEl('table', { cls: 'dictionary-table' });
 
 		// Header
@@ -195,21 +195,21 @@ export class DictionaryManagementModal extends Modal {
 	}
 
 	private displayContextualCorrections(): void {
-		const section = this.dictionaryContentEl.createEl('div', { cls: 'dictionary-section' });
-		const header = section.createEl('div', { cls: 'dictionary-section-header' });
+		const section = this.dictionaryContentEl.createDiv({ cls: 'dictionary-section' });
+		const header = section.createDiv({ cls: 'dictionary-section-header' });
 		header.createEl('h3', { text: t('settings.dictionary.contextualCorrections') });
 
 			// Add count and limit info
 			const dict = this.getCurrentDictionary();
 			const entries = dict.contextualCorrections ??= [];
 			const currentCount = entries.length;
-			header.createEl('span', {
+			header.createSpan({
 				cls: 'dictionary-limit-info',
 				text: `(${currentCount} / ${DICTIONARY_CONSTANTS.MAX_CONTEXTUAL_CORRECTIONS})`
 			});
 
 		// Create table
-		const tableContainer = section.createEl('div', { cls: 'dictionary-table-container' });
+		const tableContainer = section.createDiv({ cls: 'dictionary-table-container' });
 		const table = tableContainer.createEl('table', { cls: 'dictionary-table' });
 
 		// Header
@@ -549,7 +549,7 @@ export class DictionaryManagementModal extends Modal {
 				text: t('settings.dictionary.importConfirm')
 			});
 
-			const buttonContainer = modal.contentEl.createEl('div', { cls: 'modal-button-container ai-transcriber-modal-buttons' });
+			const buttonContainer = modal.contentEl.createDiv({ cls: 'modal-button-container ai-transcriber-modal-buttons' });
 
 			const replaceBtn = buttonContainer.createEl('button', {
 				text: t('settings.dictionary.replace'),

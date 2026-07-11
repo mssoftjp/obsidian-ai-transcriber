@@ -202,7 +202,7 @@ export class AudioFileSelectionModal extends Modal {
 		listContainer.empty();
 
 		if (this.filteredFiles.length === 0) {
-			listContainer.createEl('div', {
+			listContainer.createDiv({
 				text: t('modal.audioFileSelection.noFiles'),
 				cls: 'no-files-message'
 			});

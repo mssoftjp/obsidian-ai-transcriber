@@ -184,12 +184,6 @@ export class TranscriptionWorkflow {
 				throw error;
 			}
 
-			// If the error came from execute() and includes partial results
-			if (error instanceof Error && error.message.includes('[部分的な文字起こし結果]')) {
-				// The error message itself contains the partial results
-				throw error; // Pass it through
-			}
-
 			// Re-throw original error
 			if (error instanceof Error && error.message.includes('cancelled')) {
 				this.logger.info('Transcription workflow cancelled after processing began');

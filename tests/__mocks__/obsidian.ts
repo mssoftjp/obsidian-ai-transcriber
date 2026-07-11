@@ -131,6 +131,14 @@ export class Notice {
 	}
 }
 
+export const Platform = {
+	isMobile: false,
+	isMobileApp: false,
+	isDesktopApp: true
+};
+
+export const requestUrl = jest.fn();
+
 // Simplified normalizePath implementation for tests
 export function normalizePath(path: string): string {
 	const normalized = path.replace(/\\/g, '/').replace(/\/+/g, '/').trim();

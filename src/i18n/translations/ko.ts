@@ -20,7 +20,7 @@ const ko: TranslationKeys = {
 			testButton: '연결 테스트',
 			testSuccess: '연결 성공',
 			testFailed: '연결 실패. API 키를 확인하세요.',
-			insecureWarning: 'OS 암호화를 사용할 수 없습니다. 대체 암호화 방식을 사용합니다.',
+			insecureWarning: '운영 체제 암호화를 사용할 수 없어 API 키를 저장하지 않았습니다.',
 			migrated: 'API 키가 새로운 암호화 형식으로 자동 마이그레이션되었습니다.'
 		},
 		model: {

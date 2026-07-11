@@ -7,7 +7,7 @@ import { requestUrl } from 'obsidian';
 
 import { Logger } from '../../utils/Logger';
 
-import type { RequestUrlResponse } from 'obsidian';
+import type { RequestUrlParam, RequestUrlResponse } from 'obsidian';
 
 export class ApiError extends Error {
 	constructor(
@@ -18,6 +18,20 @@ export class ApiError extends Error {
 	) {
 		super(message);
 		this.name = 'ApiError';
+	}
+}
+
+export class ApiTimeoutError extends Error {
+	constructor(timeoutMs: number) {
+		super(`API request exceeded the local ${timeoutMs}ms timeout`);
+		this.name = 'ApiTimeoutError';
+	}
+}
+
+export class RequestCancelledError extends Error {
+	constructor() {
+		super('Request cancelled by user');
+		this.name = 'RequestCancelledError';
 	}
 }
 
@@ -216,10 +230,13 @@ export abstract class ApiClient {
 
 			// Check for user cancellation before making request
 			if (options.signal?.aborted) {
-				throw new Error('Request cancelled by user');
+				throw new RequestCancelledError();
 			}
 
-			const response = await requestUrl(requestParams);
+			const response = await this.requestWithBoundary(
+				requestParams,
+				options.signal ?? undefined
+			);
 
 
 			if (response.status < 200 || response.status >= 300) {
@@ -227,7 +244,10 @@ export abstract class ApiClient {
 
 				// Check if retryable
 				if (this.isRetryable(response.status) && retryCount < this.config.maxRetries) {
-					await this.delay(this.config.retryDelay * Math.pow(2, retryCount)); // Exponential backoff
+					await this.delay(
+						this.config.retryDelay * Math.pow(2, retryCount),
+						options.signal ?? undefined
+					);
 					return this.executeWithRetry<T>(url, options, retryCount + 1);
 				}
 
@@ -251,7 +271,7 @@ export abstract class ApiClient {
 			if (error instanceof Error) {
 				// Check for user cancellation
 				if (options.signal?.aborted) {
-					throw new Error('Request cancelled by user');
+					throw new RequestCancelledError();
 				}
 				throw error;
 			}
@@ -307,8 +327,59 @@ export abstract class ApiClient {
 	/**
 	 * Delay helper for retries
 	 */
-	private delay(ms: number): Promise<void> {
-		return new Promise(resolve => this.getTimerWindow().setTimeout(resolve, ms));
+	private requestWithBoundary(
+		requestParams: RequestUrlParam,
+		signal?: AbortSignal
+	): Promise<RequestUrlResponse> {
+		if (signal?.aborted) {
+			return Promise.reject(new RequestCancelledError());
+		}
+
+		return new Promise<RequestUrlResponse>((resolve, reject) => {
+			let settled = false;
+			const timerWindow = this.getTimerWindow();
+			const finish = (callback: () => void): void => {
+				if (settled) {
+					return;
+				}
+				settled = true;
+				timerWindow.clearTimeout(timeoutId);
+				signal?.removeEventListener('abort', abortHandler);
+				callback();
+			};
+			const abortHandler = (): void => {
+				finish(() => reject(new RequestCancelledError()));
+			};
+			const timeoutId = timerWindow.setTimeout(() => {
+				finish(() => reject(new ApiTimeoutError(this.config.timeout)));
+			}, this.config.timeout);
+			signal?.addEventListener('abort', abortHandler, { once: true });
+
+			void requestUrl(requestParams).then(
+				response => finish(() => resolve(response)),
+				error => finish(() => reject(
+					error instanceof Error ? error : new Error('Unknown request error')
+				))
+			);
+		});
+	}
+
+	private delay(ms: number, signal?: AbortSignal): Promise<void> {
+		if (signal?.aborted) {
+			return Promise.reject(new RequestCancelledError());
+		}
+		return new Promise<void>((resolve, reject) => {
+			const timerWindow = this.getTimerWindow();
+			const abortHandler = (): void => {
+				timerWindow.clearTimeout(timeoutId);
+				reject(new RequestCancelledError());
+			};
+			const timeoutId = timerWindow.setTimeout(() => {
+				signal?.removeEventListener('abort', abortHandler);
+				resolve();
+			}, ms);
+			signal?.addEventListener('abort', abortHandler, { once: true });
+		});
 	}
 
 	protected getTimerWindow(): Window {

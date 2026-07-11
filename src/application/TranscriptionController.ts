@@ -37,7 +37,7 @@ import type { ChunkingConfig } from '../core/chunking/ChunkingTypes';
 import type { DictionaryEntry as CorrectionDictionaryEntry } from '../core/transcription/DictionaryCorrector';
 import type { TranscriptionService } from '../core/transcription/TranscriptionService';
 import type { TranscriptionStrategy } from '../core/transcription/TranscriptionStrategy';
-import type { TranscriptionOptions, TranscriptionProgress } from '../core/transcription/TranscriptionTypes';
+import type { TranscriptionOptions, TranscriptionOutcome, TranscriptionProgress } from '../core/transcription/TranscriptionTypes';
 import type { ProgressTracker } from '../ui/ProgressTracker';
 import type { WorkflowOptions, WorkflowResult } from './workflows/TranscriptionWorkflow';
 import type { App, TFile } from 'obsidian';
@@ -72,7 +72,7 @@ export class TranscriptionController {
 		startTime?: number,
 		endTime?: number,
 		abortSignal?: AbortSignal
-	): Promise<string | { text: string; modelUsed: string }> {
+	): Promise<string | TranscriptionOutcome> {
 		this.logger.info('Starting transcription', {
 			file: audioFile.name,
 			model: this.settings.model,
@@ -192,13 +192,18 @@ export class TranscriptionController {
 			timings['total'] = performance.now() - processStartTime;
 
 			// Check if result is partial
-			if (result.partial) {
-				this.logger.warn('Partial transcription result', { error: result.error });
-				// Throw an error with the partial results for APITranscriber to handle
-				if (result.text) {
-					throw new Error(result.text);
+				if (result.partial) {
+					this.logger.warn('Partial transcription result', { error: result.error });
+					const partialOutcome: TranscriptionOutcome = {
+						text: result.text,
+						modelUsed: result.modelUsed || this.settings.model,
+						partial: true
+					};
+					if (result.error) {
+						partialOutcome.error = result.error;
+					}
+					return partialOutcome;
 				}
-			}
 
 			// Apply dictionary correction if enabled
 			const correctedText = await this.applyDictionaryCorrection(result.text, dictionaryCorrector);
@@ -210,14 +215,6 @@ export class TranscriptionController {
 			return correctedText;
 
 		} catch (error) {
-			const partialMarker = t('modal.transcription.partialResult');
-
-			// Partial results are expected on cancel/partial failure; avoid logging as ERROR
-			if (error instanceof Error && error.message.includes(partialMarker)) {
-				this.logger.warn('Transcription returned a partial result');
-				throw error;
-			}
-
 			// Cancellation is also user-driven; keep logs quieter
 			const isCancelled =
 				(abortSignal?.aborted ?? false) ||

@@ -1,6 +1,5 @@
 import { PluginSettingTab, Setting, Notice } from 'obsidian';
 
-import { BUY_ME_A_COFFEE_DEFAULT_BUTTON } from './assets/supportImages';
 import { t } from './i18n';
 import { SettingsUIBuilder } from './SettingsUiBuilder';
 import { DictionaryManagementModal } from './ui/DictionaryManagementModal';
@@ -14,13 +13,6 @@ import type { App, ToggleComponent, TextComponent } from 'obsidian';
 export class APISettingsTab extends PluginSettingTab {
 	plugin: AITranscriberPlugin;
 	private updateDictionaryDesc?: () => void;
-
-	private static readonly SUPPORT_CONFIG = {
-		fundingUrl: 'https://buymeacoffee.com/mssoft',
-		imageSrc: BUY_ME_A_COFFEE_DEFAULT_BUTTON,
-		imageWidth: '217',
-		imageHeight: '60'
-	} as const;
 
 	constructor(app: App, plugin: AITranscriberPlugin) {
 		super(app, plugin);
@@ -198,41 +190,5 @@ export class APISettingsTab extends PluginSettingTab {
 		// 	void this.plugin.saveSettings();
 		// });
 
-		// Buy Me a Coffee banner
-		this.displaySupportBanner(containerEl);
-	}
-
-	private displaySupportBanner(containerEl: HTMLElement): void {
-		try {
-			// Add some spacing before the banner
-			containerEl.createEl('div', { cls: 'bmc-spacer' });
-
-			// Create support section
-			const supportSection = containerEl.createDiv('bmc-support-section');
-
-			// Add support message
-			supportSection.createEl('p', {
-				text: t('support.message'),
-				cls: 'bmc-support-message'
-			});
-
-			// Buy Me a Coffee banner
-			const banner = supportSection.createEl('a', {
-				href: APISettingsTab.SUPPORT_CONFIG.fundingUrl,
-				attr: { target: '_blank', rel: 'noopener' },
-				cls: 'bmc-banner'
-			});
-
-			banner.createEl('img', {
-				attr: {
-					src: APISettingsTab.SUPPORT_CONFIG.imageSrc,
-					alt: t('support.imageAlt'),
-					width: APISettingsTab.SUPPORT_CONFIG.imageWidth,
-					height: APISettingsTab.SUPPORT_CONFIG.imageHeight
-				}
-			});
-		} catch (error) {
-			console.warn('Failed to display support banner:', error);
-		}
 	}
 }

@@ -196,10 +196,12 @@ export default class AITranscriberPlugin extends Plugin {
 				const { SafeStorageService } = await import('./infrastructure/storage/SafeStorageService');
 				const apiKey = SafeStorageService.decryptFromStore(this.settings.openaiApiKey);
 				if (apiKey) {
-				// Re-encrypt with new format
-				this.settings.openaiApiKey = SafeStorageService.encryptForStore(apiKey);
-				await this.stateRepo.saveSettings(this.settings);
-				new Notice(t('settings.apiKey.migrated'));
+					const encryptedKey = SafeStorageService.encryptForStore(apiKey);
+					if (encryptedKey) {
+						this.settings.openaiApiKey = encryptedKey;
+						await this.stateRepo.saveSettings(this.settings);
+						new Notice(t('settings.apiKey.migrated'));
+					}
 			}
 		}
 

@@ -71,11 +71,11 @@ export class PostProcessingModal extends Modal {
 	}
 
 	private createTranscriptionPreview(containerEl: HTMLElement): void {
-		const section = containerEl.createEl('div', { cls: 'transcription-section' });
+		const section = containerEl.createDiv({ cls: 'transcription-section' });
 
 		section.createEl('h3', { text: t('modal.postProcessing.transcriptionPreview') });
 
-		const previewContainer = section.createEl('div', { cls: 'transcription-preview-container' });
+		const previewContainer = section.createDiv({ cls: 'transcription-preview-container' });
 		this.transcriptEl = previewContainer.createEl('textarea', {
 			cls: 'transcription-preview',
 			attr: {
@@ -86,17 +86,17 @@ export class PostProcessingModal extends Modal {
 		this.transcriptEl.value = this.truncateText(this.transcription, 500);
 
 		// Character count
-		section.createEl('div', {
+		section.createDiv({
 			cls: 'transcription-char-count',
 			text: `${t('common.processing')}: ${this.transcription.length}`
 		});
 	}
 
 	private createMetaInputSection(containerEl: HTMLElement): void {
-		const section = containerEl.createEl('div', { cls: 'ait-meta-input-section' });
+		const section = containerEl.createDiv({ cls: 'ait-meta-input-section' });
 
 		// Single unified meta info input (no additional description needed)
-		const metaContainer = section.createEl('div', { cls: 'ait-meta-input-container' });
+		const metaContainer = section.createDiv({ cls: 'ait-meta-input-container' });
 
 		this.metaInfoInput = new TextAreaComponent(metaContainer);
 
@@ -115,7 +115,7 @@ export class PostProcessingModal extends Modal {
 	}
 
 	private createButtonSection(containerEl: HTMLElement): void {
-		const buttonContainer = containerEl.createEl('div', { cls: 'transcription-buttons' });
+		const buttonContainer = containerEl.createDiv({ cls: 'transcription-buttons' });
 
 		// Save button
 		const isPreTranscription = !this.transcription || this.transcription.length === 0;

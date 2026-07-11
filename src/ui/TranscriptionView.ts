@@ -204,7 +204,7 @@ export class TranscriptionView extends ItemView {
 			this.fileInfoEl.removeClass('ait-hidden');
 			this.fileInfoEl.empty();
 			const fileName = currentTask.inputFileName || '';
-			this.fileInfoEl.createEl('div', {
+			this.fileInfoEl.createDiv({
 				text: `${t('modal.transcription.fileInfo')}: ${fileName}`,
 				cls: 'file-name'
 			});
@@ -273,7 +273,7 @@ export class TranscriptionView extends ItemView {
 		// Display recent history - already in newest-first order from ProgressTracker
 		const maxItems = 50;
 		const recentHistory = history.slice(0, maxItems); // Just take first N items
-		const historyList = this.historyContainer.createEl('div', { cls: 'history-list' });
+		const historyList = this.historyContainer.createDiv({ cls: 'history-list' });
 
 		for (const task of recentHistory) {
 			const item = historyList.createDiv({ cls: 'history-item' });
@@ -616,13 +616,13 @@ class FileSelectionModal extends Modal {
 			const item = fileList.createDiv({ cls: 'file-selection-item' });
 
 			// ファイル名
-			item.createEl('div', {
+			item.createDiv({
 				text: file.name,
 				cls: 'file-selection-name'
 			});
 
 			// パス
-			item.createEl('div', {
+			item.createDiv({
 				text: file.path,
 				cls: 'file-selection-path'
 			});

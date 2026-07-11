@@ -1,7 +1,7 @@
 {
   "name": "obsidian-ai-transcriber",
   "version": "0.9.9",
-  "description": "AI-powered speech-to-text transcription using OpenAI GPT-4o and Whisper APIs",
+  "description": "Transcribe audio and video files with OpenAI GPT-4o and Whisper APIs",
   "main": "main.js",
   "packageManager": "npm@10.9.4",
   "scripts": {
@@ -14,7 +14,7 @@
     "test:coverage": "jest --coverage",
     "lint": "eslint \"src/**/*.ts\"",
     "lint:fix": "eslint \"src/**/*.ts\" --fix",
-    "check": "npm run lint && npm run build && npm test -- --runInBand --coverage=false"
+    "check": "npm run lint && npm run build && npm test -- --runInBand --coverage"
   },
   "keywords": [
     "obsidian",

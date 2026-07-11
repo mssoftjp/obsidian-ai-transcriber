@@ -15,6 +15,7 @@ import { Logger } from './utils/Logger';
 
 import type { APITranscriptionSettings } from './ApiSettings';
 import type { ActiveTranscriptionJob } from './core/transcription/TranscriptionJob';
+import type { TranscriptionOutcome } from './core/transcription/TranscriptionTypes';
 import type { ProgressTracker } from './ui/ProgressTracker';
 import type { App, TFile } from 'obsidian';
 
@@ -43,7 +44,7 @@ export class APITranscriber {
 	 * Main transcription method
 	 * Delegates to TranscriptionController
 	 */
-	async transcribe(audioFile: TFile, startTime?: number, endTime?: number): Promise<string | { text: string; modelUsed: string }> {
+	async transcribe(audioFile: TFile, startTime?: number, endTime?: number): Promise<string | TranscriptionOutcome> {
 		if (this.activeJob) {
 			throw new TranscriptionBusyError();
 		}
@@ -54,8 +55,6 @@ export class APITranscriber {
 			taskId: null
 		};
 		this.activeJob = job;
-		const partialMarker = this.getPartialResultMarker();
-
 		// Create task in progress tracker if available
 		if (this.progressTracker) {
 			// Get provider name and estimate cost
@@ -103,16 +102,6 @@ export class APITranscriber {
 			return result;
 
 		} catch (error) {
-			// Check if this is a partial result error
-			if (error instanceof Error && error.message.includes(partialMarker)) {
-				// Extract the partial result text and return it
-				const partialText = error.message;
-
-				// Don't mark as complete here - let the modal handle completion
-
-				return partialText;
-			}
-
 			// Handle cancellation
 			const isAbortError = job.abortController.signal.aborted
 				|| (error instanceof DOMException && error.name === 'AbortError');
@@ -340,10 +329,6 @@ export class APITranscriber {
 	 */
 	setProgressCallback(_callback: (current: number, total: number, message: string) => void): void {
 		// This is now handled internally by TranscriptionController
-	}
-
-	private getPartialResultMarker(): string {
-		return t('modal.transcription.partialResult');
 	}
 
 	private generateJobId(): string {

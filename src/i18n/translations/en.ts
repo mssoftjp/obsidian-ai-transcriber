@@ -20,7 +20,7 @@ const en: TranslationKeys = {
 			testButton: 'Test connection',
 			testSuccess: 'Connection successful',
 			testFailed: 'Connection failed. Please check your API key.',
-			insecureWarning: 'Operating system encryption not available; using the fallback encryption method.',
+			insecureWarning: 'Operating system encryption is unavailable. The API key was not saved.',
 			migrated: 'API key has been automatically migrated to the new encryption format.'
 		},
 		model: {

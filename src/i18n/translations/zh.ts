@@ -20,7 +20,7 @@ const zh: TranslationKeys = {
 			testButton: '测试连接',
 			testSuccess: 'API 密钥有效',
 			testFailed: 'API 密钥无效',
-			insecureWarning: 'OS加密不可用。使用备用加密方法。',
+			insecureWarning: '操作系统加密不可用，因此未保存 API 密钥。',
 			migrated: 'API密钥已自动迁移到新的加密格式。'
 		},
 		model: {

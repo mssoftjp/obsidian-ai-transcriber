@@ -5,12 +5,10 @@ import { MODEL_OPTIONS, getModelOption } from './config/ModelOptions';
 import { t } from './i18n';
 import { SafeStorageService } from './infrastructure/storage/SafeStorageService';
 import { SecurityUtils } from './infrastructure/storage/SecurityUtils';
-import { isElectronWindow } from './types/global';
 import { Logger } from './utils/Logger';
 import { PathUtils } from './utils/PathUtils';
 
 import type { APITranscriptionSettings, VADMode } from './ApiSettings';
-import type { ElectronRenderer } from './types/global';
 import type { App } from 'obsidian';
 
 export class SettingsUIBuilder {
@@ -28,6 +26,9 @@ export class SettingsUIBuilder {
 			.setName(t('settings.apiKey.name'))
 			.setDesc(this.createApiKeyDescription(t('providers.openai'), 'https://platform.openai.com/api-keys'))
 			.addText(text => {
+				let storageWarningShown = false;
+				text.inputEl.type = 'password';
+				text.inputEl.autocomplete = 'off';
 				// Retrieve stored API key
 				const apiKey = SafeStorageService.decryptFromStore(settings.openaiApiKey);
 
@@ -41,13 +42,16 @@ export class SettingsUIBuilder {
 					.onChange(async (value) => {
 						// Skip if it's the masked value
 						if (value && !value.includes('*')) {
-							// Store API key with SafeStorage encryption
-							settings.openaiApiKey = SafeStorageService.encryptForStore(value);
-							await saveSettings();
-							// Check if safeStorage is available
-							if (!this.isSafeStorageAvailable()) {
-								new Notice(t('settings.apiKey.insecureWarning'));
+							const encryptedKey = SafeStorageService.encryptForStore(value);
+							if (!encryptedKey) {
+								if (!storageWarningShown) {
+									new Notice(t('settings.apiKey.insecureWarning'));
+									storageWarningShown = true;
+								}
+								return;
 							}
+							settings.openaiApiKey = encryptedKey;
+							await saveSettings();
 						}
 					});
 			})
@@ -145,7 +149,7 @@ export class SettingsUIBuilder {
 		// Temperature setting removed - now configured in config files only
 
 		// Model comparison info - simplified as requested
-		const modelInfoEl = containerEl.createEl('div', { cls: 'setting-item-description' });
+		const modelInfoEl = containerEl.createDiv({ cls: 'setting-item-description' });
 		// Clear and rebuild model info element
 		modelInfoEl.empty();
 
@@ -390,31 +394,6 @@ export class SettingsUIBuilder {
 	}
 
 
-	/**
-	 * Check if safeStorage is available
-	 */
-	private static isSafeStorageAvailable(): boolean {
-		try {
-			// モバイル環境チェック
-			if (Platform.isMobileApp) {
-				return false;
-			}
-			const electronWindow = SettingsUIBuilder.getFallbackWindow();
-			if (!isElectronWindow(electronWindow) || typeof electronWindow.require !== 'function') {
-				return false;
-			}
-				const electronRequire = electronWindow.require as (moduleName: string) => ElectronRenderer;
-				const electronModule: ElectronRenderer = electronRequire('electron');
-				// remote.safeStorage を優先的に確認
-				const safeStorage = electronModule.remote?.safeStorage ?? electronModule.safeStorage;
-				if (safeStorage && typeof safeStorage.isEncryptionAvailable === 'function') {
-					return safeStorage.isEncryptionAvailable();
-				}
-			return false;
-		} catch {
-			return false;
-		}
-	}
 	private static async checkLocalWasm(app: App): Promise<boolean> {
 		const possiblePaths = PathUtils.getWasmFilePaths(app, 'fvad.wasm');
 		const { adapter } = app.vault;

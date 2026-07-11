@@ -65,10 +65,8 @@ export class SafeStorageService {
 				});
 			}
 		}
-		// フォールバック
-		const encrypted = this.xorEncrypt(trimmedKey, FIXED_KEY);
-		this.logger.debug('API key encrypted using XOR fallback');
-		return LEGACY_XOR + encrypted;
+		this.logger.warn('OS encryption is unavailable; the API key was not stored');
+		return '';
 	}
 
 	/** 保存文字列 -> 平文 API キー */
@@ -117,16 +115,6 @@ export class SafeStorageService {
 		}
 
 		return '';
-	}
-
-	private static xorEncrypt(text: string, key: string): string {
-		let result = '';
-		for (let i = 0; i < text.length; i++) {
-			result += String.fromCharCode(
-				text.charCodeAt(i) ^ key.charCodeAt(i % key.length)
-			);
-		}
-		return btoa(result);
 	}
 
 	private static xorDecrypt(encoded: string, key: string): string {
