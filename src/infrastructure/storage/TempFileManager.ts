@@ -13,6 +13,7 @@ import type { App } from 'obsidian';
 
 export class TempFileManager {
 	private static readonly TEMP_DIR = 'ai-transcriber-temp';
+	private static readonly OWNERSHIP_MARKER = `${TempFileManager.TEMP_DIR}/.ai-transcriber-owned-v1`;
 	private app: App;
 	private logger: Logger;
 
@@ -30,7 +31,11 @@ export class TempFileManager {
 		const existingItem = this.app.vault.getAbstractFileByPath(TempFileManager.TEMP_DIR);
 
 		if (existingItem instanceof TFolder) {
-			// フォルダが既に存在する
+			if (!this.hasOwnershipMarker()) {
+				throw new Error(
+					`${TempFileManager.TEMP_DIR} already exists but is not owned by AI Transcriber`
+				);
+			}
 			this.logger.trace('Temporary directory already exists');
 			return existingItem;
 		} else if (existingItem) {
@@ -42,6 +47,10 @@ export class TempFileManager {
 		// フォルダが存在しない場合は作成を試みる
 		try {
 			await this.app.vault.createFolder(TempFileManager.TEMP_DIR);
+			await this.app.vault.create(
+				TempFileManager.OWNERSHIP_MARKER,
+				'AI Transcriber managed temporary directory.\n'
+			);
 
 			// 作成後に再度取得
 			const newFolder = this.app.vault.getAbstractFileByPath(TempFileManager.TEMP_DIR);
@@ -54,7 +63,7 @@ export class TempFileManager {
 			// "Folder already exists"エラーの場合は、フォルダを再取得
 			if (error instanceof Error && error.message.toLowerCase().includes('already exist')) {
 				const folder = this.app.vault.getAbstractFileByPath(TempFileManager.TEMP_DIR);
-				if (folder instanceof TFolder) {
+				if (folder instanceof TFolder && this.hasOwnershipMarker()) {
 					return folder;
 				}
 			}
@@ -101,8 +110,9 @@ export class TempFileManager {
 
 		// ファイル名をサニタイズ（元のファイル名を保持）
 		const sanitizedFileName = file.name
-			.replace(/[<>:"|?*\\]/g, '_')
-			.replace(/^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])$/i, '_$1');
+			.replace(/[<>:"|?*\\/]/g, '_')
+			.replace(/^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])$/i, '_$1')
+			.replace(/^\.+$/, '_') || 'audio-file';
 
 		// シンプルなファイルパス（サブフォルダ内に元のファイル名で保存）
 		const tempPath = `${sessionPath}/${sanitizedFileName}`;
@@ -179,6 +189,10 @@ export class TempFileManager {
 	async cleanupSession(sessionId: string): Promise<void> {
 		this.logger.debug('Cleaning up session', { sessionId });
 		try {
+			if (!/^[a-z0-9-]+$/i.test(sessionId) || !this.hasOwnershipMarker()) {
+				this.logger.warn('Ignoring invalid temporary session id');
+				return;
+			}
 			const sessionPath = `${TempFileManager.TEMP_DIR}/${sessionId}`;
 			const sessionFolder = this.app.vault.getAbstractFileByPath(sessionPath);
 
@@ -205,16 +219,18 @@ export class TempFileManager {
 		try {
 			if (specificFile) {
 				// 特定のファイルのみ削除
-				if (specificFile.path.startsWith(TempFileManager.TEMP_DIR)) {
+				if (this.hasOwnershipMarker() && this.isTemporaryFile(specificFile)) {
 					await this.app.fileManager.trashFile(specificFile);
 					this.logger.debug('Specific file cleaned up', { file: specificFile.path });
 				}
 			} else {
 				// フォルダごと削除（シンプルな実装）
 				const folder = this.app.vault.getAbstractFileByPath(TempFileManager.TEMP_DIR);
-				if (folder instanceof TFolder) {
+				if (folder instanceof TFolder && this.hasOwnershipMarker()) {
 					await this.app.fileManager.trashFile(folder);
 					this.logger.info('All temporary files cleaned up');
+				} else if (folder instanceof TFolder) {
+					this.logger.warn('Skipped unowned temporary directory cleanup');
 				}
 			}
 		} catch (error) {
@@ -228,7 +244,11 @@ export class TempFileManager {
 	 * 一時ファイルかどうかを判定
 	 */
 	isTemporaryFile(file: TFile): boolean {
-		return file.path.startsWith(TempFileManager.TEMP_DIR);
+		return file.path.startsWith(`${TempFileManager.TEMP_DIR}/`);
+	}
+
+	private hasOwnershipMarker(): boolean {
+		return this.app.vault.getAbstractFileByPath(TempFileManager.OWNERSHIP_MARKER) instanceof TFile;
 	}
 
 	/**

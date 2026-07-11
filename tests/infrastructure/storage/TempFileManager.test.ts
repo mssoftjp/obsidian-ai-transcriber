@@ -74,8 +74,10 @@ describe('TempFileManager', () => {
 			const sessionPath = `ai-transcriber-temp/${sessionId}`;
 			const sessionFolder = createTestFolder(sessionPath, sessionId);
 			
-			// Mock the getAbstractFileByPath to return our test folder
-			jest.spyOn(app.vault, 'getAbstractFileByPath').mockReturnValue(sessionFolder);
+			const marker = createTestFile('ai-transcriber-temp/.ai-transcriber-owned-v1', '.ai-transcriber-owned-v1', '');
+			jest.spyOn(app.vault, 'getAbstractFileByPath').mockImplementation((path) =>
+				path === 'ai-transcriber-temp/.ai-transcriber-owned-v1' ? marker : sessionFolder
+			);
 
 			// Act: Call cleanupSession
 			await tempFileManager.cleanupSession(sessionId);
@@ -99,12 +101,25 @@ describe('TempFileManager', () => {
 			expect(mockTrashFile).not.toHaveBeenCalled();
 			expect(mockVaultDelete).not.toHaveBeenCalled();
 		});
+
+		it('should not delete a session from an unowned temporary directory', async () => {
+			const sessionFolder = createTestFolder('ai-transcriber-temp/test-session', 'test-session');
+			jest.spyOn(app.vault, 'getAbstractFileByPath').mockImplementation((path) =>
+				path === 'ai-transcriber-temp/.ai-transcriber-owned-v1' ? null : sessionFolder
+			);
+
+			await tempFileManager.cleanupSession('test-session');
+
+			expect(mockTrashFile).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('cleanup', () => {
 		it('should use app.fileManager.trashFile for specific file cleanup', async () => {
 			// Setup: Create a mock temp file
 			const tempFile = createTestFile('ai-transcriber-temp/test-file.mp3', 'test-file', 'mp3');
+			const marker = createTestFile('ai-transcriber-temp/.ai-transcriber-owned-v1', '.ai-transcriber-owned-v1', '');
+			jest.spyOn(app.vault, 'getAbstractFileByPath').mockReturnValue(marker);
 
 			// Act: Call cleanup with specific file
 			await tempFileManager.cleanup(tempFile);
@@ -120,7 +135,10 @@ describe('TempFileManager', () => {
 		it('should use app.fileManager.trashFile for full cleanup', async () => {
 			// Setup: Create a mock temp folder
 			const tempFolder = createTestFolder('ai-transcriber-temp', 'ai-transcriber-temp');
-			jest.spyOn(app.vault, 'getAbstractFileByPath').mockReturnValue(tempFolder);
+			const marker = createTestFile('ai-transcriber-temp/.ai-transcriber-owned-v1', '.ai-transcriber-owned-v1', '');
+			jest.spyOn(app.vault, 'getAbstractFileByPath').mockImplementation((path) =>
+				path === 'ai-transcriber-temp' ? tempFolder : marker
+			);
 
 			// Act: Call cleanup without specific file (full cleanup)
 			await tempFileManager.cleanup();
@@ -131,6 +149,17 @@ describe('TempFileManager', () => {
 			
 			// Assert: Verify that vault.delete was NOT called
 			expect(mockVaultDelete).not.toHaveBeenCalled();
+		});
+
+		it('should not delete an unowned folder with the temporary directory name', async () => {
+			const tempFolder = createTestFolder('ai-transcriber-temp', 'ai-transcriber-temp');
+			jest.spyOn(app.vault, 'getAbstractFileByPath').mockImplementation((path) =>
+				path === 'ai-transcriber-temp' ? tempFolder : null
+			);
+
+			await tempFileManager.cleanup();
+
+			expect(mockTrashFile).not.toHaveBeenCalled();
 		});
 
 		it('should not cleanup files outside temp directory', async () => {
@@ -145,9 +174,20 @@ describe('TempFileManager', () => {
 			expect(mockVaultDelete).not.toHaveBeenCalled();
 		});
 
+		it('should not delete a specific file from an unowned temporary directory', async () => {
+			const tempFile = createTestFile('ai-transcriber-temp/test-file.mp3', 'test-file', 'mp3');
+			jest.spyOn(app.vault, 'getAbstractFileByPath').mockReturnValue(null);
+
+			await tempFileManager.cleanup(tempFile);
+
+			expect(mockTrashFile).not.toHaveBeenCalled();
+		});
+
 		it('should handle trashFile errors gracefully', async () => {
 			// Setup: Create a mock temp file and make trashFile throw
 			const tempFile = createTestFile('ai-transcriber-temp/test-file.mp3', 'test-file', 'mp3');
+			const marker = createTestFile('ai-transcriber-temp/.ai-transcriber-owned-v1', '.ai-transcriber-owned-v1', '');
+			jest.spyOn(app.vault, 'getAbstractFileByPath').mockReturnValue(marker);
 			mockTrashFile.mockRejectedValue(new Error('Trash operation failed'));
 
 			// Act: Call cleanup - should not throw
@@ -161,9 +201,11 @@ describe('TempFileManager', () => {
 	describe('isTemporaryFile', () => {
 		it('should correctly identify temporary files', () => {
 			const tempFile = createTestFile('ai-transcriber-temp/test.mp3', 'test', 'mp3');
+			const similarPrefixFile = createTestFile('ai-transcriber-temp-backup/test.mp3', 'test', 'mp3');
 			const regularFile = createTestFile('regular/test.mp3', 'test', 'mp3');
 
 			expect(tempFileManager.isTemporaryFile(tempFile)).toBe(true);
+			expect(tempFileManager.isTemporaryFile(similarPrefixFile)).toBe(false);
 			expect(tempFileManager.isTemporaryFile(regularFile)).toBe(false);
 		});
 	});
@@ -173,8 +215,17 @@ describe('TempFileManager', () => {
 			// This test ensures that our mock setup works and vault.delete is never called
 			const tempFolder = createTestFolder('ai-transcriber-temp', 'ai-transcriber-temp');
 			const tempFile = createTestFile('ai-transcriber-temp/test.mp3', 'test', 'mp3');
+			const marker = createTestFile('ai-transcriber-temp/.ai-transcriber-owned-v1', '.ai-transcriber-owned-v1', '');
 			
-			jest.spyOn(app.vault, 'getAbstractFileByPath').mockReturnValue(tempFolder);
+			jest.spyOn(app.vault, 'getAbstractFileByPath').mockImplementation((path) => {
+				if (path === 'ai-transcriber-temp') {
+					return tempFolder;
+				}
+				if (path === 'ai-transcriber-temp/.ai-transcriber-owned-v1') {
+					return marker;
+				}
+				return tempFolder;
+			});
 
 			// Test all cleanup methods
 			await tempFileManager.cleanup();

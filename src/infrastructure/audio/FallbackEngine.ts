@@ -13,6 +13,15 @@ import type {
 	AudioProcessingConfig
 } from '../../core/audio/AudioTypes';
 
+interface WavMetadata {
+	sampleRate: number;
+	bitsPerSample: 8 | 16;
+	channels: number;
+	dataSize: number;
+	samplesPerChannel: number;
+	duration: number;
+}
+
 export class FallbackEngine extends AudioProcessor {
 	constructor(config: AudioProcessingConfig) {
 		super(config);
@@ -45,23 +54,15 @@ export class FallbackEngine extends AudioProcessor {
 			return Promise.resolve(validation);
 		}
 
-		// Check if it's a valid WAV file
-		const header = new DataView(input.data.slice(0, 44));
-		const riff = String.fromCharCode(...new Uint8Array(input.data.slice(0, 4)));
-		const wave = String.fromCharCode(...new Uint8Array(input.data.slice(8, 12)));
-
-		if (riff !== 'RIFF' || wave !== 'WAVE') {
+		let metadata: WavMetadata;
+		try {
+			metadata = this.readWavMetadata(input.data);
+		} catch (error) {
 			validation.isValid = false;
-			validation.error = 'Invalid WAV file format';
+			validation.error = error instanceof Error ? error.message : 'Invalid WAV file format';
 			return Promise.resolve(validation);
 		}
-
-		// Extract WAV properties
-		const sampleRate = header.getUint32(24, true);
-		const bitsPerSample = header.getUint16(34, true);
-		const channels = header.getUint16(22, true);
-		const dataSize = header.getUint32(40, true);
-		const duration = dataSize / (sampleRate * channels * (bitsPerSample / 8));
+		const { sampleRate, bitsPerSample, channels, duration } = metadata;
 
 		validation.properties = {
 			format: 'wav',
@@ -71,15 +72,15 @@ export class FallbackEngine extends AudioProcessor {
 			bitrate: sampleRate * channels * bitsPerSample
 		};
 
-				// Warnings for non-optimal settings
-				if (sampleRate !== this.config.targetSampleRate) {
-					validation.warnings ??= [];
-					validation.warnings.push(`Sample rate ${sampleRate}Hz will be passed as-is (no resampling in fallback mode)`);
-				}
-				if (channels !== 1) {
-					validation.warnings ??= [];
-					validation.warnings.push(`${channels} channels detected (fallback mode does not support mixing to mono)`);
-				}
+		// Warnings for non-optimal settings
+		if (sampleRate !== this.config.targetSampleRate) {
+			validation.warnings ??= [];
+			validation.warnings.push(`Sample rate ${sampleRate}Hz will be passed as-is (no resampling in fallback mode)`);
+		}
+		if (channels !== 1) {
+			validation.warnings ??= [];
+			validation.warnings.push(`${channels} channels detected (fallback mode does not support mixing to mono)`);
+		}
 
 		return Promise.resolve(validation);
 	}
@@ -88,19 +89,10 @@ export class FallbackEngine extends AudioProcessor {
 	 * Decode audio - in fallback mode, just parse WAV header
 	 */
 	decode(input: AudioInput): Promise<AudioBuffer> {
-		// Since we only support WAV, we can create a simple AudioBuffer-like object
+		const metadata = this.readWavMetadata(input.data);
+		const { sampleRate, channels, bitsPerSample, samplesPerChannel, duration } = metadata;
 		const view = new DataView(input.data);
-
-		// Read WAV header
-		const sampleRate = view.getUint32(24, true);
-		const channels = view.getUint16(22, true);
-		const bitsPerSample = view.getUint16(34, true);
-		const dataSize = view.getUint32(40, true);
-
-		// Calculate properties
 		const bytesPerSample = bitsPerSample / 8;
-		const samplesPerChannel = dataSize / (channels * bytesPerSample);
-		const duration = samplesPerChannel / sampleRate;
 
 		// Create pseudo AudioBuffer
 		const audioBuffer = {
@@ -119,12 +111,9 @@ export class FallbackEngine extends AudioProcessor {
 					if (bitsPerSample === 16) {
 						const sample = view.getInt16(sampleOffset, true) / 32768;
 						channelData[i] = sample;
-					} else if (bitsPerSample === 8) {
+					} else {
 						const sample = (view.getUint8(sampleOffset) - 128) / 128;
 						channelData[i] = sample;
-					} else {
-						// Unsupported bit depth, use silence
-						channelData[i] = 0;
 					}
 				}
 
@@ -201,5 +190,49 @@ export class FallbackEngine extends AudioProcessor {
 
 		return input.extension.toLowerCase() === 'wav' &&
 		       input.size < maxSizeBytes;
+	}
+
+	private readWavMetadata(data: ArrayBuffer): WavMetadata {
+		if (data.byteLength < 44) {
+			throw new Error('WAV header is truncated');
+		}
+		const view = new DataView(data, 0, 44);
+		const readTag = (offset: number) => String.fromCharCode(
+			view.getUint8(offset),
+			view.getUint8(offset + 1),
+			view.getUint8(offset + 2),
+			view.getUint8(offset + 3)
+		);
+		if (readTag(0) !== 'RIFF' || readTag(8) !== 'WAVE' || readTag(12) !== 'fmt ' || readTag(36) !== 'data') {
+			throw new Error('Invalid WAV file format');
+		}
+		const audioFormat = view.getUint16(20, true);
+		const channels = view.getUint16(22, true);
+		const sampleRate = view.getUint32(24, true);
+		const bits = view.getUint16(34, true);
+		const dataSize = view.getUint32(40, true);
+		if (audioFormat !== 1 || (bits !== 8 && bits !== 16)) {
+			throw new Error('Fallback processor supports only 8-bit or 16-bit PCM WAV');
+		}
+		if (channels < 1 || channels > 2 || sampleRate < 8_000 || sampleRate > 192_000) {
+			throw new Error('WAV channel count or sample rate is invalid');
+		}
+		if (dataSize > data.byteLength - 44) {
+			throw new Error('WAV data chunk exceeds the file size');
+		}
+		const bitsPerSample = bits;
+		const bytesPerFrame = channels * (bitsPerSample / 8);
+		if (dataSize % bytesPerFrame !== 0) {
+			throw new Error('WAV data chunk is not frame-aligned');
+		}
+		const samplesPerChannel = dataSize / bytesPerFrame;
+		return {
+			sampleRate,
+			bitsPerSample,
+			channels,
+			dataSize,
+			samplesPerChannel,
+			duration: samplesPerChannel / sampleRate
+		};
 	}
 }

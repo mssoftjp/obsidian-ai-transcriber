@@ -72,6 +72,60 @@ function createEmptyDictionary(): UserDictionary {
 
 const DEFAULT_SETTINGS_CORE = (({ userDictionaries: _ignored, ...rest }) => rest)(DEFAULT_API_SETTINGS);
 
+function normalizeStoredSettings(data: Record<string, unknown>): StoredSettings {
+	const getString = (key: keyof StoredSettings): string => {
+		const value = data[key];
+		const fallback = DEFAULT_SETTINGS_CORE[key];
+		return typeof value === 'string' ? value : String(fallback);
+	};
+	const getBoolean = (key: keyof StoredSettings): boolean => {
+		const value = data[key];
+		const fallback = DEFAULT_SETTINGS_CORE[key];
+		return typeof value === 'boolean' ? value : Boolean(fallback);
+	};
+	const modelValue = data['model'];
+	const model = modelValue === 'whisper-1'
+		|| modelValue === 'whisper-1-ts'
+		|| modelValue === 'gpt-4o-transcribe'
+		|| modelValue === 'gpt-4o-mini-transcribe'
+		? modelValue
+		: DEFAULT_SETTINGS_CORE.model;
+	const vadValue = data['vadMode'];
+	const vadMode = vadValue === 'server' || vadValue === 'local' || vadValue === 'disabled'
+		? vadValue
+		: DEFAULT_SETTINGS_CORE.vadMode;
+
+	const normalized: StoredSettings = {
+		language: getString('language'),
+		outputFormat: getString('outputFormat'),
+		openaiApiKey: getString('openaiApiKey'),
+		model,
+		vadMode,
+		postProcessingEnabled: getBoolean('postProcessingEnabled'),
+		dictionaryCorrectionEnabled: getBoolean('dictionaryCorrectionEnabled'),
+		transcriptionOutputFolder: getString('transcriptionOutputFolder'),
+		debugMode: getBoolean('debugMode')
+	};
+	if (typeof data['postProcessingModel'] === 'string') {
+		normalized.postProcessingModel = data['postProcessingModel'];
+	}
+	return normalized;
+}
+
+function isValidStoredSettings(data: Record<string, unknown>): boolean {
+	const normalized = normalizeStoredSettings(data);
+	return data['language'] === normalized.language
+		&& data['outputFormat'] === normalized.outputFormat
+		&& data['openaiApiKey'] === normalized.openaiApiKey
+		&& data['model'] === normalized.model
+		&& data['vadMode'] === normalized.vadMode
+		&& data['postProcessingEnabled'] === normalized.postProcessingEnabled
+		&& data['dictionaryCorrectionEnabled'] === normalized.dictionaryCorrectionEnabled
+		&& data['transcriptionOutputFolder'] === normalized.transcriptionOutputFolder
+		&& data['debugMode'] === normalized.debugMode
+		&& (data['postProcessingModel'] === undefined || typeof data['postProcessingModel'] === 'string');
+}
+
 function getDefaultState(): PluginState {
 	return {
 		meta: {
@@ -254,10 +308,7 @@ export class PluginStateRepository {
 		};
 		merged.settings = {
 			version: SETTINGS_VERSION,
-			data: {
-				...merged.settings.data,
-				...settingsData
-			}
+			data: normalizeStoredSettings(settingsData)
 		};
 		merged.dictionaries = {
 			version: DICTIONARIES_VERSION,
@@ -274,11 +325,8 @@ export class PluginStateRepository {
 
 	private createStateFromLegacy(raw: Partial<APITranscriptionSettings>): PluginState {
 		const state = getDefaultState();
-		const { userDictionaries, ...rest } = raw;
-		state.settings.data = {
-			...state.settings.data,
-			...rest
-		};
+		const { userDictionaries } = raw;
+		state.settings.data = normalizeStoredSettings(raw as Record<string, unknown>);
 		if (userDictionaries) {
 			state.dictionaries.languages = this.migrateDictionaryFormat(
 				this.ensureAllLanguages(userDictionaries)
@@ -313,6 +361,7 @@ export class PluginStateRepository {
 			&& meta['version'] === STATE_VERSION
 			&& settings['version'] === SETTINGS_VERSION
 			&& isRecord(settings['data'])
+			&& isValidStoredSettings(settings['data'])
 			&& dictionaries['version'] === DICTIONARIES_VERSION
 			&& isRecord(dictionaries['languages'])
 			&& history['version'] === HISTORY_VERSION

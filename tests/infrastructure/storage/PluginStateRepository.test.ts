@@ -59,6 +59,28 @@ describe('PluginStateRepository', () => {
 		expect(plugin.saveData).not.toHaveBeenCalled();
 	});
 
+	it('normalizes malformed persisted setting types and persists the repair', async () => {
+		const seedPlugin = createPlugin(null);
+		const seedRepository = new PluginStateRepository(seedPlugin);
+		const state = await seedRepository.initialize();
+		const malformed = structuredClone(state) as unknown as {
+			settings: { data: Record<string, unknown> };
+		};
+		malformed.settings.data['openaiApiKey'] = 42;
+		malformed.settings.data['model'] = 'unsupported-model';
+		malformed.settings.data['postProcessingEnabled'] = 'yes';
+		const plugin = createPlugin(malformed);
+		const repository = new PluginStateRepository(plugin);
+
+		await repository.initialize();
+
+		const settings = repository.getSettings();
+		expect(settings.openaiApiKey).toBe(DEFAULT_API_SETTINGS.openaiApiKey);
+		expect(settings.model).toBe(DEFAULT_API_SETTINGS.model);
+		expect(settings.postProcessingEnabled).toBe(DEFAULT_API_SETTINGS.postProcessingEnabled);
+		expect(plugin.saveData).toHaveBeenCalledTimes(1);
+	});
+
 	it('serializes overlapping settings and history writes', async () => {
 		const plugin = createPlugin(null);
 		const repository = new PluginStateRepository(plugin);
