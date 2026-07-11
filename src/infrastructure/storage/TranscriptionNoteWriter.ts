@@ -8,6 +8,7 @@ export interface TranscriptionNoteInput {
 	requestedPath: string;
 	content: string;
 	frontmatter: Record<string, unknown>;
+	signal?: AbortSignal;
 }
 
 export interface TranscriptionNoteResult {
@@ -22,24 +23,35 @@ export class TranscriptionNoteWriter {
 	constructor(private readonly app: App) {}
 
 	async create(input: TranscriptionNoteInput): Promise<TranscriptionNoteResult> {
+		if (input.signal?.aborted) {
+			throw new DOMException('Transcription operation was cancelled', 'AbortError');
+		}
+
 		const requestedPath = normalizePath(input.requestedPath);
 		if (!requestedPath) {
 			throw new Error('A transcription output path is required');
 		}
 
 		const path = this.allocateAvailablePath(requestedPath);
+		if (input.signal?.aborted) {
+			throw new DOMException('Transcription operation was cancelled', 'AbortError');
+		}
 		const file = await this.app.vault.create(path, input.content);
 		let metadataWritten = true;
-		try {
-			await this.app.fileManager.processFrontMatter(file, (frontmatter) => {
-				Object.assign(frontmatter, input.frontmatter);
-			});
-		} catch (error) {
+		if (input.signal?.aborted) {
 			metadataWritten = false;
-			this.logger.warn('Transcription note body was saved, but metadata could not be updated', {
-				path,
-				error: error instanceof Error ? error.message : String(error)
-			});
+		} else {
+			try {
+				await this.app.fileManager.processFrontMatter(file, (frontmatter) => {
+					Object.assign(frontmatter, input.frontmatter);
+				});
+			} catch (error) {
+				metadataWritten = false;
+				this.logger.warn('Transcription note body was saved, but metadata could not be updated', {
+					path,
+					error: error instanceof Error ? error.message : String(error)
+				});
+			}
 		}
 
 		return { file, path, metadataWritten };

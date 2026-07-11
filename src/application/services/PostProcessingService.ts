@@ -153,11 +153,12 @@ export class PostProcessingService {
 			}
 
 		} catch (error) {
-			this.logger.error('Post-processing failed', error);
-			if (error instanceof Error && error.name === 'AbortError') {
+			const isAborted = signal?.aborted ?? false;
+			if (isAborted || (error instanceof Error && error.name === 'AbortError')) {
 				throw error;
 			}
 
+			this.logger.error('Post-processing failed', error);
 			this.logger.error('Processing failed', error);
 
 			// Return original transcription on error

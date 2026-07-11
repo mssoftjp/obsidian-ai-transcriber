@@ -19,6 +19,12 @@ import type { TranscriptionOutcome } from './core/transcription/TranscriptionTyp
 import type { ProgressTracker } from './ui/ProgressTracker';
 import type { App, TFile } from 'obsidian';
 
+type TranscriptionResult = string | TranscriptionOutcome;
+type TranscriptionContinuation = (
+	result: TranscriptionResult,
+	signal: AbortSignal
+) => Promise<void>;
+
 /**
  * Legacy APITranscriber class maintained for backward compatibility
  * All functionality is delegated to the new TranscriptionController
@@ -44,7 +50,12 @@ export class APITranscriber {
 	 * Main transcription method
 	 * Delegates to TranscriptionController
 	 */
-	async transcribe(audioFile: TFile, startTime?: number, endTime?: number): Promise<string | TranscriptionOutcome> {
+	async transcribe(
+		audioFile: TFile,
+		startTime?: number,
+		endTime?: number,
+		onTranscribed?: TranscriptionContinuation
+	): Promise<TranscriptionResult> {
 		if (this.activeJob) {
 			throw new TranscriptionBusyError();
 		}
@@ -55,6 +66,7 @@ export class APITranscriber {
 			taskId: null
 		};
 		this.activeJob = job;
+		let downstreamStarted = false;
 
 		try {
 			// Progress setup belongs to this job and must release ownership if it fails.
@@ -85,6 +97,13 @@ export class APITranscriber {
 				job.abortController.signal
 			);
 			this.throwIfAborted(job);
+
+			// Keep the same job and AbortSignal alive through downstream processing.
+			if (onTranscribed) {
+				downstreamStarted = true;
+				await onTranscribed(result, job.abortController.signal);
+				this.throwIfAborted(job);
+			}
 
 			// Extract text for progress tracker
 			const resultText = typeof result === 'string' ? result : result.text;
@@ -120,6 +139,9 @@ export class APITranscriber {
 			}
 
 			// Handle other errors
+			if (downstreamStarted) {
+				throw error;
+			}
 			const userError = ErrorHandler.handleError(error as Error, 'transcription');
 			ErrorHandler.displayError(userError);
 			throw error;
@@ -135,10 +157,10 @@ export class APITranscriber {
 	/**
 	 * Cancel ongoing transcription
 	 */
-	cancelTranscription(): Promise<void> {
+	cancelTranscription(): Promise<boolean> {
 		const job = this.activeJob;
 		if (!job) {
-			return Promise.resolve();
+			return Promise.resolve(false);
 		}
 		job.abortController.abort();
 
@@ -147,7 +169,7 @@ export class APITranscriber {
 			this.progressTracker.cancelTask(job.taskId);
 			job.taskId = null;
 		}
-		return Promise.resolve();
+		return Promise.resolve(true);
 	}
 
 	isTranscribing(): boolean {

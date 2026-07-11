@@ -13,7 +13,7 @@ export const VIEW_TYPE_TRANSCRIPTION = 'ai-transcriber-view';
 // Define minimal interface for plugin to avoid any type
 interface TranscriptionPlugin {
 	transcriber?: {
-		cancelTranscription?: () => Promise<void>;
+		cancelTranscription?: () => Promise<boolean>;
 	};
 }
 
@@ -374,8 +374,10 @@ export class TranscriptionView extends ItemView {
 
 		// Cancel through the plugin's transcriber
 		if (this.plugin.transcriber && typeof this.plugin.transcriber.cancelTranscription === 'function') {
-			await this.plugin.transcriber.cancelTranscription();
-			new Notice(t('notices.transcriptionCancelled'));
+			const cancelled = await this.plugin.transcriber.cancelTranscription();
+			if (cancelled) {
+				new Notice(t('notices.transcriptionCancelled'));
+			}
 		} else {
 			new Notice(t('errors.general'));
 		}

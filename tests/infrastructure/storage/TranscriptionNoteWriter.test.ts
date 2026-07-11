@@ -13,6 +13,7 @@ interface WriterInstance {
 		requestedPath: string;
 		content: string;
 		frontmatter: Record<string, unknown>;
+		signal?: AbortSignal;
 	}): Promise<WriterResult>;
 }
 
@@ -113,5 +114,52 @@ describe('TranscriptionNoteWriter', () => {
 			frontmatter: { transcription_status: 'complete' }
 		})).resolves.toMatchObject({ path: 'out.md', metadataWritten: false });
 		expect(harness.create).toHaveBeenCalledWith('out.md', '# complete body');
+	});
+
+	it('does not create a note when the operation was already cancelled', async () => {
+		const Writer = loadWriter();
+		expect(Writer).not.toBeNull();
+		if (!Writer) {
+			return;
+		}
+		const harness = createHarness();
+		const writer = new Writer(harness.app);
+		const abortController = new AbortController();
+		abortController.abort();
+
+		await expect(writer.create({
+			requestedPath: 'out.md',
+			content: '# should not be written',
+			frontmatter: {},
+			signal: abortController.signal
+		})).rejects.toMatchObject({ name: 'AbortError' });
+		expect(harness.create).not.toHaveBeenCalled();
+		expect(harness.processFrontMatter).not.toHaveBeenCalled();
+	});
+
+	it('does not begin a metadata write when cancellation wins during note creation', async () => {
+		const Writer = loadWriter();
+		expect(Writer).not.toBeNull();
+		if (!Writer) {
+			return;
+		}
+		const harness = createHarness();
+		const writer = new Writer(harness.app);
+		const abortController = new AbortController();
+		harness.create.mockImplementation(async (path: string) => {
+			abortController.abort();
+			const file = new TFile();
+			Object.assign(file, { path, name: path });
+			return file;
+		});
+
+		await expect(writer.create({
+			requestedPath: 'out.md',
+			content: '# body write already began',
+			frontmatter: { transcription_status: 'complete' },
+			signal: abortController.signal
+		})).resolves.toMatchObject({ metadataWritten: false });
+		expect(harness.create).toHaveBeenCalledTimes(1);
+		expect(harness.processFrontMatter).not.toHaveBeenCalled();
 	});
 });

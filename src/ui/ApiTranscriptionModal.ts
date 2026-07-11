@@ -23,6 +23,12 @@ import type { APITranscriber } from '../ApiTranscriber';
 import type { TranscriptionMetaInfo } from '../core/transcription/TranscriptionTypes';
 import type { WakeLockSentinel } from '../types/global';
 
+interface CompletedTranscription {
+	transcription: string;
+	modelUsed: string;
+	isPartialResult: boolean;
+}
+
 export class APITranscriptionModal extends Modal {
 	private parentComponent: Component;
 	private transcriber: APITranscriber;
@@ -326,7 +332,10 @@ export class APITranscriptionModal extends Modal {
 		this.updateStatus(t('modal.transcription.processing'));
 
 		try {
-			await this.transcriber.cancelTranscription();
+			const cancelled = await this.transcriber.cancelTranscription();
+			if (!cancelled) {
+				return;
+			}
 			this.updateStatus(t('statusBar.cancelled'));
 
 			// Reset button states
@@ -442,35 +451,24 @@ export class APITranscriptionModal extends Modal {
 			// Get time range if enabled
 			const { startTime, endTime } = this.getTimeRange();
 
-			// Transcribe using API
-				let transcription = '';
-				let modelUsed = '';
-				let isPartialResult = false;
-				const result = await this.transcriber.transcribe(this.audioFile, startTime, endTime);
-				if (typeof result === 'string') {
-					transcription = result;
-					modelUsed = this.settings.model;
-				} else {
-					transcription = result.text;
-					modelUsed = result.modelUsed;
-					isPartialResult = result.partial === true;
-				}
-
-			if (!transcription || (transcription.trim().length === 0 && !isPartialResult)) {
-				throw new Error(t('errors.messages.noTranscriptionText'));
-			}
-
-				// Update progress to 70% before processing
-				if (this.progressTracker) {
-					const currentTask = this.progressTracker.getCurrentTask();
-					if (currentTask) {
-						const progress = progressCalculator.postProcessingProgress('start');
-						this.progressTracker.updateProgress(currentTask.id, currentTask.completedChunks, t('modal.transcription.postProcessing'), progress);
+			const completed = await this.transcribeAndInsert(
+				startTime,
+				endTime,
+				true,
+				() => {
+					if (this.progressTracker) {
+						const currentTask = this.progressTracker.getCurrentTask();
+						if (currentTask) {
+							const progress = progressCalculator.postProcessingProgress('start');
+							this.progressTracker.updateProgress(currentTask.id, currentTask.completedChunks, t('modal.transcription.postProcessing'), progress);
+						}
 					}
 				}
-
-			// Insert transcription to the active note
-				await this.insertTranscription(transcription, modelUsed, isPartialResult);
+			);
+			if (!completed) {
+				return;
+			}
+			const { transcription, isPartialResult } = completed;
 
 				// Update to 100% after completion
 				if (this.progressTracker) {
@@ -544,34 +542,21 @@ export class APITranscriptionModal extends Modal {
 
 		this.updateStatus(t('modal.transcription.transcribing'));
 
-		// Transcribe using API with dictionary context
-			let transcription = '';
-			let modelUsed = '';
-			let isPartialResult = false;
-			const result = await this.transcriber.transcribe(this.audioFile, startTime, endTime);
-			if (typeof result === 'string') {
-				transcription = result;
-				modelUsed = this.settings.model;
-			} else {
-				transcription = result.text;
-				modelUsed = result.modelUsed;
-				isPartialResult = result.partial === true;
+		const isPostProcessingEnabled = this.settings.postProcessingEnabled && this.metaInfo?.enablePostProcessing === true;
+		const completed = await this.transcribeAndInsert(
+			startTime,
+			endTime,
+			false,
+			() => {
+				const saveProgress = isPostProcessingEnabled ? 70 : 80;
+				this.updateStatus(t('modal.transcription.savingResults'));
+				this.updateProgress(saveProgress);
 			}
-
-		if (!transcription || transcription.trim().length === 0) {
-			throw new Error(t('errors.messages.noTranscriptionText'));
+		);
+		if (!completed) {
+			return;
 		}
-
-			// Adjust progress based on whether post-processing is enabled
-			// If post-processing is enabled and will be performed: 70%
-			// Otherwise: 80% (matching the transcription callback range)
-			const isPostProcessingEnabled = this.settings.postProcessingEnabled && this.metaInfo?.enablePostProcessing === true;
-			const saveProgress = isPostProcessingEnabled ? 70 : 80;
-			this.updateStatus(t('modal.transcription.savingResults'));
-			this.updateProgress(saveProgress);
-
-
-			await this.insertTranscription(transcription, modelUsed, isPartialResult);
+		const { transcription, modelUsed, isPartialResult } = completed;
 
 		// Only update to 100% if post-processing is not happening (it will be updated in insertTranscription)
 		const shouldShowCompletionNotice = !this.settings.postProcessingEnabled || !this.metaInfo?.enablePostProcessing;
@@ -594,6 +579,48 @@ export class APITranscriptionModal extends Modal {
 		this.getTimerWindow().setTimeout(() => {
 			this.close();
 		}, 2000);
+	}
+
+	private async transcribeAndInsert(
+		startTime: number | undefined,
+		endTime: number | undefined,
+		allowEmptyPartial: boolean,
+		beforeInsert: () => void
+	): Promise<CompletedTranscription | null> {
+		let completed: CompletedTranscription | null = null;
+		await this.transcriber.transcribe(
+			this.audioFile,
+			startTime,
+			endTime,
+			async (result, signal) => {
+				const details: CompletedTranscription = typeof result === 'string'
+					? {
+						transcription: result,
+						modelUsed: this.settings.model,
+						isPartialResult: false
+					}
+					: {
+						transcription: result.text,
+						modelUsed: result.modelUsed,
+						isPartialResult: result.partial === true
+					};
+
+				const hasText = details.transcription.trim().length > 0;
+				if (!hasText && !(allowEmptyPartial && details.isPartialResult)) {
+					throw new Error(t('errors.messages.noTranscriptionText'));
+				}
+
+				beforeInsert();
+				await this.insertTranscription(
+					details.transcription,
+					details.modelUsed,
+					details.isPartialResult,
+					signal
+				);
+				completed = details;
+			}
+		);
+		return completed;
 	}
 
 
@@ -625,7 +652,13 @@ export class APITranscriptionModal extends Modal {
 
 
 
-	private async insertTranscription(transcription: string, modelUsed?: string, isPartialResult: boolean = false) {
+	private async insertTranscription(
+		transcription: string,
+		modelUsed: string,
+		isPartialResult: boolean,
+		signal: AbortSignal
+	) {
+		this.throwIfOperationAborted(signal);
 		this.logger.info('Starting transcription insertion', {
 			modelUsed,
 			transcriptionLength: transcription.length,
@@ -646,7 +679,7 @@ export class APITranscriptionModal extends Modal {
 				const postProcessingService = new PostProcessingService(this.settings);
 
 				// Processing stage - delay slightly so user can see 70%
-				await this.delay(300);
+				await this.delay(300, signal);
 				if (this.progressCalculator) {
 					this.updateProgress(this.progressCalculator.postProcessingProgress('processing'));
 					// Update progress tracker for background processing
@@ -660,8 +693,10 @@ export class APITranscriptionModal extends Modal {
 
 					const processed = await postProcessingService.processTranscription(
 						transcription,
-						metaInfo
+						metaInfo,
+						signal
 					);
+				this.throwIfOperationAborted(signal);
 
 				// Use processed text
 				transcription = processed.processedText;
@@ -683,6 +718,9 @@ export class APITranscriptionModal extends Modal {
 
 				// Don't update to 100% yet - wait until file is saved
 			} catch (error) {
+				if (signal.aborted || (error instanceof DOMException && error.name === 'AbortError')) {
+					throw error;
+				}
 				this.logger.error('Post-processing failed', error);
 				new Notice(t('notices.postProcessingFailed'));
 				// Update to 90% on error (ready for save)
@@ -727,13 +765,16 @@ export class APITranscriptionModal extends Modal {
 		let targetFile: TFile;
 		let filePath: string;
 		try {
+			this.throwIfOperationAborted(signal);
 			if (outputFolder) {
 				await this.ensureFolderPath(outputFolder);
 			}
+			this.throwIfOperationAborted(signal);
 			const writer = new TranscriptionNoteWriter(this.app);
 			const result = await writer.create({
 				requestedPath,
 				content: formattedTranscription,
+				signal,
 				frontmatter: {
 					transcription_status: 'complete',
 					transcription_timestamp: localTimestamp,
@@ -745,6 +786,9 @@ export class APITranscriptionModal extends Modal {
 			targetFile = result.file;
 			filePath = result.path;
 		} catch (writeError) {
+			if (signal.aborted || (writeError instanceof DOMException && writeError.name === 'AbortError')) {
+				throw writeError;
+			}
 			const err = writeError instanceof Error ? writeError : new Error(this.formatUnknownError(writeError));
 			this.logger.error('Failed to create transcription note', { error: err.message, requestedPath });
 			new TranscriptionRecoveryModal(this.app, formattedTranscription, requestedPath, err.message).open();
@@ -752,6 +796,7 @@ export class APITranscriptionModal extends Modal {
 			throw new Error(t('errors.messages.fileInsertionFailed'));
 		}
 
+		this.throwIfOperationAborted(signal);
 		if (this.progressTracker) {
 			const currentTask = this.progressTracker.getCurrentTask();
 			if (currentTask) {
@@ -759,6 +804,7 @@ export class APITranscriptionModal extends Modal {
 			}
 		}
 
+		this.throwIfOperationAborted(signal);
 		try {
 			const leaf = this.app.workspace.getLeaf(false);
 			await leaf.openFile(targetFile);
@@ -768,6 +814,7 @@ export class APITranscriptionModal extends Modal {
 			this.logger.warn('Failed to open created file', { error: err.message, filePath });
 		}
 
+		this.throwIfOperationAborted(signal);
 		try {
 			this.app.workspace.trigger('transcription:completed', {
 				file: targetFile,
@@ -829,8 +876,30 @@ export class APITranscriptionModal extends Modal {
 		}
 	}
 
-	private delay(ms: number): Promise<void> {
-		return new Promise(resolve => this.getTimerWindow().setTimeout(resolve, ms));
+	private delay(ms: number, signal: AbortSignal): Promise<void> {
+		if (signal.aborted) {
+			return Promise.reject(new DOMException('Transcription operation was cancelled', 'AbortError'));
+		}
+
+		return new Promise((resolve, reject) => {
+			const timerWindow = this.getTimerWindow();
+			const timerId = timerWindow.setTimeout(() => {
+				signal.removeEventListener('abort', abortHandler);
+				resolve();
+			}, ms);
+			const abortHandler = () => {
+				timerWindow.clearTimeout(timerId);
+				signal.removeEventListener('abort', abortHandler);
+				reject(new DOMException('Transcription operation was cancelled', 'AbortError'));
+			};
+			signal.addEventListener('abort', abortHandler, { once: true });
+		});
+	}
+
+	private throwIfOperationAborted(signal: AbortSignal): void {
+		if (signal.aborted) {
+			throw new DOMException('Transcription operation was cancelled', 'AbortError');
+		}
 	}
 
 	private getTimerWindow(): Window {

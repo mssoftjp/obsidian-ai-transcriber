@@ -89,6 +89,62 @@ describe('APITranscriber job ownership', () => {
 		await expect(transcriber.transcribe(createFile('next'))).resolves.toBe('next result');
 	});
 
+	it('keeps cancellation ownership through downstream continuation', async () => {
+		const continuationStarted = deferred<AbortSignal>();
+		const continuationRelease = deferred<void>();
+		const app = new App();
+		const transcriber = new APITranscriber(app, structuredClone(DEFAULT_API_SETTINGS));
+		const controller = {
+			transcribe: jest.fn().mockResolvedValue('primary result')
+		};
+		(transcriber as unknown as { controller: typeof controller }).controller = controller;
+
+		const operation = transcriber.transcribe(
+			createFile('continued'),
+			undefined,
+			undefined,
+			async (_result, signal) => {
+				continuationStarted.resolve(signal);
+				await continuationRelease.promise;
+				if (signal.aborted) {
+					throw new DOMException('cancelled', 'AbortError');
+				}
+			}
+		);
+		const signal = await continuationStarted.promise;
+
+		expect(transcriber.isTranscribing()).toBe(true);
+		await expect(transcriber.transcribe(createFile('blocked'))).rejects.toMatchObject({
+			code: 'TRANSCRIPTION_BUSY'
+		});
+		await expect(transcriber.cancelTranscription()).resolves.toBe(true);
+		expect(signal.aborted).toBe(true);
+		continuationRelease.resolve(undefined);
+		await expect(operation).resolves.toBe('');
+		expect(transcriber.isTranscribing()).toBe(false);
+		await expect(transcriber.cancelTranscription()).resolves.toBe(false);
+	});
+
+	it('returns the primary result after a successful downstream continuation', async () => {
+		const app = new App();
+		const transcriber = new APITranscriber(app, structuredClone(DEFAULT_API_SETTINGS));
+		const controller = {
+			transcribe: jest.fn().mockResolvedValue('primary result')
+		};
+		(transcriber as unknown as { controller: typeof controller }).controller = controller;
+		const continuation = jest.fn().mockResolvedValue(undefined);
+
+		await expect(transcriber.transcribe(
+			createFile('continued'),
+			undefined,
+			undefined,
+			continuation
+		)).resolves.toBe('primary result');
+		expect(continuation).toHaveBeenCalledTimes(1);
+		expect((continuation.mock.calls[0]?.[1] as AbortSignal).aborted).toBe(false);
+		expect(transcriber.isTranscribing()).toBe(false);
+	});
+
 	it('releases job ownership when progress task setup fails', async () => {
 		const app = new App();
 		const progressTracker = {

@@ -90,7 +90,8 @@ export class PostProcessingClient extends ApiClient {
 				return result;
 
 			} catch (error: unknown) {
-			if (error instanceof Error && error.name === 'AbortError') {
+			const isAborted = signal?.aborted ?? false;
+			if (isAborted || (error instanceof Error && error.name === 'AbortError')) {
 				throw error;
 			}
 
