@@ -1,7 +1,12 @@
 import { GPT4oTranscriptionStrategy } from '../../../src/application/strategies/GPT4oTranscriptionStrategy';
 
+import type { AudioChunk } from '../../../src/core/audio/AudioTypes';
 import type { TranscriptionService } from '../../../src/core/transcription/TranscriptionService';
-import type { TranscriptionResult } from '../../../src/core/transcription/TranscriptionTypes';
+import type {
+  ModelSpecificOptions,
+  TranscriptionOptions,
+  TranscriptionResult
+} from '../../../src/core/transcription/TranscriptionTypes';
 
 describe('GPT4oTranscriptionStrategy', () => {
   const originalConsoleDebug = console.debug;
@@ -28,6 +33,42 @@ describe('GPT4oTranscriptionStrategy', () => {
     const strategy = new GPT4oTranscriptionStrategy(service);
 
     expect(strategy.maxConcurrency).toBe(1);
+  });
+
+  it('preserves previous context across internal wave-group boundaries', async () => {
+    const transcribe = jest.fn(async (
+      chunk: AudioChunk,
+      _options: TranscriptionOptions,
+      _modelOptions?: ModelSpecificOptions
+    ): Promise<TranscriptionResult> => ({
+      id: chunk.id,
+      text: `チャンク${chunk.id + 1}の本文と固有語です。`,
+      startTime: chunk.startTime,
+      endTime: chunk.endTime,
+      success: true
+    }));
+    const service = {
+      modelId: 'gpt-4o-transcribe',
+      transcribe
+    } as unknown as TranscriptionService;
+    const chunks: AudioChunk[] = Array.from({ length: 6 }, (_, id) => ({
+      id,
+      data: new ArrayBuffer(8),
+      startTime: id * 270,
+      endTime: id * 270 + 300,
+      hasOverlap: id > 0,
+      overlapDuration: id > 0 ? 30 : 0
+    }));
+
+    const strategy = new GPT4oTranscriptionStrategy(service);
+    await strategy.processChunks(chunks, { language: 'ja' });
+
+    expect(transcribe).toHaveBeenCalledTimes(6);
+    expect(transcribe.mock.calls[0]?.[2]).toBeUndefined();
+    for (let i = 1; i < transcribe.mock.calls.length; i++) {
+      expect(transcribe.mock.calls[i]?.[2]?.gpt4o?.previousContext)
+        .toContain(`チャンク${i}の本文と固有語です。`);
+    }
   });
 
   it('passes requested language to cleanText when language is explicit', async () => {

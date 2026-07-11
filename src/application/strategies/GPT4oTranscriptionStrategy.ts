@@ -23,6 +23,10 @@ interface AdaptiveWaveState {
 	cooldownUntilMs: number;
 }
 
+interface ContinuationState {
+	previousChunkText: string;
+}
+
 export class GPT4oTranscriptionStrategy extends TranscriptionStrategy {
 	readonly strategyName = 'GPT-4o Wave Parallel Processing';
 	readonly processingMode = 'batch' as const;
@@ -94,6 +98,7 @@ export class GPT4oTranscriptionStrategy extends TranscriptionStrategy {
 		const totalDurationSeconds = this.getTotalDurationSeconds(chunks);
 
 		const progressState = { completedChunks: 0 };
+		const continuationState: ContinuationState = { previousChunkText: '' };
 		let nextGroupIndex = 0;
 		const initialConcurrency = planWaveConcurrency(totalDurationSeconds, totalGroups, this.maxConcurrency);
 		const adaptiveState: AdaptiveWaveState = {
@@ -121,7 +126,7 @@ export class GPT4oTranscriptionStrategy extends TranscriptionStrategy {
 					continue;
 				}
 				try {
-					await this.processGroup(group, currentGroupIndex, totalGroups, totalChunks, options, startTime, results, progressState, adaptiveState);
+					await this.processGroup(group, currentGroupIndex, totalGroups, totalChunks, options, startTime, results, progressState, adaptiveState, continuationState);
 				} finally {
 					this.releaseGroupSlot(adaptiveState);
 				}
@@ -226,10 +231,9 @@ export class GPT4oTranscriptionStrategy extends TranscriptionStrategy {
 		startTime: number,
 		results: TranscriptionResult[],
 		progressState: { completedChunks: number },
-		adaptiveState: AdaptiveWaveState
+		adaptiveState: AdaptiveWaveState,
+		continuationState: ContinuationState
 	): Promise<void> {
-		let previousChunkText = '';
-
 		for (let i = 0; i < group.length; i++) {
 			if (this.abortSignal?.aborted) {
 				return;
@@ -253,17 +257,18 @@ export class GPT4oTranscriptionStrategy extends TranscriptionStrategy {
 					success: false,
 					error: errorMessage
 				});
-				previousChunkText = '';
+				continuationState.previousChunkText = '';
 				progressState.completedChunks++;
 				this.reportWaveProgress(progressState.completedChunks, groupIndex, totalGroups, chunk.id, totalChunks, startTime);
 				continue;
 			}
 
-			// Process chunk with previous context (within the group only)
+			// Serial processing preserves the immediately preceding chunk context
+			// across internal group boundaries.
 			let previousContext: string | undefined;
-			if (previousChunkText) {
+			if (continuationState.previousChunkText) {
 				const maxContextChars = getModelConfig(this.transcriptionService.modelId).contextWindowSize;
-				const lastSentences = this.extractLastSentences(previousChunkText, maxContextChars);
+				const lastSentences = this.extractLastSentences(continuationState.previousChunkText, maxContextChars);
 				if (lastSentences) {
 					previousContext = lastSentences;
 				}
@@ -273,11 +278,11 @@ export class GPT4oTranscriptionStrategy extends TranscriptionStrategy {
 			results.push(result);
 
 			if (result.success && result.text) {
-				previousChunkText = this.sanitizeContinuationContext(result.text, options.language);
+				continuationState.previousChunkText = this.sanitizeContinuationContext(result.text, options.language);
 			} else {
 				// If a chunk fails, avoid using stale context from earlier chunks.
 				// Treat the next chunk as a "new start" so it can recover overlap content.
-				previousChunkText = '';
+				continuationState.previousChunkText = '';
 			}
 
 			progressState.completedChunks++;
