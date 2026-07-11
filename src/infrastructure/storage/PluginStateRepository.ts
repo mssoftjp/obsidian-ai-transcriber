@@ -51,6 +51,10 @@ function deepClone<T>(value: T): T {
 	return JSON.parse(JSON.stringify(value)) as T;
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
 function cloneStoredSettings(settings: StoredSettings): StoredSettings {
 	return deepClone(settings);
 }
@@ -93,6 +97,7 @@ function getDefaultState(): PluginState {
 export class PluginStateRepository {
 	private state: PluginState = getDefaultState();
 	private initialized = false;
+	private writeQueue: Promise<void> = Promise.resolve();
 
 	constructor(private readonly plugin: Plugin) {}
 
@@ -102,14 +107,20 @@ export class PluginStateRepository {
 		}
 
 		const raw: unknown = await this.plugin.loadData();
-		if (this.isPluginState(raw)) {
+		let shouldPersist = false;
+		if (this.isSegmentedState(raw)) {
 			this.state = this.mergeWithDefaults(raw);
-		} else if (raw && typeof raw === 'object') {
+			shouldPersist = !this.isCurrentPluginState(raw);
+		} else if (isRecord(raw)) {
 			this.state = this.createStateFromLegacy(raw as Partial<APITranscriptionSettings>);
+			shouldPersist = true;
 		} else {
 			this.state = getDefaultState();
+			shouldPersist = true;
 		}
-		await this.persistState();
+		if (shouldPersist) {
+			await this.persistState();
+		}
 		this.initialized = true;
 		return this.state;
 	}
@@ -146,62 +157,72 @@ export class PluginStateRepository {
 		await this.persistState();
 	}
 
-	private ensureAllLanguages(dictionaries: LanguageDictionaries | Partial<LanguageDictionaries>): LanguageDictionaries {
-		const ensure = (dict?: UserDictionary): UserDictionary => {
-			if (!dict) {
+	private ensureAllLanguages(dictionaries: unknown): LanguageDictionaries {
+		const dictionaryRecord = isRecord(dictionaries) ? dictionaries : {};
+		const ensure = (dict: unknown): UserDictionary => {
+			if (!isRecord(dict)) {
 				return createEmptyDictionary();
 			}
+			const definiteCorrections = Array.isArray(dict['definiteCorrections'])
+				? dict['definiteCorrections'].filter(isRecord).map(entry => this.normalizeDictionaryEntry(entry))
+				: [];
+			const contextualCorrections = Array.isArray(dict['contextualCorrections'])
+				? dict['contextualCorrections'].filter(isRecord).map(entry => this.normalizeContextualEntry(entry))
+				: [];
 			return {
-				definiteCorrections: dict.definiteCorrections,
-				contextualCorrections: dict.contextualCorrections ?? []
+				definiteCorrections,
+				contextualCorrections
 			};
 		};
 
 		return {
-			ja: ensure(dictionaries.ja),
-			en: ensure(dictionaries.en),
-			zh: ensure(dictionaries.zh),
-			ko: ensure(dictionaries.ko)
+			ja: ensure(dictionaryRecord['ja']),
+			en: ensure(dictionaryRecord['en']),
+			zh: ensure(dictionaryRecord['zh']),
+			ko: ensure(dictionaryRecord['ko'])
 		};
 	}
 
 	private migrateDictionaryFormat(data: LanguageDictionaries): LanguageDictionaries {
-		const clone = this.ensureAllLanguages(data);
+		const clone = cloneDictionaries(data);
 		const languages: (keyof LanguageDictionaries)[] = ['ja', 'en', 'zh', 'ko'];
-			languages.forEach((lang) => {
-				clone[lang] = {
-					definiteCorrections: clone[lang].definiteCorrections.map(entry => this.normalizeDictionaryEntry(entry)),
-					contextualCorrections: (clone[lang].contextualCorrections ?? []).map(entry => this.normalizeContextualEntry(entry))
-				};
-			});
-			return clone;
-		}
+		languages.forEach((lang) => {
+			clone[lang] = {
+				definiteCorrections: clone[lang].definiteCorrections.map(entry => this.normalizeDictionaryEntry(entry)),
+				contextualCorrections: (clone[lang].contextualCorrections ?? []).map(entry => this.normalizeContextualEntry(entry))
+			};
+		});
+		return clone;
+	}
 
-	private normalizeDictionaryEntry(entry: DictionaryEntry | LegacyDictionaryEntry): DictionaryEntry {
-		const fromValue = (entry as LegacyDictionaryEntry).from;
+	private normalizeDictionaryEntry(entry: DictionaryEntry | LegacyDictionaryEntry | Record<string, unknown>): DictionaryEntry {
+		const fromValue = entry['from'];
+		const toValue = typeof entry['to'] === 'string' ? entry['to'] : '';
 		if (Array.isArray(fromValue)) {
 			return {
 				...entry,
-				from: fromValue
-			};
+				from: fromValue.filter((value): value is string => typeof value === 'string'),
+				to: toValue
+			} as DictionaryEntry;
 		}
 		const normalized = typeof fromValue === 'string'
 			? fromValue.split(',').map(value => value.trim()).filter(Boolean)
 			: [];
 		return {
 			...entry,
-			from: normalized
-		};
+			from: normalized,
+			to: toValue
+		} as DictionaryEntry;
 	}
 
-	private normalizeContextualEntry(entry: ContextualCorrection | LegacyContextualCorrection): ContextualCorrection {
+	private normalizeContextualEntry(entry: ContextualCorrection | LegacyContextualCorrection | Record<string, unknown>): ContextualCorrection {
 		const normalized = this.normalizeDictionaryEntry(entry) as ContextualCorrection;
-		const keywords = (entry as LegacyContextualCorrection).contextKeywords;
+		const keywords = entry['contextKeywords'];
 		if (keywords === undefined) {
 			return normalized;
 		}
 		if (Array.isArray(keywords)) {
-			normalized.contextKeywords = keywords;
+			normalized.contextKeywords = keywords.filter((value): value is string => typeof value === 'string');
 		} else if (typeof keywords === 'string' && keywords.length) {
 			normalized.contextKeywords = [keywords];
 		}
@@ -210,59 +231,97 @@ export class PluginStateRepository {
 
 	private async persistState(): Promise<void> {
 		this.state.meta.updatedAt = new Date().toISOString();
-		await this.plugin.saveData(this.state);
+		const snapshot = deepClone(this.state);
+		const write = this.writeQueue.then(async () => {
+			await this.plugin.saveData(snapshot);
+		});
+		this.writeQueue = write.catch(() => undefined);
+		await write;
 	}
 
-		private mergeWithDefaults(raw: PluginState): PluginState {
+	private mergeWithDefaults(raw: Record<string, unknown>): PluginState {
 		const merged = getDefaultState();
+		const meta = isRecord(raw['meta']) ? raw['meta'] : {};
+		const settings = isRecord(raw['settings']) ? raw['settings'] : {};
+		const settingsData = isRecord(settings['data']) ? settings['data'] : {};
+		const dictionaries = isRecord(raw['dictionaries']) ? raw['dictionaries'] : {};
+		const history = isRecord(raw['history']) ? raw['history'] : {};
 		merged.meta = {
 			...merged.meta,
-			...raw.meta,
+			...meta,
 			version: STATE_VERSION,
 			format: 'ai-transcriber-state'
 		};
-			merged.settings = {
-				version: SETTINGS_VERSION,
-				data: {
-					...merged.settings.data,
-					...raw.settings.data
-				}
-			};
-				merged.dictionaries = {
-					version: DICTIONARIES_VERSION,
-					languages: this.migrateDictionaryFormat(
-						this.ensureAllLanguages(raw.dictionaries.languages)
-					)
-				};
-			merged.history = {
-				version: HISTORY_VERSION,
-				items: Array.isArray(raw.history.items) ? raw.history.items : []
-			};
-			return merged;
-		}
+		merged.settings = {
+			version: SETTINGS_VERSION,
+			data: {
+				...merged.settings.data,
+				...settingsData
+			}
+		};
+		merged.dictionaries = {
+			version: DICTIONARIES_VERSION,
+			languages: this.migrateDictionaryFormat(
+				this.ensureAllLanguages(dictionaries['languages'])
+			)
+		};
+		merged.history = {
+			version: HISTORY_VERSION,
+			items: Array.isArray(history['items']) ? deepClone(history['items']) as TranscriptionTask[] : []
+		};
+		return merged;
+	}
 
-		private createStateFromLegacy(raw: Partial<APITranscriptionSettings>): PluginState {
+	private createStateFromLegacy(raw: Partial<APITranscriptionSettings>): PluginState {
 		const state = getDefaultState();
 		const { userDictionaries, ...rest } = raw;
 		state.settings.data = {
 			...state.settings.data,
 			...rest
 		};
-			if (userDictionaries) {
-				state.dictionaries.languages = this.migrateDictionaryFormat(
-					this.ensureAllLanguages(userDictionaries)
-				);
-			}
-			return state;
+		if (userDictionaries) {
+			state.dictionaries.languages = this.migrateDictionaryFormat(
+				this.ensureAllLanguages(userDictionaries)
+			);
 		}
-
-	private isPluginState(data: unknown): data is PluginState {
-		return typeof data === 'object' && data !== null && 'meta' in data && 'settings' in data;
+		return state;
 	}
 
-		private ensureInitialized(): void {
-			if (!this.initialized) {
-				throw new Error('PluginStateRepository not initialized');
-			}
+	private isSegmentedState(data: unknown): data is Record<string, unknown> {
+		if (!isRecord(data)) {
+			return false;
 		}
+		const meta = isRecord(data['meta']) ? data['meta'] : null;
+		return meta?.['format'] === 'ai-transcriber-state'
+			|| 'settings' in data
+			|| 'dictionaries' in data
+			|| 'history' in data;
+	}
+
+	private isCurrentPluginState(data: unknown): data is PluginState {
+		if (!this.isSegmentedState(data)) {
+			return false;
+		}
+		const meta = data['meta'];
+		const settings = data['settings'];
+		const dictionaries = data['dictionaries'];
+		const history = data['history'];
+		if (!isRecord(meta) || !isRecord(settings) || !isRecord(dictionaries) || !isRecord(history)) {
+			return false;
+		}
+		return meta['format'] === 'ai-transcriber-state'
+			&& meta['version'] === STATE_VERSION
+			&& settings['version'] === SETTINGS_VERSION
+			&& isRecord(settings['data'])
+			&& dictionaries['version'] === DICTIONARIES_VERSION
+			&& isRecord(dictionaries['languages'])
+			&& history['version'] === HISTORY_VERSION
+			&& Array.isArray(history['items']);
+	}
+
+	private ensureInitialized(): void {
+		if (!this.initialized) {
+			throw new Error('PluginStateRepository not initialized');
+		}
+	}
 }
