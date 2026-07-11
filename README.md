@@ -22,7 +22,7 @@ Supported extensions:
 
 Notes:
 - Video files are processed by extracting the audio track. Support depends on the file codec/DRM and your environment; if it fails, convert to an audio format (e.g., `m4a`, `wav`, `mp3`).
-- The external file picker currently supports up to **500MB** per file. Files already in your vault have no explicit size limit, but very large files may take longer and use more memory, which can affect performance; consider splitting if needed.
+- The external file picker currently supports up to **500MB** per file. Workflows that decode media in the Obsidian renderer (including time ranges, local VAD, and formats that cannot use direct upload) accept at most **128MiB** of encoded media and **2 hours** of decoded audio, with an additional memory-work budget. Eligible GPT-4o direct uploads bypass this local decode limit and remain subject to the provider/model limits. Split or convert files that exceed the applicable limit.
 
 ## Requirements
 
@@ -220,7 +220,7 @@ OpenAIのGPT-4o Transcribe / GPT-4o Mini TranscribeとWhisper APIを使用した
 
 補足:
 - 動画ファイルは音声トラックを抽出して処理します。コーデック/DRMや環境によっては失敗する場合があるため、その場合は音声形式（例: `m4a`, `wav`, `mp3`）に変換してお試しください。
-- Vault外から選択するファイルは現状 **最大500MB** までです。Vault内のファイルには明示的な上限は設けていませんが、大きいファイルは処理に時間がかかったり、メモリ使用量が増えて動作が重くなることがあります。必要に応じて分割してお試しください。
+- Vault外から選択するファイルは現状 **最大500MB** までです。Obsidian のレンダラー内でメディアをデコードする処理（時間範囲指定、ローカルVAD、直接送信できない形式など）は、エンコード済みデータ **128MiB**、デコード後の音声 **2時間** を上限とし、別途メモリ使用量の上限も適用します。条件を満たす GPT-4o の直接送信はこのローカルデコード上限の対象外ですが、プロバイダーおよびモデル側の制限が適用されます。該当する上限を超える場合は、ファイルを分割または変換してください。
 
 ## 必要条件
 
