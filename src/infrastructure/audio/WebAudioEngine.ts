@@ -5,6 +5,7 @@
 
 import { SUPPORTED_FORMATS, APP_LIMITS, FileTypeUtils } from '../../config/constants';
 import { AudioProcessor } from '../../core/audio/AudioProcessor';
+import { assertDecodedMediaWithinBudget, assertEncodedMediaWithinBudget, MediaWorkBudgetError } from '../../core/audio/MediaWorkBudget';
 import { ResourceManager } from '../../core/resources/ResourceManager';
 import { t } from '../../i18n';
 
@@ -94,6 +95,7 @@ export class WebAudioEngine extends AudioProcessor {
 	 * Decode audio file using Web Audio API
 	 */
 	async decode(input: AudioInput): Promise<AudioBuffer> {
+		assertEncodedMediaWithinBudget(input.data.byteLength);
 		await this.initializeContext();
 		if (!this.audioContext) {
 			throw new Error('AudioContext not initialized');
@@ -103,6 +105,11 @@ export class WebAudioEngine extends AudioProcessor {
 			// Clone the buffer as decodeAudioData consumes it
 			const bufferCopy = input.data.slice(0);
 			const audioBuffer = await this.audioContext.decodeAudioData(bufferCopy);
+			assertDecodedMediaWithinBudget(
+				input.data.byteLength,
+				audioBuffer,
+				this.config.targetSampleRate
+			);
 
 
 			// Check if audio was successfully extracted
@@ -117,6 +124,9 @@ export class WebAudioEngine extends AudioProcessor {
 			return audioBuffer;
 		} catch (error) {
 			this.logger.error('Failed to decode audio', error);
+			if (error instanceof MediaWorkBudgetError) {
+				throw error;
+			}
 
 			// Check if this is a video-specific error
 			if (input.extension && FileTypeUtils.isVideoFile(input.extension)) {
@@ -161,8 +171,7 @@ export class WebAudioEngine extends AudioProcessor {
 			pcmData: processedData,
 			sampleRate: targetSampleRate,
 			duration: processedData.length / targetSampleRate,
-			channels: 1,
-			source: audioBuffer as unknown as AudioInput // Store original for reference
+			channels: 1
 		});
 	}
 

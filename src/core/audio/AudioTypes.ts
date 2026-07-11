@@ -33,7 +33,7 @@ export interface ProcessedAudio {
 	/** Number of channels (should be 1 for mono) */
 	channels: number;
 	/** Original file info */
-	source: AudioInput;
+	source?: AudioInput;
 }
 
 /**

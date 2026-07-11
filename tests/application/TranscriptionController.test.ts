@@ -3,6 +3,7 @@ import { App, TFile } from 'obsidian';
 import { DEFAULT_API_SETTINGS } from '../../src/ApiSettings';
 import { TranscriptionController } from '../../src/application/TranscriptionController';
 import { GPT4oTranscriptionService } from '../../src/application/services/GPT4oTranscriptionService';
+import { CLIENT_MEDIA_BUDGET } from '../../src/core/audio/MediaWorkBudget';
 
 describe('TranscriptionController direct upload plan', () => {
 	it('bypasses client audio decoding for an eligible server-VAD file', async () => {
@@ -44,5 +45,31 @@ describe('TranscriptionController direct upload plan', () => {
 			expect.objectContaining({ language: 'auto' }),
 			'auto'
 		);
+	});
+
+	it('rejects an oversized client job before reading it into memory', async () => {
+		const app = new App();
+		const readBinary = jest.fn();
+		Object.assign(app.vault, { readBinary });
+		const file = new TFile();
+		Object.assign(file, {
+			path: 'audio/oversized.mp3',
+			name: 'oversized.mp3',
+			basename: 'oversized',
+			extension: 'mp3',
+			stat: {
+				ctime: 1,
+				mtime: 1,
+				size: CLIENT_MEDIA_BUDGET.maxEncodedBytes + 1
+			}
+		});
+		const settings = structuredClone(DEFAULT_API_SETTINGS);
+		settings.vadMode = 'local';
+		const controller = new TranscriptionController(app, settings);
+
+		await expect(controller.transcribe(file)).rejects.toMatchObject({
+			code: 'MEDIA_WORK_BUDGET_EXCEEDED'
+		});
+		expect(readBinary).not.toHaveBeenCalled();
 	});
 });

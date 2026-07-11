@@ -160,8 +160,7 @@ export class FallbackEngine extends AudioProcessor {
 			pcmData: new Float32Array(pcmData), // Make a copy
 			sampleRate: audioBuffer.sampleRate, // Keep original sample rate
 			duration: audioBuffer.duration,
-			channels: 1,
-			source: audioBuffer as unknown as AudioInput
+			channels: 1
 		});
 	}
 

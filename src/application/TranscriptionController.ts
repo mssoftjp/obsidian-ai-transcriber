@@ -8,6 +8,7 @@ import { Notice } from 'obsidian';
 import { AUDIO_CONSTANTS, SUPPORTED_FORMATS } from '../config/constants';
 import { getModelConfig, getTranscriptionConfig, logAllModelConfigs } from '../config/ModelProcessingConfig';
 import { AudioPipeline } from '../core/audio/AudioPipeline';
+import { assertEncodedMediaWithinBudget } from '../core/audio/MediaWorkBudget';
 import { ResourceManager } from '../core/resources/ResourceManager';
 import { DictionaryCorrector } from '../core/transcription/DictionaryCorrector';
 import { createTranscriptionJobPlan } from '../core/transcription/TranscriptionJobPlan';
@@ -84,6 +85,21 @@ export class TranscriptionController {
 		const timings: Record<string, number> = {};
 
 		try {
+			const jobPlan = createTranscriptionJobPlan({
+				model: this.settings.model,
+				vadMode: this.getVadMode(),
+				fileSizeBytes: audioFile.stat.size,
+				extension: audioFile.extension,
+				...(startTime !== undefined ? { startTime } : {}),
+				...(endTime !== undefined ? { endTime } : {})
+			});
+			if (jobPlan.mode === 'client') {
+				assertEncodedMediaWithinBudget(audioFile.stat.size);
+			}
+			if (abortSignal?.aborted) {
+				throw new DOMException('Transcription cancelled', 'AbortError');
+			}
+
 			// Load audio file
 			const loadStart = performance.now();
 			let audioBuffer = await this.app.vault.readBinary(audioFile);
@@ -93,14 +109,6 @@ export class TranscriptionController {
 				loadTime: `${timings['fileLoad'].toFixed(0)}ms`
 			});
 
-			const jobPlan = createTranscriptionJobPlan({
-				model: this.settings.model,
-				vadMode: this.getVadMode(),
-				fileSizeBytes: audioFile.stat.size,
-				extension: audioFile.extension,
-				...(startTime !== undefined ? { startTime } : {}),
-				...(endTime !== undefined ? { endTime } : {})
-			});
 			if (jobPlan.mode === 'direct') {
 				return await this.transcribeDirectFile(
 					audioFile,
