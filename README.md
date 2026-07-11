@@ -128,6 +128,8 @@ Links to GitHub, OpenAI documentation, and Buy Me a Coffee are documentation or 
 
 - New OpenAI API keys are saved only when Electron safeStorage is available. If OS encryption is unavailable, the plugin warns you and does not persist the new key. Legacy XOR-wrapped values remain readable for migration but are not used for new storage
 - Eligible GPT-4o files are sent directly to OpenAI with server-side chunking; time ranges, local VAD, large files, and unsupported direct-upload formats are processed locally before upload
+- Locally processed chunks use WebCodecs Opus in an audio-only WebM container when the current Obsidian runtime supports it, reducing uploaded bytes. If capability detection, encoding, or container creation fails, the plugin falls back to 16 kHz mono WAV before making the request
+- For a selected time range, only that processed range is encoded into upload chunks; the full original recording is not attached to the range request
 - No telemetry or usage data is collected by this plugin
 - Transcribed text is saved only to your local vault
 

@@ -40,6 +40,20 @@ These settings minimize API data: only the generated audio chunks, the configure
 - [ ] No stale copy remains in the vault's `ai-transcriber-temp` folder.
 - [ ] Retrying the same file does not reuse text from the previous run.
 
+## Compressed chunk checks
+
+Run these checks for time-range, local-VAD, and client-chunked GPT-4o/Whisper paths. The plugin must not require ffmpeg at runtime.
+
+- [ ] When `AudioEncoder.isConfigSupported()` accepts mono Opus at the processed sample rate, every generated upload uses a `.webm` filename and `audio/webm` MIME type.
+- [ ] Every WebM chunk is smaller than the corresponding 16-bit mono WAV estimate and remains below the provider file-size limit.
+- [ ] Obsidian can decode a generated WebM chunk locally, with duration drift no greater than one 20 ms Opus frame.
+- [ ] The long-form result still passes all identifier-order and final-keyword checks above.
+- [ ] Only the selected time range is encoded and uploaded; the original full file is not attached to a range request.
+- [ ] If WebCodecs, Opus support detection, encoding, or muxing fails before upload, the same operation completes through the WAV fallback.
+- [ ] No temporary encoded chunk is written outside the vault or retained after the operation.
+
+Repeat the capability and fallback checks on both macOS and Windows. Electron uses Chromium's codec implementation on both platforms, but each runtime must still be probed instead of assuming codec availability from the operating system. An unsupported runtime is acceptable only when the WAV fallback succeeds without changing the user workflow.
+
 ## Machine-check the result
 
 Run the transcript-only check:
@@ -65,5 +79,7 @@ npm test -- --runInBand
 npm run lint
 npm run build
 ```
+
+The automated suite includes the audio-only WebM muxer, WebCodecs capability/failure fallback, generated-chunk metadata propagation, and GPT-4o/Whisper multipart filename and MIME checks. The platform checks above remain real-app acceptance tests because Jest does not ship a browser media codec implementation.
 
 This synthetic case complements unit tests; it does not prove that every accent, codec, noisy recording, API response, or duration is defect-free. When a new long-form defect is found, first add a focused unit regression and then extend this checklist or fixture only when the end-to-end acceptance condition changed.
