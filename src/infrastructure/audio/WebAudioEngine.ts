@@ -13,7 +13,8 @@ import type {
 	AudioInput,
 	ProcessedAudio,
 	AudioValidationResult,
-	AudioProcessingConfig
+	AudioProcessingConfig,
+	AudioProcessingOptions
 } from '../../core/audio/AudioTypes';
 
 export class WebAudioEngine extends AudioProcessor {
@@ -94,7 +95,7 @@ export class WebAudioEngine extends AudioProcessor {
 	/**
 	 * Decode audio file using Web Audio API
 	 */
-	async decode(input: AudioInput): Promise<AudioBuffer> {
+	async decode(input: AudioInput, options: AudioProcessingOptions = {}): Promise<AudioBuffer> {
 		assertEncodedMediaWithinBudget(input.data.byteLength);
 		await this.initializeContext();
 		if (!this.audioContext) {
@@ -105,10 +106,12 @@ export class WebAudioEngine extends AudioProcessor {
 			// Clone the buffer as decodeAudioData consumes it
 			const bufferCopy = input.data.slice(0);
 			const audioBuffer = await this.audioContext.decodeAudioData(bufferCopy);
+			const range = this.resolveRange(audioBuffer.duration, options);
 			assertDecodedMediaWithinBudget(
 				input.data.byteLength,
 				audioBuffer,
-				this.config.targetSampleRate
+				this.config.targetSampleRate,
+				range.applied ? { workingDurationSeconds: range.end - range.start } : {}
 			);
 
 
@@ -148,16 +151,22 @@ export class WebAudioEngine extends AudioProcessor {
 	/**
 	 * Convert audio to target format
 	 */
-	convertToTargetFormat(audioBuffer: AudioBuffer): Promise<ProcessedAudio> {
+	convertToTargetFormat(
+		audioBuffer: AudioBuffer,
+		options: AudioProcessingOptions = {}
+	): Promise<ProcessedAudio> {
 		const targetSampleRate = this.config.targetSampleRate;
+		const range = this.resolveRange(audioBuffer.duration, options);
+		const startFrame = Math.floor(range.start * audioBuffer.sampleRate);
+		const endFrame = Math.min(audioBuffer.length, Math.ceil(range.end * audioBuffer.sampleRate));
 
 		// Get mono channel
 		const monoData = audioBuffer.numberOfChannels > 1
 			? this.mixToMono(
-				audioBuffer.getChannelData(0),
-				audioBuffer.getChannelData(1)
+				audioBuffer.getChannelData(0).subarray(startFrame, endFrame),
+				audioBuffer.getChannelData(1).subarray(startFrame, endFrame)
 			)
-			: audioBuffer.getChannelData(0);
+			: audioBuffer.getChannelData(0).subarray(startFrame, endFrame);
 
 		// Resample if needed
 		let processedData: Float32Array;
@@ -173,6 +182,18 @@ export class WebAudioEngine extends AudioProcessor {
 			duration: processedData.length / targetSampleRate,
 			channels: 1
 		});
+	}
+
+	private resolveRange(
+		duration: number,
+		options: AudioProcessingOptions
+	): { start: number; end: number; applied: boolean } {
+		const start = Math.max(0, Math.min(options.startTime ?? 0, duration));
+		const end = Math.max(start, Math.min(options.endTime ?? duration, duration));
+		if (end <= start) {
+			throw new Error('Selected audio time range is empty');
+		}
+		return { start, end, applied: start > 0 || end < duration };
 	}
 
 	/**

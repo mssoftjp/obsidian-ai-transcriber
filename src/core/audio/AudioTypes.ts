@@ -36,6 +36,15 @@ export interface ProcessedAudio {
 	source?: AudioInput;
 }
 
+export interface AudioProcessingOptions {
+	/** Start of the selected range in seconds. */
+	startTime?: number;
+	/** End of the selected range in seconds. */
+	endTime?: number;
+	/** Cancellation signal for cooperative processing. */
+	signal?: AbortSignal;
+}
+
 /**
  * Audio chunk for transcription
  * Represents a segment of audio with timing information

@@ -41,6 +41,39 @@ describe('WebAudioEngine media budget', () => {
 
 		await expect(engine.decode(createInput())).resolves.toMatchObject(decoded);
 	});
+
+	it('accepts a bounded range from a long recording', async () => {
+		const duration = 56 * 60 + 3;
+		const decoded = {
+			length: duration * 48_000,
+			sampleRate: 48_000,
+			duration,
+			numberOfChannels: 1
+		};
+		installAudioContext(decoded);
+		const engine = new WebAudioEngine(config);
+
+		await expect(engine.decode(createInput(), { startTime: 0, endTime: 16 * 60 }))
+			.resolves.toMatchObject(decoded);
+	});
+
+	it('converts only the selected range to target PCM', async () => {
+		const samples = Float32Array.from({ length: 160 }, (_, index) => index);
+		const audioBuffer = {
+			length: samples.length,
+			sampleRate: 16,
+			duration: 10,
+			numberOfChannels: 1,
+			getChannelData: () => samples
+		} as unknown as AudioBuffer;
+		const rangeConfig = { ...config, targetSampleRate: 16 };
+		const engine = new WebAudioEngine(rangeConfig);
+
+		const result = await engine.convertToTargetFormat(audioBuffer, { startTime: 2, endTime: 5 });
+
+		expect(result.duration).toBe(3);
+		expect(result.pcmData).toEqual(samples.slice(32, 80));
+	});
 });
 
 function createInput(): AudioInput {

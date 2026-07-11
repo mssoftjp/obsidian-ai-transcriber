@@ -5,8 +5,14 @@ export const CLIENT_MEDIA_BUDGET = {
 	maxDurationSeconds: 2 * 60 * 60,
 	maxChannels: 8,
 	maxWorkingSetBytes: 512 * MEBIBYTE,
+	maxRangeWorkingSetBytes: 1024 * MEBIBYTE,
 	maxRetainedChunkBytes: 256 * MEBIBYTE
 } as const;
+
+export interface DecodedMediaBudgetOptions {
+	/** Duration retained after decoding the source, when a bounded range is selected. */
+	workingDurationSeconds?: number;
+}
 
 export class MediaWorkBudgetError extends Error {
 	readonly code = 'MEDIA_WORK_BUDGET_EXCEEDED' as const;
@@ -38,15 +44,18 @@ export function assertEncodedMediaWithinBudget(encodedBytes: number): void {
 export function assertDecodedMediaWithinBudget(
 	encodedBytes: number,
 	audioBuffer: Pick<AudioBuffer, 'length' | 'sampleRate' | 'duration' | 'numberOfChannels'>,
-	targetSampleRate: number
+	targetSampleRate: number,
+	options: DecodedMediaBudgetOptions = {}
 ): void {
 	assertEncodedMediaWithinBudget(encodedBytes);
 
 	const { length: frames, sampleRate, duration, numberOfChannels: channels } = audioBuffer;
-	const projectedTargetFrames = Math.ceil(duration * targetSampleRate);
+	const workingDuration = options.workingDurationSeconds ?? duration;
+	const workingFrames = Math.ceil(workingDuration * sampleRate);
+	const projectedTargetFrames = Math.ceil(workingDuration * targetSampleRate);
 	const projectedBytes = encodedBytes * 2
 		+ frames * channels * Float32Array.BYTES_PER_ELEMENT
-		+ frames * Float32Array.BYTES_PER_ELEMENT
+		+ workingFrames * Float32Array.BYTES_PER_ELEMENT
 		+ projectedTargetFrames * Float32Array.BYTES_PER_ELEMENT;
 
 	const hasInvalidMetadata = !Number.isSafeInteger(frames)
@@ -57,6 +66,10 @@ export function assertDecodedMediaWithinBudget(
 		|| duration < 0
 		|| !Number.isSafeInteger(channels)
 		|| channels <= 0
+		|| !Number.isFinite(workingDuration)
+		|| workingDuration <= 0
+		|| workingDuration > duration
+		|| !Number.isSafeInteger(workingFrames)
 		|| !Number.isSafeInteger(projectedTargetFrames)
 		|| !Number.isSafeInteger(projectedBytes);
 
@@ -69,7 +82,10 @@ export function assertDecodedMediaWithinBudget(
 	if (channels > CLIENT_MEDIA_BUDGET.maxChannels) {
 		throw new MediaWorkBudgetError('Decoded media exceeds the client-processing channel limit');
 	}
-	if (projectedBytes > CLIENT_MEDIA_BUDGET.maxWorkingSetBytes) {
+	const workingSetLimit = workingDuration < duration
+		? CLIENT_MEDIA_BUDGET.maxRangeWorkingSetBytes
+		: CLIENT_MEDIA_BUDGET.maxWorkingSetBytes;
+	if (projectedBytes > workingSetLimit) {
 		throw new MediaWorkBudgetError('Decoded media exceeds the client-processing memory budget');
 	}
 }

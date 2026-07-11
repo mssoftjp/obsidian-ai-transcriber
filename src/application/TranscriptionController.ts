@@ -138,12 +138,9 @@ export class TranscriptionController {
 						);
 						timings['vadProcessing'] = performance.now() - vadStart;
 
-						// If VAD processing was successful and modified the audio
-						// Compare byteLength instead of object reference to avoid
-						// false positives when the buffer is re-read from disk
-						if (
-							processedBuffer.byteLength !== audioBuffer.byteLength
-						) {
+						// The preprocessor returns the original buffer object when it did not
+						// apply VAD or a selected range.
+						if (processedBuffer !== audioBuffer) {
 							audioBuffer = processedBuffer;
 							vadApplied = true;
 						// Note: Detailed statistics are logged inside VADPreprocessor

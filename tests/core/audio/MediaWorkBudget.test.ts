@@ -43,6 +43,27 @@ describe('client media work budget', () => {
 		}, 16_000)).toThrow(/memory budget/);
 	});
 
+	it('allows a bounded range when only that range is retained after source decode', () => {
+		const duration = 3362.9;
+		const source = {
+			length: Math.floor(duration * 48_000),
+			sampleRate: 48_000,
+			duration,
+			numberOfChannels: 1
+		};
+		expect(() => assertDecodedMediaWithinBudget(
+			28_649_954,
+			source,
+			16_000
+		)).toThrow(/memory budget/);
+		expect(() => assertDecodedMediaWithinBudget(
+			28_649_954,
+			source,
+			16_000,
+			{ workingDurationSeconds: 16 * 60 }
+		)).not.toThrow();
+	});
+
 	it('bounds the aggregate retained chunk output', () => {
 		expect(() => assertRetainedChunkBytesWithinBudget(
 			CLIENT_MEDIA_BUDGET.maxRetainedChunkBytes

@@ -1318,6 +1318,12 @@ export class APITranscriptionModal extends Modal {
 			type: 'hidden',
 			cls: 'ait-time-input-hidden'
 		});
+		this.startTimeInput.value = this.formatTimeFromComponents(0, 0, 0);
+		this.endTimeInput.value = this.formatTimeFromComponents(
+			parseInt(this.endHourInput.value) || 0,
+			parseInt(this.endMinInput.value) || 0,
+			parseInt(this.endSecInput.value) || 0
+		);
 
 		this.updateTimeRangeControls();
 	}

@@ -1,6 +1,21 @@
 import { assertDecodedMediaWithinBudget, assertEncodedMediaWithinBudget } from '../../core/audio/MediaWorkBudget';
 import { COOPERATIVE_BATCH_SIZE, isAbortError, throwIfAborted, yieldToEventLoop } from '../../core/utils/CooperativeTask';
 
+export interface AudioDecodeOptions {
+	signal?: AbortSignal;
+	rangeStart?: number;
+	rangeEnd?: number;
+	targetSampleRate?: number;
+}
+
+export interface DecodedAudioData {
+	audioData: Float32Array;
+	sampleRate: number;
+	rangeApplied: boolean;
+	rangeStart: number;
+	rangeEnd: number;
+}
+
 /**
  * 音声フォーマット変換ユーティリティ
  */
@@ -17,8 +32,9 @@ export class AudioConverter {
 	async decodeAudioFile(
 		audioBuffer: ArrayBuffer,
 		fileExtension: string,
-		signal?: AbortSignal
-	): Promise<{ audioData: Float32Array; sampleRate: number }> {
+		options: AudioDecodeOptions = {}
+	): Promise<DecodedAudioData> {
+		const { signal } = options;
 			try {
 				throwIfAborted(signal);
 				assertEncodedMediaWithinBudget(audioBuffer.byteLength);
@@ -31,18 +47,32 @@ export class AudioConverter {
 					audioBuffer.slice(0) // コピーを作成
 			);
 			throwIfAborted(signal);
+			const sourceDuration = decodedAudio.duration;
+			const rangeStart = Math.max(0, Math.min(options.rangeStart ?? 0, sourceDuration));
+			const rangeEnd = Math.max(rangeStart, Math.min(options.rangeEnd ?? sourceDuration, sourceDuration));
+			if (rangeEnd <= rangeStart) {
+				throw new Error('Selected audio time range is empty');
+			}
+			const rangeApplied = rangeStart > 0 || rangeEnd < sourceDuration;
+			const targetSampleRate = options.targetSampleRate ?? decodedAudio.sampleRate;
 			assertDecodedMediaWithinBudget(
 				audioBuffer.byteLength,
 				decodedAudio,
-				decodedAudio.sampleRate
+				targetSampleRate,
+				rangeApplied ? { workingDurationSeconds: rangeEnd - rangeStart } : {}
 			);
 
-			// モノラルに変換（VAD処理用）
-			const audioData = await this.convertToMono(decodedAudio, signal);
+			const startFrame = Math.floor(rangeStart * decodedAudio.sampleRate);
+			const endFrame = Math.min(decodedAudio.length, Math.ceil(rangeEnd * decodedAudio.sampleRate));
+			const monoAudio = await this.convertToMono(decodedAudio, startFrame, endFrame, signal);
+			const audioData = await this.resample(monoAudio, decodedAudio.sampleRate, targetSampleRate, signal);
 
 			return {
 				audioData,
-				sampleRate: decodedAudio.sampleRate
+				sampleRate: targetSampleRate,
+				rangeApplied,
+				rangeStart,
+				rangeEnd
 			};
 		} catch (error: unknown) {
 			if (isAbortError(error, signal)) {
@@ -94,13 +124,19 @@ export class AudioConverter {
 	/**
    * ステレオ/マルチチャンネルをモノラルに変換
    */
-	private async convertToMono(audioBuffer: AudioBuffer, signal?: AbortSignal): Promise<Float32Array> {
+	private async convertToMono(
+		audioBuffer: AudioBuffer,
+		startFrame: number,
+		endFrame: number,
+		signal?: AbortSignal
+	): Promise<Float32Array> {
 		throwIfAborted(signal);
+		const length = endFrame - startFrame;
 		if (audioBuffer.numberOfChannels === 1) {
-			const source = audioBuffer.getChannelData(0);
-			const mono = new Float32Array(source.length);
-			for (let offset = 0; offset < source.length; offset += COOPERATIVE_BATCH_SIZE) {
-				const end = Math.min(source.length, offset + COOPERATIVE_BATCH_SIZE);
+			const source = audioBuffer.getChannelData(0).subarray(startFrame, endFrame);
+			const mono = new Float32Array(length);
+			for (let offset = 0; offset < length; offset += COOPERATIVE_BATCH_SIZE) {
+				const end = Math.min(length, offset + COOPERATIVE_BATCH_SIZE);
 				mono.set(source.subarray(offset, end), offset);
 				await yieldToEventLoop(signal);
 			}
@@ -108,7 +144,6 @@ export class AudioConverter {
 		}
 
 		// 全チャンネルの平均を計算
-		const length = audioBuffer.length;
 		const mono = new Float32Array(length);
 		const numberOfChannels = audioBuffer.numberOfChannels;
 
@@ -119,13 +154,40 @@ export class AudioConverter {
 			let sum = 0;
 			for (let channel = 0; channel < numberOfChannels; channel++) {
 				const channelData = audioBuffer.getChannelData(channel);
-				sum += channelData[i] ?? 0;
+				sum += channelData[startFrame + i] ?? 0;
 			}
 			mono[i] = sum / numberOfChannels;
 		}
 
 		throwIfAborted(signal);
 		return mono;
+	}
+
+	private async resample(
+		input: Float32Array,
+		inputRate: number,
+		outputRate: number,
+		signal?: AbortSignal
+	): Promise<Float32Array> {
+		if (inputRate === outputRate) {
+			return input;
+		}
+		const ratio = inputRate / outputRate;
+		const output = new Float32Array(Math.floor(input.length / ratio));
+		for (let index = 0; index < output.length; index++) {
+			if (index > 0 && index % COOPERATIVE_BATCH_SIZE === 0) {
+				await yieldToEventLoop(signal);
+			}
+			const sourceIndex = index * ratio;
+			const lowerIndex = Math.floor(sourceIndex);
+			const upperIndex = Math.min(lowerIndex + 1, input.length - 1);
+			const fraction = sourceIndex - lowerIndex;
+			const lower = input[lowerIndex] ?? 0;
+			const upper = input[upperIndex] ?? lower;
+			output[index] = lower * (1 - fraction) + upper * fraction;
+		}
+		throwIfAborted(signal);
+		return output;
 	}
 
 	/**

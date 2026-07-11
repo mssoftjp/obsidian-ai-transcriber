@@ -146,6 +146,7 @@ export class Logger {
 			return;
 		}
 		const formattedMsg = this.formatMessage(LogLevel.ERROR, Logger.sanitizeLogMessage(message));
+		this.bufferLog(LogLevel.ERROR, formattedMsg, error);
 		if (error instanceof Error) {
 			console.error(formattedMsg, Logger.sanitizeLogData(error));
 			const stack = Logger.sanitizeErrorStack(error);
@@ -167,6 +168,7 @@ export class Logger {
 	warn(message: string, data?: unknown): void {
 		if (this.shouldLog(LogLevel.WARN)) {
 			const formattedMsg = this.formatMessage(LogLevel.WARN, Logger.sanitizeLogMessage(message));
+			this.bufferLog(LogLevel.WARN, formattedMsg, data);
 			if (data !== undefined) {
 				console.warn(formattedMsg, Logger.sanitizeLogData(data));
 			} else {
@@ -295,13 +297,28 @@ export class Logger {
 			}
 		}
 
-			// Always buffer logs for in-app inspection
-			if (typeof window !== 'undefined') {
-				const globalObj = window as Window & { __aiTranscriberLogs?: Array<{ level: LogLevel; message: string; data?: unknown }> };
-				globalObj.__aiTranscriberLogs ??= [];
-				globalObj.__aiTranscriberLogs.push({ level, message: sanitizedMessage, data: sanitizedData });
-			}
+			this.bufferLog(level, sanitizedMessage, sanitizedData);
 		}
+
+	private bufferLog(level: LogLevel, message: string, data?: unknown): void {
+		if (typeof window === 'undefined') {
+			return;
+		}
+		const globalObj = window as Window & {
+			__aiTranscriberLogs?: Array<{ level: LogLevel; message: string; data?: unknown }>;
+		};
+		const logs = globalObj.__aiTranscriberLogs ?? [];
+		globalObj.__aiTranscriberLogs = logs;
+		logs.push({
+			level,
+			message: Logger.sanitizeLogMessage(message),
+			...(data !== undefined ? { data: Logger.sanitizeLogData(data) } : {})
+		});
+		const maxBufferedLogs = 500;
+		if (logs.length > maxBufferedLogs) {
+			logs.splice(0, logs.length - maxBufferedLogs);
+		}
+	}
 
 	private getTimestamp(): number {
 		if (typeof performance !== 'undefined' && typeof performance.now === 'function') {

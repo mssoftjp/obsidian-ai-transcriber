@@ -46,7 +46,13 @@ describe('VADPreprocessor operation ownership', () => {
 			isAvailable: jest.fn().mockReturnValue(true)
 		} as VADProcessor;
 		const converter: ConverterStub = {
-			decodeAudioFile: jest.fn().mockResolvedValue({ audioData, sampleRate: 16_000 }),
+			decodeAudioFile: jest.fn().mockResolvedValue({
+				audioData,
+				sampleRate: 16_000,
+				rangeApplied: false,
+				rangeStart: 0,
+				rangeEnd: 2 / 16_000
+			}),
 			encodeToWAV: jest.fn().mockResolvedValue(processedWav),
 			cleanup: jest.fn()
 		};
@@ -66,7 +72,10 @@ describe('VADPreprocessor operation ownership', () => {
 		expect(converter.decodeAudioFile).toHaveBeenCalledWith(
 			sourceBuffer,
 			'mp3',
-			abortController.signal
+			{
+				signal: abortController.signal,
+				targetSampleRate: 16_000
+			}
 		);
 		expect(processor.processAudio).toHaveBeenCalledWith(
 			audioData,

@@ -64,84 +64,43 @@ export class AudioPipeline {
 
 		// Step 1: Process audio to standardized format
 		this.logger.debug('Step 1: Processing audio to standardized format');
-		const processedAudio = await this.audioProcessor.process(input);
-
-		// Step 2: Apply time range if specified
-		this.logger.debug('Step 2: Applying time range', { startTime, endTime });
-		const trimmedAudio = this.applyTimeRange(processedAudio, startTime, endTime);
-		this.logger.debug('Audio trimmed', {
-			originalDuration: processedAudio.duration,
-			trimmedDuration: trimmedAudio.duration
+		const processedAudio = await this.audioProcessor.process(input, {
+			...(startTime !== undefined ? { startTime } : {}),
+			...(endTime !== undefined ? { endTime } : {}),
+			...(signal ? { signal } : {})
 		});
 
-		// Step 3: Calculate chunking strategy
-		this.logger.debug('Step 3: Calculating chunking strategy');
-		const strategy = this.chunkingService.calculateStrategy(trimmedAudio);
+		// Step 2: Calculate chunking strategy
+		this.logger.debug('Step 2: Calculating chunking strategy');
+		const strategy = this.chunkingService.calculateStrategy(processedAudio);
 		this.logger.debug('Chunking strategy determined', {
 			strategyType: strategy.type,
 			needsChunking: strategy.needsChunking,
 			chunkCount: strategy.chunkCount
 		});
 
-		// Step 4: Create chunks if needed
-		this.logger.debug('Step 4: Creating chunks');
+		// Step 3: Create chunks if needed
+		this.logger.debug('Step 3: Creating chunks');
 		let chunks: AudioChunk[];
 		if (strategy.needsChunking) {
 			this.logger.debug('Creating multiple chunks', { chunkCount: strategy.chunkCount });
-			chunks = await this.chunkingService.createChunks(trimmedAudio, strategy, signal);
+			chunks = await this.chunkingService.createChunks(processedAudio, strategy, signal);
 		} else {
 			this.logger.debug('Creating single chunk (no chunking needed)');
-			chunks = [await this.createSingleChunk(trimmedAudio, signal)];
+			chunks = [await this.createSingleChunk(processedAudio, signal)];
 		}
 
 		const processingTime = performance.now() - startTimestamp;
 		this.logger.info('Audio pipeline processing completed', {
 			chunksCreated: chunks.length,
-			totalDuration: trimmedAudio.duration,
+			totalDuration: processedAudio.duration,
 			processingTime: `${processingTime.toFixed(2)}ms`
 		});
 
 		return {
 			chunks,
 			strategy,
-			processedAudio: trimmedAudio
-		};
-	}
-
-	/**
-	 * Apply time range to processed audio
-	 */
-	private applyTimeRange(
-		audio: ProcessedAudio,
-		startTime?: number,
-		endTime?: number
-	): ProcessedAudio {
-		if (startTime === undefined && endTime === undefined) {
-			this.logger.trace('No time range specified, returning original audio');
-			return audio;
-		}
-
-		const sampleRate = audio.sampleRate;
-		const startSample = startTime ? Math.floor(startTime * sampleRate) : 0;
-		const endSample = endTime
-			? Math.min(Math.floor(endTime * sampleRate), audio.pcmData.length)
-			: audio.pcmData.length;
-
-		const trimmedPcm = audio.pcmData.slice(startSample, endSample);
-		const trimmedDuration = trimmedPcm.length / sampleRate;
-
-		this.logger.trace('Audio trimmed', {
-			originalSamples: audio.pcmData.length,
-			trimmedSamples: trimmedPcm.length,
-			startSample,
-			endSample,
-			trimmedDuration: `${trimmedDuration.toFixed(2)}s`
-		});
-
-		return {
-			...audio,
-			pcmData: trimmedPcm,
-			duration: trimmedDuration
+			processedAudio
 		};
 	}
 

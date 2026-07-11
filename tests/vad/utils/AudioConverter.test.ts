@@ -34,4 +34,45 @@ describe('AudioConverter cooperative work', () => {
 		expect(view.getUint32(24, true)).toBe(16_000);
 		expect(view.getUint32(40, true)).toBe(6);
 	});
+
+	it('retains and resamples only the selected decoded range', async () => {
+		const channelData = Float32Array.from(
+			{ length: 48 },
+			(_value, index) => index / 48
+		);
+		const decoded = {
+			length: channelData.length,
+			sampleRate: 48,
+			duration: 1,
+			numberOfChannels: 1,
+			getChannelData: () => channelData
+		} as unknown as AudioBuffer;
+		class TestAudioContext {
+			decodeAudioData(): Promise<AudioBuffer> {
+				return Promise.resolve(decoded);
+			}
+
+			close(): Promise<void> {
+				return Promise.resolve();
+			}
+		}
+		Object.defineProperty(globalThis, 'AudioContext', {
+			value: TestAudioContext,
+			configurable: true
+		});
+
+		const converter = new AudioConverter();
+		const result = await converter.decodeAudioFile(new ArrayBuffer(16), 'wav', {
+			rangeStart: 0.25,
+			rangeEnd: 0.75,
+			targetSampleRate: 16
+		});
+
+		expect(result.rangeApplied).toBe(true);
+		expect(result.rangeStart).toBe(0.25);
+		expect(result.rangeEnd).toBe(0.75);
+		expect(result.sampleRate).toBe(16);
+		expect(result.audioData).toHaveLength(8);
+		expect(result.audioData[0]).toBeCloseTo(0.25);
+	});
 });

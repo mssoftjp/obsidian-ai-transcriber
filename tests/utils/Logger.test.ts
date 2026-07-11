@@ -67,4 +67,29 @@ describe('Logger', () => {
     expect((console.warn as jest.Mock).mock.calls[0][0]).toContain('visible-info');
     expect((console.warn as jest.Mock).mock.calls[1][0]).toContain('visible-debug');
   });
+
+  it('buffers warnings and errors with a bounded history for local inspection', () => {
+    const browserWindow: {
+      __aiTranscriberLogs?: Array<{ level: LogLevel; message: string; data?: unknown }>;
+    } = {};
+    (global as Record<string, unknown>)['window'] = browserWindow;
+    jest.resetModules();
+
+    const { Logger: FreshLogger } = require('../../src/utils/Logger') as typeof import('../../src/utils/Logger');
+    const logger = FreshLogger.getInstance({ debugMode: false, forceConsole: false });
+
+    logger.error('failed', new Error('provider unavailable'));
+		expect(browserWindow.__aiTranscriberLogs?.[0]).toMatchObject({
+			level: LogLevel.ERROR,
+			message: expect.stringContaining('failed')
+		});
+    for (let index = 0; index < 505; index++) {
+      logger.warn(`warning-${index}`);
+    }
+
+    const logs = browserWindow.__aiTranscriberLogs ?? [];
+    expect(logs).toHaveLength(500);
+    expect(logs.at(-1)?.message).toContain('warning-504');
+    expect(logs.some(entry => entry.message.includes('warning-0'))).toBe(false);
+  });
 });

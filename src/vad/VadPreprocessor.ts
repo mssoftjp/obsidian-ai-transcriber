@@ -1,5 +1,6 @@
 import { Notice } from 'obsidian';
 
+import { AUDIO_CONSTANTS } from '../config/constants';
 import { getTranscriptionConfig } from '../config/ModelProcessingConfig';
 import { isAbortError } from '../core/utils/CooperativeTask';
 import { t } from '../i18n';
@@ -136,6 +137,8 @@ export class VADPreprocessor {
 		options: VADProcessOptions = {}
 	): Promise<ArrayBuffer> {
 		const processingStartTime = performance.now();
+		const hasRequestedRange = rangeStart !== null && rangeStart !== undefined
+			|| rangeEnd !== null && rangeEnd !== undefined;
 		this.logger.debug('Processing audio file with VAD', {
 			fileName: audioFile.name,
 			rangeStart,
@@ -169,11 +172,17 @@ export class VADPreprocessor {
 
 			// オーディオデータをデコード
 			this.logger.debug('Decoding audio file');
-			const { audioData, sampleRate } = await this.audioConverter.decodeAudioFile(
+			const decodedAudio = await this.audioConverter.decodeAudioFile(
 				audioBuffer,
 				audioFile.extension,
-				options.signal
+				{
+					...(options.signal ? { signal: options.signal } : {}),
+					...(rangeStart !== null && rangeStart !== undefined ? { rangeStart } : {}),
+					...(rangeEnd !== null && rangeEnd !== undefined ? { rangeEnd } : {}),
+					targetSampleRate: AUDIO_CONSTANTS.SAMPLE_RATE
+				}
 			);
+			const { audioData, sampleRate } = decodedAudio;
 			this.logger.debug('Audio decoded', {
 				sampleRate,
 				duration: `${(audioData.length / sampleRate).toFixed(2)}s`,
@@ -181,24 +190,10 @@ export class VADPreprocessor {
 			});
 
 			// 時間範囲が指定されている場合は、効率的に処理
-			let processedAudioData = audioData;
-			let actualRangeStart = 0;
-			let actualRangeEnd = audioData.length / sampleRate;
-			let rangeApplied = false;
-
-				if (rangeStart !== null && rangeStart !== undefined || rangeEnd !== null && rangeEnd !== undefined) {
-					const totalDuration = audioData.length / sampleRate;
-					actualRangeStart = rangeStart ?? 0;
-					actualRangeEnd = rangeEnd ?? totalDuration;
-
-				// 範囲をサンプル数に変換
-				const startSample = Math.floor(actualRangeStart * sampleRate);
-				const endSample = Math.min(audioData.length, Math.floor(actualRangeEnd * sampleRate));
-
-				// subarrayを使用して効率的に抽出
-				processedAudioData = audioData.subarray(startSample, endSample);
-				rangeApplied = endSample - startSample !== audioData.length;
-			}
+			const processedAudioData = audioData;
+			const actualRangeStart = decodedAudio.rangeStart;
+			const actualRangeEnd = decodedAudio.rangeEnd;
+			const rangeApplied = decodedAudio.rangeApplied;
 
 			// ローカルVADが利用可能な場合はそのまま実行
 			if (this.processor) {
@@ -254,6 +249,9 @@ export class VADPreprocessor {
 			// VADが有効化されているのにエラーが発生した場合は、エラーを再スロー
 			if (this.config.enabled && this.fallbackMode !== 'server_vad') {
 				throw new Error(t('notices.vadProcessingError', { error: error instanceof Error ? error.message : 'Unknown error' }));
+			}
+			if (hasRequestedRange) {
+				throw error;
 			}
 
 			// フォールバック時は元のバッファを返す

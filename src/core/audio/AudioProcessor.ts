@@ -5,7 +5,13 @@
 
 import { Logger } from '../../utils/Logger';
 
-import type { AudioInput, ProcessedAudio, AudioValidationResult, AudioProcessingConfig } from './AudioTypes';
+import type {
+	AudioInput,
+	ProcessedAudio,
+	AudioValidationResult,
+	AudioProcessingConfig,
+	AudioProcessingOptions
+} from './AudioTypes';
 
 export abstract class AudioProcessor {
 	protected config: AudioProcessingConfig;
@@ -24,12 +30,15 @@ export abstract class AudioProcessor {
 	/**
 	 * Decode audio file to PCM data
 	 */
-	abstract decode(input: AudioInput): Promise<AudioBuffer>;
+	abstract decode(input: AudioInput, options?: AudioProcessingOptions): Promise<AudioBuffer>;
 
 	/**
 	 * Convert audio to target format (16kHz, 16-bit, mono)
 	 */
-	abstract convertToTargetFormat(audioBuffer: AudioBuffer): Promise<ProcessedAudio>;
+	abstract convertToTargetFormat(
+		audioBuffer: AudioBuffer,
+		options?: AudioProcessingOptions
+	): Promise<ProcessedAudio>;
 
 	/**
 	 * Apply preprocessing (VAD, noise reduction, etc.)
@@ -39,7 +48,7 @@ export abstract class AudioProcessor {
 	/**
 	 * Main processing pipeline
 	 */
-	async process(input: AudioInput): Promise<ProcessedAudio> {
+	async process(input: AudioInput, options: AudioProcessingOptions = {}): Promise<ProcessedAudio> {
 		const startTime = performance.now();
 		this.logger.debug('Starting audio processing', {
 			fileType: input.fileType,
@@ -64,7 +73,7 @@ export abstract class AudioProcessor {
 		// 3. Decode audio
 		this.logger.debug('Step 2: Decoding audio');
 		const decodeStart = performance.now();
-		const audioBuffer = await this.decode(input);
+		const audioBuffer = await this.decode(input, options);
 		this.logger.debug('Audio decoded', {
 			duration: `${audioBuffer.duration.toFixed(2)}s`,
 			sampleRate: audioBuffer.sampleRate,
@@ -75,7 +84,7 @@ export abstract class AudioProcessor {
 		// 4. Convert to target format
 		this.logger.debug('Step 3: Converting to target format');
 		const convertStart = performance.now();
-		const processedAudio = await this.convertToTargetFormat(audioBuffer);
+		const processedAudio = await this.convertToTargetFormat(audioBuffer, options);
 		this.logger.debug('Audio converted', {
 			targetSampleRate: processedAudio.sampleRate,
 			targetChannels: processedAudio.channels,

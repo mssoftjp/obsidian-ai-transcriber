@@ -10,7 +10,8 @@ import type {
 	AudioInput,
 	ProcessedAudio,
 	AudioValidationResult,
-	AudioProcessingConfig
+	AudioProcessingConfig,
+	AudioProcessingOptions
 } from '../../core/audio/AudioTypes';
 
 interface WavMetadata {
@@ -128,9 +129,19 @@ export class FallbackEngine extends AudioProcessor {
 	/**
 	 * Convert to target format - limited in fallback mode
 	 */
-	convertToTargetFormat(audioBuffer: AudioBuffer): Promise<ProcessedAudio> {
+	convertToTargetFormat(
+		audioBuffer: AudioBuffer,
+		options: AudioProcessingOptions = {}
+	): Promise<ProcessedAudio> {
 		// In fallback mode, we can't resample, so just extract the data
-		const pcmData = audioBuffer.getChannelData(0); // Just use first channel
+		const start = Math.max(0, Math.min(options.startTime ?? 0, audioBuffer.duration));
+		const end = Math.max(start, Math.min(options.endTime ?? audioBuffer.duration, audioBuffer.duration));
+		if (end <= start) {
+			throw new Error('Selected audio time range is empty');
+		}
+		const startFrame = Math.floor(start * audioBuffer.sampleRate);
+		const endFrame = Math.min(audioBuffer.length, Math.ceil(end * audioBuffer.sampleRate));
+		const pcmData = audioBuffer.getChannelData(0).subarray(startFrame, endFrame);
 
 		if (audioBuffer.sampleRate !== this.config.targetSampleRate) {
 			this.logger.warn('Cannot resample audio in fallback mode', {
@@ -148,7 +159,7 @@ export class FallbackEngine extends AudioProcessor {
 		return Promise.resolve({
 			pcmData: new Float32Array(pcmData), // Make a copy
 			sampleRate: audioBuffer.sampleRate, // Keep original sample rate
-			duration: audioBuffer.duration,
+			duration: pcmData.length / audioBuffer.sampleRate,
 			channels: 1
 		});
 	}
