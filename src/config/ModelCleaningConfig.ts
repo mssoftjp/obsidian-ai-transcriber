@@ -426,7 +426,7 @@ const COMMON_CONTAMINATION_PATTERNS: ContaminationPatterns = {
 		'/^前回終了箇所(?=\\S)/gm',
 		'/音声を[^。]+文字起こし[^。]+ください。?\\s*続き[:：]\\s*/g',
 		'/続き[:：]\\s*全\\d+日分の平均は/g',
-		'/^[^\\n]*(?:文字起こし|してください|出力に含めない)[^\\n]*$/gm'
+		'/^(?:指示[:：]?\\s*|以下の音声を?|音声を|この指示文|出力形式)[^\\n]*(?:文字起こし|出力に含めない)[^\\n]*$/gm'
 	],
 	promptSnippetLengths: [10, 15, 20, 30],
 	languageConfigs: {
