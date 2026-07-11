@@ -3,7 +3,10 @@
  * Creates audio chunks using Web Audio API
  */
 
+import { assertRetainedChunkBytesWithinBudget } from '../../core/audio/MediaWorkBudget';
+import { calculatePcmWavBytes, encodePcmToWav } from '../../core/audio/PcmWavEncoder';
 import { ChunkingService } from '../../core/chunking/ChunkingService';
+import { throwIfAborted } from '../../core/utils/CooperativeTask';
 
 import type { ProcessedAudio, AudioChunk } from '../../core/audio/AudioTypes';
 import type { ChunkStrategy, ChunkingConfig } from '../../core/chunking/ChunkingTypes';
@@ -62,11 +65,11 @@ export class WebAudioChunkingService extends ChunkingService {
 	override async createChunks(
 		audio: ProcessedAudio,
 		strategy: ChunkStrategy,
-		_signal?: AbortSignal
+		signal?: AbortSignal
 	): Promise<AudioChunk[]> {
+		throwIfAborted(signal);
 		if (!strategy.needsChunking) {
-			// Single chunk
-			return [this.createSingleChunk(audio)];
+			return [await this.createSingleChunk(audio, signal)];
 		}
 
 		// Calculate chunk parameters
@@ -85,13 +88,17 @@ export class WebAudioChunkingService extends ChunkingService {
 
 		const boundaries = await this.findNaturalBoundaries(
 			audio,
-			chunkStarts.map(s => s / sampleRate)
+			chunkStarts.map(s => s / sampleRate),
+			signal
 		);
+		throwIfAborted(signal);
 
 		// Create chunks
 		const chunks: AudioChunk[] = [];
+		let retainedChunkBytes = 0;
 
 		for (let i = 0; i < boundaries.length; i++) {
+			throwIfAborted(signal);
 			const boundary = boundaries[i] ?? 0;
 			const nextBoundary = boundaries[i + 1] ?? boundary;
 			const startSample = Math.floor(boundary * sampleRate);
@@ -105,7 +112,7 @@ export class WebAudioChunkingService extends ChunkingService {
 			}
 
 			// Extract chunk PCM data
-			const chunkPcm = audio.pcmData.slice(startSample, endSample);
+			const chunkPcm = audio.pcmData.subarray(startSample, endSample);
 
 			// Skip if chunk is too small (less than 0.1 seconds)
 			const chunkDuration = (endSample - startSample) / sampleRate;
@@ -114,7 +121,9 @@ export class WebAudioChunkingService extends ChunkingService {
 			}
 
 			// Convert to WAV
-			const wavData = this.pcmToWav(chunkPcm, sampleRate);
+			retainedChunkBytes += calculatePcmWavBytes(chunkPcm.length);
+			assertRetainedChunkBytesWithinBudget(retainedChunkBytes);
+			const wavData = await encodePcmToWav(chunkPcm, sampleRate, signal);
 
 			// Calculate timing
 			const startTime = startSample / sampleRate;
@@ -164,8 +173,9 @@ export class WebAudioChunkingService extends ChunkingService {
 	/**
 	 * Create a single chunk from all audio
 	 */
-	private createSingleChunk(audio: ProcessedAudio): AudioChunk {
-		const wavData = this.pcmToWav(audio.pcmData, audio.sampleRate);
+	private async createSingleChunk(audio: ProcessedAudio, signal?: AbortSignal): Promise<AudioChunk> {
+		assertRetainedChunkBytesWithinBudget(calculatePcmWavBytes(audio.pcmData.length));
+		const wavData = await encodePcmToWav(audio.pcmData, audio.sampleRate, signal);
 
 		return {
 			id: 0,
@@ -177,44 +187,4 @@ export class WebAudioChunkingService extends ChunkingService {
 		};
 	}
 
-	/**
-	 * Convert PCM to WAV format
-	 */
-	private pcmToWav(pcmData: Float32Array, sampleRate: number): ArrayBuffer {
-		const length = pcmData.length;
-		const arrayBuffer = new ArrayBuffer(44 + length * 2);
-		const view = new DataView(arrayBuffer);
-
-		// WAV header
-		const writeString = (offset: number, string: string) => {
-			for (let i = 0; i < string.length; i++) {
-				view.setUint8(offset + i, string.charCodeAt(i));
-			}
-		};
-
-		writeString(0, 'RIFF');
-		view.setUint32(4, 36 + length * 2, true);
-		writeString(8, 'WAVE');
-		writeString(12, 'fmt ');
-		view.setUint32(16, 16, true); // fmt chunk size
-		view.setUint16(20, 1, true); // PCM format
-		view.setUint16(22, 1, true); // mono
-		view.setUint32(24, sampleRate, true);
-		view.setUint32(28, sampleRate * 2, true); // byte rate
-		view.setUint16(32, 2, true); // block align
-		view.setUint16(34, 16, true); // bits per sample
-		writeString(36, 'data');
-		view.setUint32(40, length * 2, true);
-
-		// Convert float32 to int16
-		let offset = 44;
-		for (let i = 0; i < length; i++) {
-			const value = pcmData[i] ?? 0;
-			const sample = Math.max(-1, Math.min(1, value));
-			view.setInt16(offset, sample < 0 ? sample * 0x8000 : sample * 0x7FFF, true);
-			offset += 2;
-		}
-
-		return arrayBuffer;
-	}
 }

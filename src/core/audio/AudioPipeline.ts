@@ -6,6 +6,8 @@
 import { AUDIO_CONSTANTS } from '../../config/constants';
 import { Logger } from '../../utils/Logger';
 
+import { encodePcmToWav } from './PcmWavEncoder';
+
 import type { AudioProcessor } from './AudioProcessor';
 import type { AudioInput, ProcessedAudio, AudioChunk, AudioProcessingConfig } from './AudioTypes';
 import type { ChunkingService } from '../chunking/ChunkingService';
@@ -89,7 +91,7 @@ export class AudioPipeline {
 			chunks = await this.chunkingService.createChunks(trimmedAudio, strategy, signal);
 		} else {
 			this.logger.debug('Creating single chunk (no chunking needed)');
-			chunks = [this.createSingleChunk(trimmedAudio)];
+			chunks = [await this.createSingleChunk(trimmedAudio, signal)];
 		}
 
 		const processingTime = performance.now() - startTimestamp;
@@ -146,11 +148,11 @@ export class AudioPipeline {
 	/**
 	 * Create a single chunk from processed audio
 	 */
-	private createSingleChunk(audio: ProcessedAudio): AudioChunk {
+	private async createSingleChunk(audio: ProcessedAudio, signal?: AbortSignal): Promise<AudioChunk> {
 		this.logger.trace('Creating single chunk from audio');
 
 		// Convert to WAV format
-		const wavData = this.audioProcessor['pcmToWav'](audio.pcmData, audio.sampleRate);
+		const wavData = await encodePcmToWav(audio.pcmData, audio.sampleRate, signal);
 
 		const chunk: AudioChunk = {
 			id: 0,

@@ -1,6 +1,7 @@
 import {
 	assertDecodedMediaWithinBudget,
 	assertEncodedMediaWithinBudget,
+	assertRetainedChunkBytesWithinBudget,
 	CLIENT_MEDIA_BUDGET
 } from '../../../src/core/audio/MediaWorkBudget';
 
@@ -40,5 +41,14 @@ describe('client media work budget', () => {
 			duration: frames / 48_000,
 			numberOfChannels: 2
 		}, 16_000)).toThrow(/memory budget/);
+	});
+
+	it('bounds the aggregate retained chunk output', () => {
+		expect(() => assertRetainedChunkBytesWithinBudget(
+			CLIENT_MEDIA_BUDGET.maxRetainedChunkBytes
+		)).not.toThrow();
+		expect(() => assertRetainedChunkBytesWithinBudget(
+			CLIENT_MEDIA_BUDGET.maxRetainedChunkBytes + 1
+		)).toThrow(/retained-output budget/);
 	});
 });

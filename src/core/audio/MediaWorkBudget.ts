@@ -4,7 +4,8 @@ export const CLIENT_MEDIA_BUDGET = {
 	maxEncodedBytes: 128 * MEBIBYTE,
 	maxDurationSeconds: 2 * 60 * 60,
 	maxChannels: 8,
-	maxWorkingSetBytes: 512 * MEBIBYTE
+	maxWorkingSetBytes: 512 * MEBIBYTE,
+	maxRetainedChunkBytes: 256 * MEBIBYTE
 } as const;
 
 export class MediaWorkBudgetError extends Error {
@@ -13,6 +14,15 @@ export class MediaWorkBudgetError extends Error {
 	constructor(message: string) {
 		super(message);
 		this.name = 'MediaWorkBudgetError';
+	}
+}
+
+export function assertRetainedChunkBytesWithinBudget(retainedBytes: number): void {
+	if (!Number.isSafeInteger(retainedBytes) || retainedBytes < 0) {
+		throw new MediaWorkBudgetError('Retained chunk size is invalid');
+	}
+	if (retainedBytes > CLIENT_MEDIA_BUDGET.maxRetainedChunkBytes) {
+		throw new MediaWorkBudgetError('Generated chunks exceed the retained-output budget');
 	}
 }
 

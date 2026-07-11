@@ -4,6 +4,7 @@
  */
 
 import { Logger } from '../../utils/Logger';
+import { throwIfAborted, yieldToEventLoop } from '../utils/CooperativeTask';
 
 import type { ChunkStrategy, ChunkingConfig } from './ChunkingTypes';
 import type { ProcessedAudio, AudioChunk } from '../audio/AudioTypes';
@@ -242,8 +243,10 @@ export abstract class ChunkingService {
 	 */
 	protected async findNaturalBoundaries(
 		audio: ProcessedAudio,
-		targetPositions: number[]
+		targetPositions: number[],
+		signal?: AbortSignal
 	): Promise<number[]> {
+		throwIfAborted(signal);
 		if (!this.config.optimizeBoundaries) {
 			return targetPositions;
 		}
@@ -251,6 +254,7 @@ export abstract class ChunkingService {
 		// Use custom boundary detector if provided
 		if (this.config.boundaryDetector) {
 			const vadBoundaries = await this.config.boundaryDetector(audio);
+			throwIfAborted(signal);
 
 			// If VAD boundaries are found, use them to adjust target positions
 			if (vadBoundaries.length > 0) {
@@ -295,20 +299,23 @@ export abstract class ChunkingService {
 		}
 
 		// Default: use simple silence detection
-		return this.findSilenceBoundaries(audio, targetPositions);
+		return await this.findSilenceBoundaries(audio, targetPositions, signal);
 	}
 
 	/**
 	 * Find silence boundaries near target positions
 	 */
-	protected findSilenceBoundaries(
+	protected async findSilenceBoundaries(
 		audio: ProcessedAudio,
-		targetPositions: number[]
-	): number[] {
+		targetPositions: number[],
+		signal?: AbortSignal
+	): Promise<number[]> {
 		const silenceThreshold = 0.01;
 		const windowSize = audio.sampleRate * 5; // 5 second window
 
-		return targetPositions.map(targetTime => {
+		const boundaries: number[] = [];
+		for (const targetTime of targetPositions) {
+			throwIfAborted(signal);
 			const targetSample = Math.floor(targetTime * audio.sampleRate);
 			const startSample = Math.max(0, targetSample - windowSize);
 			const endSample = Math.min(audio.pcmData.length, targetSample + windowSize);
@@ -318,9 +325,8 @@ export abstract class ChunkingService {
 
 			// Find position with lowest energy (most silence)
 			for (let i = startSample; i < endSample - audio.sampleRate; i += audio.sampleRate / 10) {
-				const energy = this.calculateEnergy(
-					audio.pcmData.slice(i, i + audio.sampleRate)
-				);
+				await yieldToEventLoop(signal);
+				const energy = this.calculateEnergyRange(audio.pcmData, i, i + audio.sampleRate);
 
 				if (energy < lowestEnergy && energy < silenceThreshold) {
 					lowestEnergy = energy;
@@ -328,20 +334,25 @@ export abstract class ChunkingService {
 				}
 			}
 
-			return bestPosition / audio.sampleRate;
-		});
+			boundaries.push(bestPosition / audio.sampleRate);
+		}
+		return boundaries;
 	}
 
 	/**
 	 * Calculate RMS energy of audio segment
 	 */
 	protected calculateEnergy(samples: Float32Array): number {
+		return this.calculateEnergyRange(samples, 0, samples.length);
+	}
+
+	private calculateEnergyRange(samples: Float32Array, start: number, end: number): number {
 		let sum = 0;
-		for (let i = 0; i < samples.length; i++) {
+		for (let i = start; i < end; i++) {
 			const value = samples[i] ?? 0;
 			sum += value * value;
 		}
-		return Math.sqrt(sum / samples.length);
+		return Math.sqrt(sum / Math.max(1, end - start));
 	}
 
 	/**
