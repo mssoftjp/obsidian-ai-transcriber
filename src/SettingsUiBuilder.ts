@@ -5,6 +5,7 @@ import { MODEL_OPTIONS, getModelOption } from './config/ModelOptions';
 import { t } from './i18n';
 import { SafeStorageService } from './infrastructure/storage/SafeStorageService';
 import { SecurityUtils } from './infrastructure/storage/SecurityUtils';
+import { clearApiKeyInput } from './ui/ApiKeyInput';
 import { Logger } from './utils/Logger';
 import { PathUtils } from './utils/PathUtils';
 
@@ -20,6 +21,7 @@ export class SettingsUIBuilder {
 	 */
 	static displayAPISettings(containerEl: HTMLElement, settings: APITranscriptionSettings, saveSettings: () => Promise<void>, app: App): void {
 		// API settings heading removed as requested
+		let apiKeyInput: HTMLInputElement | null = null;
 
 		// API Key setting
 		new Setting(containerEl)
@@ -27,6 +29,7 @@ export class SettingsUIBuilder {
 			.setDesc(this.createApiKeyDescription(t('providers.openai'), 'https://platform.openai.com/api-keys'))
 			.addText(text => {
 				let storageWarningShown = false;
+				apiKeyInput = text.inputEl;
 				text.inputEl.type = 'password';
 				text.inputEl.autocomplete = 'off';
 				// Retrieve stored API key
@@ -99,11 +102,7 @@ export class SettingsUIBuilder {
 						settings.openaiApiKey = '';
 						await saveSettings();
 						// Removed Notice - clear action is obvious from UI
-						// Clear the input field
-						const input = button.extraSettingsEl.parentElement?.querySelector<HTMLInputElement>('input[type="text"]');
-						if (input) {
-							input.value = '';
-						}
+						clearApiKeyInput(apiKeyInput);
 					});
 			});
 

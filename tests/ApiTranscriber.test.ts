@@ -3,6 +3,8 @@ import { App, TFile } from 'obsidian';
 import { DEFAULT_API_SETTINGS } from '../src/ApiSettings';
 import { APITranscriber } from '../src/ApiTranscriber';
 
+import type { ProgressTracker } from '../src/ui/ProgressTracker';
+
 function deferred<T>(): {
 	promise: Promise<T>;
 	resolve: (value: T) => void;
@@ -85,5 +87,28 @@ describe('APITranscriber job ownership', () => {
 		await first;
 
 		await expect(transcriber.transcribe(createFile('next'))).resolves.toBe('next result');
+	});
+
+	it('releases job ownership when progress task setup fails', async () => {
+		const app = new App();
+		const progressTracker = {
+			startTask: jest.fn()
+				.mockImplementationOnce(() => {
+					throw new Error('progress setup failed');
+				})
+				.mockReturnValueOnce('task-2')
+		} as unknown as ProgressTracker;
+		const transcriber = new APITranscriber(
+			app,
+			structuredClone(DEFAULT_API_SETTINGS),
+			progressTracker
+		);
+		const controller = {
+			transcribe: jest.fn().mockResolvedValue('second result')
+		};
+		(transcriber as unknown as { controller: typeof controller }).controller = controller;
+
+		await expect(transcriber.transcribe(createFile('first'))).rejects.toThrow('progress setup failed');
+		await expect(transcriber.transcribe(createFile('second'))).resolves.toBe('second result');
 	});
 });

@@ -55,22 +55,22 @@ export class APITranscriber {
 			taskId: null
 		};
 		this.activeJob = job;
-		// Create task in progress tracker if available
-		if (this.progressTracker) {
-			// Get provider name and estimate cost
-			const provider = this.getProviderDisplayName();
-			const costEstimate = await this.estimateCost(audioFile);
-
-			this.throwIfAborted(job);
-			job.taskId = this.progressTracker.startTask(
-				audioFile,
-				1, // We don't know chunk count yet
-				provider,
-				costEstimate.cost
-			);
-		}
 
 		try {
+			// Progress setup belongs to this job and must release ownership if it fails.
+			if (this.progressTracker) {
+				const provider = this.getProviderDisplayName();
+				const costEstimate = await this.estimateCost(audioFile);
+
+				this.throwIfAborted(job);
+				job.taskId = this.progressTracker.startTask(
+					audioFile,
+					1, // We don't know chunk count yet
+					provider,
+					costEstimate.cost
+				);
+			}
+
 			const transcriptionStartTime = performance.now();
 
 			// Validate audio file
