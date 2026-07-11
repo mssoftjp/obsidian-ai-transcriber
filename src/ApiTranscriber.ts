@@ -8,11 +8,13 @@ import { Notice } from 'obsidian';
 import { TranscriptionController } from './application/TranscriptionController';
 import { SUPPORTED_FORMATS } from './config/constants';
 import { getModelConfig } from './config/ModelProcessingConfig';
+import { TranscriptionBusyError } from './core/transcription/TranscriptionJob';
 import { ErrorHandler } from './ErrorHandler';
 import { t } from './i18n';
 import { Logger } from './utils/Logger';
 
 import type { APITranscriptionSettings } from './ApiSettings';
+import type { ActiveTranscriptionJob } from './core/transcription/TranscriptionJob';
 import type { ProgressTracker } from './ui/ProgressTracker';
 import type { App, TFile } from 'obsidian';
 
@@ -27,11 +29,7 @@ export class APITranscriber {
 	private progressTracker: ProgressTracker | null = null;
 	private logger = Logger.getLogger('APITranscriber');
 
-	// Cancellation support
-	private abortController: AbortController | null = null;
-
-	// For compatibility
-	private currentTaskId: string | null = null;
+	private activeJob: ActiveTranscriptionJob | null = null;
 
 	constructor(app: App, settings: APITranscriptionSettings, progressTracker?: ProgressTracker) {
 		this.app = app;
@@ -48,9 +46,16 @@ export class APITranscriber {
 	 * Delegates to TranscriptionController
 	 */
 	async transcribe(audioFile: TFile, startTime?: number, endTime?: number): Promise<string | { text: string; modelUsed: string }> {
-		// Initialize cancellation controller
-		const abortController = new AbortController();
-		this.abortController = abortController;
+		if (this.activeJob) {
+			throw new TranscriptionBusyError();
+		}
+
+		const job: ActiveTranscriptionJob = {
+			id: this.generateJobId(),
+			abortController: new AbortController(),
+			taskId: null
+		};
+		this.activeJob = job;
 		const partialMarker = this.getPartialResultMarker();
 
 		// Create task in progress tracker if available
@@ -59,7 +64,8 @@ export class APITranscriber {
 			const provider = this.getProviderDisplayName();
 			const costEstimate = await this.estimateCost(audioFile);
 
-			this.currentTaskId = this.progressTracker.startTask(
+			this.throwIfAborted(job);
+			job.taskId = this.progressTracker.startTask(
 				audioFile,
 				1, // We don't know chunk count yet
 				provider,
@@ -79,8 +85,9 @@ export class APITranscriber {
 				audioFile,
 				startTime,
 				endTime,
-				abortController.signal
+				job.abortController.signal
 			);
+			this.throwIfAborted(job);
 
 			// Extract text for progress tracker
 			const resultText = typeof result === 'string' ? result : result.text;
@@ -109,7 +116,7 @@ export class APITranscriber {
 			}
 
 			// Handle cancellation
-			const isAbortError = abortController.signal.aborted
+			const isAbortError = job.abortController.signal.aborted
 				|| (error instanceof DOMException && error.name === 'AbortError');
 			if (isAbortError) {
 
@@ -117,8 +124,9 @@ export class APITranscriber {
 				new Notice(t('notices.transcriptionCancelled'));
 
 				// Mark task as cancelled in progress tracker
-				if (this.progressTracker && this.currentTaskId) {
-					this.progressTracker.cancelTask(this.currentTaskId);
+				if (this.progressTracker && job.taskId) {
+					this.progressTracker.cancelTask(job.taskId);
+					job.taskId = null;
 				}
 
 				return '';
@@ -131,8 +139,9 @@ export class APITranscriber {
 
 		} finally {
 			// Clean up
-			this.abortController = null;
-			this.currentTaskId = null;
+			if (this.activeJob === job) {
+				this.activeJob = null;
+			}
 		}
 	}
 
@@ -140,16 +149,22 @@ export class APITranscriber {
 	 * Cancel ongoing transcription
 	 */
 	cancelTranscription(): Promise<void> {
-		if (this.abortController) {
-			this.abortController.abort();
+		const job = this.activeJob;
+		if (!job) {
+			return Promise.resolve();
 		}
+		job.abortController.abort();
 
 		// Cancel current task in progress tracker
-		if (this.progressTracker && this.currentTaskId) {
-			this.progressTracker.cancelTask(this.currentTaskId);
-			this.currentTaskId = null;
+		if (this.progressTracker && job.taskId) {
+			this.progressTracker.cancelTask(job.taskId);
+			job.taskId = null;
 		}
 		return Promise.resolve();
+	}
+
+	isTranscribing(): boolean {
+		return this.activeJob !== null;
 	}
 
 	/**
@@ -332,6 +347,16 @@ export class APITranscriber {
 
 	private getPartialResultMarker(): string {
 		return t('modal.transcription.partialResult');
+	}
+
+	private generateJobId(): string {
+		return `job-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+	}
+
+	private throwIfAborted(job: ActiveTranscriptionJob): void {
+		if (job.abortController.signal.aborted) {
+			throw new DOMException('Transcription cancelled', 'AbortError');
+		}
 	}
 
 	private formatCostRate(currency: string, amount: number): string {

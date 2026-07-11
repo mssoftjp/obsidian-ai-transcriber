@@ -1,6 +1,7 @@
 import { getLanguage } from 'obsidian';
 
 import { UI_CONSTANTS } from '../config/constants';
+import { TranscriptionBusyError } from '../core/transcription/TranscriptionJob';
 import { Logger } from '../utils/Logger';
 
 import type { PluginStateRepository } from '../infrastructure/storage/PluginStateRepository';
@@ -51,6 +52,10 @@ export class ProgressTracker {
 	 * Start a new transcription task
 	 */
 	startTask(file: TFile, totalChunks: number, provider: string, estimatedCost?: number): string {
+		if (this.currentTask?.status === 'processing') {
+			throw new TranscriptionBusyError();
+		}
+
 		const taskId = this.generateTaskId();
 
 		const task: TranscriptionTask = {
