@@ -214,6 +214,35 @@ describe('GPT4oTranscriptionStrategy', () => {
     expect(merged).toBe(`第一部です。${overlap}第二部です。${overlap}第三部です。`);
   });
 
+  it('trims a shifted GPT-4o overlap while preserving new content', async () => {
+    const left = '本日は健康づくりの話をします。大阪に行くので、今後大阪府において健康づくりを広げます。';
+    const right = 'その中で大阪に行くので、今後大阪府において健康づくりを広げます。次にフレイル予防の話に進みます。';
+    const strategy = createMergeStrategy();
+
+    const merged = await strategy.mergeResults([
+      createResult(0, left, 0, 60),
+      createResult(1, right, 30, 90)
+    ]);
+
+    expect(countOccurrences(merged, '大阪に行くので')).toBe(1);
+    expect(countOccurrences(merged, '次にフレイル予防の話に進みます')).toBe(1);
+  });
+
+  it('trims a GPT-4o overlap after a generated preamble', async () => {
+    const overlap = 'フレイルというのは心身の機能が衰え始める状態を指します。';
+    const left = `今日は内容を一部抜粋してお話しします。${overlap}`;
+    const right = `皆様、ありがとうございます。今日こちらの内容も一部抜粋してお話しいたします。まずですね、ここだけ覚えてください。${overlap}次に予防策の話をします。`;
+    const strategy = createMergeStrategy();
+
+    const merged = await strategy.mergeResults([
+      createResult(0, left, 0, 90),
+      createResult(1, right, 60, 150)
+    ]);
+
+    expect(countOccurrences(merged, overlap)).toBe(1);
+    expect(countOccurrences(merged, '次に予防策の話をします')).toBe(1);
+  });
+
   it('keeps a visible timeline gap when a middle chunk fails', async () => {
     const cleanText = jest.fn(async (text: string) => text);
     const service = {
@@ -258,4 +287,16 @@ function createResult(
     endTime,
     success: true
   };
+}
+
+function createMergeStrategy(): GPT4oTranscriptionStrategy {
+  const service = {
+    modelId: 'gpt-4o-transcribe',
+    cleanText: jest.fn(async (text: string) => text)
+  } as unknown as TranscriptionService;
+  return new GPT4oTranscriptionStrategy(service);
+}
+
+function countOccurrences(text: string, needle: string): number {
+  return text.split(needle).length - 1;
 }
