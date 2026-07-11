@@ -103,6 +103,36 @@ describe('WhisperTranscriptionStrategy', () => {
 
 		expect(merged).toBe('第一章の本文です。境界の文章です。\n\n第二章の本文です。');
 	});
+
+	it('omits fully covered overlap segments from timestamp-formatted output', async () => {
+		const service = {
+			modelId: 'whisper-1-ts',
+			cleanText: jest.fn(async (text: string) => text)
+		} as unknown as TranscriptionService;
+		const strategy = new WhisperTranscriptionStrategy(service);
+		const results: TranscriptionResult[] = [
+			{
+				...createResult(0, '第一章です。境界文です。', 0, 25),
+				segments: [
+					{ text: '第一章です。', start: 0, end: 20 },
+					{ text: '境界文です。', start: 20, end: 25 }
+				]
+			},
+			{
+				...createResult(1, '異なる表記の境界文です。第二章です。', 20, 45),
+				segments: [
+					{ text: '異なる表記の境界文です。', start: 20, end: 24.8 },
+					{ text: '第二章です。', start: 25, end: 45 }
+				]
+			}
+		];
+
+		const merged = await strategy.mergeResults(results);
+
+		expect(merged).toContain('[0:00 → 0:20] 第一章です。');
+		expect(merged).toContain('[0:25 → 0:45] 第二章です。');
+		expect(merged).not.toContain('異なる表記の境界文です。');
+	});
 });
 
 function createResult(

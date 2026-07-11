@@ -142,7 +142,8 @@ export class WhisperTranscriptionStrategy extends TranscriptionStrategy {
 		let mergedText: string;
 		const isTimestampModel = this.transcriptionService.modelId === 'whisper-1-ts';
 		if (isTimestampModel) {
-			mergedText = this.merger.mergeWithTimestampsFormatted(results, {
+			const timestampMergeResults = this.trimCoveredSegmentsForTimestampMerge(results);
+			mergedText = this.merger.mergeWithTimestampsFormatted(timestampMergeResults, {
 				includeFailures: true,
 				useTimestamps: true
 			});
@@ -172,6 +173,29 @@ export class WhisperTranscriptionStrategy extends TranscriptionStrategy {
 		}
 
 		return mergedText;
+	}
+
+	private trimCoveredSegmentsForTimestampMerge(results: TranscriptionResult[]): TranscriptionResult[] {
+		const sorted = [...results].sort((left, right) => left.startTime - right.startTime);
+		let coveredUntil = Number.NEGATIVE_INFINITY;
+
+		return sorted.map(result => {
+			if (!result.success) {
+				return result;
+			}
+
+			const segments = result.segments;
+			let prepared = result;
+			if (segments && segments.length > 0 && result.startTime < coveredUntil) {
+				const uncoveredSegments = segments.filter(segment => segment.end > coveredUntil);
+				if (uncoveredSegments.length > 0 && uncoveredSegments.length < segments.length) {
+					prepared = { ...result, segments: uncoveredSegments };
+				}
+			}
+
+			coveredUntil = Math.max(coveredUntil, result.endTime);
+			return prepared;
+		});
 	}
 
 	private trimCoveredSegmentsForTextMerge(results: TranscriptionResult[]): TranscriptionResult[] {
