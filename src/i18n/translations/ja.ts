@@ -266,7 +266,7 @@ const ja: TranslationKeys = {
 			noFiles: '音声ファイルが見つかりません',
 			selectExternal: 'Vault外から選択',
 			copying: 'ファイルをコピー中...',
-			externalFileNotice: 'Vault外から選択する場合、Obsidianの制約上一時的にVault内のフォルダにコピーして処理されます。\nコピーしたファイルは次回起動時に削除されます。'
+			externalFileNotice: 'Vault外から選択する場合、Obsidianの制約上一時的にVault内のフォルダにコピーして処理されます。\nコピーしたファイルは処理終了時に削除され、中断時の残存ファイルは次回起動時に削除されます。'
 		},
 		transcription: {
 			title: 'AI Transcriber',

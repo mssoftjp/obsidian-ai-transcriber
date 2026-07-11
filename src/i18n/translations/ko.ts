@@ -266,7 +266,7 @@ const ko: TranslationKeys = {
 			noFiles: '오디오 파일을 찾을 수 없습니다',
 			selectExternal: 'Vault 외부에서 선택',
 			copying: '파일 복사 중...',
-			externalFileNotice: 'Vault 외부에서 파일을 선택하면 Obsidian 제한으로 인해 vault 내의 폴더로 임시로 복사됩니다.\n복사된 파일은 다음 시작 시 삭제됩니다.'
+			externalFileNotice: 'Vault 외부에서 파일을 선택하면 Obsidian 제한으로 인해 vault 내의 폴더로 임시로 복사됩니다.\n복사된 파일은 처리 종료 시 삭제되며, 중단 후 남은 파일은 다음 시작 시 삭제됩니다.'
 		},
 		transcription: {
 			title: 'AI 전사',

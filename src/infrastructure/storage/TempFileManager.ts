@@ -6,6 +6,7 @@
 
 import { TFile, TFolder } from 'obsidian';
 
+import { SUPPORTED_FORMATS } from '../../config/constants';
 import { t } from '../../i18n';
 import { Logger } from '../../utils/Logger';
 
@@ -13,7 +14,10 @@ import type { App } from 'obsidian';
 
 export class TempFileManager {
 	private static readonly TEMP_DIR = 'ai-transcriber-temp';
-	private static readonly OWNERSHIP_MARKER = `${TempFileManager.TEMP_DIR}/.ai-transcriber-owned-v1`;
+	private static readonly OWNERSHIP_MARKER_NAME = 'AI_TRANSCRIBER_TEMP_FOLDER.md';
+	private static readonly SESSION_MARKER_NAME = 'AI_TRANSCRIBER_TEMP_SESSION.md';
+	private static readonly OWNERSHIP_MARKER = `${TempFileManager.TEMP_DIR}/${TempFileManager.OWNERSHIP_MARKER_NAME}`;
+	private static readonly MARKER_CONTENT = 'Managed by AI Transcriber. Safe to remove when the plugin is not processing audio.\n';
 	private app: App;
 	private logger: Logger;
 
@@ -31,10 +35,13 @@ export class TempFileManager {
 		const existingItem = this.app.vault.getAbstractFileByPath(TempFileManager.TEMP_DIR);
 
 		if (existingItem instanceof TFolder) {
-			if (!this.hasOwnershipMarker()) {
-				throw new Error(
-					`${TempFileManager.TEMP_DIR} already exists but is not owned by AI Transcriber`
-				);
+			if (!(await this.hasOwnershipMarker())) {
+				const migrated = await this.migrateLegacyDirectory(existingItem);
+				if (!migrated) {
+					throw new Error(
+						`${TempFileManager.TEMP_DIR} already exists but is not owned by AI Transcriber`
+					);
+				}
 			}
 			this.logger.trace('Temporary directory already exists');
 			return existingItem;
@@ -47,10 +54,18 @@ export class TempFileManager {
 		// フォルダが存在しない場合は作成を試みる
 		try {
 			await this.app.vault.createFolder(TempFileManager.TEMP_DIR);
-			await this.app.vault.create(
-				TempFileManager.OWNERSHIP_MARKER,
-				'AI Transcriber managed temporary directory.\n'
-			);
+			try {
+				await this.app.vault.create(
+					TempFileManager.OWNERSHIP_MARKER,
+					TempFileManager.MARKER_CONTENT
+				);
+			} catch (error) {
+				const createdFolder = this.app.vault.getAbstractFileByPath(TempFileManager.TEMP_DIR);
+				if (createdFolder instanceof TFolder && createdFolder.children.length === 0) {
+					await this.app.fileManager.trashFile(createdFolder);
+				}
+				throw error;
+			}
 
 			// 作成後に再度取得
 			const newFolder = this.app.vault.getAbstractFileByPath(TempFileManager.TEMP_DIR);
@@ -63,7 +78,7 @@ export class TempFileManager {
 			// "Folder already exists"エラーの場合は、フォルダを再取得
 			if (error instanceof Error && error.message.toLowerCase().includes('already exist')) {
 				const folder = this.app.vault.getAbstractFileByPath(TempFileManager.TEMP_DIR);
-				if (folder instanceof TFolder && this.hasOwnershipMarker()) {
+				if (folder instanceof TFolder && await this.hasOwnershipMarker()) {
 					return folder;
 				}
 			}
@@ -78,7 +93,7 @@ export class TempFileManager {
 	 * ユニークなIDを生成
 	 */
 	private generateId(): string {
-		return Date.now().toString(36) + Math.random().toString(36).slice(2);
+		return `ait-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
 	}
 
 	/**
@@ -101,41 +116,42 @@ export class TempFileManager {
 		await this.ensureTempDirectory();
 
 		// セッションIDを生成（サブフォルダ用）
-		const sessionId = this.generateId();
-		const sessionPath = `${TempFileManager.TEMP_DIR}/${sessionId}`;
+		let sessionId = this.generateId();
+		let sessionPath = `${TempFileManager.TEMP_DIR}/${sessionId}`;
+		while (this.app.vault.getAbstractFileByPath(sessionPath)) {
+			sessionId = this.generateId();
+			sessionPath = `${TempFileManager.TEMP_DIR}/${sessionId}`;
+		}
 		this.logger.debug('Session created', { sessionId, sessionPath });
 
 		// セッション用サブフォルダを作成
 		await this.app.vault.createFolder(sessionPath);
-
-		// ファイル名をサニタイズ（元のファイル名を保持）
-		const sanitizedFileName = file.name
-			.replace(/[<>:"|?*\\/]/g, '_')
-			.replace(/^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])$/i, '_$1')
-			.replace(/^\.+$/, '_') || 'audio-file';
-
-		// シンプルなファイルパス（サブフォルダ内に元のファイル名で保存）
-		const tempPath = `${sessionPath}/${sanitizedFileName}`;
-
-		// ファイルをArrayBufferとして読み込み
-		const buffer = await this.readFileAsArrayBuffer(file, onProgress);
-
-		// vault内に書き込み
-		await this.app.vault.createBinary(tempPath, buffer);
-
-		// TFileオブジェクトを取得
-		const abstractFile = this.app.vault.getAbstractFileByPath(tempPath);
-		if (!abstractFile) {
-			this.logger.error('Failed to retrieve file after creation', { tempPath });
-			throw new Error(t('errors.createFileFailed', { error: 'File not found after creation' }));
+		try {
+			await this.app.vault.create(
+				`${sessionPath}/${TempFileManager.SESSION_MARKER_NAME}`,
+				TempFileManager.MARKER_CONTENT
+			);
+		} catch (error) {
+			const sessionFolder = this.app.vault.getAbstractFileByPath(sessionPath);
+			if (sessionFolder instanceof TFolder) {
+				try {
+					await this.app.fileManager.trashFile(sessionFolder);
+				} catch (cleanupError) {
+					this.logger.warn('Failed to roll back temporary session', {
+						error: this.formatError(cleanupError)
+					});
+				}
+			}
+			throw error;
 		}
 
-		if (!(abstractFile instanceof TFile)) {
-			this.logger.error('Retrieved item is not a file', { tempPath, type: abstractFile.constructor.name });
-			throw new Error(t('errors.createFileFailed', { error: 'Retrieved item is not a file' }));
+		let tFile: TFile;
+		try {
+			tFile = await this.createTemporaryAudioFile(file, sessionPath, onProgress);
+		} catch (error) {
+			await this.cleanupSession(sessionId);
+			throw error;
 		}
-
-		const tFile = abstractFile;
 
 		const elapsedTime = performance.now() - startTime;
 		this.logger.info('External file copy completed', {
@@ -145,6 +161,27 @@ export class TempFileManager {
 		});
 
 		return { tFile, sessionId };
+	}
+
+	private async createTemporaryAudioFile(
+		file: File,
+		sessionPath: string,
+		onProgress?: (progress: number) => void
+	): Promise<TFile> {
+		const sanitizedFileName = file.name
+			.replace(/[<>:"|?*\\/]/g, '_')
+			.replace(/^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])$/i, '_$1')
+			.replace(/^\.+$/, '_') || 'audio-file';
+		const tempPath = `${sessionPath}/${sanitizedFileName}`;
+		const buffer = await this.readFileAsArrayBuffer(file, onProgress);
+		await this.app.vault.createBinary(tempPath, buffer);
+
+		const abstractFile = this.app.vault.getAbstractFileByPath(tempPath);
+		if (!(abstractFile instanceof TFile)) {
+			this.logger.error('Failed to retrieve file after creation', { tempPath });
+			throw new Error(t('errors.createFileFailed', { error: 'File not found after creation' }));
+		}
+		return abstractFile;
 	}
 
 	/**
@@ -189,16 +226,17 @@ export class TempFileManager {
 	async cleanupSession(sessionId: string): Promise<void> {
 		this.logger.debug('Cleaning up session', { sessionId });
 		try {
-			if (!/^[a-z0-9-]+$/i.test(sessionId) || !this.hasOwnershipMarker()) {
+			if (!this.isValidSessionId(sessionId) || !(await this.hasOwnershipMarker())) {
 				this.logger.warn('Ignoring invalid temporary session id');
 				return;
 			}
 			const sessionPath = `${TempFileManager.TEMP_DIR}/${sessionId}`;
 			const sessionFolder = this.app.vault.getAbstractFileByPath(sessionPath);
 
-			if (sessionFolder instanceof TFolder) {
+			if (sessionFolder instanceof TFolder && await this.hasSessionMarker(sessionId)) {
 				// セッションフォルダを削除
 				await this.app.fileManager.trashFile(sessionFolder);
+				await this.cleanupRootIfEmpty();
 				this.logger.debug('Session cleaned up successfully', { sessionId });
 			}
 		} catch (error) {
@@ -218,17 +256,25 @@ export class TempFileManager {
 		this.logger.debug('Starting cleanup', { specific: Boolean(specificFile) });
 		try {
 			if (specificFile) {
-				// 特定のファイルのみ削除
-				if (this.hasOwnershipMarker() && this.isTemporaryFile(specificFile)) {
-					await this.app.fileManager.trashFile(specificFile);
-					this.logger.debug('Specific file cleaned up', { file: specificFile.path });
+				const sessionId = this.getSessionId(specificFile);
+				if (sessionId) {
+					await this.cleanupSession(sessionId);
 				}
 			} else {
-				// フォルダごと削除（シンプルな実装）
 				const folder = this.app.vault.getAbstractFileByPath(TempFileManager.TEMP_DIR);
-				if (folder instanceof TFolder && this.hasOwnershipMarker()) {
-					await this.app.fileManager.trashFile(folder);
-					this.logger.info('All temporary files cleaned up');
+				if (folder instanceof TFolder && !(await this.hasOwnershipMarker())) {
+					await this.migrateLegacyDirectory(folder);
+				}
+				if (folder instanceof TFolder && await this.hasOwnershipMarker()) {
+					const sessionFolders = folder.children
+						.filter((child): child is TFolder => child instanceof TFolder)
+						.filter(child => this.isValidSessionId(child.name));
+					for (const sessionFolder of sessionFolders) {
+						await this.ensureLegacySessionMarker(sessionFolder);
+						await this.cleanupSession(sessionFolder.name);
+					}
+					await this.cleanupRootIfEmpty();
+					this.logger.info('Temporary sessions cleaned up');
 				} else if (folder instanceof TFolder) {
 					this.logger.warn('Skipped unowned temporary directory cleanup');
 				}
@@ -247,8 +293,100 @@ export class TempFileManager {
 		return file.path.startsWith(`${TempFileManager.TEMP_DIR}/`);
 	}
 
-	private hasOwnershipMarker(): boolean {
-		return this.app.vault.getAbstractFileByPath(TempFileManager.OWNERSHIP_MARKER) instanceof TFile;
+	private async hasOwnershipMarker(): Promise<boolean> {
+		return this.hasValidMarker(TempFileManager.OWNERSHIP_MARKER);
+	}
+
+	private async hasSessionMarker(sessionId: string): Promise<boolean> {
+		const markerPath = `${TempFileManager.TEMP_DIR}/${sessionId}/${TempFileManager.SESSION_MARKER_NAME}`;
+		return this.hasValidMarker(markerPath);
+	}
+
+	private async hasValidMarker(path: string): Promise<boolean> {
+		const marker = this.app.vault.getAbstractFileByPath(path);
+		if (!(marker instanceof TFile)) {
+			return false;
+		}
+		try {
+			return await this.app.vault.cachedRead(marker) === TempFileManager.MARKER_CONTENT;
+		} catch (error) {
+			this.logger.warn('Failed to read temporary ownership marker', {
+				path,
+				error: this.formatError(error)
+			});
+			return false;
+		}
+	}
+
+	private isValidSessionId(sessionId: string): boolean {
+		return /^ait-[a-z0-9]{8,}-[a-z0-9]{6,}$/i.test(sessionId)
+			|| /^[a-z0-9]{16,}$/i.test(sessionId);
+	}
+
+	private getSessionId(file: TFile): string | null {
+		if (!this.isTemporaryFile(file)) {
+			return null;
+		}
+		const parts = file.path.split('/');
+		const sessionId = parts.length === 3 ? parts[1] : undefined;
+		return sessionId && this.isValidSessionId(sessionId) ? sessionId : null;
+	}
+
+	private containsOnlyRootMarker(folder: TFolder): boolean {
+		return folder.children.length === 1
+			&& folder.children[0]?.path === TempFileManager.OWNERSHIP_MARKER;
+	}
+
+	private async cleanupRootIfEmpty(): Promise<void> {
+		const folder = this.app.vault.getAbstractFileByPath(TempFileManager.TEMP_DIR);
+		if (folder instanceof TFolder
+			&& await this.hasOwnershipMarker()
+			&& this.containsOnlyRootMarker(folder)) {
+			await this.app.fileManager.trashFile(folder);
+		}
+	}
+
+	private async migrateLegacyDirectory(folder: TFolder): Promise<boolean> {
+		const legacyFolders = folder.children.filter((child): child is TFolder => child instanceof TFolder);
+		if (legacyFolders.length === 0 || legacyFolders.length !== folder.children.length) {
+			return false;
+		}
+		const isLegacyShape = legacyFolders.every((sessionFolder) =>
+			this.isLegacySessionFolder(sessionFolder)
+		);
+		if (!isLegacyShape) {
+			return false;
+		}
+
+		await this.app.vault.create(TempFileManager.OWNERSHIP_MARKER, TempFileManager.MARKER_CONTENT);
+		for (const sessionFolder of legacyFolders) {
+			await this.app.vault.create(
+				`${sessionFolder.path}/${TempFileManager.SESSION_MARKER_NAME}`,
+				TempFileManager.MARKER_CONTENT
+			);
+		}
+		this.logger.info('Migrated legacy temporary sessions');
+		return true;
+	}
+
+	private isLegacySessionFolder(sessionFolder: TFolder): boolean {
+		if (!this.isValidSessionId(sessionFolder.name) || sessionFolder.children.length !== 1) {
+			return false;
+		}
+		const [file] = sessionFolder.children;
+		return file instanceof TFile
+			&& SUPPORTED_FORMATS.EXTENSIONS.includes(file.extension.toLowerCase());
+	}
+
+	private async ensureLegacySessionMarker(sessionFolder: TFolder): Promise<void> {
+		if (await this.hasSessionMarker(sessionFolder.name)
+			|| !this.isLegacySessionFolder(sessionFolder)) {
+			return;
+		}
+		await this.app.vault.create(
+			`${sessionFolder.path}/${TempFileManager.SESSION_MARKER_NAME}`,
+			TempFileManager.MARKER_CONTENT
+		);
 	}
 
 	/**

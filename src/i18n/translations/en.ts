@@ -266,7 +266,7 @@ const en: TranslationKeys = {
 			noFiles: 'No audio files found',
 			selectExternal: 'Select from outside vault',
 			copying: 'Copying file...',
-			externalFileNotice: 'When selecting files from outside the vault, they will be temporarily copied to a folder within the vault due to Obsidian restrictions.\nCopied files will be deleted on the next startup.'
+			externalFileNotice: 'When selecting files from outside the vault, they will be temporarily copied to a folder within the vault due to Obsidian restrictions.\nCopied files are deleted when processing ends. Leftovers after an interruption are deleted on the next startup.'
 		},
 		transcription: {
 			title: 'AI transcriber',

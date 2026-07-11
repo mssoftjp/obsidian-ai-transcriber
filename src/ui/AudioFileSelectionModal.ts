@@ -16,7 +16,7 @@ export class AudioFileSelectionModal extends Modal {
 	private sortOrder: 'asc' | 'desc' = 'desc';
 	private searchQuery = '';
 	private selectedFile: TFile | null = null;
-	private onFileSelect: (file: TFile | File, isExternal: boolean) => void;
+	private onFileSelect: (file: TFile | File, isExternal: boolean, tempSessionId?: string) => void;
 	private tempFileManager: TempFileManager;
 	private okButton: ButtonComponent | null = null;
 	private fileSuggest: AudioFileSuggest | null = null;
@@ -24,7 +24,7 @@ export class AudioFileSelectionModal extends Modal {
 
 	constructor(
 		app: App,
-		onFileSelect: (file: TFile | File, isExternal: boolean) => void
+		onFileSelect: (file: TFile | File, isExternal: boolean, tempSessionId?: string) => void
 	) {
 		super(app);
 		this.onFileSelect = onFileSelect;
@@ -45,13 +45,13 @@ export class AudioFileSelectionModal extends Modal {
 		this.okButton?.setDisabled(false);
 	}
 
-	private confirmSelection(file?: TFile, isExternal = false): void {
+	private confirmSelection(file?: TFile, isExternal = false, tempSessionId?: string): void {
 		const target = file ?? this.selectedFile;
 		if (!target) {
 			return;
 		}
 		this.setSelectedFile(target);
-		this.onFileSelect(target, isExternal);
+		this.onFileSelect(target, isExternal, tempSessionId);
 		this.close();
 	}
 
@@ -343,7 +343,7 @@ export class AudioFileSelectionModal extends Modal {
 					progressText.setText(`${Math.round(progress)}%`);
 				});
 
-				this.confirmSelection(result.tFile, true);
+				this.confirmSelection(result.tFile, true, result.sessionId);
 			} catch (error) {
 				this.logger.error('Failed to copy external file:', error);
 				const errorMessage = error instanceof Error

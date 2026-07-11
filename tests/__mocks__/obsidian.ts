@@ -68,6 +68,18 @@ export class App {
 	}
 }
 
+export class Component {
+	addChild<T extends Component>(component: T): T {
+		return component;
+	}
+
+	removeChild(_component: Component): void {}
+
+	registerInterval(_id: number): number {
+		return _id;
+	}
+}
+
 export class PluginSettingTab {
 	app: App;
 	plugin: unknown;

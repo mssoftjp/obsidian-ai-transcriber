@@ -1,28 +1,50 @@
-/**
- * Test for TempFileManager to verify it uses app.fileManager.trashFile instead of app.vault.delete
- */
-
-import { TempFileManager } from '../../../src/infrastructure/storage/TempFileManager';
 import { App, TFile, TFolder } from 'obsidian';
 
-// Create helper functions to create properly configured test objects
+import { TempFileManager } from '../../../src/infrastructure/storage/TempFileManager';
+
+const TEMP_DIR = 'ai-transcriber-temp';
+const ROOT_MARKER_PATH = `${TEMP_DIR}/AI_TRANSCRIBER_TEMP_FOLDER.md`;
+const SESSION_ID = 'ait-mrg23hpz-abcdef12';
+const SESSION_PATH = `${TEMP_DIR}/${SESSION_ID}`;
+const SESSION_MARKER_PATH = `${SESSION_PATH}/AI_TRANSCRIBER_TEMP_SESSION.md`;
+const MARKER_CONTENT = 'Managed by AI Transcriber. Safe to remove when the plugin is not processing audio.\n';
+
 function createTestFile(path: string, basename: string, extension: string): TFile {
 	const file = new TFile();
 	file.path = path;
 	file.basename = basename;
 	file.extension = extension;
-	file.name = `${basename}.${extension}`;
+	file.name = extension ? `${basename}.${extension}` : basename;
 	return file;
 }
 
-function createTestFolder(path: string, name: string): TFolder {
+function createTestFolder(path: string, name: string, children: (TFile | TFolder)[] = []): TFolder {
 	const folder = new TFolder();
 	folder.path = path;
 	folder.name = name;
+	folder.children = children;
 	return folder;
 }
 
-// Mock the Logger module
+function createOwnedSession(): {
+	root: TFolder;
+	rootMarker: TFile;
+	session: TFolder;
+	sessionMarker: TFile;
+	audio: TFile;
+} {
+	const rootMarker = createTestFile(ROOT_MARKER_PATH, 'AI_TRANSCRIBER_TEMP_FOLDER', 'md');
+	const sessionMarker = createTestFile(
+		SESSION_MARKER_PATH,
+		'AI_TRANSCRIBER_TEMP_SESSION',
+		'md'
+	);
+	const audio = createTestFile(`${SESSION_PATH}/audio.mp3`, 'audio', 'mp3');
+	const session = createTestFolder(SESSION_PATH, SESSION_ID, [sessionMarker, audio]);
+	const root = createTestFolder(TEMP_DIR, TEMP_DIR, [rootMarker, session]);
+	return { root, rootMarker, session, sessionMarker, audio };
+}
+
 jest.mock('../../../src/utils/Logger', () => ({
 	Logger: {
 		getLogger: jest.fn(() => ({
@@ -35,14 +57,13 @@ jest.mock('../../../src/utils/Logger', () => ({
 	}
 }));
 
-// Mock the i18n module  
 jest.mock('../../../src/i18n', () => ({
-	t: jest.fn((key: string, params?: any) => {
+	t: jest.fn((key: string, params?: { error?: string; available?: string }) => {
 		if (key === 'errors.createFileFailed') {
-			return `Create file failed: ${params?.error || 'Unknown error'}`;
+			return `Create file failed: ${params?.error ?? 'Unknown error'}`;
 		}
 		if (key === 'errors.diskSpaceLow') {
-			return `Disk space low: ${params?.available || '0'}GB`;
+			return `Disk space low: ${params?.available ?? '0'}GB`;
 		}
 		return key;
 	})
@@ -50,193 +71,211 @@ jest.mock('../../../src/i18n', () => ({
 
 describe('TempFileManager', () => {
 	let app: App;
-	let tempFileManager: TempFileManager;
-	let mockTrashFile: jest.SpyInstance;
-	let mockVaultDelete: jest.SpyInstance;
+	let manager: TempFileManager;
+	let trashFile: jest.SpyInstance;
+	let vaultDelete: jest.SpyInstance;
 
 	beforeEach(() => {
 		app = new App();
-		tempFileManager = new TempFileManager(app);
-
-		// Spy on the methods to verify they are called correctly
-		mockTrashFile = jest.spyOn(app.fileManager, 'trashFile');
-		mockVaultDelete = jest.spyOn(app.vault, 'delete');
+		app.vault.cachedRead = jest.fn().mockResolvedValue(MARKER_CONTENT);
+		manager = new TempFileManager(app);
+		trashFile = jest.spyOn(app.fileManager, 'trashFile');
+		vaultDelete = jest.spyOn(app.vault, 'delete');
 	});
 
 	afterEach(() => {
 		jest.clearAllMocks();
 	});
 
-	describe('cleanupSession', () => {
-		it('should use app.fileManager.trashFile to delete session folder', async () => {
-			// Setup: Create a mock session folder
-			const sessionId = 'test-session';
-			const sessionPath = `ai-transcriber-temp/${sessionId}`;
-			const sessionFolder = createTestFolder(sessionPath, sessionId);
-			
-			const marker = createTestFile('ai-transcriber-temp/.ai-transcriber-owned-v1', '.ai-transcriber-owned-v1', '');
-			jest.spyOn(app.vault, 'getAbstractFileByPath').mockImplementation((path) =>
-				path === 'ai-transcriber-temp/.ai-transcriber-owned-v1' ? marker : sessionFolder
-			);
-
-			// Act: Call cleanupSession
-			await tempFileManager.cleanupSession(sessionId);
-
-			// Assert: Verify that trashFile was called with the session folder
-			expect(mockTrashFile).toHaveBeenCalledWith(sessionFolder);
-			expect(mockTrashFile).toHaveBeenCalledTimes(1);
-			
-			// Assert: Verify that vault.delete was NOT called
-			expect(mockVaultDelete).not.toHaveBeenCalled();
+	it('deletes only an owned session with visible Vault markers', async () => {
+		const owned = createOwnedSession();
+		jest.spyOn(app.vault, 'getAbstractFileByPath').mockImplementation((path) => {
+			if (path === ROOT_MARKER_PATH) {
+				return owned.rootMarker;
+			}
+			if (path === SESSION_MARKER_PATH) {
+				return owned.sessionMarker;
+			}
+			if (path === SESSION_PATH) {
+				return owned.session;
+			}
+			return null;
 		});
 
-		it('should handle error gracefully when session folder does not exist', async () => {
-			// Setup: Mock getAbstractFileByPath to return null
-			jest.spyOn(app.vault, 'getAbstractFileByPath').mockReturnValue(null);
+		await manager.cleanupSession(SESSION_ID);
 
-			// Act: Call cleanupSession - should not throw
-			await expect(tempFileManager.cleanupSession('nonexistent-session')).resolves.toBeUndefined();
-
-			// Assert: No delete methods should be called
-			expect(mockTrashFile).not.toHaveBeenCalled();
-			expect(mockVaultDelete).not.toHaveBeenCalled();
-		});
-
-		it('should not delete a session from an unowned temporary directory', async () => {
-			const sessionFolder = createTestFolder('ai-transcriber-temp/test-session', 'test-session');
-			jest.spyOn(app.vault, 'getAbstractFileByPath').mockImplementation((path) =>
-				path === 'ai-transcriber-temp/.ai-transcriber-owned-v1' ? null : sessionFolder
-			);
-
-			await tempFileManager.cleanupSession('test-session');
-
-			expect(mockTrashFile).not.toHaveBeenCalled();
-		});
+		expect(trashFile).toHaveBeenCalledWith(owned.session);
+		expect(vaultDelete).not.toHaveBeenCalled();
 	});
 
-	describe('cleanup', () => {
-		it('should use app.fileManager.trashFile for specific file cleanup', async () => {
-			// Setup: Create a mock temp file
-			const tempFile = createTestFile('ai-transcriber-temp/test-file.mp3', 'test-file', 'mp3');
-			const marker = createTestFile('ai-transcriber-temp/.ai-transcriber-owned-v1', '.ai-transcriber-owned-v1', '');
-			jest.spyOn(app.vault, 'getAbstractFileByPath').mockReturnValue(marker);
-
-			// Act: Call cleanup with specific file
-			await tempFileManager.cleanup(tempFile);
-
-			// Assert: Verify that trashFile was called with the specific file
-			expect(mockTrashFile).toHaveBeenCalledWith(tempFile);
-			expect(mockTrashFile).toHaveBeenCalledTimes(1);
-			
-			// Assert: Verify that vault.delete was NOT called
-			expect(mockVaultDelete).not.toHaveBeenCalled();
+	it('does not delete a session when either ownership marker is missing', async () => {
+		const owned = createOwnedSession();
+		jest.spyOn(app.vault, 'getAbstractFileByPath').mockImplementation((path) => {
+			if (path === ROOT_MARKER_PATH) {
+				return owned.rootMarker;
+			}
+			if (path === SESSION_PATH) {
+				return owned.session;
+			}
+			return null;
 		});
 
-		it('should use app.fileManager.trashFile for full cleanup', async () => {
-			// Setup: Create a mock temp folder
-			const tempFolder = createTestFolder('ai-transcriber-temp', 'ai-transcriber-temp');
-			const marker = createTestFile('ai-transcriber-temp/.ai-transcriber-owned-v1', '.ai-transcriber-owned-v1', '');
-			jest.spyOn(app.vault, 'getAbstractFileByPath').mockImplementation((path) =>
-				path === 'ai-transcriber-temp' ? tempFolder : marker
-			);
+		await manager.cleanupSession(SESSION_ID);
 
-			// Act: Call cleanup without specific file (full cleanup)
-			await tempFileManager.cleanup();
-
-			// Assert: Verify that trashFile was called with the temp folder
-			expect(mockTrashFile).toHaveBeenCalledWith(tempFolder);
-			expect(mockTrashFile).toHaveBeenCalledTimes(1);
-			
-			// Assert: Verify that vault.delete was NOT called
-			expect(mockVaultDelete).not.toHaveBeenCalled();
-		});
-
-		it('should not delete an unowned folder with the temporary directory name', async () => {
-			const tempFolder = createTestFolder('ai-transcriber-temp', 'ai-transcriber-temp');
-			jest.spyOn(app.vault, 'getAbstractFileByPath').mockImplementation((path) =>
-				path === 'ai-transcriber-temp' ? tempFolder : null
-			);
-
-			await tempFileManager.cleanup();
-
-			expect(mockTrashFile).not.toHaveBeenCalled();
-		});
-
-		it('should not cleanup files outside temp directory', async () => {
-			// Setup: Create a file outside the temp directory
-			const regularFile = createTestFile('regular-folder/file.mp3', 'file', 'mp3');
-
-			// Act: Call cleanup with non-temp file
-			await tempFileManager.cleanup(regularFile);
-
-			// Assert: No delete methods should be called for non-temp files
-			expect(mockTrashFile).not.toHaveBeenCalled();
-			expect(mockVaultDelete).not.toHaveBeenCalled();
-		});
-
-		it('should not delete a specific file from an unowned temporary directory', async () => {
-			const tempFile = createTestFile('ai-transcriber-temp/test-file.mp3', 'test-file', 'mp3');
-			jest.spyOn(app.vault, 'getAbstractFileByPath').mockReturnValue(null);
-
-			await tempFileManager.cleanup(tempFile);
-
-			expect(mockTrashFile).not.toHaveBeenCalled();
-		});
-
-		it('should handle trashFile errors gracefully', async () => {
-			// Setup: Create a mock temp file and make trashFile throw
-			const tempFile = createTestFile('ai-transcriber-temp/test-file.mp3', 'test-file', 'mp3');
-			const marker = createTestFile('ai-transcriber-temp/.ai-transcriber-owned-v1', '.ai-transcriber-owned-v1', '');
-			jest.spyOn(app.vault, 'getAbstractFileByPath').mockReturnValue(marker);
-			mockTrashFile.mockRejectedValue(new Error('Trash operation failed'));
-
-			// Act: Call cleanup - should not throw
-			await expect(tempFileManager.cleanup(tempFile)).resolves.toBeUndefined();
-
-			// Assert: trashFile was called but error was handled
-			expect(mockTrashFile).toHaveBeenCalledWith(tempFile);
-		});
+		expect(trashFile).not.toHaveBeenCalled();
 	});
 
-	describe('isTemporaryFile', () => {
-		it('should correctly identify temporary files', () => {
-			const tempFile = createTestFile('ai-transcriber-temp/test.mp3', 'test', 'mp3');
-			const similarPrefixFile = createTestFile('ai-transcriber-temp-backup/test.mp3', 'test', 'mp3');
-			const regularFile = createTestFile('regular/test.mp3', 'test', 'mp3');
-
-			expect(tempFileManager.isTemporaryFile(tempFile)).toBe(true);
-			expect(tempFileManager.isTemporaryFile(similarPrefixFile)).toBe(false);
-			expect(tempFileManager.isTemporaryFile(regularFile)).toBe(false);
+	it('does not trust a marker whose contents do not match', async () => {
+		const owned = createOwnedSession();
+		app.vault.cachedRead = jest.fn().mockResolvedValue('user-created file');
+		jest.spyOn(app.vault, 'getAbstractFileByPath').mockImplementation((path) => {
+			if (path === ROOT_MARKER_PATH) {
+				return owned.rootMarker;
+			}
+			if (path === SESSION_MARKER_PATH) {
+				return owned.sessionMarker;
+			}
+			if (path === SESSION_PATH) {
+				return owned.session;
+			}
+			return null;
 		});
+
+		await manager.cleanupSession(SESSION_ID);
+
+		expect(trashFile).not.toHaveBeenCalled();
 	});
 
-	describe('Safety verification', () => {
-		it('should never call app.vault.delete directly', async () => {
-			// This test ensures that our mock setup works and vault.delete is never called
-			const tempFolder = createTestFolder('ai-transcriber-temp', 'ai-transcriber-temp');
-			const tempFile = createTestFile('ai-transcriber-temp/test.mp3', 'test', 'mp3');
-			const marker = createTestFile('ai-transcriber-temp/.ai-transcriber-owned-v1', '.ai-transcriber-owned-v1', '');
-			
-			jest.spyOn(app.vault, 'getAbstractFileByPath').mockImplementation((path) => {
-				if (path === 'ai-transcriber-temp') {
-					return tempFolder;
-				}
-				if (path === 'ai-transcriber-temp/.ai-transcriber-owned-v1') {
-					return marker;
-				}
-				return tempFolder;
-			});
+	it('rejects traversal and malformed session identifiers', async () => {
+		await manager.cleanupSession('../user-folder');
+		await manager.cleanupSession('test-session');
 
-			// Test all cleanup methods
-			await tempFileManager.cleanup();
-			await tempFileManager.cleanup(tempFile);
-			await tempFileManager.cleanupSession('test-session');
+		expect(trashFile).not.toHaveBeenCalled();
+	});
 
-			// Verify vault.delete was never called
-			expect(mockVaultDelete).not.toHaveBeenCalled();
-			
-			// Verify trashFile was called instead
-			expect(mockTrashFile).toHaveBeenCalled();
+	it('cleans the complete owned session when given its audio file', async () => {
+		const owned = createOwnedSession();
+		jest.spyOn(app.vault, 'getAbstractFileByPath').mockImplementation((path) => {
+			if (path === ROOT_MARKER_PATH) {
+				return owned.rootMarker;
+			}
+			if (path === SESSION_MARKER_PATH) {
+				return owned.sessionMarker;
+			}
+			if (path === SESSION_PATH) {
+				return owned.session;
+			}
+			return null;
 		});
+
+		await manager.cleanup(owned.audio);
+
+		expect(trashFile).toHaveBeenCalledWith(owned.session);
+		expect(vaultDelete).not.toHaveBeenCalled();
+	});
+
+	it('does not clean files outside a direct managed session path', async () => {
+		const outside = createTestFile('regular-folder/file.mp3', 'file', 'mp3');
+		const nested = createTestFile(`${SESSION_PATH}/nested/file.mp3`, 'file', 'mp3');
+
+		await manager.cleanup(outside);
+		await manager.cleanup(nested);
+
+		expect(trashFile).not.toHaveBeenCalled();
+	});
+
+	it('migrates the exact legacy session shape before startup cleanup', async () => {
+		const legacyId = 'mrg23hpziwae46cjsy';
+		const legacyPath = `${TEMP_DIR}/${legacyId}`;
+		const audio = createTestFile(`${legacyPath}/audio.wav`, 'audio', 'wav');
+		const legacySession = createTestFolder(legacyPath, legacyId, [audio]);
+		const root = createTestFolder(TEMP_DIR, TEMP_DIR, [legacySession]);
+		const createdRootMarker = createTestFile(ROOT_MARKER_PATH, 'AI_TRANSCRIBER_TEMP_FOLDER', 'md');
+		const createdSessionMarker = createTestFile(
+			`${legacyPath}/AI_TRANSCRIBER_TEMP_SESSION.md`,
+			'AI_TRANSCRIBER_TEMP_SESSION',
+			'md'
+		);
+		let migrated = false;
+		const create = jest.fn(async (path: string) => {
+			migrated = true;
+			return path === ROOT_MARKER_PATH ? createdRootMarker : createdSessionMarker;
+		});
+		app.vault.create = create;
+		jest.spyOn(app.vault, 'getAbstractFileByPath').mockImplementation((path) => {
+			if (path === TEMP_DIR) {
+				return root;
+			}
+			if (migrated && path === ROOT_MARKER_PATH) {
+				return createdRootMarker;
+			}
+			if (migrated && path === `${legacyPath}/AI_TRANSCRIBER_TEMP_SESSION.md`) {
+				return createdSessionMarker;
+			}
+			if (path === legacyPath) {
+				return legacySession;
+			}
+			return null;
+		});
+
+		await manager.cleanup();
+
+		expect(create).toHaveBeenCalledWith(ROOT_MARKER_PATH, expect.any(String));
+		expect(create).toHaveBeenCalledWith(
+			`${legacyPath}/AI_TRANSCRIBER_TEMP_SESSION.md`,
+			expect.any(String)
+		);
+		expect(trashFile).toHaveBeenCalledWith(legacySession);
+	});
+
+	it('does not adopt or delete a legacy-looking directory containing unknown data', async () => {
+		const legacyId = 'mrg23hpziwae46cjsy';
+		const session = createTestFolder(`${TEMP_DIR}/${legacyId}`, legacyId, [
+			createTestFile(`${TEMP_DIR}/${legacyId}/audio.wav`, 'audio', 'wav'),
+			createTestFile(`${TEMP_DIR}/${legacyId}/notes.md`, 'notes', 'md')
+		]);
+		const root = createTestFolder(TEMP_DIR, TEMP_DIR, [session]);
+		const create = jest.fn();
+		app.vault.create = create;
+		jest.spyOn(app.vault, 'getAbstractFileByPath').mockImplementation((path) =>
+			path === TEMP_DIR ? root : null
+		);
+
+		await manager.cleanup();
+
+		expect(create).not.toHaveBeenCalled();
+		expect(trashFile).not.toHaveBeenCalled();
+	});
+
+	it('never calls Vault.delete even when trashing fails', async () => {
+		const owned = createOwnedSession();
+		jest.spyOn(app.vault, 'getAbstractFileByPath').mockImplementation((path) => {
+			if (path === ROOT_MARKER_PATH) {
+				return owned.rootMarker;
+			}
+			if (path === SESSION_MARKER_PATH) {
+				return owned.sessionMarker;
+			}
+			if (path === SESSION_PATH) {
+				return owned.session;
+			}
+			return null;
+		});
+		trashFile.mockRejectedValue(new Error('Trash failed'));
+
+		await expect(manager.cleanupSession(SESSION_ID)).resolves.toBeUndefined();
+
+		expect(trashFile).toHaveBeenCalledWith(owned.session);
+		expect(vaultDelete).not.toHaveBeenCalled();
+	});
+
+	it('identifies only files within the exact temporary directory prefix', () => {
+		const temporary = createTestFile(`${SESSION_PATH}/test.mp3`, 'test', 'mp3');
+		const similar = createTestFile('ai-transcriber-temp-backup/test.mp3', 'test', 'mp3');
+		const regular = createTestFile('regular/test.mp3', 'test', 'mp3');
+
+		expect(manager.isTemporaryFile(temporary)).toBe(true);
+		expect(manager.isTemporaryFile(similar)).toBe(false);
+		expect(manager.isTemporaryFile(regular)).toBe(false);
 	});
 });

@@ -266,7 +266,7 @@ const zh: TranslationKeys = {
 			noFiles: '未找到音频文件',
 			selectExternal: '从库外选择',
 			copying: '正在复制文件...',
-			externalFileNotice: '从库外选择文件时，由于Obsidian的限制，文件将被临时复制到库内的文件夹中进行处理。\n复制的文件将在下次启动时删除。'
+			externalFileNotice: '从库外选择文件时，由于Obsidian的限制，文件将被临时复制到库内的文件夹中进行处理。\n复制的文件将在处理结束时删除；中断后残留的文件将在下次启动时删除。'
 		},
 		transcription: {
 			title: 'AI Transcriber',

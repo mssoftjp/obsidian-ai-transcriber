@@ -119,7 +119,7 @@ Links to GitHub, OpenAI documentation, and Buy Me a Coffee are documentation or 
 ## Local data and permissions
 
 - **Vault file lists**: The plugin uses the public Obsidian Vault API to list files only when the picker or history recovery needs them, then filters the result to supported transcription formats.
-- **Vault writes**: The plugin creates a new transcription note with its complete body in the output folder you choose. It may also create temporary working files and place `fvad.wasm` in the plugin folder when you explicitly choose a local VAD file.
+- **Vault writes**: The plugin creates a new transcription note with its complete body in the output folder you choose. Files selected outside the vault are copied into the plugin-owned `ai-transcriber-temp` folder, removed when processing or cancellation ends, and recovered for cleanup after an interrupted session on the next startup. The plugin may also place `fvad.wasm` in its plugin folder when you explicitly choose a local VAD file.
 - **Manual recovery display**: If creating a transcription note fails, the plugin shows the complete generated Markdown in a visible recovery window so you can restore it manually.
 - **Local VAD WASM**: `fvad.wasm` is an optional WebRTC VAD module from `@echogarden/fvad-wasm`. It is used only for local voice activity detection when configured.
 - **Base64 encoding**: Base64 is used for API-key storage wrappers and realtime audio encoding. It is not used to hide network endpoints or telemetry.
@@ -316,7 +316,7 @@ GitHub、OpenAIドキュメント、Buy Me a Coffeeへのリンクは、ドキ�
 ## ローカルデータと権限
 
 - **Vaultファイル一覧**: 音声/動画ファイルの選択や文字起こし履歴の復旧が必要なときだけ、公開されているObsidian Vault APIでファイル一覧を取得し、文字起こし対応形式に絞り込みます。
-- **Vaultへの書き込み**: 選択した出力フォルダに、完全な本文を含む新しい文字起こしノートを一度で作成します。また、一時作業ファイルを作成したり、ユーザーがローカルVADファイルを明示的に選択した場合に `fvad.wasm` をプラグインフォルダへ配置することがあります。
+- **Vaultへの書き込み**: 選択した出力フォルダに、完全な本文を含む新しい文字起こしノートを一度で作成します。Vault外から選択したファイルはプラグイン所有の `ai-transcriber-temp` フォルダへ一時コピーし、処理完了時またはキャンセル時に削除します。中断による残存ファイルは次回起動時に清掃します。また、ユーザーがローカルVADファイルを明示的に選択した場合は `fvad.wasm` をプラグインフォルダへ配置することがあります。
 - **手動復旧表示**: 文字起こしノートの作成に失敗した場合、生成済みの完全なMarkdownを復旧用ウィンドウに表示し、手動で復元できるようにします。
 - **ローカルVAD WASM**: `fvad.wasm` は `@echogarden/fvad-wasm` 由来の任意のWebRTC VADモジュールです。ローカル音声区間検出を設定した場合にのみ使用します。
 - **Base64エンコード**: Base64はAPIキー保存用ラッパーとリアルタイム音声エンコードに使用します。通信先やテレメトリーを隠す目的では使用していません。

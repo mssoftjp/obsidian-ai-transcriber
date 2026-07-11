@@ -8,6 +8,7 @@ import { LoadingAnimation } from '../core/utils/LoadingAnimation';
 import { SimpleProgressCalculator } from '../core/utils/SimpleProgressCalculator';
 import { ErrorHandler } from '../ErrorHandler';
 import { t } from '../i18n';
+import { TempFileManager } from '../infrastructure/storage/TempFileManager';
 import { TranscriptionNoteWriter } from '../infrastructure/storage/TranscriptionNoteWriter';
 import { Logger } from '../utils/Logger';
 import { PathUtils } from '../utils/PathUtils';
@@ -62,6 +63,8 @@ export class APITranscriptionModal extends Modal {
 	private progressCalculator: SimpleProgressCalculator | null = null;
 	private loadingAnimation: LoadingAnimation;
 	private logger: Logger;
+	private tempSessionId: string | null;
+	private tempCleanupStarted = false;
 
 	constructor(
 		app: App,
@@ -70,7 +73,8 @@ export class APITranscriptionModal extends Modal {
 		audioFile: TFile,
 		settings: APITranscriptionSettings,
 		progressTracker?: ProgressTracker,
-		saveSettings?: () => Promise<void>
+		saveSettings?: () => Promise<void>,
+		tempSessionId?: string
 	) {
 		super(app);
 		this.parentComponent = parentComponent;
@@ -79,6 +83,7 @@ export class APITranscriptionModal extends Modal {
 		this.settings = settings;
 		this.progressTracker = progressTracker ?? null;
 		this.saveSettings = saveSettings ?? null;
+		this.tempSessionId = tempSessionId ?? null;
 		this.loadingAnimation = this.parentComponent.addChild(new LoadingAnimation());
 		this.logger = Logger.getLogger('APITranscriptionModal');
 					this.logger.debug('APITranscriptionModal created', {
@@ -381,6 +386,16 @@ export class APITranscriptionModal extends Modal {
 		this.wakeLock = null;
 	}
 
+	private async cleanupTemporarySession(): Promise<void> {
+		if (!this.tempSessionId || this.tempCleanupStarted) {
+			return;
+		}
+		this.tempCleanupStarted = true;
+		const sessionId = this.tempSessionId;
+		await new TempFileManager(this.app).cleanupSession(sessionId);
+		this.tempSessionId = null;
+	}
+
 	private async startTranscription() {
 		if (this.isTranscribing) {
 			return;
@@ -405,9 +420,10 @@ export class APITranscriptionModal extends Modal {
 			this.close();
 
 			// Continue processing in background
-			void this.performTranscriptionInBackground().finally(() => {
+			void this.performTranscriptionInBackground().finally(async () => {
 				this.releaseWakeLock();
 				this.isTranscribing = false;
+				await this.cleanupTemporarySession();
 			});
 			return;
 		}
@@ -417,14 +433,12 @@ export class APITranscriptionModal extends Modal {
 		try {
 			// Only perform transcription
 			await this.performTranscriptionOnly();
-
-			} catch (error) {
-				const userError = ErrorHandler.handleError(error as Error, 'API transcription');
-				this.updateStatus(userError.title);
-				ErrorHandler.displayError(userError);
-
-			} finally {
-				this.isTranscribing = false;
+		} catch (error) {
+			const userError = ErrorHandler.handleError(error as Error, 'API transcription');
+			this.updateStatus(userError.title);
+			ErrorHandler.displayError(userError);
+		} finally {
+			this.isTranscribing = false;
 			this.releaseWakeLock();
 
 			// Reset button states
@@ -435,6 +449,9 @@ export class APITranscriptionModal extends Modal {
 			// normalCancelBtn is always visible on desktop
 			if (this.cancelBtn) {
 				this.cancelBtn.classList.add('ait-hidden');
+			}
+			if (!this.modalEl.isConnected) {
+				await this.cleanupTemporarySession();
 			}
 		}
 	}
@@ -1628,6 +1645,9 @@ export class APITranscriptionModal extends Modal {
 		}
 		// Release wake lock if still held
 		this.releaseWakeLock();
+		if (!this.isTranscribing) {
+			void this.cleanupTemporarySession();
+		}
 	}
 }
 
