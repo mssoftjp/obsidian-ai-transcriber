@@ -3,8 +3,6 @@
  * Entry point for the refactored transcription system
  */
 
-import { Notice } from 'obsidian';
-
 import { AUDIO_CONSTANTS, SUPPORTED_FORMATS } from '../config/constants';
 import { getModelConfig, getTranscriptionConfig, logAllModelConfigs } from '../config/ModelProcessingConfig';
 import { AudioPipeline } from '../core/audio/AudioPipeline';
@@ -154,14 +152,6 @@ export class TranscriptionController {
 					}
 				} catch (error) {
 					this.logger.error('VAD preprocessing failed', error);
-
-					// ユーザーに通知
-					new Notice(
-						t('notices.vadProcessingError', { error: error instanceof Error ? error.message : t('errors.general') }),
-						5000
-					);
-
-					// エラーを再スロー
 					throw error;
 				}
 			} else {

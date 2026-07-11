@@ -290,7 +290,7 @@ export class APITranscriptionModal extends Modal {
 
 			const detailsEl = this.costEl.createEl('small', { cls: 'cost-details' });
 			detailsEl.setText(adjustedDetails);
-			if (this.settings.postProcessingEnabled || this.settings.dictionaryCorrectionEnabled) {
+			if (this.settings.postProcessingEnabled) {
 				const extraCostEl = this.costEl.createEl('small', { cls: 'cost-details' });
 				extraCostEl.setText(t('modal.transcription.additionalProcessingCostNote'));
 			}
@@ -520,7 +520,6 @@ export class APITranscriptionModal extends Modal {
 
 		} catch (error) {
 			const userError = ErrorHandler.handleError(error as Error, 'Background transcription');
-			new Notice(t('notices.backgroundProcessingError', { message: userError.message }));
 			ErrorHandler.displayError(userError);
 
 			// Mark task as failed in progress tracker
@@ -1057,8 +1056,9 @@ export class APITranscriptionModal extends Modal {
 		// Add separator between AI post-processing and dictionary correction
 		optionsSection.createDiv({ cls: 'setting-item-separator' });
 
-		// Dictionary correction toggle - inside dependent container
-		const dictSetting = new Setting(aiDependentContainer)
+		// Dictionary correction is independent from AI post-processing and must
+		// remain visible so users can always disable it.
+		const dictSetting = new Setting(optionsSection)
 			.setName(t('modal.transcription.processingOptions.enableDictionaryCorrection'))
 			.setDesc(t('modal.transcription.processingOptions.enableDictionaryCorrectionDesc'));
 

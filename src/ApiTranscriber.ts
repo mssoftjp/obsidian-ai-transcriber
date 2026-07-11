@@ -9,7 +9,6 @@ import { TranscriptionController } from './application/TranscriptionController';
 import { SUPPORTED_FORMATS } from './config/constants';
 import { getModelConfig } from './config/ModelProcessingConfig';
 import { TranscriptionBusyError } from './core/transcription/TranscriptionJob';
-import { ErrorHandler } from './ErrorHandler';
 import { t } from './i18n';
 import { Logger } from './utils/Logger';
 
@@ -142,8 +141,6 @@ export class APITranscriber {
 			if (downstreamStarted) {
 				throw error;
 			}
-			const userError = ErrorHandler.handleError(error as Error, 'transcription');
-			ErrorHandler.displayError(userError);
 			throw error;
 
 		} finally {

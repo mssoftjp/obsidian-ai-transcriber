@@ -8,7 +8,7 @@ import { FolderSuggestModal } from './ui/FolderSuggestModal';
 import { PathUtils } from './utils/PathUtils';
 
 import type AITranscriberPlugin from './main-api';
-import type { App, SettingDefinitionItem, TextComponent, ToggleComponent } from 'obsidian';
+import type { App, SettingDefinitionItem, TextComponent } from 'obsidian';
 
 interface SettingsRowDefinition {
 	name: string;
@@ -19,7 +19,6 @@ interface SettingsRowDefinition {
 
 export class APISettingsTab extends PluginSettingTab {
 	plugin: AITranscriberPlugin;
-	private dictionaryToggle?: ToggleComponent;
 	private updateDictionaryDesc?: () => void;
 
 	constructor(app: App, plugin: AITranscriberPlugin) {
@@ -172,7 +171,6 @@ export class APISettingsTab extends PluginSettingTab {
 				.onChange(async (value) => {
 					this.plugin.settings.postProcessingEnabled = value;
 					await this.plugin.saveSettings();
-					this.dictionaryToggle?.setDisabled(!value);
 				}));
 	}
 
@@ -180,16 +178,12 @@ export class APISettingsTab extends PluginSettingTab {
 		setting
 			.setName(t('settings.dictionaryCorrection.name'))
 			.setDesc(t('settings.dictionaryCorrection.desc'))
-			.addToggle(toggle => {
-				this.dictionaryToggle = toggle;
-				return toggle
-					.setValue(this.plugin.settings.dictionaryCorrectionEnabled)
-					.setDisabled(!this.plugin.settings.postProcessingEnabled)
-					.onChange(async (value) => {
-						this.plugin.settings.dictionaryCorrectionEnabled = value;
-						await this.plugin.saveSettings();
-					});
-			});
+			.addToggle(toggle => toggle
+				.setValue(this.plugin.settings.dictionaryCorrectionEnabled)
+				.onChange(async (value) => {
+					this.plugin.settings.dictionaryCorrectionEnabled = value;
+					await this.plugin.saveSettings();
+				}));
 	}
 
 	private configureOutputFolderSetting(setting: Setting): void {

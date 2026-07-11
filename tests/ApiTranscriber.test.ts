@@ -2,6 +2,7 @@ import { App, TFile } from 'obsidian';
 
 import { DEFAULT_API_SETTINGS } from '../src/ApiSettings';
 import { APITranscriber } from '../src/ApiTranscriber';
+import { ErrorHandler } from '../src/ErrorHandler';
 
 import type { ProgressTracker } from '../src/ui/ProgressTracker';
 
@@ -146,6 +147,7 @@ describe('APITranscriber job ownership', () => {
 	});
 
 	it('releases job ownership when progress task setup fails', async () => {
+		const displayError = jest.spyOn(ErrorHandler, 'displayError');
 		const app = new App();
 		const progressTracker = {
 			startTask: jest.fn()
@@ -165,6 +167,7 @@ describe('APITranscriber job ownership', () => {
 		(transcriber as unknown as { controller: typeof controller }).controller = controller;
 
 		await expect(transcriber.transcribe(createFile('first'))).rejects.toThrow('progress setup failed');
+		expect(displayError).not.toHaveBeenCalled();
 		await expect(transcriber.transcribe(createFile('second'))).resolves.toBe('second result');
 	});
 });
