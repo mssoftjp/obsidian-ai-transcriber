@@ -1,3 +1,6 @@
+import { assertDecodedMediaWithinBudget, assertEncodedMediaWithinBudget } from '../../core/audio/MediaWorkBudget';
+import { COOPERATIVE_BATCH_SIZE, isAbortError, throwIfAborted, yieldToEventLoop } from '../../core/utils/CooperativeTask';
+
 /**
  * 音声フォーマット変換ユーティリティ
  */
@@ -13,9 +16,12 @@ export class AudioConverter {
    */
 	async decodeAudioFile(
 		audioBuffer: ArrayBuffer,
-			fileExtension: string
+		fileExtension: string,
+		signal?: AbortSignal
 	): Promise<{ audioData: Float32Array; sampleRate: number }> {
 			try {
+				throwIfAborted(signal);
+				assertEncodedMediaWithinBudget(audioBuffer.byteLength);
 				// AudioContextを初期化（遅延初期化）
 				const audioContext = this.audioContext ?? new AudioContext();
 				this.audioContext = audioContext;
@@ -24,15 +30,24 @@ export class AudioConverter {
 				const decodedAudio = await audioContext.decodeAudioData(
 					audioBuffer.slice(0) // コピーを作成
 			);
+			throwIfAborted(signal);
+			assertDecodedMediaWithinBudget(
+				audioBuffer.byteLength,
+				decodedAudio,
+				decodedAudio.sampleRate
+			);
 
 			// モノラルに変換（VAD処理用）
-			const audioData = this.convertToMono(decodedAudio);
+			const audioData = await this.convertToMono(decodedAudio, signal);
 
 			return {
 				audioData,
 				sampleRate: decodedAudio.sampleRate
 			};
 		} catch (error: unknown) {
+			if (isAbortError(error, signal)) {
+				throw error;
+			}
 			const errorMessage = this.formatUnknownError(error);
 			throw new Error(
 				`Failed to decode audio file (${fileExtension}): ${errorMessage}`
@@ -43,40 +58,53 @@ export class AudioConverter {
 	/**
    * Float32ArrayをWAVフォーマットにエンコード
    */
-	encodeToWAV(
+	async encodeToWAV(
 		audioData: Float32Array,
-		sampleRate: number
+		sampleRate: number,
+		signal?: AbortSignal
 	): Promise<ArrayBuffer> {
+		throwIfAborted(signal);
 		// WAVヘッダーのサイズ
 		const headerSize = 44;
-
-		// 16ビットPCMに変換
-		const pcmData = this.float32ToInt16(audioData);
-
-		// WAVファイルのサイズを計算
-		const fileSize = headerSize + pcmData.byteLength;
+		const pcmByteLength = audioData.length * Int16Array.BYTES_PER_ELEMENT;
+		const fileSize = headerSize + pcmByteLength;
 
 		// ArrayBufferとDataViewを作成
 		const buffer = new ArrayBuffer(fileSize);
 		const view = new DataView(buffer);
 
 		// WAVヘッダーを書き込み
-		this.writeWAVHeader(view, pcmData.byteLength, sampleRate);
+		this.writeWAVHeader(view, pcmByteLength, sampleRate);
 
-		// PCMデータを書き込み
-		const uint8Array = new Uint8Array(buffer);
-		uint8Array.set(new Uint8Array(pcmData.buffer), headerSize);
+		let offset = headerSize;
+		for (let index = 0; index < audioData.length; index++) {
+			if (index > 0 && index % COOPERATIVE_BATCH_SIZE === 0) {
+				await yieldToEventLoop(signal);
+			}
+			let value = Math.max(-1, Math.min(1, audioData[index] ?? 0));
+			value = value < 0 ? value * 32768 : value * 32767;
+			view.setInt16(offset, Math.round(value), true);
+			offset += Int16Array.BYTES_PER_ELEMENT;
+		}
 
-		return Promise.resolve(buffer);
+		throwIfAborted(signal);
+		return buffer;
 	}
 
 	/**
    * ステレオ/マルチチャンネルをモノラルに変換
    */
-	private convertToMono(audioBuffer: AudioBuffer): Float32Array {
+	private async convertToMono(audioBuffer: AudioBuffer, signal?: AbortSignal): Promise<Float32Array> {
+		throwIfAborted(signal);
 		if (audioBuffer.numberOfChannels === 1) {
-			// すでにモノラル
-			return audioBuffer.getChannelData(0);
+			const source = audioBuffer.getChannelData(0);
+			const mono = new Float32Array(source.length);
+			for (let offset = 0; offset < source.length; offset += COOPERATIVE_BATCH_SIZE) {
+				const end = Math.min(source.length, offset + COOPERATIVE_BATCH_SIZE);
+				mono.set(source.subarray(offset, end), offset);
+				await yieldToEventLoop(signal);
+			}
+			return mono;
 		}
 
 		// 全チャンネルの平均を計算
@@ -85,6 +113,9 @@ export class AudioConverter {
 		const numberOfChannels = audioBuffer.numberOfChannels;
 
 		for (let i = 0; i < length; i++) {
+			if (i > 0 && i % COOPERATIVE_BATCH_SIZE === 0) {
+				await yieldToEventLoop(signal);
+			}
 			let sum = 0;
 			for (let channel = 0; channel < numberOfChannels; channel++) {
 				const channelData = audioBuffer.getChannelData(channel);
@@ -93,27 +124,8 @@ export class AudioConverter {
 			mono[i] = sum / numberOfChannels;
 		}
 
+		throwIfAborted(signal);
 		return mono;
-	}
-
-	/**
-   * Float32Array (-1 to 1) を Int16Array (-32768 to 32767) に変換
-   */
-	private float32ToInt16(float32Array: Float32Array): Int16Array {
-		const int16Array = new Int16Array(float32Array.length);
-
-		for (let i = 0; i < float32Array.length; i++) {
-			// クリッピング
-			let value = Math.max(-1, Math.min(1, float32Array[i] ?? 0));
-
-			// スケーリング
-			value = value < 0 ? value * 32768 : value * 32767;
-
-			// 整数に変換
-			int16Array[i] = Math.round(value);
-		}
-
-		return int16Array;
 	}
 
 	/**

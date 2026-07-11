@@ -1,6 +1,7 @@
 import { FileSystemAdapter, TFile } from 'obsidian';
 
 import { AUDIO_CONSTANTS } from '../../config/constants';
+import { COOPERATIVE_BATCH_SIZE, isAbortError, throwIfAborted, yieldToEventLoop } from '../../core/utils/CooperativeTask';
 import { Logger } from '../../utils/Logger';
 import { PathUtils } from '../../utils/PathUtils';
 import { VADError } from '../VadTypes';
@@ -173,7 +174,7 @@ export class WebRTCVADProcessor implements VADProcessor {
 		}
 	}
 
-	processAudio(audioData: Float32Array, sampleRate: number): Promise<VADResult> {
+	async processAudio(audioData: Float32Array, sampleRate: number, signal?: AbortSignal): Promise<VADResult> {
 		if (!this.available || !this.vadInstance || !this.bufferPtr) {
 			throw new VADError('VAD not initialized', 'NOT_INITIALIZED');
 		}
@@ -181,23 +182,25 @@ export class WebRTCVADProcessor implements VADProcessor {
 		const startTime = performance.now();
 
 		try {
+			throwIfAborted(signal);
 			// 1. リサンプリング（必要な場合）
 			let processData = audioData;
 			if (sampleRate !== AUDIO_CONSTANTS.SAMPLE_RATE) {
-				processData = this.resampleTo16kHz(audioData, sampleRate);
+				processData = await this.resampleTo16kHz(audioData, sampleRate, signal);
 			}
 
 			// 2. Float32 → Int16 変換
-			const int16Data = this.convertFloat32ToInt16(processData);
+			const int16Data = await this.convertFloat32ToInt16(processData, signal);
 
 			// 3. VADで音声セグメントを検出
-			const segments = this.detectVoiceSegments(int16Data);
+			const segments = await this.detectVoiceSegments(int16Data, signal);
 
 			// 4. セグメントの後処理（短い無音の結合、パディング追加など）
+			throwIfAborted(signal);
 			const processedSegments = this.postProcessSegments(segments);
 
 			// 5. 音声部分を抽出
-			const processedAudio = this.extractSpeechSegments(audioData, processedSegments, sampleRate);
+			const processedAudio = await this.extractSpeechSegments(audioData, processedSegments, sampleRate, signal);
 
 			// 6. 結果を生成
 			const result = this.createResult(
@@ -209,8 +212,11 @@ export class WebRTCVADProcessor implements VADProcessor {
 			);
 
 
-			return Promise.resolve(result);
+			return result;
 		} catch (error: unknown) {
+			if (isAbortError(error, signal)) {
+				throw error;
+			}
 			this.logger.error('Processing error', error);
 			const errorMessage = this.formatUnknownError(error);
 			throw new VADError(`VAD processing failed: ${errorMessage}`, 'PROCESSING_ERROR');
@@ -220,7 +226,11 @@ export class WebRTCVADProcessor implements VADProcessor {
 	/**
    * 16kHzにリサンプリング
    */
-	protected resampleTo16kHz(audioData: Float32Array, sourceSampleRate: number): Float32Array {
+	protected async resampleTo16kHz(
+		audioData: Float32Array,
+		sourceSampleRate: number,
+		signal?: AbortSignal
+	): Promise<Float32Array> {
 		const targetSampleRate = AUDIO_CONSTANTS.SAMPLE_RATE;
 		const ratio = targetSampleRate / sourceSampleRate;
 		const targetLength = Math.floor(audioData.length * ratio);
@@ -228,6 +238,9 @@ export class WebRTCVADProcessor implements VADProcessor {
 
 		// シンプルな線形補間によるリサンプリング
 		for (let i = 0; i < targetLength; i++) {
+			if (i > 0 && i % COOPERATIVE_BATCH_SIZE === 0) {
+				await yieldToEventLoop(signal);
+			}
 			const sourceIndex = i / ratio;
 			const index = Math.floor(sourceIndex);
 			const fraction = sourceIndex - index;
@@ -237,16 +250,23 @@ export class WebRTCVADProcessor implements VADProcessor {
 			resampled[i] = current * (1 - fraction) + next * fraction;
 		}
 
+		throwIfAborted(signal);
 		return resampled;
 	}
 
 	/**
    * Float32Array を Int16Array に変換
    */
-		protected convertFloat32ToInt16(float32Data: Float32Array): Int16Array {
+		protected async convertFloat32ToInt16(
+			float32Data: Float32Array,
+			signal?: AbortSignal
+		): Promise<Int16Array> {
 			const int16Data = new Int16Array(float32Data.length);
 
 			for (let i = 0; i < float32Data.length; i++) {
+				if (i > 0 && i % COOPERATIVE_BATCH_SIZE === 0) {
+					await yieldToEventLoop(signal);
+				}
 				// クリッピング: -1.0 〜 1.0 の範囲に制限
 				const sample = Math.max(-1, Math.min(1, float32Data[i] ?? 0));
 
@@ -254,13 +274,14 @@ export class WebRTCVADProcessor implements VADProcessor {
 				int16Data[i] = sample < 0 ? sample * 32768 : sample * 32767;
 			}
 
+		throwIfAborted(signal);
 		return int16Data;
 	}
 
 	/**
    * 音声セグメントを検出
    */
-	private detectVoiceSegments(int16Data: Int16Array): SpeechSegment[] {
+	private async detectVoiceSegments(int16Data: Int16Array, signal?: AbortSignal): Promise<SpeechSegment[]> {
 		const fvadModule = this.fvadModule;
 		const vadInstance = this.vadInstance;
 		const bufferPtr = this.bufferPtr;
@@ -275,6 +296,9 @@ export class WebRTCVADProcessor implements VADProcessor {
 		const totalFrames = Math.floor(int16Data.length / this.frameSize);
 
 		for (let frameIndex = 0; frameIndex < totalFrames; frameIndex++) {
+			if (frameIndex > 0 && frameIndex % 256 === 0) {
+				await yieldToEventLoop(signal);
+			}
 			const offset = frameIndex * this.frameSize;
 
 			// フレームデータをWASMメモリにコピー
@@ -325,6 +349,7 @@ export class WebRTCVADProcessor implements VADProcessor {
 			segments.push(currentSegment);
 		}
 
+		throwIfAborted(signal);
 		return segments;
 	}
 
@@ -382,13 +407,14 @@ export class WebRTCVADProcessor implements VADProcessor {
 	/**
    * 音声セグメントを抽出
    */
-	protected extractSpeechSegments(
+	protected async extractSpeechSegments(
 		originalAudio: Float32Array,
 		segments: SpeechSegment[],
-		sampleRate: number
-	): Float32Array {
+		sampleRate: number,
+		signal?: AbortSignal
+	): Promise<Float32Array> {
 		if (segments.length === 0) {
-			return new Float32Array(0);
+			return Promise.resolve(new Float32Array(0));
 		}
 
 		// 各セグメントのサンプル数を計算
@@ -413,11 +439,16 @@ export class WebRTCVADProcessor implements VADProcessor {
 		let offset = 0;
 
 		for (const range of segmentRanges) {
-			const segmentData = originalAudio.slice(range.start, range.end);
-			result.set(segmentData, offset);
-			offset += segmentData.length;
+			for (let sourceOffset = range.start; sourceOffset < range.end; sourceOffset += COOPERATIVE_BATCH_SIZE) {
+				const batchEnd = Math.min(range.end, sourceOffset + COOPERATIVE_BATCH_SIZE);
+				const batch = originalAudio.subarray(sourceOffset, batchEnd);
+				result.set(batch, offset);
+				offset += batch.length;
+				await yieldToEventLoop(signal);
+			}
 		}
 
+		throwIfAborted(signal);
 		return result;
 	}
 

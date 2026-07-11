@@ -116,7 +116,8 @@ export class VADChunkingService extends ChunkingService {
 	 */
 	override async createChunks(
 		audio: ProcessedAudio,
-		strategy: ChunkStrategy
+		strategy: ChunkStrategy,
+		signal?: AbortSignal
 	): Promise<AudioChunk[]> {
 		const startTime = performance.now();
 		this.logger.debug('Starting VAD-based chunk creation', {
@@ -134,7 +135,8 @@ export class VADChunkingService extends ChunkingService {
 		// Process audio through VAD chunking
 		const { chunks } = await this.vadProcessor.processAudioWithChunking(
 			audio.pcmData,
-			audio.sampleRate
+			audio.sampleRate,
+			signal
 		);
 
 		// Log VAD statistics

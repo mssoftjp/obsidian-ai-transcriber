@@ -45,7 +45,8 @@ export class AudioPipeline {
 	async process(
 		input: AudioInput,
 		startTime?: number,
-		endTime?: number
+		endTime?: number,
+		signal?: AbortSignal
 	): Promise<{
 		chunks: AudioChunk[];
 		strategy: ChunkStrategy;
@@ -85,7 +86,7 @@ export class AudioPipeline {
 		let chunks: AudioChunk[];
 		if (strategy.needsChunking) {
 			this.logger.debug('Creating multiple chunks', { chunkCount: strategy.chunkCount });
-			chunks = await this.chunkingService.createChunks(trimmedAudio, strategy);
+			chunks = await this.chunkingService.createChunks(trimmedAudio, strategy, signal);
 		} else {
 			this.logger.debug('Creating single chunk (no chunking needed)');
 			chunks = [this.createSingleChunk(trimmedAudio)];

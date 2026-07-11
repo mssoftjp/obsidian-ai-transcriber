@@ -122,7 +122,8 @@ export class TranscriptionWorkflow {
 			const processResult = await this.audioPipeline.process(
 				audioInput,
 				options.startTime,
-				options.endTime
+				options.endTime,
+				this.abortController.signal
 			);
 			chunks = processResult.chunks;
 			chunkStrategy = processResult.strategy;

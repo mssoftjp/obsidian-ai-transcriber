@@ -1,6 +1,7 @@
 
 import { AUDIO_CONSTANTS } from '../../config/constants';
 import { getModelConfig } from '../../config/ModelProcessingConfig';
+import { COOPERATIVE_BATCH_SIZE, isAbortError, throwIfAborted, yieldToEventLoop } from '../../core/utils/CooperativeTask';
 
 import { WebRTCVADProcessor } from './WebrtcVadProcessor';
 
@@ -15,10 +16,6 @@ import type { App } from 'obsidian';
 interface ChunkInfo {
 	startTime: number;
 	endTime: number;
-	startSample: number;
-	endSample: number;
-	audioData: Float32Array[];
-	isSpeech: boolean[];
 }
 
 /**
@@ -69,9 +66,10 @@ export class VADChunkingProcessor extends WebRTCVADProcessor {
 	/**
 	 * Process audio and create chunks in a single pass
 	 */
-	processAudioWithChunking(
+	async processAudioWithChunking(
 		audioData: Float32Array,
-		sampleRate: number
+		sampleRate: number,
+		signal?: AbortSignal
 	): Promise<{ vadResult: VADResult; chunks: AudioChunk[] }> {
 		if (!this.available || !this.vadInstance || !this.bufferPtr) {
 			throw new Error('VAD not initialized');
@@ -80,30 +78,37 @@ export class VADChunkingProcessor extends WebRTCVADProcessor {
 		const startTime = performance.now();
 
 		try {
+			throwIfAborted(signal);
 			// 1. Resample if needed (to 16kHz for VAD)
 			let processData = audioData;
 			let vadSampleRate = sampleRate;
 			if (sampleRate !== AUDIO_CONSTANTS.SAMPLE_RATE) {
-				processData = this.resampleTo16kHz(audioData, sampleRate);
+				processData = await this.resampleTo16kHz(audioData, sampleRate, signal);
 				vadSampleRate = AUDIO_CONSTANTS.SAMPLE_RATE;
 			}
 
 			// 2. Convert to Int16 for VAD
-			const int16Data = this.convertFloat32ToInt16(processData);
+			const int16Data = await this.convertFloat32ToInt16(processData, signal);
 
 			// 3. Process with VAD and create chunks simultaneously
-			const { segments, chunks } = this.detectVoiceSegmentsAndChunks(
+			const { segments, chunks } = await this.detectVoiceSegmentsAndChunks(
 				int16Data,
 				audioData,
 				vadSampleRate,
-				sampleRate
+				sampleRate,
+				signal
 			);
 
 			// 4. Post-process segments (but not chunks - they're already final)
 			const processedSegments = this.postProcessSegments(segments);
 
 			// 5. Extract speech segments for VAD result
-			const processedAudio = this.extractSpeechSegments(audioData, processedSegments, sampleRate);
+			const processedAudio = await this.extractSpeechSegments(
+				audioData,
+				processedSegments,
+				sampleRate,
+				signal
+			);
 
 			// 6. Create VAD result
 			const vadResult = this.createResult(
@@ -116,6 +121,9 @@ export class VADChunkingProcessor extends WebRTCVADProcessor {
 
 			return Promise.resolve({ vadResult, chunks });
 		} catch (error) {
+			if (isAbortError(error, signal)) {
+				throw error;
+			}
 			this.logger.error('Processing error', error);
 			throw error;
 		}
@@ -124,12 +132,13 @@ export class VADChunkingProcessor extends WebRTCVADProcessor {
 	/**
 	 * Detect voice segments and create chunks in a single pass
 	 */
-	private detectVoiceSegmentsAndChunks(
+	private async detectVoiceSegmentsAndChunks(
 		int16Data: Int16Array,
 		originalAudio: Float32Array,
 		vadSampleRate: number,
-		originalSampleRate: number
-	): { segments: SpeechSegment[]; chunks: AudioChunk[] } {
+		originalSampleRate: number,
+		signal?: AbortSignal
+	): Promise<{ segments: SpeechSegment[]; chunks: AudioChunk[] }> {
 		const fvadModule = this.fvadModule;
 		const vadInstance = this.vadInstance;
 		const bufferPtr = this.bufferPtr;
@@ -152,6 +161,9 @@ export class VADChunkingProcessor extends WebRTCVADProcessor {
 		let consecutiveSilenceTime = 0;
 
 		for (let frameIndex = 0; frameIndex < totalFrames; frameIndex++) {
+			if (frameIndex > 0 && frameIndex % 256 === 0) {
+				await yieldToEventLoop(signal);
+			}
 			const offset = frameIndex * this.frameSize;
 			const frameTime = offset / vadSampleRate;
 
@@ -194,13 +206,6 @@ export class VADChunkingProcessor extends WebRTCVADProcessor {
 			// Start new chunk (if needed)
 			currentChunk ??= this.createNewChunk(frameTime, frameIndex, lastChunkEndTime);
 
-			// Add frame data to current chunk
-			const originalFrameStart = Math.floor((frameTime * originalSampleRate) / vadSampleRate * originalSampleRate);
-			const originalFrameEnd = Math.floor(((frameTime + frameDuration) * originalSampleRate) / vadSampleRate * originalSampleRate);
-			const originalFrameData = originalAudio.slice(originalFrameStart, originalFrameEnd);
-
-			currentChunk.audioData.push(originalFrameData);
-			currentChunk.isSpeech.push(isSpeech === 1);
 			currentChunk.endTime = frameTime + frameDuration;
 
 			// Check if we should finalize the chunk
@@ -214,12 +219,13 @@ export class VADChunkingProcessor extends WebRTCVADProcessor {
 
 			if (shouldSplit) {
 				// Finalize current chunk
-				const finalizedChunk = this.finalizeChunk(
+				const finalizedChunk = await this.finalizeChunk(
 					currentChunk,
 					chunks.length,
 					originalAudio,
 					originalSampleRate,
-					lastChunkEndTime
+					lastChunkEndTime,
+					signal
 				);
 
 				if (finalizedChunk) {
@@ -237,19 +243,21 @@ export class VADChunkingProcessor extends WebRTCVADProcessor {
 		}
 
 		// Handle last chunk
-		if (currentChunk && currentChunk.audioData.length > 0) {
-			const finalizedChunk = this.finalizeChunk(
+		if (currentChunk && currentChunk.endTime > currentChunk.startTime) {
+			const finalizedChunk = await this.finalizeChunk(
 				currentChunk,
 				chunks.length,
 				originalAudio,
 				originalSampleRate,
-				lastChunkEndTime
+				lastChunkEndTime,
+				signal
 			);
 			if (finalizedChunk) {
 				chunks.push(finalizedChunk);
 			}
 		}
 
+		throwIfAborted(signal);
 		return { segments, chunks };
 	}
 
@@ -303,24 +311,22 @@ export class VADChunkingProcessor extends WebRTCVADProcessor {
 
 		return {
 			startTime: actualStartTime,
-			endTime: startTime,
-			startSample: 0,
-			endSample: 0,
-			audioData: [],
-			isSpeech: []
+			endTime: startTime
 		};
 	}
 
 	/**
 	 * Finalize a chunk and prepare it for output
 	 */
-	private finalizeChunk(
+	private async finalizeChunk(
 		chunkInfo: ChunkInfo,
 		chunkId: number,
 		originalAudio: Float32Array,
 		sampleRate: number,
-		lastChunkEndTime: number
-	): AudioChunk | null {
+		lastChunkEndTime: number,
+		signal?: AbortSignal
+	): Promise<AudioChunk | null> {
+		throwIfAborted(signal);
 		// Calculate actual samples from original audio
 		const startSample = Math.floor(chunkInfo.startTime * sampleRate);
 		const endSample = Math.min(
@@ -329,7 +335,7 @@ export class VADChunkingProcessor extends WebRTCVADProcessor {
 		);
 
 		// Extract chunk audio
-		const chunkAudio = originalAudio.slice(startSample, endSample);
+		const chunkAudio = originalAudio.subarray(startSample, endSample);
 
 		// Skip if too small
 		if (chunkAudio.length < sampleRate * this.minChunkSize) {
@@ -337,7 +343,7 @@ export class VADChunkingProcessor extends WebRTCVADProcessor {
 		}
 
 		// Convert to WAV
-		const wavData = this.pcmToWav(chunkAudio, sampleRate);
+		const wavData = await this.pcmToWav(chunkAudio, sampleRate, signal);
 
 		// Determine if this chunk has overlap with next
 		const hasOverlap = chunkInfo.endTime > lastChunkEndTime + this.overlapDuration;
@@ -355,7 +361,12 @@ export class VADChunkingProcessor extends WebRTCVADProcessor {
 	/**
 	 * Convert PCM to WAV format
 	 */
-	private pcmToWav(pcmData: Float32Array, sampleRate: number): ArrayBuffer {
+	private async pcmToWav(
+		pcmData: Float32Array,
+		sampleRate: number,
+		signal?: AbortSignal
+	): Promise<ArrayBuffer> {
+		throwIfAborted(signal);
 		const length = pcmData.length;
 		const arrayBuffer = new ArrayBuffer(44 + length * 2);
 		const view = new DataView(arrayBuffer);
@@ -384,11 +395,15 @@ export class VADChunkingProcessor extends WebRTCVADProcessor {
 			// Convert float32 to int16
 			let offset = 44;
 			for (let i = 0; i < length; i++) {
+				if (i > 0 && i % COOPERATIVE_BATCH_SIZE === 0) {
+					await yieldToEventLoop(signal);
+				}
 				const sample = Math.max(-1, Math.min(1, pcmData[i] ?? 0));
 				view.setInt16(offset, sample < 0 ? sample * 0x8000 : sample * 0x7FFF, true);
 				offset += 2;
 			}
 
+		throwIfAborted(signal);
 		return arrayBuffer;
 	}
 }

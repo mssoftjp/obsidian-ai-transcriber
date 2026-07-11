@@ -1,6 +1,7 @@
 import { Notice } from 'obsidian';
 
 import { getTranscriptionConfig } from '../config/ModelProcessingConfig';
+import { isAbortError } from '../core/utils/CooperativeTask';
 import { t } from '../i18n';
 import { Logger } from '../utils/Logger';
 
@@ -14,6 +15,11 @@ import type {
 } from './VadTypes';
 import type { App, TFile } from 'obsidian';
 
+export interface VADProcessOptions {
+	sourceBuffer?: ArrayBuffer;
+	signal?: AbortSignal;
+}
+
 /**
  * VADプリプロセッサー
  * 音声ファイルから無音を除去するメインクラス
@@ -25,10 +31,6 @@ export class VADPreprocessor {
 	private logger: Logger;
 	private fallbackMode: 'none' | 'server_vad' = 'none';
 	private initialized = false;
-
-	// メモリキャッシュ（ファイルの重複読み込みを避ける）
-	private audioBufferCache = new Map<string, ArrayBuffer>();
-	private cacheMaxSize = 5; // 最大5ファイルをキャッシュ
 
 	constructor(
 		private app: App,
@@ -127,7 +129,12 @@ export class VADPreprocessor {
    * @param startTime - 開始時間（秒）、nullの場合は全体
    * @param endTime - 終了時間（秒）、nullの場合は全体
    */
-	async processFile(audioFile: TFile, rangeStart?: number | null, rangeEnd?: number | null): Promise<ArrayBuffer> {
+	async processFile(
+		audioFile: TFile,
+		rangeStart?: number | null,
+		rangeEnd?: number | null,
+		options: VADProcessOptions = {}
+	): Promise<ArrayBuffer> {
 		const processingStartTime = performance.now();
 		this.logger.debug('Processing audio file with VAD', {
 			fileName: audioFile.name,
@@ -140,8 +147,10 @@ export class VADPreprocessor {
 		let audioBuffer: ArrayBuffer | null = null;
 
 		try {
-			// キャッシュからファイルを読み込み（重複読み込みを避ける）
-			audioBuffer = await this.getCachedAudioBuffer(audioFile);
+			audioBuffer = options.sourceBuffer ?? await this.app.vault.readBinary(audioFile);
+			if (options.signal?.aborted) {
+				throw new DOMException('VAD processing was cancelled', 'AbortError');
+			}
 
 				let useServerFallback = this.isServerFallback();
 
@@ -162,7 +171,8 @@ export class VADPreprocessor {
 			this.logger.debug('Decoding audio file');
 			const { audioData, sampleRate } = await this.audioConverter.decodeAudioFile(
 				audioBuffer,
-				audioFile.extension
+				audioFile.extension,
+				options.signal
 			);
 			this.logger.debug('Audio decoded', {
 				sampleRate,
@@ -197,7 +207,7 @@ export class VADPreprocessor {
 					duration: `${(processedAudioData.length / sampleRate).toFixed(2)}s`
 				});
 
-				const result = await this.processor.processAudio(processedAudioData, sampleRate);
+				const result = await this.processor.processAudio(processedAudioData, sampleRate, options.signal);
 
 				// 統計情報をログ（範囲情報を含む）
 				this.logStatistics(result, performance.now() - processingStartTime, actualRangeStart, actualRangeEnd);
@@ -206,7 +216,8 @@ export class VADPreprocessor {
 				this.logger.debug('Encoding processed audio to WAV');
 				const processedWav = await this.audioConverter.encodeToWAV(
 					result.processedAudio,
-					sampleRate
+					sampleRate,
+					options.signal
 				);
 
 				const totalTime = performance.now() - processingStartTime;
@@ -229,12 +240,15 @@ export class VADPreprocessor {
 			// 範囲が適用されている場合は結果をWAVにエンコードして返す
 			if (rangeApplied) {
 				this.logger.debug('Encoding trimmed audio to WAV for fallback path');
-				return await this.audioConverter.encodeToWAV(processedAudioData, sampleRate);
+				return await this.audioConverter.encodeToWAV(processedAudioData, sampleRate, options.signal);
 			}
 
 			// それ以外の場合は元のバッファを返す
 			return audioBuffer;
 		} catch (error) {
+			if (isAbortError(error, options.signal)) {
+				throw error;
+			}
 			this.logger.error('Error processing file with VAD', error);
 
 			// VADが有効化されているのにエラーが発生した場合は、エラーを再スロー
@@ -268,9 +282,6 @@ export class VADPreprocessor {
 		}
 		this.initialized = false;
 		this.fallbackMode = 'none';
-
-		// キャッシュをクリア
-		this.audioBufferCache.clear();
 
 		// AudioConverterのクリーンアップ
 		this.audioConverter.cleanup();
@@ -315,42 +326,6 @@ export class VADPreprocessor {
 		// 明示的に指定されたプロセッサーが利用できない場合
 		this.logger.error('Requested VAD processor is not available', { processor });
 		return null;
-	}
-
-	/**
-   * キャッシュからオーディオバッファを取得（重複読み込みを避ける）
-   */
-	private async getCachedAudioBuffer(audioFile: TFile): Promise<ArrayBuffer> {
-		const cacheKey = `${audioFile.path}_${audioFile.stat.mtime}`;
-
-		// キャッシュにある場合は返す
-		const cached = this.audioBufferCache.get(cacheKey);
-		if (cached) {
-			this.logger.trace('Audio buffer found in cache', { fileName: audioFile.name });
-			return cached;
-		}
-
-		// ファイルを読み込み
-		this.logger.trace('Reading audio file from vault', { fileName: audioFile.name });
-		const audioBuffer = await this.app.vault.readBinary(audioFile);
-
-		// キャッシュサイズ制限のチェック
-		if (this.audioBufferCache.size >= this.cacheMaxSize) {
-			// 最も古いエントリを削除（FIFO）
-			let firstKey: string | undefined;
-			for (const key of this.audioBufferCache.keys()) {
-				firstKey = key;
-				break;
-			}
-			if (firstKey) {
-				this.audioBufferCache.delete(firstKey);
-			}
-		}
-
-		// キャッシュに追加
-		this.audioBufferCache.set(cacheKey, audioBuffer);
-
-		return audioBuffer;
 	}
 
 	/**

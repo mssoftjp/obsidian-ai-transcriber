@@ -17,7 +17,11 @@ export interface VADProcessor {
    * @param sampleRate - サンプリングレート
    * @returns 無音除去された音声データ
    */
-  processAudio: (audioData: Float32Array, sampleRate: number) => Promise<VADResult>;
+  processAudio: (
+    audioData: Float32Array,
+    sampleRate: number,
+    signal?: AbortSignal
+  ) => Promise<VADResult>;
 
   /**
    * リソースをクリーンアップ

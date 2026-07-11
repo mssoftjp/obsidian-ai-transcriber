@@ -128,7 +128,15 @@ export class TranscriptionController {
 						const vadStart = performance.now();
 						// const originalSize = audioBuffer.byteLength; // Removed: unused variable
 						// VADPreprocessor.processFile returns ArrayBuffer (processed audio)
-						const processedBuffer = await this.vadPreprocessor.processFile(audioFile, startTime, endTime);
+						const processedBuffer = await this.vadPreprocessor.processFile(
+							audioFile,
+							startTime,
+							endTime,
+							{
+								sourceBuffer: audioBuffer,
+								...(abortSignal ? { signal: abortSignal } : {})
+							}
+						);
 						timings['vadProcessing'] = performance.now() - vadStart;
 
 						// If VAD processing was successful and modified the audio

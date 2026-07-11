@@ -61,7 +61,8 @@ export class WebAudioChunkingService extends ChunkingService {
 	 */
 	override async createChunks(
 		audio: ProcessedAudio,
-		strategy: ChunkStrategy
+		strategy: ChunkStrategy,
+		_signal?: AbortSignal
 	): Promise<AudioChunk[]> {
 		if (!strategy.needsChunking) {
 			// Single chunk

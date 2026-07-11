@@ -151,7 +151,8 @@ export abstract class ChunkingService {
 	 */
 	abstract createChunks(
 		audio: ProcessedAudio,
-		strategy: ChunkStrategy
+		strategy: ChunkStrategy,
+		signal?: AbortSignal
 	): Promise<AudioChunk[]>;
 
 	/**
