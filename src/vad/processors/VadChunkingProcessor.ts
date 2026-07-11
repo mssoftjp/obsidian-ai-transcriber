@@ -8,7 +8,7 @@ import { WebRTCVADProcessor } from './WebrtcVadProcessor';
 
 import type { AudioChunk } from '../../core/audio/AudioTypes';
 import type { ChunkingConfig } from '../../core/chunking/ChunkingTypes';
-import type { VADConfig, VADResult, SpeechSegment } from '../VadTypes';
+import type { VADConfig } from '../VadTypes';
 import type { App } from 'obsidian';
 
 /**
@@ -71,12 +71,10 @@ export class VADChunkingProcessor extends WebRTCVADProcessor {
 		audioData: Float32Array,
 		sampleRate: number,
 		signal?: AbortSignal
-	): Promise<{ vadResult: VADResult; chunks: AudioChunk[] }> {
+	): Promise<{ chunks: AudioChunk[] }> {
 		if (!this.available || !this.vadInstance || !this.bufferPtr) {
 			throw new Error('VAD not initialized');
 		}
-
-		const startTime = performance.now();
 
 		try {
 			throwIfAborted(signal);
@@ -91,8 +89,8 @@ export class VADChunkingProcessor extends WebRTCVADProcessor {
 			// 2. Convert to Int16 for VAD
 			const int16Data = await this.convertFloat32ToInt16(processData, signal);
 
-			// 3. Process with VAD and create chunks simultaneously
-			const { segments, chunks } = await this.detectVoiceSegmentsAndChunks(
+			// 3. Use VAD decisions to create transcription chunks
+			const chunks = await this.createChunksFromVadFrames(
 				int16Data,
 				audioData,
 				vadSampleRate,
@@ -100,27 +98,7 @@ export class VADChunkingProcessor extends WebRTCVADProcessor {
 				signal
 			);
 
-			// 4. Post-process segments (but not chunks - they're already final)
-			const processedSegments = this.postProcessSegments(segments);
-
-			// 5. Extract speech segments for VAD result
-			const processedAudio = await this.extractSpeechSegments(
-				audioData,
-				processedSegments,
-				sampleRate,
-				signal
-			);
-
-			// 6. Create VAD result
-			const vadResult = this.createResult(
-				audioData,
-				processedAudio,
-				processedSegments,
-				sampleRate,
-				performance.now() - startTime
-			);
-
-			return Promise.resolve({ vadResult, chunks });
+			return { chunks };
 		} catch (error) {
 			if (isAbortError(error, signal)) {
 				throw error;
@@ -131,15 +109,15 @@ export class VADChunkingProcessor extends WebRTCVADProcessor {
 	}
 
 	/**
-	 * Detect voice segments and create chunks in a single pass
+	 * Create chunks from VAD frame decisions in a single pass
 	 */
-	private async detectVoiceSegmentsAndChunks(
+	private async createChunksFromVadFrames(
 		int16Data: Int16Array,
 		originalAudio: Float32Array,
 		vadSampleRate: number,
 		originalSampleRate: number,
 		signal?: AbortSignal
-	): Promise<{ segments: SpeechSegment[]; chunks: AudioChunk[] }> {
+	): Promise<AudioChunk[]> {
 		const fvadModule = this.fvadModule;
 		const vadInstance = this.vadInstance;
 		const bufferPtr = this.bufferPtr;
@@ -147,10 +125,8 @@ export class VADChunkingProcessor extends WebRTCVADProcessor {
 			throw new Error('VAD not initialized');
 		}
 
-		const segments: SpeechSegment[] = [];
 		const chunks: AudioChunk[] = [];
 
-		let currentSegment: SpeechSegment | null = null;
 		let currentChunk: ChunkInfo | null = null;
 
 		// Frame processing variables
@@ -184,23 +160,10 @@ export class VADChunkingProcessor extends WebRTCVADProcessor {
 				continue;
 			}
 
-			// Update speech segments (existing logic)
 			if (isSpeech === 1) {
 				consecutiveSilenceTime = 0;
-				if (!currentSegment) {
-					currentSegment = {
-						start: frameTime,
-						end: frameTime + frameDuration
-					};
-				} else {
-					currentSegment.end = frameTime + frameDuration;
-				}
 			} else {
 				consecutiveSilenceTime += frameDuration;
-				if (currentSegment) {
-					segments.push(currentSegment);
-					currentSegment = null;
-				}
 			}
 
 			// Chunk creation logic
@@ -238,11 +201,6 @@ export class VADChunkingProcessor extends WebRTCVADProcessor {
 			}
 		}
 
-		// Handle last segment
-		if (currentSegment) {
-			segments.push(currentSegment);
-		}
-
 		// Handle last chunk
 		if (currentChunk && currentChunk.endTime > currentChunk.startTime) {
 			const finalizedChunk = await this.finalizeChunk(
@@ -259,7 +217,7 @@ export class VADChunkingProcessor extends WebRTCVADProcessor {
 		}
 
 		throwIfAborted(signal);
-		return { segments, chunks };
+		return chunks;
 	}
 
 	/**
