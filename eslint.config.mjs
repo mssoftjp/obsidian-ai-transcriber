@@ -73,6 +73,11 @@ const artifactRules = {
   ...Object.fromEntries(Object.keys(obsidianmd.rules).map((ruleName) => [`obsidianmd/${ruleName}`, 'off']))
 };
 
+const webCodecsGlobals = {
+  AudioData: 'readonly',
+  AudioEncoder: 'readonly'
+};
+
 export default [
   {
     ignores: [
@@ -97,6 +102,7 @@ export default [
       globals: {
         ...globals.browser,
         ...globals.node,
+        ...webCodecsGlobals,
         Option: 'readonly'
       }
     },
@@ -113,6 +119,7 @@ export default [
       globals: {
         ...globals.browser,
         ...globals.node,
+        ...webCodecsGlobals,
         Option: 'readonly'
       }
     },
