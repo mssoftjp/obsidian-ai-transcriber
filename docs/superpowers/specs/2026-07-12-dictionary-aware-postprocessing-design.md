@@ -157,10 +157,10 @@ The current candidate build applies contextual corrections locally against the c
 - **FR-027:** Documentation MUST disclose that, when both features are enabled, relevant contextual dictionary guidance may be sent with AI post-processing text.
 - **FR-028:** Documentation MUST state that dictionary correction without AI post-processing applies definite corrections locally and leaves contextual corrections inactive.
 - **FR-029:** Cost estimates MUST treat AI post-processing as the only optional text-processing request path.
-- **FR-030:** The dictionary setting description MUST state: `固定補正はローカルで適用します。文脈補正はAI後処理が有効な場合のみ適用します。`
-- **FR-031:** The AI post-processing description MUST state: `関連情報と文脈補正を使って、文字起こし結果をAIで整えます。文字起こしテキストと使用する情報がOpenAIに送信され、追加料金が発生します。`
+- **FR-030:** The dictionary setting description MUST state: `固定補正はお使いの端末内で行うため、追加のAPI通信や料金は発生しません。文脈補正はAI後処理を有効にした場合のみ行い、そのAPI利用料金が発生します。`
+- **FR-031:** The AI post-processing description MUST state: `文字起こしテキスト、関連情報、関連する文脈補正の辞書項目をOpenAIへ送信し、AIで読みやすく整えます。文字起こし料金とは別に、AI後処理のAPI利用料金が発生します。`
 - **FR-032:** The dictionary manager MUST label its sections `固定補正` and `AI文脈補正` and explain the execution and transmission behavior of each.
-- **FR-033:** When dictionary correction is enabled and AI post-processing is disabled, the interface MUST show: `現在は固定補正のみ有効です。文脈補正を使用するにはAI後処理を有効にしてください。`
+- **FR-033:** When dictionary correction is enabled and AI post-processing is disabled, the interface MUST show: `現在は固定補正のみ有効です。お使いの端末内で処理するため、追加のAPI通信や料金は発生しません。文脈補正を使用するにはAI後処理を有効にしてください。`
 - **FR-034:** User-facing interface text MUST NOT include the redundant sentence `辞書補正専用の追加API呼び出しは行いません。`
 
 ## Approved interface copy
@@ -169,25 +169,25 @@ The current candidate build applies contextual corrections locally against the c
 
 **AI後処理を有効化**
 
-> 関連情報と文脈補正を使って、文字起こし結果をAIで整えます。文字起こしテキストと使用する情報がOpenAIに送信され、追加料金が発生します。
+> 文字起こしテキスト、関連情報、関連する文脈補正の辞書項目をOpenAIへ送信し、AIで読みやすく整えます。文字起こし料金とは別に、AI後処理のAPI利用料金が発生します。
 
 **ユーザー辞書を適用**
 
-> 固定補正はローカルで適用します。文脈補正はAI後処理が有効な場合のみ適用します。
+> 固定補正はお使いの端末内で行うため、追加のAPI通信や料金は発生しません。文脈補正はAI後処理を有効にした場合のみ行い、そのAPI利用料金が発生します。
 
 When dictionary correction is enabled and AI post-processing is disabled, show this persistent state explanation below the dictionary control:
 
-> 現在は固定補正のみ有効です。文脈補正を使用するにはAI後処理を有効にしてください。
+> 現在は固定補正のみ有効です。お使いの端末内で処理するため、追加のAPI通信や料金は発生しません。文脈補正を使用するにはAI後処理を有効にしてください。
 
 ### Dictionary manager
 
 **固定補正**
 
-> 一致する表記をローカルで自動置換します。外部には送信しません。
+> 一致する表記をお使いの端末内で自動置換します。OpenAIには送信されず、追加のAPI利用料金は発生しません。
 
 **AI文脈補正**
 
-> AI後処理が有効な場合のみ、登録したキーワードと前後の文脈を使って補正します。使用する辞書項目はOpenAIに送信されます。
+> AI後処理が有効な場合のみ、登録したキーワードと前後の内容を使って補正します。文字起こしテキストと関連する辞書項目をOpenAIへ送信するため、AI後処理のAPI利用料金が発生します。
 
 ## Failure behavior
 
