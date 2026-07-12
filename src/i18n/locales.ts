@@ -44,14 +44,13 @@ export interface TranslationKeys {
 				local: string;
 				disabled: string;
 			};
-			summaries: {
+			descriptions: {
 				server: string;
 				local: string;
 				disabled: string;
 			};
 			missingWarning: string;
 			missingInlineNote: string;
-			localNote: string;
 			installWasm: {
 				name: string;
 				desc: string;

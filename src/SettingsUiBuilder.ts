@@ -138,7 +138,7 @@ export class SettingsUIBuilder {
 		const initialVadMode = settings.vadMode;
 		setting
 			.setName(t('settings.vadMode.name'))
-			.setDesc(this.createVADDescription(t('settings.vadMode.desc'), false, false))
+			.setDesc(this.createVADDescription(t('settings.vadMode.desc'), false))
 			.addDropdown(dropdown => dropdown
 				.addOption('server', t('settings.vadMode.options.server'))
 				.addOption('local', t('settings.vadMode.options.local'))
@@ -153,8 +153,7 @@ export class SettingsUIBuilder {
 						const hasLocalWasm = await this.checkLocalWasm(app);
 						setting.setDesc(this.createVADDescription(
 							t('settings.vadMode.desc'),
-							!hasLocalWasm,
-							hasLocalWasm
+							!hasLocalWasm
 						));
 						this.setHelperVisibility(
 							helperState.container,
@@ -163,7 +162,7 @@ export class SettingsUIBuilder {
 							t('settings.vadMode.installWasm.desc')
 						);
 					} else {
-						setting.setDesc(this.createVADDescription(t('settings.vadMode.desc'), false, false));
+						setting.setDesc(this.createVADDescription(t('settings.vadMode.desc'), false));
 						this.setHelperVisibility(helperState.container, helperState.note, false);
 					}
 					settings.vadMode = value;
@@ -263,7 +262,7 @@ export class SettingsUIBuilder {
 			}
 			await adapter.writeBinary(targetPath, wasmData);
 			new Notice(t('settings.vadMode.installWasm.success'));
-			setting.setDesc(this.createVADDescription(t('settings.vadMode.desc'), false, true));
+			setting.setDesc(this.createVADDescription(t('settings.vadMode.desc'), false));
 			this.setHelperVisibility(helperContainer, helperNote, false);
 		} catch (error) {
 			const errorMessage = SettingsUIBuilder.formatErrorMessage(error);
@@ -283,8 +282,7 @@ export class SettingsUIBuilder {
 		try {
 			const exists = await this.checkLocalWasm(app);
 			const includeMissing = mode === 'local' && !exists;
-			const includeLocal = mode === 'local' && exists;
-			setting.setDesc(this.createVADDescription(t('settings.vadMode.desc'), includeMissing, includeLocal));
+			setting.setDesc(this.createVADDescription(t('settings.vadMode.desc'), includeMissing));
 			this.setHelperVisibility(
 				helperContainer,
 				helperNote,
@@ -448,14 +446,20 @@ export class SettingsUIBuilder {
 	/**
 	 * Create VAD description with optional inline missing-wasm note and link
 	 */
-	private static createVADDescription(baseDesc: string, includeMissingNote: boolean, includeLocalNote: boolean): DocumentFragment {
+	private static createVADDescription(baseDesc: string, includeMissingNote: boolean): DocumentFragment {
 		const fragment = SettingsUIBuilder.createObsidianFragment();
 		fragment.appendText(baseDesc);
-		// Always show concise summaries for both selectable modes on the next line
-		fragment.createEl('br');
-		const summaryLine = `${t('settings.vadMode.options.server')}（${t('settings.vadMode.summaries.server')}）、` +
-          `${t('settings.vadMode.options.local')}（${t('settings.vadMode.summaries.local')}）`;
-		fragment.appendText(summaryLine);
+		const comparison = fragment.createDiv({ cls: 'ai-transcriber-vad-comparison' });
+		const list = comparison.createEl('ul');
+		list.createEl('li', {
+			text: `${t('settings.vadMode.options.disabled')}: ${t('settings.vadMode.descriptions.disabled')}`
+		});
+		list.createEl('li', {
+			text: `${t('settings.vadMode.options.server')}: ${t('settings.vadMode.descriptions.server')}`
+		});
+		list.createEl('li', {
+			text: `${t('settings.vadMode.options.local')}: ${t('settings.vadMode.descriptions.local')}`
+		});
 		if (includeMissingNote) {
 			// Add a light separator (empty line) before the missing-note block
 			fragment.createEl('br');
@@ -465,10 +469,6 @@ export class SettingsUIBuilder {
 			link.href = SettingsUIBuilder.FVAD_DOWNLOAD_URL;
 			link.setText(SettingsUIBuilder.FVAD_DOWNLOAD_URL);
 			link.target = '_blank';
-		}
-		if (includeLocalNote) {
-			fragment.createEl('br');
-			fragment.appendText(t('settings.vadMode.localNote'));
 		}
 		return fragment;
 	}

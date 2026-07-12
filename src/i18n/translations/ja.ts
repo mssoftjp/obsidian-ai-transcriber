@@ -40,20 +40,19 @@ const ja: TranslationKeys = {
 		},
 		vadMode: {
 			name: '無音検出（VAD）方式',
-			desc: '無音区間の処理により、音声認識処理の軽減や送信データ量の削減が図れます',
+			desc: '用途に合わせて無音検出方式を選択します。',
 			options: {
 				server: 'サーバー',
 				local: 'ローカル',
 				disabled: '処理なし'
 			},
-			summaries: {
-				server: '標準：処理速度向上',
-				local: '高度：速度向上・通信量削減',
-				disabled: '無音の処理を行いません'
+			descriptions: {
+				server: '高速で、端末の負荷を抑えられます。',
+				local: '無音が多い音声では、料金を削減できる可能性があります。小さな声や短い発話が欠け、精度が下がる可能性があります。',
+				disabled: '精度優先。小さな声や短い発話を含め、音声全体を処理します。'
 			},
 			missingWarning: 'ローカルVADの使用にはサードパーティのモジュールが必要です。fvad-wasmリポジトリからfvad.wasmファイルをダウンロードし、「ファイルを選択」ボタンを押してプラグインフォルダにコピーしてください。',
 			missingInlineNote: 'ローカルVADの使用にはサードパーティのモジュールが必要です。fvad-wasmリポジトリからfvad.wasmファイルをダウンロードし、「ファイルを選択」ボタンを押してプラグインフォルダにコピーしてください。',
-			localNote: '端末内で無音箇所を送信前に削除するため、APIコストの削減につながります。',
 			installWasm: {
 				name: 'fvad.wasm を配置',
 				desc: '取得済みの fvad.wasm を選択すると自動でプラグインフォルダに配置します',

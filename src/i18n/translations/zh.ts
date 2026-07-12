@@ -40,20 +40,19 @@ const zh: TranslationKeys = {
 		},
 		vadMode: {
 			name: '静音检测（VAD）方式',
-			desc: '通过处理静音片段，可以减轻语音识别处理并减少发送的数据量',
+			desc: '请根据用途选择静音检测方式。',
 			options: {
 				server: '服务器',
 				local: '本地',
 				disabled: '不处理'
 			},
-			summaries: {
-				server: '默认：处理速度提升',
-				local: '高级：速度提升、减少发送数据量',
-				disabled: '不进行静音处理'
+			descriptions: {
+				server: '处理速度更快，并可降低设备负载。',
+				local: '对于静音较多的音频，可能降低费用。轻声和短句可能丢失，从而降低准确度。',
+				disabled: '优先保证准确度。处理包括轻声和短句在内的完整音频。'
 			},
 			missingWarning: '使用本地 VAD 需要第三方模块。请从 fvad-wasm 仓库下载 fvad.wasm，然后点击“选择文件”按钮将其复制到插件文件夹。',
 			missingInlineNote: '使用本地 VAD 需要第三方模块。请从 fvad-wasm 仓库下载 fvad.wasm，然后点击“选择文件”按钮将其复制到插件文件夹。',
-			localNote: '由于在发送前在本地删除静音片段，有助于降低 API 成本。',
 			installWasm: {
 				name: '放置 fvad.wasm',
 				desc: '选择已获取的 fvad.wasm，自动复制到插件文件夹',

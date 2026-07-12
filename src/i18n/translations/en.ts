@@ -40,20 +40,19 @@ const en: TranslationKeys = {
 		},
 		vadMode: {
 			name: 'Silence detection (voice activity detection)',
-			desc: 'Processing silent segments can lighten speech recognition workload and reduce the amount of data sent',
+			desc: 'Choose a silence detection mode for your needs.',
 			options: {
 				server: 'Server',
 				local: 'Local',
 				disabled: 'Off'
 			},
-			summaries: {
-				server: 'Standard: faster processing',
-				local: 'Advanced: faster, less data sent',
-				disabled: 'No silence processing'
+			descriptions: {
+				server: 'Faster processing with lower device load.',
+				local: 'May reduce costs for audio with long silences. Quiet voices and short utterances may be lost, reducing accuracy.',
+				disabled: 'Accuracy first. Processes the full audio, including quiet voices and short utterances.'
 			},
 			missingWarning: "Using local voice activity detection requires a third-party module; download 'fvad.wasm' from the fvad-wasm repository, then click the choose file button to copy it into the plugin folder.",
 			missingInlineNote: "Using local voice activity detection requires a third-party module; download 'fvad.wasm' from the fvad-wasm repository, then click the choose file button to copy it into the plugin folder.",
-			localNote: 'Since silent segments are removed on-device before sending, it helps reduce API costs.',
 			installWasm: {
 				name: 'Place fvad.wasm',
 				desc: 'Select an existing fvad.wasm to automatically place it into the plugin folder',
