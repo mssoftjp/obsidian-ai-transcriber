@@ -64,7 +64,7 @@ Expected: FAIL because the current DOM has no VAD comparison list and the transl
 
 - Replace the `summaries` translation group with `descriptions` containing `server`, `local`, and `disabled`.
 - Remove the redundant `localNote` translation key.
-- Render the modes in this order: disabled, server, local.
+- Render the modes and dropdown options from one shared order: server, disabled, local.
 - Keep the missing-WASM note and link after the comparison list.
 - Add namespaced CSS for `.ai-transcriber-vad-comparison` using the existing model-comparison spacing and list styling.
 

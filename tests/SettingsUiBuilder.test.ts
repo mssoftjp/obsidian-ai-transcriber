@@ -110,8 +110,8 @@ describe('SettingsUIBuilder descriptions', () => {
 
 		expect(comparison).toBeDefined();
 		expect(list?.children.map(child => child.textContent)).toEqual([
-			'Off: Accuracy first. Processes the full audio, including quiet voices and short utterances.',
 			'Server: Faster processing with lower device load.',
+			'Off: Accuracy first. Processes the full audio, including quiet voices and short utterances.',
 			'Local: May reduce costs for audio with long silences. Quiet voices and short utterances may be lost, reducing accuracy.'
 		]);
 	});

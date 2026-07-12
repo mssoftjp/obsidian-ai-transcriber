@@ -12,6 +12,8 @@ import { PathUtils } from './utils/PathUtils';
 import type { APITranscriptionSettings, VADMode } from './ApiSettings';
 import type { App } from 'obsidian';
 
+const VAD_MODE_ORDER: readonly VADMode[] = ['server', 'disabled', 'local'];
+
 export class SettingsUIBuilder {
 	private static readonly FVAD_DOWNLOAD_URL = 'https://github.com/echogarden-project/fvad-wasm';
 
@@ -139,12 +141,12 @@ export class SettingsUIBuilder {
 		setting
 			.setName(t('settings.vadMode.name'))
 			.setDesc(this.createVADDescription(t('settings.vadMode.desc'), false))
-			.addDropdown(dropdown => dropdown
-				.addOption('server', t('settings.vadMode.options.server'))
-				.addOption('local', t('settings.vadMode.options.local'))
-				.addOption('disabled', t('settings.vadMode.options.disabled'))
-				.setValue(initialVadMode)
-				.onChange(async (value) => {
+			.addDropdown(dropdown => {
+				VAD_MODE_ORDER.forEach(mode => {
+					dropdown.addOption(mode, t(`settings.vadMode.options.${mode}`));
+				});
+				dropdown.setValue(initialVadMode);
+				dropdown.onChange(async (value) => {
 					if (!SettingsUIBuilder.isValidVadMode(value)) {
 						this.logger.warn('Invalid VAD mode selection ignored', { value });
 						return;
@@ -167,7 +169,8 @@ export class SettingsUIBuilder {
 					}
 					settings.vadMode = value;
 					await saveSettings();
-				}));
+				});
+			});
 
 		const helperState = this.createVadHelper(setting);
 		const helperContainer = helperState.container;
@@ -451,14 +454,10 @@ export class SettingsUIBuilder {
 		fragment.appendText(baseDesc);
 		const comparison = fragment.createDiv({ cls: 'ai-transcriber-vad-comparison' });
 		const list = comparison.createEl('ul');
-		list.createEl('li', {
-			text: `${t('settings.vadMode.options.disabled')}: ${t('settings.vadMode.descriptions.disabled')}`
-		});
-		list.createEl('li', {
-			text: `${t('settings.vadMode.options.server')}: ${t('settings.vadMode.descriptions.server')}`
-		});
-		list.createEl('li', {
-			text: `${t('settings.vadMode.options.local')}: ${t('settings.vadMode.descriptions.local')}`
+		VAD_MODE_ORDER.forEach(mode => {
+			list.createEl('li', {
+				text: `${t(`settings.vadMode.options.${mode}`)}: ${t(`settings.vadMode.descriptions.${mode}`)}`
+			});
 		});
 		if (includeMissingNote) {
 			// Add a light separator (empty line) before the missing-note block
