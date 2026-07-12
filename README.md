@@ -111,6 +111,8 @@ This plugin requires an internet connection and communicates with the following 
 
 - **OpenAI API** (api.openai.com): Used for audio transcription and text processing
   - Audio data is sent to OpenAI for transcription
+  - Transcribed text and related information are sent only when AI post-processing is enabled
+  - User dictionary correction is performed locally and does not send an additional request
   - API key is sent with each request for authentication
   - No data is stored permanently by the plugin beyond the transcribed text
 
@@ -310,6 +312,8 @@ OpenAIのGPT-4o Transcribe / GPT-4o Mini TranscribeとWhisper APIを使用した
 
 - **OpenAI API** (api.openai.com): 音声の文字起こしとテキスト処理に使用
   - 音声データは文字起こしのためOpenAIに送信されます
+  - 文字起こしテキストと関連情報は、AI後処理を有効にした場合にのみ送信されます
+  - ユーザー辞書補正はローカルで実行され、追加のAPIリクエストは行いません
   - APIキーは認証のため各リクエストと共に送信されます
   - プラグインによって文字起こしされたテキスト以外のデータは永続的に保存されません
 

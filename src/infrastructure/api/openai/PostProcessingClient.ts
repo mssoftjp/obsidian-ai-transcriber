@@ -12,6 +12,8 @@ import { ApiClient } from '../ApiClient';
 import type { OpenAIChatResponse } from './OpenAIChatTypes';
 import type { APITranscriptionSettings } from '../../../ApiSettings';
 
+const MIN_OUTPUT_RETENTION_RATIO = 0.75;
+
 export interface PostProcessingResult {
 	processedText: string;
 	confidence?: number;
@@ -69,8 +71,7 @@ export class PostProcessingClient extends ApiClient {
 					throw new Error('No response from post-processing model');
 				}
 
-				const firstChoice = response.choices[0];
-				const processedText = firstChoice?.message?.content ?? transcription;
+				const processedText = getCompletedPostProcessingText(response, transcription);
 
 			const elapsedTime = performance.now() - startTime;
 			this.logger.info('Post-processing completed', {
@@ -129,7 +130,8 @@ export class PostProcessingClient extends ApiClient {
 						content: 'Hello'
 					}
 				],
-				max_tokens: 5
+				max_completion_tokens: 5,
+				reasoning_effort: 'minimal'
 			};
 
 			await this.post<OpenAIChatResponse>(POST_PROCESSING_CONFIG.endpoint, testRequest);
@@ -195,4 +197,25 @@ export class PostProcessingClient extends ApiClient {
 				return 'Unknown error';
 			}
 	}
+}
+
+export function getCompletedPostProcessingText(
+	response: OpenAIChatResponse,
+	originalText: string
+): string {
+	const firstChoice = response.choices[0];
+	if (!firstChoice?.message?.content) {
+		throw new Error('No content returned from post-processing model');
+	}
+	if (firstChoice.finish_reason !== 'stop') {
+		throw new Error(`Post-processing output was incomplete: ${firstChoice.finish_reason ?? 'unknown'}`);
+	}
+
+	const processedText = firstChoice.message.content.trim();
+	const minimumLength = Math.floor(originalText.trim().length * MIN_OUTPUT_RETENTION_RATIO);
+	if (processedText.length < minimumLength) {
+		throw new Error('Post-processing output was unexpectedly shorter than the transcription');
+	}
+
+	return processedText;
 }

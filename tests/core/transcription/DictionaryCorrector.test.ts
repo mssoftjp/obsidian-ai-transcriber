@@ -1,43 +1,52 @@
 import { DictionaryCorrector } from '../../../src/core/transcription/DictionaryCorrector';
 
-import type { IGPTCorrectionService } from '../../../src/core/transcription/DictionaryCorrector';
-
-describe('DictionaryCorrector cancellation', () => {
-	it('passes the operation signal to GPT correction and does not swallow cancellation', async () => {
-		const abortController = new AbortController();
-		const service: IGPTCorrectionService = {
-			correctWithGPT: jest.fn(async (_text, _language, _hints, signal) => {
-				expect(signal).toBe(abortController.signal);
-				abortController.abort();
-				throw new DOMException('cancelled', 'AbortError');
-			})
-		};
-		const corrector = createCorrector(service);
+describe('DictionaryCorrector', () => {
+	it('applies definite and contextual rules locally', async () => {
+		const corrector = new DictionaryCorrector();
+		corrector.addDictionary({
+			name: 'test',
+			language: 'ja',
+			enabled: true,
+			entries: [
+				{ pattern: 'おーぷんえーあい', replacement: 'OpenAI' },
+				{
+					pattern: 'こーでっくす',
+					replacement: 'Codex',
+					condition: text => text.includes('開発')
+				}
+			]
+		});
 
 		await expect(corrector.correct(
-			'teh value',
-			'en',
+			'開発では、おーぷんえーあいのこーでっくすを使います。',
+			'ja'
+		)).resolves.toBe('開発では、OpenAIのCodexを使います。');
+	});
+
+	it('does not apply contextual rules when their condition is not met', async () => {
+		const corrector = new DictionaryCorrector();
+		corrector.addDictionary({
+			name: 'test',
+			language: 'ja',
+			enabled: true,
+			entries: [{
+				pattern: 'こーでっくす',
+				replacement: 'Codex',
+				condition: text => text.includes('開発')
+			}]
+		});
+
+		await expect(corrector.correct('こーでっくす', 'ja')).resolves.toBe('こーでっくす');
+	});
+
+	it('rejects before processing when cancelled', async () => {
+		const abortController = new AbortController();
+		abortController.abort();
+
+		await expect(new DictionaryCorrector().correct(
+			'original',
+			'ja',
 			abortController.signal
 		)).rejects.toMatchObject({ name: 'AbortError' });
 	});
-
-	it('preserves rule-based output when a non-cancellation GPT error occurs', async () => {
-		const service: IGPTCorrectionService = {
-			correctWithGPT: jest.fn().mockRejectedValue(new Error('provider unavailable'))
-		};
-		const corrector = createCorrector(service);
-
-		await expect(corrector.correct('teh value', 'en')).resolves.toBe('the value');
-	});
 });
-
-function createCorrector(service: IGPTCorrectionService): DictionaryCorrector {
-	const corrector = new DictionaryCorrector(true, service);
-	corrector.addDictionary({
-		name: 'test',
-		language: 'en',
-		enabled: true,
-		entries: [{ pattern: 'teh', replacement: 'the' }]
-	});
-	return corrector;
-}

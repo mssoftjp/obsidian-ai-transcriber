@@ -216,6 +216,9 @@ export class PostProcessingService {
 			if (!content) {
 				throw new Error('Empty response from meta reduction');
 			}
+			if (firstChoice.finish_reason !== 'stop') {
+				throw new Error(`Meta reduction output was incomplete: ${firstChoice.finish_reason ?? 'unknown'}`);
+			}
 
 			// Parse JSON response
 			try {

@@ -7,13 +7,11 @@ import { AUDIO_CONSTANTS, SUPPORTED_FORMATS } from '../config/constants';
 import { getModelConfig, getTranscriptionConfig, logAllModelConfigs } from '../config/ModelProcessingConfig';
 import { AudioPipeline } from '../core/audio/AudioPipeline';
 import { assertEncodedMediaWithinBudget } from '../core/audio/MediaWorkBudget';
-import { ResourceManager } from '../core/resources/ResourceManager';
 import { DictionaryCorrector } from '../core/transcription/DictionaryCorrector';
 import { createTranscriptionJobPlan } from '../core/transcription/TranscriptionJobPlan';
 import { isAbortError } from '../core/utils/CooperativeTask';
 import { SimpleProgressCalculator } from '../core/utils/SimpleProgressCalculator';
 import { t } from '../i18n';
-import { GPTDictionaryCorrectionService } from '../infrastructure/api/dictionary/GPTDictionaryCorrectionService';
 import { FallbackEngine } from '../infrastructure/audio/FallbackEngine';
 import { VADChunkingService } from '../infrastructure/audio/VADChunkingService';
 import { WebAudioChunkingService } from '../infrastructure/audio/WebAudioChunkingService';
@@ -418,7 +416,7 @@ export class TranscriptionController {
 		const apiKey = this.getApiKey();
 
 		// Create dictionary corrector with user dictionary
-		const dictionaryCorrector = this.createDictionaryCorrector(apiKey);
+		const dictionaryCorrector = this.createDictionaryCorrector();
 
 		// Create service and strategy
 		let service: TranscriptionService;
@@ -474,7 +472,7 @@ export class TranscriptionController {
 		}
 
 		const apiKey = this.getApiKey();
-		const dictionaryCorrector = this.createDictionaryCorrector(apiKey);
+		const dictionaryCorrector = this.createDictionaryCorrector();
 		const model = this.settings.model === 'gpt-4o-transcribe'
 			? 'gpt-4o-transcribe'
 			: 'gpt-4o-mini-transcribe';
@@ -554,16 +552,8 @@ export class TranscriptionController {
 	/**
 	 * Create dictionary corrector with user dictionary
 	 */
-			private createDictionaryCorrector(apiKey: string): DictionaryCorrector {
-			// Get API key for GPT correction
-			// Enable GPT correction if post-processing is enabled
-			const useGPTCorrection = this.settings.postProcessingEnabled;
-			const resourceManager = ResourceManager.getInstance();
-			const gptService = useGPTCorrection
-				? new GPTDictionaryCorrectionService(apiKey, resourceManager)
-				: undefined;
-
-			const corrector = new DictionaryCorrector(useGPTCorrection, gptService);
+			private createDictionaryCorrector(): DictionaryCorrector {
+			const corrector = new DictionaryCorrector();
 
 			if (!this.settings.dictionaryCorrectionEnabled) {
 				return corrector;
@@ -581,18 +571,6 @@ export class TranscriptionController {
 					name: 'user-dictionary-multi',
 					language: 'multi', // Special language code for multi-language
 					enabled: true,
-					useGPTCorrection: useGPTCorrection,
-					// Pass all dictionaries data for GPT correction
-					definiteCorrections: [
-						...this.settings.userDictionaries.ja.definiteCorrections,
-						...this.settings.userDictionaries.en.definiteCorrections,
-						...this.settings.userDictionaries.zh.definiteCorrections
-					],
-						contextualCorrections: [
-							...(this.settings.userDictionaries.ja.contextualCorrections ?? []),
-							...(this.settings.userDictionaries.en.contextualCorrections ?? []),
-							...(this.settings.userDictionaries.zh.contextualCorrections ?? [])
-						],
 						entries: allEntries
 					};
 				corrector.addDictionary(multiDict);
@@ -607,9 +585,6 @@ export class TranscriptionController {
 						name: `user-dictionary-${currentLanguage}`,
 						language: currentLanguage,
 						enabled: true,
-						useGPTCorrection: useGPTCorrection,
-						definiteCorrections: userDictionary.definiteCorrections,
-						contextualCorrections: userDictionary.contextualCorrections ?? [],
 						entries: entries
 					};
 					corrector.addDictionary(langDict);

@@ -12,9 +12,7 @@ export interface PostProcessingConfig {
 	endpoint: string;
 	model: string;
 	defaults: {
-		temperature: number;
 		maxTokens: number;
-		topP: number;
 	};
 	prompts: {
 		metaReduction: {
@@ -53,13 +51,10 @@ export interface PostProcessingConfig {
 
 export const POST_PROCESSING_CONFIG: PostProcessingConfig = {
 	endpoint: '/v1/chat/completions',
-	model: 'gpt-4.1-mini-2025-04-14', // GPT-4.1 configuration
-	// model: 'o4-mini-2025-04-16', // O4-mini configuration (reasoning model)
+	model: 'gpt-5-mini-2025-08-07',
 
 	defaults: {
-		temperature: 0.0, // Fixed to 0.0 for deterministic output
-		maxTokens: 500,
-		topP: 0.95
+		maxTokens: 500
 	},
 
 	prompts: {
@@ -265,8 +260,8 @@ Output Format:
 	},
 
 	limitations: {
-		maxInputTokens: 1047576, // GPT-4.1-miniの実際の入力制限
-		maxOutputTokens: 32768, // GPT-4.1-miniの最大出力トークン数
+		maxInputTokens: 272000,
+		maxOutputTokens: 128000,
 		targetPromptTokens: 200, // Target for Whisper/GPT-4o prompt
 		maxKeywords: 30,
 		contextTokenLimit: 150
@@ -352,28 +347,6 @@ export function buildPostProcessingMetaRequest(
 		contextTokenLimit: POST_PROCESSING_CONFIG.limitations.contextTokenLimit.toString()
 	});
 
-
-	// O4-mini reasoning model configuration (currently not in use)
-	// For o4-mini: only max_completion_tokens is supported, temperature/top_p are not
-	// if (POST_PROCESSING_CONFIG.model.includes('o4-mini')) {
-	// 	return {
-	// 		model: POST_PROCESSING_CONFIG.model,
-	// 		messages: [
-	// 			{
-	// 				role: 'system',
-	// 				content: POST_PROCESSING_CONFIG.prompts.metaReduction.system
-	// 			},
-	// 			{
-	// 				role: 'user',
-	// 				content: prompt
-	// 			}
-	// 		],
-	// 		max_completion_tokens: POST_PROCESSING_CONFIG.defaults.maxTokens,
-	// 		response_format: { type: 'json_object' }
-	// 	};
-	// }
-
-	// For GPT-4.1 and other standard OpenAI models
 	return {
 		model: POST_PROCESSING_CONFIG.model,
 		messages: [
@@ -386,9 +359,8 @@ export function buildPostProcessingMetaRequest(
 				content: prompt
 			}
 		],
-		temperature: POST_PROCESSING_CONFIG.defaults.temperature,
-		max_tokens: POST_PROCESSING_CONFIG.defaults.maxTokens,
-		top_p: POST_PROCESSING_CONFIG.defaults.topP,
+		max_completion_tokens: POST_PROCESSING_CONFIG.defaults.maxTokens,
+		reasoning_effort: 'minimal',
 		response_format: { type: 'json_object' }
 	};
 }
@@ -415,29 +387,8 @@ export function buildPostProcessingRequest(
 	});
 
 
-	// 言語別の安全なmax_tokens計算
+	// 言語別の安全な出力トークン上限を計算
 	const safeMaxTokens = calculateSafeMaxTokens(transcription, language);
-
-	// O4-mini reasoning model configuration (currently not in use)
-	// For o4-mini: only max_completion_tokens is supported, temperature/top_p are not
-	// if (POST_PROCESSING_CONFIG.model.includes('o4-mini')) {
-	// 	return {
-	// 		model: POST_PROCESSING_CONFIG.model,
-	// 		messages: [
-	// 			{
-	// 				role: 'system',
-	// 				content: POST_PROCESSING_CONFIG.prompts.postProcessing.system
-	// 			},
-	// 			{
-	// 				role: 'user',
-	// 				content: prompt
-	// 			}
-	// 		],
-	// 		max_completion_tokens: safeMaxTokens
-	// 	};
-	// }
-
-	// For GPT-4.1 and other standard OpenAI models
 	return {
 		model: POST_PROCESSING_CONFIG.model,
 		messages: [
@@ -450,9 +401,8 @@ export function buildPostProcessingRequest(
 				content: prompt
 			}
 		],
-		temperature: POST_PROCESSING_CONFIG.defaults.temperature,
-		max_tokens: safeMaxTokens,
-		top_p: POST_PROCESSING_CONFIG.defaults.topP
+		max_completion_tokens: safeMaxTokens,
+		reasoning_effort: 'minimal'
 	};
 }
 
@@ -466,7 +416,7 @@ export function estimateTokenCount(text: string, language: string = 'ja'): numbe
 }
 
 /**
- * Calculate required max_tokens with language-specific safety margins
+ * Calculate the completion token budget with language-specific safety margins
  * 余裕を持った係数で設計し、確実に完全な出力を得る
  */
 export function calculateSafeMaxTokens(text: string, language: string = 'ja'): number {
