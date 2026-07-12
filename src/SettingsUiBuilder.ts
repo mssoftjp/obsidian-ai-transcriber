@@ -299,11 +299,21 @@ export class SettingsUIBuilder {
 	private static createModelDescription(): DocumentFragment {
 		const fragment = SettingsUIBuilder.createObsidianFragment();
 		fragment.appendText(t('settings.model.desc'));
-		fragment.createEl('br');
-		fragment.appendText(t('settings.model.comparison') + ' ');
-		fragment.appendText('• ' + t('settings.model.whisper') + ': ' + t('settings.model.whisperDesc') + ' ');
-		fragment.appendText('• ' + t('settings.model.gpt4o') + ': ' + t('settings.model.gpt4oDesc') + ' ');
-		fragment.appendText('• ' + t('settings.model.gpt4oMini') + ': ' + t('settings.model.gpt4oMiniDesc'));
+		const comparison = fragment.createDiv({ cls: 'ai-transcriber-model-comparison' });
+		comparison.createDiv({
+			cls: 'ai-transcriber-model-comparison-title',
+			text: t('settings.model.comparison')
+		});
+		const list = comparison.createEl('ul');
+		list.createEl('li', {
+			text: `${t('settings.model.whisper')}: ${t('settings.model.whisperDesc')}`
+		});
+		list.createEl('li', {
+			text: `${t('settings.model.gpt4o')}: ${t('settings.model.gpt4oDesc')}`
+		});
+		list.createEl('li', {
+			text: `${t('settings.model.gpt4oMini')}: ${t('settings.model.gpt4oMiniDesc')}`
+		});
 		return fragment;
 	}
 

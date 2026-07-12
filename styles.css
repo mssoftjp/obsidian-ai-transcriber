@@ -400,7 +400,7 @@
 	line-height: 1.4;
 }
 
-.ai-transcriber-settings .model-comparison {
+.ai-transcriber-settings .ai-transcriber-model-comparison {
 	margin-top: var(--ait-spacing-lg);
 	padding: var(--ait-spacing-lg);
 	background-color: var(--background-secondary);
@@ -408,12 +408,16 @@
 	font-size: var(--font-ui-smaller);
 }
 
-.ai-transcriber-settings .model-comparison ul {
+.ai-transcriber-settings .ai-transcriber-model-comparison-title {
+	font-weight: var(--font-semibold);
+}
+
+.ai-transcriber-settings .ai-transcriber-model-comparison ul {
 	margin: var(--ait-spacing-md) 0;
 	padding-left: var(--ait-spacing-2xl);
 }
 
-.ai-transcriber-settings .model-comparison li {
+.ai-transcriber-settings .ai-transcriber-model-comparison li {
 	margin: var(--ait-spacing-sm) 0;
 }
 
