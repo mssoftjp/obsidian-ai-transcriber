@@ -8,7 +8,13 @@ import { LanguageDetector } from '../../core/utils/LanguageDetector';
 import { PostProcessingClient } from '../../infrastructure/api/openai/PostProcessingClient';
 import { Logger } from '../../utils/Logger';
 
-import type { APITranscriptionSettings } from '../../ApiSettings';
+import { formatContextualGuidance, selectContextualGuidance } from './ContextualDictionaryGuidance';
+import {
+	restoreSegmentBoundaryWhitespace,
+	segmentTranscriptionPreservingSeparators
+} from './PostProcessingSegments';
+
+import type { APITranscriptionSettings, ContextualCorrection } from '../../ApiSettings';
 import type { TranscriptionMetaInfo } from '../../core/transcription/TranscriptionTypes';
 import type { OpenAIChatResponse } from '../../infrastructure/api/openai/OpenAIChatTypes';
 import type { PostProcessingResult } from '../../infrastructure/api/openai/PostProcessingClient';
@@ -26,9 +32,9 @@ export class PostProcessingService {
 	private settings: APITranscriptionSettings;
 	private logger: Logger;
 
-	constructor(settings: APITranscriptionSettings) {
+	constructor(settings: APITranscriptionSettings, client?: PostProcessingClient) {
 		this.settings = settings;
-		this.client = new PostProcessingClient(settings);
+		this.client = client ?? new PostProcessingClient(settings);
 		this.logger = Logger.getLogger('PostProcessingService');
 		this.logger.debug('PostProcessingService initialized', {
 			postProcessingModel: settings.postProcessingModel
@@ -41,6 +47,7 @@ export class PostProcessingService {
 	async processTranscription(
 		transcription: string,
 		metaInfo: TranscriptionMetaInfo,
+		contextualCorrections: ContextualCorrection[] = [],
 		signal?: AbortSignal
 	): Promise<ProcessedTranscription> {
 		const startTime = Date.now();
@@ -68,89 +75,85 @@ export class PostProcessingService {
 			});
 
 
-			if (transcription.length <= maxChars) {
-				// Process as single segment
-				this.logger.debug('Processing as single segment');
-				const result = await this.client.processTranscription(
-					transcription,
-					reducedMeta.context,
-					reducedMeta.keywords,
-					signal
-				);
+			const segments = segmentTranscriptionPreservingSeparators(transcription, maxChars);
+			this.logger.debug('Text segmented', { segmentCount: segments.length });
+			const processedSegments: string[] = [];
+			let fallbackCount = 0;
 
-				const duration = (Date.now() - startTime) / 1000;
-				this.logger.info('Post-processing completed', {
-					duration: `${duration.toFixed(2)}s`,
-					originalLength: transcription.length,
-					processedLength: result.processedText.length
-				});
-
-				return {
-					originalText: transcription,
-					processedText: result.processedText,
-					metaInfo,
-					processingResult: result,
-					duration
-				};
-			} else {
-				// Process with segmentation
-				this.logger.debug('Processing with segmentation');
-				const segments = this.segmentTranscription(transcription, language);
-				if (segments.length === 0) {
-					segments.push(transcription);
+			for (let index = 0; index < segments.length; index++) {
+				if (signal?.aborted) {
+					throw new DOMException('Post-processing cancelled', 'AbortError');
 				}
-				this.logger.debug('Text segmented', {
-					segmentCount: segments.length
-				});
-
-				const processedSegments: string[] = [];
-
-				for (let i = 0; i < segments.length; i++) {
-					const segmentStartTime = Date.now();
-					const segment = segments[i];
-					if (!segment) {
-						continue;
-					}
-					this.logger.trace(`Processing segment ${i + 1}/${segments.length}`, {
-						segmentLength: segment.length
-					});
-
+				const segment = segments[index];
+				if (!segment) {
+					continue;
+				}
+				const guidanceEntries = selectContextualGuidance(
+					contextualCorrections,
+					segment,
+					language
+				);
+				const contextualGuidance = formatContextualGuidance(guidanceEntries, language);
+				let processedSegment = segment;
+				let usedFallback = false;
+				try {
 					const segmentResult = await this.client.processTranscription(
 						segment,
 						reducedMeta.context,
 						reducedMeta.keywords,
+						contextualGuidance,
 						signal
 					);
-
-					processedSegments.push(segmentResult.processedText);
-					const segmentDuration = (Date.now() - segmentStartTime) / 1000;
-					this.logger.trace(`Segment ${i + 1} processed`, {
-						duration: `${segmentDuration.toFixed(2)}s`
+					processedSegment = restoreSegmentBoundaryWhitespace(
+						segment,
+						segmentResult.processedText
+					);
+					usedFallback = segmentResult.modelUsed === 'none';
+				} catch (error) {
+					if ((signal?.aborted ?? false) || (error instanceof Error && error.name === 'AbortError')) {
+						throw error;
+					}
+					usedFallback = true;
+					this.logger.warn('Post-processing segment failed; retaining source segment', {
+						segmentIndex: index + 1,
+						segmentCount: segments.length
 					});
 				}
-
-				const processedText = processedSegments.join('');
-				const duration = (Date.now() - startTime) / 1000;
-
-				this.logger.info('Segmented post-processing completed', {
-					duration: `${duration.toFixed(2)}s`,
+				if (usedFallback) {
+					fallbackCount++;
+				}
+				processedSegments.push(processedSegment);
+				this.logger.debug('Post-processing segment completed', {
+					segmentIndex: index + 1,
 					segmentCount: segments.length,
-					originalLength: transcription.length,
-					processedLength: processedText.length
+					inputLength: segment.length,
+					outputLength: processedSegment.length,
+					fallback: usedFallback,
+					contextualGuidanceCount: guidanceEntries.length
 				});
-
-				return {
-					originalText: transcription,
-					processedText,
-					metaInfo,
-					processingResult: {
-						processedText,
-						modelUsed: POST_PROCESSING_CONFIG.model,
-						confidence: 0.9
-					},
-					duration
-				};
 			}
+
+			const processedText = processedSegments.join('');
+			const duration = (Date.now() - startTime) / 1000;
+			this.logger.info('Post-processing completed', {
+				duration: `${duration.toFixed(2)}s`,
+				segmentCount: segments.length,
+				fallbackCount,
+				originalLength: transcription.length,
+				processedLength: processedText.length
+			});
+
+			return {
+				originalText: transcription,
+				processedText,
+				metaInfo,
+				processingResult: {
+					processedText,
+					modelUsed: fallbackCount === segments.length ? 'none' : POST_PROCESSING_CONFIG.model,
+					confidence: fallbackCount === 0 ? 0.9 : 0
+				},
+				duration
+			};
 
 		} catch (error) {
 			const isAborted = signal?.aborted ?? false;
@@ -407,119 +410,4 @@ export class PostProcessingService {
 		return LanguageDetector.detectLanguage(text);
 	}
 
-	/**
-	 * Segment transcription into manageable chunks
-	 */
-	private segmentTranscription(text: string, language: 'ja' | 'en' | 'zh' | 'ko'): string[] {
-		const maxChars = POST_PROCESSING_CONFIG.segmentation.maxSegmentChars[language];
-		const segments: string[] = [];
-
-		// 文末パターン（優先順位順）
-		const sentenceEndPatterns = [
-			/[。！？]\s*$/,     // 日本語の文末
-			/[.!?]\s*$/,        // 英語の文末
-			/[。！？.!?]\s*$/  // 混在
-		];
-
-		// 読点パターン
-		const commaPattern = /[、,]\s*$/;
-
-		let currentSegment = '';
-		let currentLength = 0;
-
-		// 改行で分割して処理
-		const lines = text.split('\n');
-
-		for (const line of lines) {
-			const lineLength = line.length + 1; // +1 for newline
-
-			// 現在のセグメントに追加しても制限内の場合
-			if (currentLength + lineLength <= maxChars) {
-				currentSegment += (currentSegment ? '\n' : '') + line;
-				currentLength += lineLength;
-			} else {
-				// 制限を超える場合、現在のセグメントを保存
-				if (currentSegment) {
-					segments.push(currentSegment);
-				}
-
-				// 単一行が制限を超える場合は、文末で分割を試みる
-				if (lineLength > maxChars) {
-						const subSegments = this.splitLongLine(line, maxChars, sentenceEndPatterns, commaPattern);
-						segments.push(...subSegments.slice(0, -1));
-						const lastSegment = subSegments[subSegments.length - 1];
-						currentSegment = lastSegment ?? '';
-						currentLength = currentSegment.length;
-				} else {
-					currentSegment = line;
-					currentLength = lineLength;
-				}
-			}
-		}
-
-		// 最後のセグメントを追加
-		if (currentSegment) {
-			segments.push(currentSegment);
-		}
-
-		return segments;
-	}
-
-	/**
-	 * Split a long line into smaller segments
-	 */
-	private splitLongLine(
-		line: string,
-		maxChars: number,
-		sentenceEndPatterns: RegExp[],
-		commaPattern: RegExp
-	): string[] {
-		const segments: string[] = [];
-		let remaining = line;
-
-		while (remaining.length > maxChars) {
-			let splitPoint = -1;
-
-			// 文末を探す
-			for (const pattern of sentenceEndPatterns) {
-				const searchText = remaining.substring(0, maxChars);
-				const matches = Array.from(searchText.matchAll(new RegExp(pattern.source.replace(/\$$/, ''), 'g')));
-
-				if (matches.length > 0) {
-					const lastMatch = matches[matches.length - 1];
-					if (lastMatch?.index !== undefined) {
-						splitPoint = lastMatch.index + lastMatch[0].length;
-						break;
-					}
-				}
-			}
-
-			// 文末が見つからない場合、読点を探す
-			if (splitPoint === -1) {
-				const searchText = remaining.substring(0, maxChars);
-				const matches = Array.from(searchText.matchAll(new RegExp(commaPattern.source.replace(/\$$/, ''), 'g')));
-
-				if (matches.length > 0) {
-					const lastMatch = matches[matches.length - 1];
-					if (lastMatch?.index !== undefined) {
-						splitPoint = lastMatch.index + lastMatch[0].length;
-					}
-				}
-			}
-
-			// それでも見つからない場合は、強制的に分割
-			if (splitPoint === -1) {
-				splitPoint = maxChars;
-			}
-
-			segments.push(remaining.substring(0, splitPoint));
-			remaining = remaining.substring(splitPoint).trim();
-		}
-
-		if (remaining) {
-			segments.push(remaining);
-		}
-
-		return segments;
-	}
 }

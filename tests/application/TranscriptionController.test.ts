@@ -6,6 +6,47 @@ import { GPT4oTranscriptionService } from '../../src/application/services/GPT4oT
 import { CLIENT_MEDIA_BUDGET } from '../../src/core/audio/MediaWorkBudget';
 
 describe('TranscriptionController direct upload plan', () => {
+	it('applies only fixed corrections before optional AI post-processing', async () => {
+		const audioBody = new Uint8Array([1, 2, 3, 4]).buffer;
+		const app = new App();
+		Object.assign(app.vault, { readBinary: jest.fn().mockResolvedValue(audioBody) });
+		const file = new TFile();
+		Object.assign(file, {
+			path: 'audio/dictionary.mp3',
+			name: 'dictionary.mp3',
+			basename: 'dictionary',
+			extension: 'mp3',
+			stat: { ctime: 1, mtime: 1, size: audioBody.byteLength }
+		});
+		const settings = structuredClone(DEFAULT_API_SETTINGS);
+		settings.openaiApiKey = `sk-${'a'.repeat(40)}`;
+		settings.vadMode = 'server';
+		settings.language = 'ja';
+		settings.dictionaryCorrectionEnabled = true;
+		settings.userDictionaries.ja.definiteCorrections = [{
+			from: ['おーぷんえーあい'],
+			to: 'OpenAI'
+		}];
+		settings.userDictionaries.ja.contextualCorrections = [{
+			from: ['こーでっくす'],
+			to: 'Codex',
+			contextKeywords: ['開発']
+		}];
+		jest.spyOn(GPT4oTranscriptionService.prototype, 'transcribeFile').mockResolvedValue({
+			id: 0,
+			text: '開発では、おーぷんえーあいのこーでっくすを使います。',
+			startTime: 0,
+			endTime: 0,
+			success: true
+		});
+		const controller = new TranscriptionController(app, settings);
+
+		await expect(controller.transcribe(file)).resolves.toEqual({
+			text: '開発では、OpenAIのこーでっくすを使います。',
+			modelUsed: 'gpt-4o-transcribe'
+		});
+	});
+
 	it('bypasses client audio decoding for an eligible server-VAD file', async () => {
 		const audioBody = new Uint8Array([1, 2, 3, 4]).buffer;
 		const app = new App();

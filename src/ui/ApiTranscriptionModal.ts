@@ -14,12 +14,13 @@ import { Logger } from '../utils/Logger';
 import { PathUtils } from '../utils/PathUtils';
 
 import { AudioWaveformSelector } from './AudioWaveformSelector';
+import { getDictionaryCorrectionDescriptionKey } from './DictionaryCorrectionDescription';
 import { DictionaryManagementModal } from './DictionaryManagementModal';
 import { FolderInputSuggest } from './FolderInputSuggest';
 import { PostProcessingModal } from './PostProcessingModal';
 
 import type { ProgressTracker } from './ProgressTracker';
-import type { APITranscriptionSettings } from '../ApiSettings';
+import type { APITranscriptionSettings, ContextualCorrection } from '../ApiSettings';
 import type { APITranscriber } from '../ApiTranscriber';
 import type { TranscriptionMetaInfo } from '../core/transcription/TranscriptionTypes';
 import type { WakeLockSentinel } from '../types/global';
@@ -710,6 +711,7 @@ export class APITranscriptionModal extends Modal {
 					const processed = await postProcessingService.processTranscription(
 						transcription,
 						metaInfo,
+						this.getContextualCorrectionsForPostProcessing(),
 						signal
 					);
 				this.throwIfOperationAborted(signal);
@@ -1027,6 +1029,8 @@ export class APITranscriptionModal extends Modal {
 			aiDependentContainer.classList.add('ait-hidden');
 		}
 
+		let updateDictionaryDescription = (): void => undefined;
+
 		// Post-processing toggle - updates visibility of dependent options
 		new Setting(optionsSection)
 			.setName(t('modal.transcription.processingOptions.enablePostProcessing'))
@@ -1047,6 +1051,7 @@ export class APITranscriptionModal extends Modal {
 					}
 					// Update related info button visibility
 					this.updateRelatedInfoButton();
+					updateDictionaryDescription();
 					void this.displayCostEstimate();
 				}));
 
@@ -1060,7 +1065,14 @@ export class APITranscriptionModal extends Modal {
 		// remain visible so users can always disable it.
 		const dictSetting = new Setting(optionsSection)
 			.setName(t('modal.transcription.processingOptions.enableDictionaryCorrection'))
-			.setDesc(t('modal.transcription.processingOptions.enableDictionaryCorrectionDesc'));
+			.setDesc('');
+		updateDictionaryDescription = () => {
+			dictSetting.setDesc(t(getDictionaryCorrectionDescriptionKey(
+				this.settings.dictionaryCorrectionEnabled,
+				this.settings.postProcessingEnabled
+			)));
+		};
+		updateDictionaryDescription();
 
 		// Add manage dictionary button before the toggle
 		dictSetting.addButton(button => button
@@ -1083,6 +1095,7 @@ export class APITranscriptionModal extends Modal {
 			.onChange(async (value) => {
 				this.settings.dictionaryCorrectionEnabled = value;
 				this.transcriber.updateSettings(this.settings);
+				updateDictionaryDescription();
 				if (this.saveSettings) {
 					await this.saveSettings();
 				}
@@ -1105,6 +1118,32 @@ export class APITranscriptionModal extends Modal {
 		if (!this.settings.postProcessingEnabled) {
 			aiDependentContainer.classList.add('ait-hidden');
 		}
+	}
+
+	private getContextualCorrectionsForPostProcessing(): ContextualCorrection[] {
+		if (!this.settings.dictionaryCorrectionEnabled || !this.settings.postProcessingEnabled) {
+			return [];
+		}
+
+		let languages: ('ja' | 'en' | 'zh' | 'ko')[] = [];
+		if (this.settings.language === 'auto') {
+			languages = ['ja', 'en', 'zh', 'ko'];
+		} else if (
+			this.settings.language === 'ja' ||
+			this.settings.language === 'en' ||
+			this.settings.language === 'zh' ||
+			this.settings.language === 'ko'
+		) {
+			languages = [this.settings.language];
+		}
+
+		return languages.flatMap(language => (
+			this.settings.userDictionaries[language].contextualCorrections ?? []
+		)).map(entry => ({
+			...entry,
+			from: [...entry.from],
+			contextKeywords: [...(entry.contextKeywords ?? [])]
+		}));
 	}
 
 		private createRelatedInfoButton(container: HTMLElement): void {

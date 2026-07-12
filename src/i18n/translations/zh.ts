@@ -85,11 +85,11 @@ const zh: TranslationKeys = {
 		},
 		postProcessing: {
 			name: '启用后处理',
-			desc: '使用 GPT-4.1 mini 使用相关信息改善转录结果'
+			desc: '使用AI提高转录文本的可读性。除转录费用外，还会产生API费用。'
 		},
 		dictionaryCorrection: {
 			name: '启用字典校正',
-			desc: '使用基于字典的文本校正自动修正转录结果'
+			desc: '固定修正不会产生额外费用。上下文修正仅在启用AI后处理时应用。'
 		},
 		outputFolder: {
 			name: '输出文件夹',
@@ -130,7 +130,9 @@ const zh: TranslationKeys = {
 			priority: '优先级',
 			context: '上下文',
 			definiteCorrections: '固定修正',
-			contextualCorrections: '上下文修正',
+			definiteCorrectionsDesc: '自动替换匹配的文字。不使用API，因此不会产生额外费用。',
+			contextualCorrections: 'AI上下文修正',
+			contextualCorrectionsDesc: '仅在启用AI后处理时，使用已登记的关键词和上下文进行修正。会产生AI后处理费用。',
 			importExport: '导入/导出',
 			importExportDesc: '以JSON格式导入/导出词典数据',
 			import: '导入',
@@ -149,8 +151,8 @@ const zh: TranslationKeys = {
 			title: '用户词典管理',
 			fromPlaceholder: '转换前 (逗号分隔)',
 			toPlaceholder: '转换后',
-			autoModeDesc: '自动检测语言时将应用所有语言的词典。注：固定修正会作为自动替换应用；上下文修正仅在包含指定关键词时应用。',
-			languageModeDesc: '仅应用{lang}词典。注：固定修正会作为自动替换应用；上下文修正仅在包含指定关键词时应用。',
+			autoModeDesc: '自动检测语言时可使用所有语言的词典。固定修正会自动替换；AI上下文修正仅在启用AI后处理时应用。',
+			languageModeDesc: '仅使用{lang}词典。固定修正会自动替换；AI上下文修正仅在启用AI后处理时应用。',
 			contextPlaceholder: '关键词 (逗号分隔)',
 			limitReached: '词典项目数已达上限({limit}个)',
 			categories: {
@@ -292,9 +294,10 @@ const zh: TranslationKeys = {
 			processingOptions: {
 				title: '处理选项',
 				enablePostProcessing: '启用AI后处理',
-				enablePostProcessingDesc: '会发起额外的API请求，最终费用可能高于上方估算。',
+				enablePostProcessingDesc: '使用AI提高转录文本的可读性。除转录费用外，还会产生API费用。',
 				enableDictionaryCorrection: '应用用户字典',
-				enableDictionaryCorrectionDesc: '在本地应用固定校正和上下文校正，不会额外调用API。',
+				enableDictionaryCorrectionDesc: '固定修正不使用API，不会产生额外费用。上下文修正仅在启用AI后处理时应用，并会产生相应费用。',
+				dictionaryFixedOnlyDesc: '当前仅启用固定修正，不会产生额外费用。要使用上下文修正，请启用AI后处理。',
 				outputFolder: '输出文件夹',
 				relatedInfo: '相关信息'
 			},

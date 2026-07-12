@@ -137,6 +137,10 @@ export class DictionaryManagementModal extends Modal {
 		const section = this.dictionaryContentEl.createDiv({ cls: 'dictionary-section' });
 		const header = section.createDiv({ cls: 'dictionary-section-header' });
 		header.createEl('h3', { text: t('settings.dictionary.definiteCorrections') });
+		section.createDiv({
+			cls: 'ai-transcriber-dictionary-section-description',
+			text: t('settings.dictionary.definiteCorrectionsDesc')
+		});
 
 			// Add count and limit info
 			const dict = this.getCurrentDictionary();
@@ -198,6 +202,10 @@ export class DictionaryManagementModal extends Modal {
 		const section = this.dictionaryContentEl.createDiv({ cls: 'dictionary-section' });
 		const header = section.createDiv({ cls: 'dictionary-section-header' });
 		header.createEl('h3', { text: t('settings.dictionary.contextualCorrections') });
+		section.createDiv({
+			cls: 'ai-transcriber-dictionary-section-description',
+			text: t('settings.dictionary.contextualCorrectionsDesc')
+		});
 
 			// Add count and limit info
 			const dict = this.getCurrentDictionary();

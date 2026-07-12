@@ -85,11 +85,11 @@ const en: TranslationKeys = {
 		},
 		postProcessing: {
 			name: 'Enable post-processing',
-			desc: 'Use AI to enhance transcription with related information after completion'
+			desc: 'Uses AI to make the transcript easier to read. API charges apply separately from transcription.'
 		},
 		dictionaryCorrection: {
 			name: 'Enable dictionary correction',
-			desc: 'Automatically correct transcription results using dictionary-based text correction'
+			desc: 'Definite corrections have no additional charge. Contextual corrections apply only when AI post-processing is on.'
 		},
 		outputFolder: {
 			name: 'Output folder',
@@ -130,7 +130,9 @@ const en: TranslationKeys = {
 			priority: 'Priority',
 			context: 'Context',
 			definiteCorrections: 'Definite corrections',
-			contextualCorrections: 'Contextual corrections',
+			definiteCorrectionsDesc: 'Automatically replaces matching text. No API is used, so there is no additional charge.',
+			contextualCorrections: 'AI contextual corrections',
+			contextualCorrectionsDesc: 'Uses registered keywords and surrounding text only when AI post-processing is on. AI post-processing charges apply.',
 			importExport: 'Import/export',
 			importExportDesc: 'Import or export dictionary data in JSON format',
 			import: 'Import',
@@ -149,8 +151,8 @@ const en: TranslationKeys = {
 			title: 'User dictionary management',
 			fromPlaceholder: 'From (comma-separated)',
 			toPlaceholder: 'To',
-				autoModeDesc: 'All language dictionaries will be applied in auto-detect mode. Note: definite corrections are applied as automatic replacements; contextual corrections apply only when their keywords are present.',
-				languageModeDesc: 'Only the {lang} dictionary will be applied. Note: definite corrections are applied as automatic replacements; contextual corrections apply only when their keywords are present.',
+				autoModeDesc: 'All language dictionaries are available in auto-detect mode. Definite corrections are automatic replacements; AI contextual corrections apply only when AI post-processing is on.',
+				languageModeDesc: 'Only the {lang} dictionary is used. Definite corrections are automatic replacements; AI contextual corrections apply only when AI post-processing is on.',
 			contextPlaceholder: 'Keywords (comma-separated)',
 			limitReached: 'Dictionary limit reached ({limit} entries)',
 			categories: {
@@ -292,9 +294,10 @@ const en: TranslationKeys = {
 			processingOptions: {
 				title: 'Processing options',
 				enablePostProcessing: 'Enable AI post-processing',
-				enablePostProcessingDesc: 'Uses an additional API request, so the final cost may exceed the estimate above.',
+				enablePostProcessingDesc: 'Uses AI to make the transcript easier to read. API charges apply separately from transcription.',
 				enableDictionaryCorrection: 'Apply user dictionary',
-				enableDictionaryCorrectionDesc: 'Applies definite and contextual corrections locally without an additional API request.',
+				enableDictionaryCorrectionDesc: 'Definite corrections use no API and have no additional charge. Contextual corrections apply only with AI post-processing, and its charges apply.',
+				dictionaryFixedOnlyDesc: 'Only definite corrections are active. There is no additional charge. Turn on AI post-processing to use contextual corrections.',
 				outputFolder: 'Output folder',
 				relatedInfo: 'Related information'
 			},

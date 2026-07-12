@@ -1,6 +1,5 @@
 /**
- * Dictionary-based post-processing corrector
- * Applies domain-specific corrections after transcription
+ * Deterministic dictionary corrector for fixed replacements
  */
 
 import type { DictionaryCategory } from '../../ApiSettings';
@@ -10,8 +9,6 @@ export interface DictionaryEntry {
 	pattern: string | RegExp;
 	// 正しい表記
 	replacement: string;
-	// 適用条件（オプション）
-	condition?: (text: string) => boolean;
 	// 大文字小文字を区別するか
 	caseSensitive?: boolean;
 	// カテゴリ
@@ -57,7 +54,7 @@ export class DictionaryCorrector {
 		}
 		let correctedText = text;
 
-		// Apply rule-based corrections first
+		// Apply fixed replacements
 		for (const dictionary of this.dictionaries.values()) {
 			if (signal?.aborted) {
 				return Promise.reject(new DOMException('Dictionary correction was cancelled', 'AbortError'));
@@ -82,11 +79,6 @@ export class DictionaryCorrector {
 		let result = text;
 
 		for (const entry of dictionary.entries) {
-			// Skip if condition is not met
-			if (entry.condition && !entry.condition(result)) {
-				continue;
-			}
-
 			if (entry.pattern instanceof RegExp) {
 				// RegExp pattern
 				result = result.replace(entry.pattern, entry.replacement);

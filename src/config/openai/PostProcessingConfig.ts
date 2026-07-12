@@ -372,7 +372,8 @@ export function buildPostProcessingRequest(
 	transcription: string,
 	context: string,
 	keywords: string[],
-	language: string = 'ja'
+	language: string = 'ja',
+	contextualGuidance: string = ''
 ): OpenAIChatRequest {
 
 	// Use prompts from config directly instead of i18n
@@ -380,11 +381,14 @@ export function buildPostProcessingRequest(
 	const userTemplate = getPrompt(POST_PROCESSING_CONFIG.prompts.postProcessing.userTemplate, language);
 
 	// Replace parameters in the user template
-	const prompt = replacePromptParams(userTemplate, {
+	let prompt = replacePromptParams(userTemplate, {
 		context: context,
 		keywords: keywords.join(', '),
 		transcription: transcription
 	});
+	if (contextualGuidance) {
+		prompt += `\n\n${contextualGuidance}`;
+	}
 
 
 	// 言語別の安全な出力トークン上限を計算

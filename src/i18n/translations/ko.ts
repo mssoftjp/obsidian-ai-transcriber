@@ -85,11 +85,11 @@ const ko: TranslationKeys = {
 		},
 		postProcessing: {
 			name: '후처리 활성화',
-			desc: '완료 후 AI를 사용하여 관련 정보로 전사를 향상시킵니다'
+			desc: 'AI로 전사문을 읽기 쉽게 다듬습니다. 전사 비용과 별도로 API 요금이 적용됩니다.'
 		},
 		dictionaryCorrection: {
 			name: '사전 교정 활성화',
-			desc: '사전 기반 텍스트 교정을 사용하여 전사 결과를 자동으로 교정합니다'
+			desc: '고정 보정은 추가 요금이 없습니다. 문맥 보정은 AI 후처리가 켜진 경우에만 적용됩니다.'
 		},
 		outputFolder: {
 			name: '출력 폴더',
@@ -130,7 +130,9 @@ const ko: TranslationKeys = {
 			priority: '우선순위',
 			context: '컨텍스트',
 			definiteCorrections: '고정 보정',
-			contextualCorrections: '문맥 보정',
+			definiteCorrectionsDesc: '일치하는 표기를 자동으로 바꿉니다. API를 사용하지 않아 추가 요금이 없습니다.',
+			contextualCorrections: 'AI 문맥 보정',
+			contextualCorrectionsDesc: 'AI 후처리가 켜진 경우에만 등록한 키워드와 주변 문맥을 사용해 보정합니다. AI 후처리 요금이 적용됩니다.',
 			importExport: '가져오기/내보내기',
 			importExportDesc: '사전 데이터를 JSON 형식으로 가져오기/내보내기 할 수 있습니다',
 			import: '가져오기',
@@ -149,8 +151,8 @@ const ko: TranslationKeys = {
 			title: '사용자 사전 관리',
 			fromPlaceholder: '변환원 (쉼표로 구분)',
 			toPlaceholder: '변환후',
-			autoModeDesc: '자동 감지 모드에서는 모든 언어 사전이 적용됩니다. ※고정 보정은 자동 치환으로 적용되며, 문맥 보정은 키워드가 포함된 경우에만 적용됩니다.',
-			languageModeDesc: '{lang} 사전만 적용됩니다. ※고정 보정은 자동 치환으로 적용되며, 문맥 보정은 키워드가 포함된 경우에만 적용됩니다.',
+			autoModeDesc: '자동 감지 모드에서는 모든 언어 사전을 사용할 수 있습니다. 고정 보정은 자동 치환되며, AI 문맥 보정은 AI 후처리가 켜진 경우에만 적용됩니다.',
+			languageModeDesc: '{lang} 사전만 사용합니다. 고정 보정은 자동 치환되며, AI 문맥 보정은 AI 후처리가 켜진 경우에만 적용됩니다.',
 			contextPlaceholder: '키워드 (쉼표로 구분)',
 			limitReached: '사전 항목 수가 제한({limit}개)에 도달했습니다',
 			categories: {
@@ -292,9 +294,10 @@ const ko: TranslationKeys = {
 			processingOptions: {
 				title: '처리 옵션',
 				enablePostProcessing: 'AI 후처리 활성화',
-				enablePostProcessingDesc: '추가 API 요청을 사용하므로 최종 비용이 위 예상치를 초과할 수 있습니다.',
+				enablePostProcessingDesc: 'AI로 전사문을 읽기 쉽게 다듬습니다. 전사 비용과 별도로 API 요금이 적용됩니다.',
 				enableDictionaryCorrection: '사용자 사전 적용',
-				enableDictionaryCorrectionDesc: '고정 및 문맥 보정을 로컬에서 적용하며 추가 API 요청을 보내지 않습니다.',
+				enableDictionaryCorrectionDesc: '고정 보정은 API를 사용하지 않아 추가 요금이 없습니다. 문맥 보정은 AI 후처리가 켜진 경우에만 적용되며 해당 요금이 발생합니다.',
+				dictionaryFixedOnlyDesc: '현재 고정 보정만 활성화되어 추가 요금이 없습니다. 문맥 보정을 사용하려면 AI 후처리를 켜세요.',
 				outputFolder: '출력 폴더',
 				relatedInfo: '관련 정보'
 			},

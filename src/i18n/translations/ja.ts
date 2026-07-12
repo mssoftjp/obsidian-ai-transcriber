@@ -85,11 +85,11 @@ const ja: TranslationKeys = {
 		},
 		postProcessing: {
 			name: '後処理を有効化',
-			desc: '文字起こし完了後、関連情報を使用してAIで後処理を行う'
+			desc: 'AIで文字起こしを読みやすく整えます。文字起こしとは別にAPI利用料金がかかります。'
 		},
 		dictionaryCorrection: {
 			name: '辞書補正を有効化',
-			desc: '文字起こし結果を辞書ベースで自動補正する'
+			desc: '固定補正は追加料金なし。文脈補正はAI後処理がオンの場合のみ適用されます。'
 		},
 		outputFolder: {
 			name: '出力フォルダ',
@@ -130,7 +130,9 @@ const ja: TranslationKeys = {
 			priority: '優先度',
 			context: 'コンテキスト',
 			definiteCorrections: '固定補正',
-			contextualCorrections: '文脈補正',
+			definiteCorrectionsDesc: '一致する表記を自動置換します。APIを使わないため、追加料金はかかりません。',
+			contextualCorrections: 'AI文脈補正',
+			contextualCorrectionsDesc: 'AI後処理がオンの場合のみ、登録したキーワードと前後の内容を使って補正します。AI後処理の料金がかかります。',
 			importExport: 'インポート/エクスポート',
 			importExportDesc: '辞書データをJSON形式でインポート/エクスポートできます',
 			import: 'インポート',
@@ -149,8 +151,8 @@ const ja: TranslationKeys = {
 			title: 'ユーザー辞書管理',
 			fromPlaceholder: '変換元 (カンマ区切りで複数可)',
 			toPlaceholder: '変換先',
-			autoModeDesc: '言語自動検出時は全言語の辞書が適用されます。※固定補正は自動置換、文脈補正はキーワードが含まれる場合に適用されます',
-			languageModeDesc: '{lang}の辞書のみが適用されます。※固定補正は自動置換、文脈補正はキーワードが含まれる場合に適用されます',
+			autoModeDesc: '言語自動検出時は全言語の辞書が対象です。固定補正は自動置換、AI文脈補正はAI後処理がオンの場合のみ適用されます。',
+			languageModeDesc: '{lang}の辞書のみが対象です。固定補正は自動置換、AI文脈補正はAI後処理がオンの場合のみ適用されます。',
 			contextPlaceholder: 'キーワード (カンマ区切り)',
 			limitReached: '辞書項目数が上限({limit}件)に達しました',
 			categories: {
@@ -292,9 +294,10 @@ const ja: TranslationKeys = {
 			processingOptions: {
 				title: '処理オプション',
 				enablePostProcessing: 'AI後処理を有効化',
-				enablePostProcessingDesc: '追加のAPI呼び出しを行うため、上記の推定コストを上回る場合があります。',
+				enablePostProcessingDesc: 'AIで文字起こしを読みやすく整えます。文字起こしとは別にAPI利用料金がかかります。',
 				enableDictionaryCorrection: 'ユーザー辞書を適用',
-				enableDictionaryCorrectionDesc: '固定補正と文脈補正をローカルで適用します。追加のAPI呼び出しは行いません。',
+				enableDictionaryCorrectionDesc: '固定補正はAPIを使わないため、追加料金はかかりません。文脈補正はAI後処理がオンの場合のみ適用され、AI後処理の料金がかかります。',
+				dictionaryFixedOnlyDesc: '現在は固定補正のみ有効です。追加料金はかかりません。文脈補正を使うにはAI後処理をオンにしてください。',
 				outputFolder: '出力フォルダ',
 				relatedInfo: '関連情報'
 			},

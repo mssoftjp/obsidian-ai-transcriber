@@ -28,7 +28,7 @@ import { GPT4oTranscriptionStrategy } from './strategies/GPT4oTranscriptionStrat
 import { WhisperTranscriptionStrategy } from './strategies/WhisperTranscriptionStrategy';
 import { TranscriptionWorkflow } from './workflows/TranscriptionWorkflow';
 
-import type { APITranscriptionSettings, ContextualCorrection, DictionaryEntry, UserDictionary, VADMode } from '../ApiSettings';
+import type { APITranscriptionSettings, DictionaryEntry, UserDictionary, VADMode } from '../ApiSettings';
 import type { AudioProcessingConfig } from '../core/audio/AudioTypes';
 import type { ChunkingService } from '../core/chunking/ChunkingService';
 import type { ChunkingConfig } from '../core/chunking/ChunkingTypes';
@@ -616,32 +616,6 @@ export class TranscriptionController {
 						}
 						if (entry.priority !== undefined) {
 							mapped.priority = entry.priority;
-						}
-						return mapped;
-					});
-				})
-		);
-
-			// Add contextual corrections as rules with conditions
-			entries.push(
-				...(userDictionary.contextualCorrections ?? [])
-					.filter((entry: ContextualCorrection) => entry.from.length > 0 && entry.to)
-					.flatMap((entry: ContextualCorrection) => {
-						return entry.from.map((pattern: string) => {
-							const mapped: CorrectionDictionaryEntry = {
-								pattern,
-							replacement: entry.to,
-							caseSensitive: false
-						};
-						if (entry.category !== undefined) {
-							mapped.category = entry.category;
-						}
-						if (entry.priority !== undefined) {
-							mapped.priority = entry.priority;
-						}
-						if (entry.contextKeywords && entry.contextKeywords.length > 0) {
-							const keywords = entry.contextKeywords;
-							mapped.condition = (text: string) => keywords.some((keyword: string) => text.includes(keyword));
 						}
 						return mapped;
 					});

@@ -45,20 +45,28 @@ export class PostProcessingClient extends ApiClient {
 		transcription: string,
 		context: string,
 		keywords: string[],
+		contextualGuidance: string = '',
 		signal?: AbortSignal
 	): Promise<PostProcessingResult> {
 		const startTime = performance.now();
 		this.logger.debug('Starting post-processing', {
 			textLength: transcription.length,
 			hasContext: Boolean(context),
-			keywordCount: keywords.length
+			keywordCount: keywords.length,
+			contextualGuidanceLength: contextualGuidance.length
 		});
 
 		try {
 			// 言語を検出（簡易的な実装）
 			const detectedLanguage = this.detectLanguage(transcription);
 
-			const request = buildPostProcessingRequest(transcription, context, keywords, detectedLanguage);
+			const request = buildPostProcessingRequest(
+				transcription,
+				context,
+				keywords,
+				detectedLanguage,
+				contextualGuidance
+			);
 
 			const response = await this.post<OpenAIChatResponse>(
 				POST_PROCESSING_CONFIG.endpoint,

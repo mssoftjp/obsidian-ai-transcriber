@@ -1165,6 +1165,12 @@
 	display: inline-block;
 }
 
+.ai-transcriber-modal .ai-transcriber-dictionary-section-description {
+	color: var(--text-muted);
+	font-size: var(--font-ui-smaller);
+	margin: calc(var(--ait-spacing-sm) * -1) 0 var(--ait-spacing-lg);
+}
+
 .ai-transcriber-modal .dictionary-limit-info {
 	color: var(--text-muted);
 	font-size: var(--font-smaller);

@@ -128,7 +128,9 @@ export interface TranslationKeys {
 			priority: string;
 			context: string;
 			definiteCorrections: string;
+			definiteCorrectionsDesc: string;
 			contextualCorrections: string;
+			contextualCorrectionsDesc: string;
 			importExport: string;
 			importExportDesc: string;
 			import: string;
@@ -293,6 +295,7 @@ export interface TranslationKeys {
 				enablePostProcessingDesc: string;
 				enableDictionaryCorrection: string;
 				enableDictionaryCorrectionDesc: string;
+				dictionaryFixedOnlyDesc: string;
 				outputFolder: string;
 				relatedInfo: string;
 			};

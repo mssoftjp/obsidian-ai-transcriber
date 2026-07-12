@@ -35,4 +35,25 @@ describe('PostProcessingConfig', () => {
 		});
 		expect(request).not.toHaveProperty('max_tokens');
 	});
+
+	it('adds contextual dictionary guidance to the existing post-processing request', () => {
+		const request = buildPostProcessingRequest(
+			'こーでっくすを使います。',
+			'',
+			[],
+			'ja',
+			'文脈補正候補:\n- こーでっくす → Codex'
+		);
+		const userMessage = request.messages.find(message => message.role === 'user');
+
+		expect(userMessage?.content).toContain('文脈補正候補');
+		expect(userMessage?.content).toContain('こーでっくす → Codex');
+	});
+
+	it('omits the contextual dictionary section when no guidance is relevant', () => {
+		const request = buildPostProcessingRequest('通常の本文です。', '', [], 'ja', '');
+		const userMessage = request.messages.find(message => message.role === 'user');
+
+		expect(userMessage?.content).not.toContain('文脈補正候補');
+	});
 });
