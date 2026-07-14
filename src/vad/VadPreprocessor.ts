@@ -21,6 +21,8 @@ export interface VADProcessOptions {
 	signal?: AbortSignal;
 }
 
+export type VADFallbackMode = 'none' | 'disabled';
+
 /**
  * VADプリプロセッサー
  * 音声ファイルから無音を除去するメインクラス
@@ -30,7 +32,7 @@ export class VADPreprocessor {
 	private config: VADConfig;
 	private audioConverter: AudioConverter;
 	private logger: Logger;
-	private fallbackMode: 'none' | 'server_vad' = 'none';
+	private fallbackMode: VADFallbackMode = 'none';
 	private initialized = false;
 
 	constructor(
@@ -68,18 +70,18 @@ export class VADPreprocessor {
 		return this.processor;
 	}
 
-	getFallbackMode(): 'none' | 'server_vad' {
+	getFallbackMode(): VADFallbackMode {
 		return this.fallbackMode;
 	}
-	private isServerFallback(): boolean {
-		return this.fallbackMode === 'server_vad';
+	private isDisabledFallback(): boolean {
+		return this.fallbackMode === 'disabled';
 	}
 
 	/**
    * VADプリプロセッサーを初期化
    */
 	async initialize(): Promise<void> {
-		if (this.initialized && (this.processor !== null || this.fallbackMode === 'server_vad')) {
+		if (this.initialized && (this.processor !== null || this.isDisabledFallback())) {
 			this.logger.debug('VAD preprocessor already initialized', {
 				fallbackMode: this.fallbackMode
 			});
@@ -98,9 +100,9 @@ export class VADPreprocessor {
 				this.logger.info('VAD processor initialized successfully', {
 					processorType: this.processor.constructor.name
 				});
-			} else if (this.isServerFallback()) {
-				this.logger.warn('Local VAD unavailable. Falling back to server-side VAD.');
-				new Notice(t('notices.vadServerFallback'), 5000);
+			} else if (this.isDisabledFallback()) {
+				this.logger.warn('Local VAD unavailable. Continuing without silence removal.');
+				new Notice(t('notices.vadDisabledFallback'), 5000);
 				this.config.enabled = false;
 			} else {
 				if (this.config.enabled) {
@@ -111,7 +113,7 @@ export class VADPreprocessor {
 			}
 		} catch (error) {
 			this.logger.error('Failed to initialize VAD preprocessor', error);
-			if (!this.isServerFallback()) {
+			if (!this.isDisabledFallback()) {
 				this.processor = null;
 
 				// VADが有効なのに初期化に失敗した場合は、エラーを再スロー
@@ -155,19 +157,23 @@ export class VADPreprocessor {
 				throw new DOMException('VAD processing was cancelled', 'AbortError');
 			}
 
-				let useServerFallback = this.isServerFallback();
+				let useDisabledFallback = this.isDisabledFallback();
 
 				// プロセッサーが未初期化の場合、初期化を試みる
-				if (this.config.enabled && this.getProcessor() === null && !useServerFallback) {
+				if (this.config.enabled && this.getProcessor() === null && !useDisabledFallback) {
 					await this.initialize();
-					useServerFallback = this.isServerFallback();
+					useDisabledFallback = this.isDisabledFallback();
 
 					// 初期化が失敗した場合は、エラーをスロー
 					const processorAfterInit = this.getProcessor();
-					if (processorAfterInit === null && !useServerFallback) {
+					if (processorAfterInit === null && !useDisabledFallback) {
 						this.logger.error('Failed to initialize VAD processor');
 						throw new Error(t('notices.vadInitError'));
 					}
+				}
+				if (useDisabledFallback && !hasRequestedRange) {
+					this.logger.info('Local VAD unavailable, returning the original audio without silence removal');
+					return audioBuffer;
 				}
 
 			// オーディオデータをデコード
@@ -228,7 +234,7 @@ export class VADPreprocessor {
 
 			// ローカルVADが利用できない場合のフォールバック処理
 			this.logger.info('Local VAD unavailable, using fallback audio path', {
-				useServerFallback,
+				useDisabledFallback,
 				rangeApplied
 			});
 
@@ -247,7 +253,7 @@ export class VADPreprocessor {
 			this.logger.error('Error processing file with VAD', error);
 
 			// VADが有効化されているのにエラーが発生した場合は、エラーを再スロー
-			if (this.config.enabled && this.fallbackMode !== 'server_vad') {
+			if (this.config.enabled && !this.isDisabledFallback()) {
 				throw new Error(t('notices.vadProcessingError', { error: error instanceof Error ? error.message : 'Unknown error' }));
 			}
 			if (hasRequestedRange) {
@@ -304,12 +310,12 @@ export class VADPreprocessor {
 
 				// Check if the error is related to missing fvad.wasm
 				if (error instanceof Error && error.message.includes('WASM file not found')) {
-					this.fallbackMode = 'server_vad';
+					this.fallbackMode = 'disabled';
 					return null;
 				}
 			}
 
-		if (this.fallbackMode === 'server_vad') {
+		if (this.isDisabledFallback()) {
 			return null;
 		}
 

@@ -1,6 +1,6 @@
 interface JobPlanInput {
 	model: string;
-	vadMode: 'server' | 'local' | 'disabled';
+	vadMode: 'local' | 'disabled';
 	fileSizeBytes: number;
 	extension: string;
 	startTime?: number;
@@ -27,7 +27,7 @@ function loadPlanner(): CreateJobPlan | null {
 
 const baseInput: JobPlanInput = {
 	model: 'gpt-4o-transcribe',
-	vadMode: 'server',
+	vadMode: 'disabled',
 	fileSizeBytes: 10 * 1024 * 1024,
 	extension: 'mp3'
 };

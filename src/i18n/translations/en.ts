@@ -222,7 +222,7 @@ const en: TranslationKeys = {
 		noAudioFile: 'No audio file selected',
 		processingFile: 'Processing file: {fileName}',
 		vadInitError: 'Voice activity detection initialization error: fvad.wasm file not found. Please place it in the plugin folder.',
-		vadServerFallback: 'Local voice activity detection module not found. Falling back to server-side processing.',
+		vadDisabledFallback: 'Local voice activity detection module is unavailable. Continuing without silence removal.',
 		vadProcessingError: 'Voice activity detection processing error: {error}',
 		vadUnavailable: 'Voice activity detection is unavailable, proceeding without silence removal.',
 		externalFileNotSupported: 'External file processing will be implemented in the next phase',

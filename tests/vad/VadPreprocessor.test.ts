@@ -1,6 +1,8 @@
 import { App, TFile } from 'obsidian';
 
 import { VADPreprocessor } from '../../src/vad/VadPreprocessor';
+import { PathUtils } from '../../src/utils/PathUtils';
+import { WebRTCVADProcessor } from '../../src/vad/processors/WebrtcVadProcessor';
 
 import type { VADProcessor, VADResult } from '../../src/vad/VadTypes';
 
@@ -17,6 +19,36 @@ interface PreprocessorInternals {
 }
 
 describe('VADPreprocessor operation ownership', () => {
+	it('falls back to no silence removal when the local WASM module is missing', async () => {
+		const getPluginDir = jest.spyOn(PathUtils, 'getPluginDir')
+			.mockReturnValue('.obsidian/plugins/ai-transcriber');
+		const initialize = jest.spyOn(WebRTCVADProcessor.prototype, 'initialize')
+			.mockRejectedValue(new Error('WASM file not found'));
+		const preprocessor = new VADPreprocessor(new App(), { enabled: true });
+		const sourceBuffer = new ArrayBuffer(16);
+		const converter: ConverterStub = {
+			decodeAudioFile: jest.fn(),
+			encodeToWAV: jest.fn(),
+			cleanup: jest.fn()
+		};
+
+		try {
+			await expect(preprocessor.initialize()).resolves.toBeUndefined();
+			expect(preprocessor.getFallbackMode()).toBe('disabled');
+			(preprocessor as unknown as PreprocessorInternals).audioConverter = converter;
+			await expect(preprocessor.processFile(
+				createFile(),
+				undefined,
+				undefined,
+				{ sourceBuffer }
+			)).resolves.toBe(sourceBuffer);
+			expect(converter.decodeAudioFile).not.toHaveBeenCalled();
+		} finally {
+			initialize.mockRestore();
+			getPluginDir.mockRestore();
+		}
+	});
+
 	it('reuses the controller buffer and passes one signal through every stage', async () => {
 		const app = new App();
 		const readBinary = jest.fn();

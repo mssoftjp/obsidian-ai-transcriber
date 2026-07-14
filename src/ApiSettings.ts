@@ -1,5 +1,5 @@
 export type TranscriptionModel = 'whisper-1' | 'whisper-1-ts' | 'gpt-4o-transcribe' | 'gpt-4o-mini-transcribe';
-export type VADMode = 'server' | 'local' | 'disabled';
+export type VADMode = 'local' | 'disabled';
 
 // Dictionary category types
 export type DictionaryCategory = 'noun' | 'person' | 'place' | 'org' | 'proper' | 'technical' | 'spoken' | 'symbol';

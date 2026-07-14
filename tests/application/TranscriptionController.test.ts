@@ -20,7 +20,7 @@ describe('TranscriptionController direct upload plan', () => {
 		});
 		const settings = structuredClone(DEFAULT_API_SETTINGS);
 		settings.openaiApiKey = `sk-${'a'.repeat(40)}`;
-		settings.vadMode = 'server';
+		settings.vadMode = 'disabled';
 		settings.language = 'ja';
 		settings.dictionaryCorrectionEnabled = true;
 		settings.userDictionaries.ja.definiteCorrections = [{
@@ -47,7 +47,7 @@ describe('TranscriptionController direct upload plan', () => {
 		});
 	});
 
-	it('bypasses client audio decoding for an eligible server-VAD file', async () => {
+	it('bypasses client audio decoding for an eligible no-processing file', async () => {
 		const audioBody = new Uint8Array([1, 2, 3, 4]).buffer;
 		const app = new App();
 		const readBinary = jest.fn().mockResolvedValue(audioBody);
@@ -62,7 +62,7 @@ describe('TranscriptionController direct upload plan', () => {
 		});
 		const settings = structuredClone(DEFAULT_API_SETTINGS);
 		settings.openaiApiKey = `sk-${'a'.repeat(40)}`;
-		settings.vadMode = 'server';
+		settings.vadMode = 'disabled';
 		const directTranscription = jest
 			.spyOn(GPT4oTranscriptionService.prototype, 'transcribeFile')
 			.mockResolvedValue({

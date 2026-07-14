@@ -19,10 +19,10 @@ export interface TranscriptionJobPlan {
 
 export function createTranscriptionJobPlan(input: TranscriptionJobPlanInput): TranscriptionJobPlan {
 	const isGPT4o = input.model === 'gpt-4o-transcribe' || input.model === 'gpt-4o-mini-transcribe';
-	const usesServerChunking = isGPT4o && input.vadMode === 'server';
 	const hasTimeRange = input.startTime !== undefined || input.endTime !== undefined;
 	const extension = input.extension.toLowerCase();
-	const canUploadDirectly = usesServerChunking
+	const canUploadDirectly = isGPT4o
+		&& input.vadMode === 'disabled'
 		&& !hasTimeRange
 		&& input.fileSizeBytes <= DIRECT_UPLOAD_LIMIT_BYTES
 		&& DIRECT_UPLOAD_EXTENSIONS.has(extension);

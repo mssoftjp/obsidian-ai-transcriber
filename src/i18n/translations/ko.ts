@@ -222,7 +222,7 @@ const ko: TranslationKeys = {
 		noAudioFile: '선택된 오디오 파일이 없습니다',
 		processingFile: '파일 처리 중: {fileName}',
 		vadInitError: 'VAD 초기화 오류: fvad.wasm 파일을 찾을 수 없습니다. 플러그인 폴더에 배치해주세요.',
-		vadServerFallback: '로컬 VAD 모듈을 찾을 수 없어 서버 측 VAD로 전환했습니다.',
+		vadDisabledFallback: '로컬 VAD 모듈을 사용할 수 없어 무음을 제거하지 않고 계속 처리합니다.',
 		vadProcessingError: 'VAD 처리 오류: {error}',
 		vadUnavailable: 'VAD를 사용할 수 없어 무음 제거 없이 진행합니다.',
 		externalFileNotSupported: '외부 파일 처리는 다음 단계에서 구현될 예정입니다',

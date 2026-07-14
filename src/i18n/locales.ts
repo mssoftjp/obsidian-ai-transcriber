@@ -220,7 +220,7 @@ export interface TranslationKeys {
 		noAudioFile: string;
 		processingFile: string;
 		vadInitError: string;
-		vadServerFallback: string;
+		vadDisabledFallback: string;
 		vadProcessingError: string;
 		vadUnavailable: string;
 		postProcessingComplete: string;

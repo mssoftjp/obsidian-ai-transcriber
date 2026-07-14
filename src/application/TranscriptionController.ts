@@ -46,7 +46,7 @@ export class TranscriptionController {
 	private progressTracker: ProgressTracker | null;
 	private vadPreprocessor: VADPreprocessor | null = null;
 	private logger = Logger.getLogger('TranscriptionController');
-	private serverSideVADFallback = false;
+	private noVADFallback = false;
 
 	// Cached instances
 	private audioPipeline: AudioPipeline | null = null;
@@ -271,21 +271,17 @@ export class TranscriptionController {
 				debug: this.settings.debugMode
 			});
 			await this.vadPreprocessor.initialize();
-			this.serverSideVADFallback = this.vadPreprocessor.getFallbackMode() === 'server_vad';
+			this.noVADFallback = this.vadPreprocessor.getFallbackMode() === 'disabled';
 			this.logger.debug('VAD preprocessor initialized', {
-				serverSideFallback: this.serverSideVADFallback
+				noVADFallback: this.noVADFallback
 			});
-			if (this.serverSideVADFallback) {
-				this.logger.warn('Local VAD unavailable; server-side VAD will be used for chunking.');
+			if (this.noVADFallback) {
+				this.logger.warn('Local VAD unavailable; processing will continue without silence removal.');
 			}
 		} else {
-				this.vadPreprocessor = null;
-				this.serverSideVADFallback = true;
-			if (vadMode === 'server') {
-				this.logger.info('Server-side VAD mode active. Local fvad.wasm will not be used.');
-			} else {
-				this.logger.info('VAD disabled via settings. Proceeding without silence removal.');
-			}
+			this.vadPreprocessor = null;
+			this.noVADFallback = true;
+			this.logger.info('VAD disabled via settings. Proceeding without silence removal.');
 		}
 
 		// Initialize audio pipeline
@@ -304,7 +300,7 @@ export class TranscriptionController {
 			targetSampleRate: AUDIO_CONSTANTS.SAMPLE_RATE,
 			targetBitDepth: AUDIO_CONSTANTS.BIT_DEPTH,
 			targetChannels: AUDIO_CONSTANTS.CHANNELS,
-			enableVAD: !this.serverSideVADFallback,
+			enableVAD: !this.noVADFallback,
 			vadConfig: {
 				processor: 'auto',
 				sensitivity: 0.7,
@@ -325,7 +321,7 @@ export class TranscriptionController {
 		// Create VAD-based chunking service
 		const chunkingConfig = this.getChunkingConfig();
 		const vadConfig = {
-			enabled: !this.serverSideVADFallback,
+			enabled: !this.noVADFallback,
 			processor: 'webrtc' as const,
 			sensitivity: 0.7,
 			minSpeechDuration: 0.3,
@@ -335,7 +331,7 @@ export class TranscriptionController {
 		};
 
 		let chunkingService: ChunkingService;
-		if (this.serverSideVADFallback) {
+		if (this.noVADFallback) {
 			this.logger.warn('Creating WebAudio chunking service because local VAD is unavailable');
 			const fallbackChunkingService = new WebAudioChunkingService(chunkingConfig);
 			fallbackChunkingService.setPreferredChunkDuration(
@@ -373,9 +369,6 @@ export class TranscriptionController {
 		const modelConfig = getModelConfig(model);
 		const isWhisper = model.startsWith('whisper-1');
 
-
-		const serverFallback = this.serverSideVADFallback;
-
 		const minMatchLength = modelConfig.merging.minMatchLength ?? 0;
 
 		return {
@@ -389,7 +382,6 @@ export class TranscriptionController {
 			},
 			modelName: model, // Pass model name for VAD chunking config
 			processingMode: isWhisper ? 'parallel' : 'sequential',
-			useServerVAD: serverFallback,
 				mergeStrategy: isWhisper ? {
 					type: 'overlap_removal',
 					config: {
