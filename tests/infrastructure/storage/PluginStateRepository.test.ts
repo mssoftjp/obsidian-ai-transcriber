@@ -81,6 +81,23 @@ describe('PluginStateRepository', () => {
 		expect(plugin.saveData).toHaveBeenCalledTimes(1);
 	});
 
+	it('migrates legacy server VAD to disabled and persists the repair', async () => {
+		const seedPlugin = createPlugin(null);
+		const seedRepository = new PluginStateRepository(seedPlugin);
+		const state = await seedRepository.initialize();
+		const legacyState = structuredClone(state) as unknown as {
+			settings: { data: Record<string, unknown> };
+		};
+		legacyState.settings.data['vadMode'] = 'server';
+		const plugin = createPlugin(legacyState);
+		const repository = new PluginStateRepository(plugin);
+
+		await repository.initialize();
+
+		expect(repository.getSettings().vadMode).toBe('disabled');
+		expect(plugin.saveData).toHaveBeenCalledTimes(1);
+	});
+
 	it('serializes overlapping settings and history writes', async () => {
 		const plugin = createPlugin(null);
 		const repository = new PluginStateRepository(plugin);

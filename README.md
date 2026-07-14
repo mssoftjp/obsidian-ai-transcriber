@@ -70,13 +70,13 @@ Notes:
 
 #### Optional: Local VAD (fvad.wasm)
 
-By default, the plugin uses server-side VAD. If you prefer local VAD (WebRTC VAD) for on-device speech/silence detection:
+By default, the plugin does not remove silence, prioritizing quiet voices and short utterances. To use local VAD (WebRTC VAD) for on-device speech/silence detection:
 
 1. Download `fvad.wasm` from the echogarden project: https://github.com/echogarden-project/fvad-wasm
 2. In the plugin settings, select "Local" from the VAD Mode dropdown and load the file using the file loader. For manual installs, this places `fvad.wasm` in the same plugin folder that contains `manifest.json`.
 3. Set VAD Mode to "Local" in the plugin settings
 
-If `fvad.wasm` is not present, the plugin automatically falls back to server-side VAD (or no VAD depending on your settings).
+Local VAD can reduce uploaded audio and may reduce transcription cost when recordings contain substantial silence, but quiet voices and short utterances can be lost. If `fvad.wasm` is unavailable, processing continues without silence removal.
 
 ## Usage
 
@@ -130,7 +130,7 @@ Links to GitHub, OpenAI documentation, and Buy Me a Coffee are documentation or 
 ## Privacy and Security
 
 - New OpenAI API keys are saved only when Electron safeStorage is available. If OS encryption is unavailable, the plugin warns you and does not persist the new key. Legacy XOR-wrapped values remain readable for migration but are not used for new storage
-- Eligible GPT-4o files are sent directly to OpenAI with server-side chunking; time ranges, local VAD, large files, and unsupported direct-upload formats are processed locally before upload
+- Eligible GPT-4o files may be uploaded directly as an automatic transport optimization; time ranges, local VAD, large files, and unsupported direct-upload formats are processed locally before upload. Ordinary GPT-4o and GPT-4o Mini transcription requests do not request server-side chunking
 - Locally processed chunks use WebCodecs Opus in an audio-only WebM container when the current Obsidian runtime supports it, reducing uploaded bytes. If capability detection, encoding, or container creation fails, the plugin falls back to 16 kHz mono WAV before making the request
 - For a selected time range, only that processed range is encoded into upload chunks; the full original recording is not attached to the range request
 - No telemetry or usage data is collected by this plugin
@@ -273,12 +273,13 @@ OpenAIのGPT-4o Transcribe / GPT-4o Mini TranscribeとWhisper APIを使用した
 
 #### ローカルVAD（任意 / fvad.wasm）
 
-既定ではサーバーサイドVADを使用します。端末内で音声/無音判定（WebRTC VAD）を行いたい場合は以下の手順でローカルVADを有効化できます。
+既定では無音を除去せず、小さな声や短い発話を含む音声全体を処理します。端末内で音声/無音判定（WebRTC VAD）を行いたい場合は、以下の手順でローカルVADを有効化できます。
 
 1. echogardenプロジェクトから `fvad.wasm` をダウンロード: https://github.com/echogarden-project/fvad-wasm
 2. 設定の無音検出方式のプルダウンでローカルを選択し、ファイルの読み込みで `fvad.wasm` を導入。手動インストールでは、`manifest.json` と同じプラグインフォルダに配置されます。
 3. プラグイン設定で VAD モードを「ローカル」に設定
 
+無音が多い録音では、ローカルVADにより送信音声が減り、文字起こし料金を削減できる場合があります。ただし、小さな声や短い発話が欠ける可能性があります。`fvad.wasm` を利用できない場合は、無音を除去せずに処理を続行します。
 
 ## 使用方法
 
@@ -332,7 +333,7 @@ GitHub、OpenAIドキュメント、Buy Me a Coffeeへのリンクは、ドキ�
 ## プライバシーとセキュリティ
 
 - 新しいOpenAI APIキーはElectron safeStorageを利用できる場合にのみ保存します。OS暗号化を利用できない場合は警告を表示し、新しいキーを永続化しません。旧XOR形式は移行のため読み取り互換性だけを維持します
-- 条件を満たすGPT-4o向けファイルはサーバー側チャンク処理を指定して直接OpenAIへ送信し、時間範囲・ローカルVAD・大容量・直接送信非対応形式は送信前にローカル処理します
+- 条件を満たすGPT-4o向けファイルは通信経路の最適化として自動的に直接送信する場合があります。時間範囲・ローカルVAD・大容量・直接送信非対応形式は送信前にローカル処理します。通常のGPT-4oおよびGPT-4o Mini文字起こしでは、サーバー側チャンク処理を要求しません
 - このプラグインによるテレメトリーや使用データの収集はありません
 - 文字起こしされたテキストはローカルのvaultにのみ保存されます
 

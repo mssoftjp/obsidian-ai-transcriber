@@ -42,12 +42,10 @@ const en: TranslationKeys = {
 			name: 'Silence detection (voice activity detection)',
 			desc: 'Choose a silence detection mode for your needs.',
 			options: {
-				server: 'Server',
 				local: 'Local',
 				disabled: 'Off'
 			},
 			descriptions: {
-				server: 'Faster processing with lower device load.',
 				local: 'May reduce costs for audio with long silences. Quiet voices and short utterances may be lost, reducing accuracy.',
 				disabled: 'Accuracy first. Processes the full audio, including quiet voices and short utterances.'
 			},

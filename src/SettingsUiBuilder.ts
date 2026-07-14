@@ -12,7 +12,7 @@ import { PathUtils } from './utils/PathUtils';
 import type { APITranscriptionSettings, VADMode } from './ApiSettings';
 import type { App } from 'obsidian';
 
-const VAD_MODE_ORDER: readonly VADMode[] = ['server', 'disabled', 'local'];
+const VAD_MODE_ORDER: readonly VADMode[] = ['disabled', 'local'];
 
 export class SettingsUIBuilder {
 	private static readonly FVAD_DOWNLOAD_URL = 'https://github.com/echogarden-project/fvad-wasm';
@@ -473,7 +473,7 @@ export class SettingsUIBuilder {
 	}
 
 	private static isValidVadMode(value: string): value is VADMode {
-		return value === 'server' || value === 'local' || value === 'disabled';
+		return value === 'local' || value === 'disabled';
 	}
 
 	private static getFallbackWindow(): Window {

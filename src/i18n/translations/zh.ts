@@ -42,12 +42,10 @@ const zh: TranslationKeys = {
 			name: '静音检测（VAD）方式',
 			desc: '请根据用途选择静音检测方式。',
 			options: {
-				server: '服务器',
 				local: '本地',
 				disabled: '不处理'
 			},
 			descriptions: {
-				server: '处理速度更快，并可降低设备负载。',
 				local: '对于静音较多的音频，可能降低费用。轻声和短句可能丢失，从而降低准确度。',
 				disabled: '优先保证准确度。处理包括轻声和短句在内的完整音频。'
 			},

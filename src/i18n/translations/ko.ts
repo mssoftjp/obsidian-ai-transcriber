@@ -42,12 +42,10 @@ const ko: TranslationKeys = {
 			name: '무음 감지(VAD) 방식',
 			desc: '용도에 맞는 무음 감지 방식을 선택합니다.',
 			options: {
-				server: '서버',
 				local: '로컬',
 				disabled: '처리 안 함'
 			},
 			descriptions: {
-				server: '더 빠르게 처리하고 기기 부하를 줄입니다.',
 				local: '무음이 많은 오디오는 비용을 줄일 수 있습니다. 작은 목소리와 짧은 발화가 누락되어 정확도가 낮아질 수 있습니다.',
 				disabled: '정확도 우선. 작은 목소리와 짧은 발화를 포함한 전체 오디오를 처리합니다.'
 			},

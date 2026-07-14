@@ -65,7 +65,7 @@ export const DEFAULT_API_SETTINGS: APITranscriptionSettings = {
 
 	openaiApiKey: '',
 	model: 'gpt-4o-transcribe', // Default to high-accuracy model
-	vadMode: 'server',
+	vadMode: 'disabled',
 
 
 	// Post-processing settings

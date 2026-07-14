@@ -91,9 +91,7 @@ function normalizeStoredSettings(data: Record<string, unknown>): StoredSettings 
 		? modelValue
 		: DEFAULT_SETTINGS_CORE.model;
 	const vadValue = data['vadMode'];
-	const vadMode = vadValue === 'server' || vadValue === 'local' || vadValue === 'disabled'
-		? vadValue
-		: DEFAULT_SETTINGS_CORE.vadMode;
+	const vadMode = vadValue === 'local' ? 'local' : 'disabled';
 
 	const normalized: StoredSettings = {
 		language: getString('language'),

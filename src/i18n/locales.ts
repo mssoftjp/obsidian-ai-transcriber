@@ -40,12 +40,10 @@ export interface TranslationKeys {
 			name: string;
 			desc: string;
 			options: {
-				server: string;
 				local: string;
 				disabled: string;
 			};
 			descriptions: {
-				server: string;
 				local: string;
 				disabled: string;
 			};
