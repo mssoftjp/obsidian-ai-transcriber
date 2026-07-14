@@ -168,15 +168,13 @@ export class GPT4oTranscriptionService extends TranscriptionService {
 		data: ArrayBuffer,
 		fileName: string,
 		mimeType: string,
-		options: TranscriptionOptions,
-		chunkingStrategy?: 'auto'
+		options: TranscriptionOptions
 	): Promise<TranscriptionResult> {
 		return await this.client.transcribeFile(
 			data,
 			fileName,
 			mimeType,
-			options,
-			chunkingStrategy
+			options
 		);
 	}
 

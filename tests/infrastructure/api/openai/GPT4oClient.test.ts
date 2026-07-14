@@ -34,9 +34,10 @@ describe('GPT4oClient direct file transcription', () => {
 		const uploadedFile = formData.get('file') as File;
 		expect(uploadedFile.name).toBe('chunk_3.webm');
 		expect(uploadedFile.type).toBe('audio/webm');
+		expect(formData.get('chunking_strategy')).toBeNull();
 	});
 
-	it('uploads the original file with server chunking enabled', async () => {
+	it('uploads the original file without honoring a legacy server chunking argument', async () => {
 		const client = new GPT4oClient('test-key', 'gpt-4o-transcribe');
 		const post = jest.fn().mockResolvedValue({ text: '<TRANSCRIPT>hello</TRANSCRIPT>' });
 		(client as unknown as { post: jest.Mock }).post = post;
@@ -60,7 +61,7 @@ describe('GPT4oClient direct file transcription', () => {
 		const uploadedFile = formData.get('file') as File;
 		expect(uploadedFile.name).toBe('meeting.mp3');
 		expect(uploadedFile.type).toBe('audio/mpeg');
-		expect(formData.get('chunking_strategy')).toBe('auto');
+		expect(formData.get('chunking_strategy')).toBeNull();
 		expect(result).toMatchObject({ success: true, text: 'hello' });
 	});
 });

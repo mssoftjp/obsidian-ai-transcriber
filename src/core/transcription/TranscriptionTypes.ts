@@ -58,8 +58,6 @@ export interface TranscriptionOptions {
 	timestamps?: boolean;
 	/** Abort signal for cancellation */
 	signal?: AbortSignal;
-	/** OpenAI server-side audio chunking strategy. */
-	chunkingStrategy?: 'auto';
 }
 
 export interface TranscriptionOutcome {

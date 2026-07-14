@@ -110,8 +110,7 @@ export class TranscriptionController {
 				return await this.transcribeDirectFile(
 					audioFile,
 					audioBuffer,
-					abortSignal,
-					jobPlan.chunkingStrategy
+					abortSignal
 				);
 			}
 
@@ -464,8 +463,7 @@ export class TranscriptionController {
 	private async transcribeDirectFile(
 		audioFile: TFile,
 		audioBuffer: ArrayBuffer,
-		abortSignal?: AbortSignal,
-		chunkingStrategy?: 'auto'
+		abortSignal?: AbortSignal
 	): Promise<{ text: string; modelUsed: string }> {
 		if (abortSignal?.aborted) {
 			throw new DOMException('Transcription cancelled', 'AbortError');
@@ -488,8 +486,7 @@ export class TranscriptionController {
 			audioBuffer,
 			audioFile.name,
 			mimeType,
-			options,
-			chunkingStrategy
+			options
 		);
 		if (abortSignal?.aborted) {
 			throw new DOMException('Transcription cancelled', 'AbortError');
@@ -507,7 +504,7 @@ export class TranscriptionController {
 		}
 
 		const correctedText = await this.applyDictionaryCorrection(result.text, dictionaryCorrector, abortSignal);
-		this.logger.info('Direct server-chunked transcription completed', {
+		this.logger.info('Direct transcription completed', {
 			file: audioFile.name,
 			textLength: correctedText.length,
 			model
@@ -727,16 +724,8 @@ export class TranscriptionController {
 				if (abortSignal) {
 					options.signal = abortSignal;
 				}
-				if (this.shouldUseServerChunking()) {
-					options.chunkingStrategy = 'auto';
-				}
 				return options;
 			}
-
-	private shouldUseServerChunking(): boolean {
-		return this.settings.vadMode === 'server'
-			|| (this.settings.vadMode === 'local' && this.serverSideVADFallback);
-	}
 
 
 	/**

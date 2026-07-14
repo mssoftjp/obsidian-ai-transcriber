@@ -14,7 +14,6 @@ export interface TranscriptionJobPlanInput {
 
 export interface TranscriptionJobPlan {
 	mode: 'direct' | 'client';
-	chunkingStrategy?: 'auto';
 	concurrency: 1;
 }
 
@@ -30,7 +29,6 @@ export function createTranscriptionJobPlan(input: TranscriptionJobPlanInput): Tr
 
 	return {
 		mode: canUploadDirectly ? 'direct' : 'client',
-		...(usesServerChunking ? { chunkingStrategy: 'auto' as const } : {}),
 		concurrency: 1
 	};
 }

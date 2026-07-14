@@ -83,8 +83,7 @@ describe('TranscriptionController direct upload plan', () => {
 			audioBody,
 			'meeting.mp3',
 			'audio/mpeg',
-			expect.objectContaining({ language: 'auto' }),
-			'auto'
+			expect.objectContaining({ language: 'auto' })
 		);
 	});
 

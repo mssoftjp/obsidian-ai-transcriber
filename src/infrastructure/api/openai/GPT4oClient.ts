@@ -77,8 +77,7 @@ export class GPT4oClient extends ApiClient {
 		data: ArrayBuffer,
 		fileName: string,
 		mimeType: string,
-		options: TranscriptionOptions,
-		chunkingStrategy?: 'auto'
+		options: TranscriptionOptions
 	): Promise<TranscriptionResult> {
 		const file = new File([data], fileName, { type: mimeType });
 		const chunk: AudioChunk = {
@@ -89,11 +88,7 @@ export class GPT4oClient extends ApiClient {
 			hasOverlap: false,
 			overlapDuration: 0
 		};
-		const directOptions: TranscriptionOptions = { ...options };
-		if (chunkingStrategy) {
-			directOptions.chunkingStrategy = chunkingStrategy;
-		}
-		return await this.executeTranscription(file, chunk, directOptions);
+		return await this.executeTranscription(file, chunk, options);
 	}
 
 	private async executeTranscription(
@@ -118,10 +113,6 @@ export class GPT4oClient extends ApiClient {
 		if (previousContext) {
 			requestInput.previousContext = previousContext;
 		}
-		if (options.chunkingStrategy) {
-			requestInput.chunkingStrategy = options.chunkingStrategy;
-		}
-
 		const requestParams = buildGPT4oTranscribeRequest(requestInput, chunk.id === 0 && !previousContext);
 
 		const paramEntries = Object.entries(requestParams) as Array<

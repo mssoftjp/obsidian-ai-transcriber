@@ -9,7 +9,6 @@ interface JobPlanInput {
 
 interface JobPlan {
 	mode: 'direct' | 'client';
-	chunkingStrategy?: 'auto';
 	concurrency: 1;
 }
 
@@ -34,7 +33,7 @@ const baseInput: JobPlanInput = {
 };
 
 describe('createTranscriptionJobPlan', () => {
-	it('uses direct server chunking for an in-limit GPT-4o file without trimming', () => {
+	it('uses direct upload without server chunking for an in-limit GPT-4o file without trimming', () => {
 		const createPlan = loadPlanner();
 		expect(createPlan).not.toBeNull();
 		if (!createPlan) {
@@ -43,18 +42,17 @@ describe('createTranscriptionJobPlan', () => {
 
 		expect(createPlan(baseInput)).toEqual({
 			mode: 'direct',
-			chunkingStrategy: 'auto',
 			concurrency: 1
 		});
 	});
 
 	it.each([
-		[{ ...baseInput, vadMode: 'local' as const }, undefined],
-		[{ ...baseInput, startTime: 30 }, 'auto' as const],
-		[{ ...baseInput, fileSizeBytes: 26 * 1024 * 1024 }, 'auto' as const],
-		[{ ...baseInput, model: 'whisper-1' }, undefined],
-		[{ ...baseInput, extension: 'flac' }, 'auto' as const]
-	])('uses client processing when direct upload is not safe', (input, chunkingStrategy) => {
+		{ ...baseInput, vadMode: 'local' as const },
+		{ ...baseInput, startTime: 30 },
+		{ ...baseInput, fileSizeBytes: 26 * 1024 * 1024 },
+		{ ...baseInput, model: 'whisper-1' },
+		{ ...baseInput, extension: 'flac' }
+	])('uses client processing without server chunking when direct upload is not safe', (input) => {
 		const createPlan = loadPlanner();
 		expect(createPlan).not.toBeNull();
 		if (!createPlan) {
@@ -63,7 +61,6 @@ describe('createTranscriptionJobPlan', () => {
 
 		expect(createPlan(input)).toEqual({
 			mode: 'client',
-			...(chunkingStrategy ? { chunkingStrategy } : {}),
 			concurrency: 1
 		});
 	});
