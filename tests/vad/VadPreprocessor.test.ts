@@ -19,11 +19,11 @@ interface PreprocessorInternals {
 }
 
 describe('VADPreprocessor operation ownership', () => {
-	it('falls back to no silence removal when the local WASM module is missing', async () => {
+	it('falls back to no silence removal when local VAD initialization fails', async () => {
 		const getPluginDir = jest.spyOn(PathUtils, 'getPluginDir')
 			.mockReturnValue('.obsidian/plugins/ai-transcriber');
 		const initialize = jest.spyOn(WebRTCVADProcessor.prototype, 'initialize')
-			.mockRejectedValue(new Error('WASM file not found'));
+			.mockRejectedValue(new Error('WebAssembly.instantiate failed'));
 		const preprocessor = new VADPreprocessor(new App(), { enabled: true });
 		const sourceBuffer = new ArrayBuffer(16);
 		const converter: ConverterStub = {
@@ -43,6 +43,48 @@ describe('VADPreprocessor operation ownership', () => {
 				{ sourceBuffer }
 			)).resolves.toBe(sourceBuffer);
 			expect(converter.decodeAudioFile).not.toHaveBeenCalled();
+		} finally {
+			initialize.mockRestore();
+			getPluginDir.mockRestore();
+		}
+	});
+
+	it('preserves range trimming when missing local VAD falls back to no silence removal', async () => {
+		const getPluginDir = jest.spyOn(PathUtils, 'getPluginDir')
+			.mockReturnValue('.obsidian/plugins/ai-transcriber');
+		const initialize = jest.spyOn(WebRTCVADProcessor.prototype, 'initialize')
+			.mockRejectedValue(new Error('WASM file not found'));
+		const preprocessor = new VADPreprocessor(new App(), { enabled: true });
+		const sourceBuffer = new ArrayBuffer(16);
+		const trimmedWav = new ArrayBuffer(12);
+		const audioData = new Float32Array([0.1, 0.2]);
+		const converter: ConverterStub = {
+			decodeAudioFile: jest.fn().mockResolvedValue({
+				audioData,
+				sampleRate: 16_000,
+				rangeApplied: true,
+				rangeStart: 5,
+				rangeEnd: 10
+			}),
+			encodeToWAV: jest.fn().mockResolvedValue(trimmedWav),
+			cleanup: jest.fn()
+		};
+
+		try {
+			await preprocessor.initialize();
+			(preprocessor as unknown as PreprocessorInternals).audioConverter = converter;
+			await expect(preprocessor.processFile(
+				createFile(),
+				5,
+				10,
+				{ sourceBuffer }
+			)).resolves.toBe(trimmedWav);
+			expect(converter.decodeAudioFile).toHaveBeenCalledWith(
+				sourceBuffer,
+				'mp3',
+				expect.objectContaining({ rangeStart: 5, rangeEnd: 10 })
+			);
+			expect(converter.encodeToWAV).toHaveBeenCalledWith(audioData, 16_000, undefined);
 		} finally {
 			initialize.mockRestore();
 			getPluginDir.mockRestore();

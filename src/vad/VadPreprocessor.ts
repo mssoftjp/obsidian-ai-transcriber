@@ -294,9 +294,7 @@ export class VADPreprocessor {
 	/**
    * プロセッサーを作成
    */
-		private async createProcessor(): Promise<VADProcessor | null> {
-			const { processor } = this.config;
-
+	private async createProcessor(): Promise<VADProcessor | null> {
 			// WebRTC VADを最優先（高精度、軽量、実績あり）
 			try {
 				const webrtcProcessor = new WebRTCVADProcessor(this.app, this.config);
@@ -307,28 +305,12 @@ export class VADPreprocessor {
 				}
 			} catch (error) {
 				this.logger.warn('Failed to initialize WebRTC VAD', error);
-
-				// Check if the error is related to missing fvad.wasm
-				if (error instanceof Error && error.message.includes('WASM file not found')) {
-					this.fallbackMode = 'disabled';
-					return null;
-				}
+				this.fallbackMode = 'disabled';
+				return null;
 			}
 
-		if (this.isDisabledFallback()) {
-			return null;
-		}
-
-		// WebRTC VADが失敗した場合のエラー処理
-		if (processor === 'auto') {
-			this.logger.error('WebRTC VAD unavailable - fvad.wasm required for VAD processing');
-			// VADが有効化されているのに初期化できない場合は、nullを返す
-			// 呼び出し側でエラーをスローする
-			return null;
-		}
-
-		// 明示的に指定されたプロセッサーが利用できない場合
-		this.logger.error('Requested VAD processor is not available', { processor });
+		this.logger.warn('WebRTC VAD initialized without becoming available');
+		this.fallbackMode = 'disabled';
 		return null;
 	}
 
