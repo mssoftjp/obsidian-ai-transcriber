@@ -1,6 +1,6 @@
 {
   "name": "obsidian-ai-transcriber",
-  "version": "0.10.0",
+  "version": "0.10.1",
   "description": "Transcribe audio and video files with OpenAI GPT-4o and Whisper APIs",
   "main": "main.js",
   "packageManager": "npm@10.9.4",
