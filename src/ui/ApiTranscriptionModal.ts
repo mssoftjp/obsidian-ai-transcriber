@@ -55,7 +55,7 @@ export class APITranscriptionModal extends Modal {
 	private wakeLock: WakeLockSentinel | null = null;
 	private normalCancelBtn: HTMLButtonElement | null = null;
 	private cancelBtn: HTMLButtonElement | null = null;
-	private transcribeBtn: ButtonComponent | null = null;
+	private transcribeBtn?: ButtonComponent;
 	private metaInfoBtn: HTMLButtonElement | null = null;
 	private modalAudioContext: AudioContext | null = null;
 	private metaInfo: TranscriptionMetaInfo | null = null;
@@ -346,7 +346,7 @@ export class APITranscriptionModal extends Modal {
 
 			// Reset button states
 			this.isTranscribing = false;
-			if (this.transcribeBtn !== null) {
+			if (this.transcribeBtn) {
 				this.transcribeBtn.setDisabled(false);
 				this.transcribeBtn.buttonEl.removeClass('ait-hidden');
 			}
@@ -405,7 +405,7 @@ export class APITranscriptionModal extends Modal {
 		this.isTranscribing = true;
 
 		// Update button states
-		if (this.transcribeBtn !== null) {
+		if (this.transcribeBtn) {
 			this.transcribeBtn.setDisabled(true);
 			this.transcribeBtn.buttonEl.addClass('ait-hidden');
 		}
@@ -443,7 +443,7 @@ export class APITranscriptionModal extends Modal {
 			this.releaseWakeLock();
 
 			// Reset button states
-			if (this.transcribeBtn !== null) {
+			if (this.transcribeBtn) {
 				this.transcribeBtn.setDisabled(false);
 				this.transcribeBtn.buttonEl.removeClass('ait-hidden');
 			}
@@ -991,15 +991,15 @@ export class APITranscriptionModal extends Modal {
 				}));
 
 			// Output folder - same pattern as settings tab
-			let folderTextComponent: TextComponent | null = null;
+			const folderTextState: { component?: TextComponent } = {};
 			new Setting(optionsSection)
 				.setName(t('modal.transcription.processingOptions.outputFolder'))
 				.addText(text => {
-					folderTextComponent = text;
+					folderTextState.component = text;
 					new FolderInputSuggest(this.app, text.inputEl, (folderPath) => {
 						const normalizedFolderPath = PathUtils.normalizeUserPath(folderPath);
 						void updateOutputFolder(normalizedFolderPath);
-						folderTextComponent?.setValue(normalizedFolderPath);
+						folderTextState.component?.setValue(normalizedFolderPath);
 					});
 					return text
 						.setPlaceholder(t('settings.outputFolder.placeholder'))
@@ -1018,7 +1018,7 @@ export class APITranscriptionModal extends Modal {
 						const normalizedFolderPath = PathUtils.normalizeUserPath(folderPath);
 						void updateOutputFolder(normalizedFolderPath);
 						// Update the text input
-						folderTextComponent?.setValue(normalizedFolderPath);
+						folderTextState.component?.setValue(normalizedFolderPath);
 					};
 						modal.open();
 						}));

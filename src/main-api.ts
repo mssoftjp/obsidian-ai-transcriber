@@ -296,14 +296,8 @@ export default class AITranscriberPlugin extends Plugin {
 			// Show file selection modal when no audio file is selected
 			const modal = new AudioFileSelectionModal(
 				this.app,
-				(file: TFile | File, isExternal: boolean, tempSessionId?: string) => {
-					// TFileオブジェクトとして処理（外部ファイルも既にコピー済み）
-					if (file instanceof TFile) {
-						this.transcribeAudioFile(file, isExternal, tempSessionId);
-					} else {
-						// ここには到達しないはず（AudioFileSelectionModalで既にTFileに変換済み）
-						new Notice(t('errors.general'));
-					}
+				(file: TFile, isExternal: boolean, tempSessionId?: string) => {
+					this.transcribeAudioFile(file, isExternal, tempSessionId);
 				}
 			);
 			modal.open();

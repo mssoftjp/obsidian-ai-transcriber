@@ -15,16 +15,16 @@ export class AudioFileSelectionModal extends Modal {
 	private sortBy: 'ctime' | 'mtime' | 'name' | 'path' = 'ctime';
 	private sortOrder: 'asc' | 'desc' = 'desc';
 	private searchQuery = '';
-	private selectedFile: TFile | null = null;
-	private onFileSelect: (file: TFile | File, isExternal: boolean, tempSessionId?: string) => void;
+	private selectedFile?: TFile;
+	private onFileSelect: (file: TFile, isExternal: boolean, tempSessionId?: string) => void;
 	private tempFileManager: TempFileManager;
-	private okButton: ButtonComponent | null = null;
-	private fileSuggest: AudioFileSuggest | null = null;
+	private okButton?: ButtonComponent;
+	private fileSuggest?: AudioFileSuggest;
 	private logger = Logger.getLogger('AudioFileSelectionModal');
 
 	constructor(
 		app: App,
-		onFileSelect: (file: TFile | File, isExternal: boolean, tempSessionId?: string) => void
+		onFileSelect: (file: TFile, isExternal: boolean, tempSessionId?: string) => void
 	) {
 		super(app);
 		this.onFileSelect = onFileSelect;
@@ -370,7 +370,7 @@ export class AudioFileSelectionModal extends Modal {
 		const { contentEl } = this;
 		contentEl.empty();
 		this.fileSuggest?.close();
-		this.fileSuggest = null;
+		delete this.fileSuggest;
 
 		// クリーンアップはプラグイン起動時に一括で行うため、ここでは何もしない
 	}

@@ -187,12 +187,12 @@ export class APISettingsTab extends PluginSettingTab {
 	}
 
 	private configureOutputFolderSetting(setting: Setting): void {
-		let outputFolderText: TextComponent | null = null;
+		const outputFolderState: { component?: TextComponent } = {};
 		setting
 			.setName(t('settings.outputFolder.name'))
 			.setDesc(t('settings.outputFolder.desc'))
 			.addText(text => {
-				outputFolderText = text;
+				outputFolderState.component = text;
 				new FolderInputSuggest(this.app, text.inputEl, (folderPath) => {
 					const normalized = PathUtils.normalizeUserPath(folderPath);
 					this.plugin.settings.transcriptionOutputFolder = normalized;
@@ -217,7 +217,7 @@ export class APISettingsTab extends PluginSettingTab {
 						const normalized = PathUtils.normalizeUserPath(folder);
 						this.plugin.settings.transcriptionOutputFolder = normalized;
 						void this.plugin.saveSettings();
-						outputFolderText?.setValue(normalized);
+						outputFolderState.component?.setValue(normalized);
 					};
 					modal.open();
 				}));

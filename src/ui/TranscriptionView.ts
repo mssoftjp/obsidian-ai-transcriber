@@ -6,7 +6,7 @@ import { t } from '../i18n';
 import { collectAudioFiles } from './AudioFileCollection';
 
 import type { ProgressTracker, TranscriptionTask } from './ProgressTracker';
-import type { WorkspaceLeaf, App, CachedMetadata } from 'obsidian';
+import type { WorkspaceLeaf, App } from 'obsidian';
 
 export const VIEW_TYPE_TRANSCRIPTION = 'ai-transcriber-view';
 
@@ -490,31 +490,31 @@ export class TranscriptionView extends ItemView {
 		const sourceFilePath = typeof sourceFilePathValue === 'string' ? sourceFilePathValue : null;
 		const audioSourceValue: unknown = frontmatter?.['audio_source'];
 		const audioSourceName = typeof audioSourceValue === 'string' ? audioSourceValue : '';
-		let recoveredAudioFile: TFile | null = null;
+		const recoveredAudio: { file?: TFile } = {};
 
 		if (sourceFilePath) {
 			const audioFile = this.app.vault.getAbstractFileByPath(sourceFilePath);
 			if (audioFile instanceof TFile) {
-				recoveredAudioFile = audioFile;
+				recoveredAudio.file = audioFile;
 			}
 		}
 
-		if (!recoveredAudioFile) {
+		if (!recoveredAudio.file) {
 			const searchFileName = task.inputFileName || audioSourceName;
 			const audioFiles = this.findCachedAudioFilesByName(searchFileName);
 			if (audioFiles.length === 1) {
 				const [singleAudioFile] = audioFiles;
 				if (singleAudioFile) {
-					recoveredAudioFile = singleAudioFile;
+					recoveredAudio.file = singleAudioFile;
 				}
 			} else if (audioFiles.length > 1) {
 				new Notice(t('common.multipleAudioFilesFound'));
 			}
 		}
 
-		if (recoveredAudioFile) {
-			updatedTask.inputFilePath = recoveredAudioFile.path;
-			updatedTask.inputFileName = recoveredAudioFile.name;
+		if (recoveredAudio.file) {
+			updatedTask.inputFilePath = recoveredAudio.file.path;
+			updatedTask.inputFileName = recoveredAudio.file.name;
 		}
 
 		await this.updateTaskInHistory(updatedTask);
@@ -523,7 +523,7 @@ export class TranscriptionView extends ItemView {
 
 	private findCachedTranscriptionFiles(searchQuery: string): TFile[] {
 		return this.app.vault.getMarkdownFiles().filter((file) => {
-			const cache: CachedMetadata | null = this.app.metadataCache.getFileCache(file);
+			const cache = this.app.metadataCache.getFileCache(file);
 			const transcriptionTimestampValue: unknown = cache?.frontmatter?.['transcription_timestamp'];
 			return typeof transcriptionTimestampValue === 'string' && transcriptionTimestampValue.includes(searchQuery);
 		});
