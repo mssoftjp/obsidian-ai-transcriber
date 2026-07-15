@@ -8,7 +8,8 @@ main.js.map
 
 # Environment files
 .env
-.env.local
+.env.*
+!.env.example
 
 # OS generated files
 .DS_Store
