@@ -164,7 +164,7 @@ export class PluginStateRepository {
 			this.state = this.mergeWithDefaults(raw);
 			shouldPersist = !this.isCurrentPluginState(raw);
 		} else if (isRecord(raw)) {
-			this.state = this.createStateFromLegacy(raw as Partial<APITranscriptionSettings>);
+			this.state = this.createStateFromLegacy(raw);
 			shouldPersist = true;
 		} else {
 			this.state = getDefaultState();
@@ -250,21 +250,17 @@ export class PluginStateRepository {
 	private normalizeDictionaryEntry(entry: DictionaryEntry | LegacyDictionaryEntry | Record<string, unknown>): DictionaryEntry {
 		const fromValue = entry['from'];
 		const toValue = typeof entry['to'] === 'string' ? entry['to'] : '';
-		if (Array.isArray(fromValue)) {
-			return {
-				...entry,
-				from: fromValue.filter((value): value is string => typeof value === 'string'),
-				to: toValue
-			} as DictionaryEntry;
-		}
-		const normalized = typeof fromValue === 'string'
-			? fromValue.split(',').map(value => value.trim()).filter(Boolean)
-			: [];
-		return {
+		const from = Array.isArray(fromValue)
+			? fromValue.filter((value): value is string => typeof value === 'string')
+			: typeof fromValue === 'string'
+				? fromValue.split(',').map(value => value.trim()).filter(Boolean)
+				: [];
+		const normalizedEntry: DictionaryEntry = {
 			...entry,
-			from: normalized,
+			from,
 			to: toValue
-		} as DictionaryEntry;
+		};
+		return normalizedEntry;
 	}
 
 	private normalizeContextualEntry(entry: ContextualCorrection | LegacyContextualCorrection | Record<string, unknown>): ContextualCorrection {
@@ -321,10 +317,10 @@ export class PluginStateRepository {
 		return merged;
 	}
 
-	private createStateFromLegacy(raw: Partial<APITranscriptionSettings>): PluginState {
+	private createStateFromLegacy(raw: Record<string, unknown>): PluginState {
 		const state = getDefaultState();
-		const { userDictionaries } = raw;
-		state.settings.data = normalizeStoredSettings(raw as Record<string, unknown>);
+		const userDictionaries = raw['userDictionaries'];
+		state.settings.data = normalizeStoredSettings(raw);
 		if (userDictionaries) {
 			state.dictionaries.languages = this.migrateDictionaryFormat(
 				this.ensureAllLanguages(userDictionaries)

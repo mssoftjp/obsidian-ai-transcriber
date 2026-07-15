@@ -257,14 +257,11 @@ export abstract class ApiClient {
 			// Parse response based on content type
 			const contentType = response.headers['content-type'] || response.headers['Content-Type'];
 
-			let responseData: T;
-			if (contentType?.includes('application/json')) {
-				responseData = response.json as T;
-			} else {
-				responseData = response.text as unknown as T;
-			}
+			const responseData: unknown = contentType?.includes('application/json')
+				? response.json
+				: response.text;
 
-			return responseData;
+			return responseData as T;
 
 		} catch (error) {
 			// Handle network errors

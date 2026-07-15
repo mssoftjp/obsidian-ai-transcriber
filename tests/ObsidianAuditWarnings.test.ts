@@ -23,4 +23,15 @@ describe('Obsidian audit source contracts', () => {
 	it('keeps deliberate vault enumeration in the user-invoked media picker', () => {
 		expect(source('src/ui/AudioFileCollection.ts')).toContain('vault.getFiles()');
 	});
+
+	it.each([
+		['src/config/ModelOptions.ts', 'as TranscriptionModel'],
+		['src/infrastructure/api/ApiClient.ts', 'response.text as unknown as T'],
+		['src/infrastructure/storage/PluginStateRepository.ts', 'raw as Partial<APITranscriptionSettings>'],
+		['src/infrastructure/storage/PluginStateRepository.ts', '} as DictionaryEntry'],
+		['src/infrastructure/storage/PluginStateRepository.ts', 'raw as Record<string, unknown>'],
+		['src/infrastructure/storage/SafeStorageService.ts', "window.require('electron') as ElectronRenderer"]
+	])('does not restore unnecessary assertion %s: %s', (path, assertion) => {
+		expect(source(path)).not.toContain(assertion);
+	});
 });

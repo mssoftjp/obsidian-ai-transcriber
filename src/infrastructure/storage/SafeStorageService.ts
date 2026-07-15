@@ -3,7 +3,7 @@ import { Platform } from 'obsidian';
 import { isElectronWindow } from '../../types/global';
 import { Logger } from '../../utils/Logger';
 
-import type { ElectronRenderer } from '../../types/global';
+import type { ElectronRenderer, ElectronWindow } from '../../types/global';
 
 const PREFIX = 'SAFE_V1::';
 const LEGACY_XOR = 'XOR_V1::';
@@ -27,9 +27,13 @@ export class SafeStorageService {
 				if (!isElectronWindow(window) || typeof window.require !== 'function') {
 					return null;
 				}
-				const electron = window.require('electron') as ElectronRenderer;
+				const electronWindow: ElectronWindow = window;
+				const electron = electronWindow.require?.('electron');
+				if (!electron) {
+					return null;
+				}
 
-					this.safeStorage = electron.remote?.safeStorage ?? electron.safeStorage ?? null;
+				this.safeStorage = electron.remote?.safeStorage ?? electron.safeStorage ?? null;
 			} catch (error) {
 				this.logger.error('Error during safeStorage initialization', {
 					error: this.formatError(error)

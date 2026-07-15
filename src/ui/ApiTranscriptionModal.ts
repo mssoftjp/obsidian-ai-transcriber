@@ -131,7 +131,7 @@ export class APITranscriptionModal extends Modal {
 		const modelSelect = providerRow.createEl('select', { cls: 'model-select' });
 		MODEL_OPTIONS.forEach(opt => {
 			// Generate label from translation keys
-			let label: string;
+			let label: string = opt.value;
 			switch (opt.value) {
 			case 'whisper-1':
 				label = t('settings.model.whisperNoTimestamp');
@@ -145,8 +145,6 @@ export class APITranscriptionModal extends Modal {
 			case 'gpt-4o-mini-transcribe':
 				label = t('settings.model.gpt4oMiniCost');
 				break;
-			default:
-				label = opt.value; // Fallback to value if no translation
 			}
 			modelSelect.add(new Option(label, opt.value));
 		});
