@@ -65,11 +65,11 @@ tsc --project tsconfig.test.json --noEmit
 
 This validates tests and mocks independently of Jest's transform behavior. It also prevents future test files from silently falling outside the declared TypeScript project.
 
-### 3. Community metadata contract tests
+### 3. Community metadata verifier and contract tests
 
-Add a focused Jest suite under `tests/` that reads repository files and verifies stable, review-relevant contracts without contacting the network.
+Add a dependency-free Node.js verifier for cross-file metadata and disclosure contracts. Invoke it against the repository from the deterministic quality gate, and exercise the verifier through a focused Jest suite using isolated temporary repositories. This verifies observable pass/fail behavior without coupling tests to the verifier's source text or the exact layout of human documentation.
 
-The suite will verify:
+The verifier will check:
 
 - `manifest.json`, `package.json`, and the current `versions.json` key use the same semantic version;
 - the current `versions.json` value equals `manifest.minAppVersion`;
@@ -81,9 +81,9 @@ The suite will verify:
 - the README discloses the OpenAI account/API-key requirement, paid API use, OpenAI network destination and transmitted data, external-file handling, local storage behavior, and absence of telemetry;
 - the lockfile is present.
 
-The test will assert durable disclosure concepts rather than exact paragraphs so normal documentation editing does not create unnecessary brittleness.
+Disclosure checks will assert durable concepts rather than exact paragraphs so normal documentation editing does not create unnecessary brittleness.
 
-The official linter remains authoritative for syntax-aware Obsidian rules. These tests cover cross-file relationships and disclosures that the source linter cannot fully establish.
+The fixture suite will cover a compliant repository plus version mismatch, invalid manifest policy fields, missing disclosures, invalid funding destinations, and missing lockfiles. The official linter remains authoritative for syntax-aware Obsidian rules; the verifier covers cross-file relationships and disclosures that source lint cannot fully establish.
 
 ### 4. Community release verifier
 
@@ -112,8 +112,10 @@ The intended command structure is:
 lint                  official source/repository lint, warnings forbidden
 lint:artifacts        generated JavaScript lint after build
 typecheck:test        strict test-project type-check
-test:community        focused metadata/disclosure Jest suite
-verify:community      post-build release-directory verifier
+test:community        focused metadata/release verifier Jest suites
+verify:metadata       repository metadata/disclosure verifier
+verify:release        post-build release-directory verifier
+verify:community      metadata plus release verification
 audit:production      npm audit --omit=dev --audit-level=high
 check                 lint, production build, artifact verification/lint,
                       test type-check, and full Jest coverage
@@ -172,8 +174,8 @@ Network failure during `npm audit` is distinct from a clean audit and must fail 
 
 Use test-driven development for each new contract:
 
-1. Add a failing metadata/disclosure assertion against a controlled fixture or current missing relationship.
-2. Add the smallest validator or configuration change that makes it pass.
+1. Add a failing metadata/disclosure assertion against a controlled temporary repository.
+2. Add the smallest verifier behavior that makes it pass.
 3. Add release-verifier fixture tests for missing, extra, empty, mismatched, and source-mapped artifacts.
 4. Add success coverage for the exact three-file Community release.
 5. Run focused suites after each change.
