@@ -3,7 +3,10 @@
  * Defines which cleaners and settings to use for each transcription model
  */
 
-import { Logger } from '../utils/Logger';
+import {
+	TRANSCRIPTION_MODEL_PROFILES,
+	getTranscriptionModelProfile
+} from './TranscriptionModelProfiles';
 
 import type {
 	PromptContaminationConfig,
@@ -12,6 +15,7 @@ import type {
 	TailRepeatConfig,
 	ConsecutiveBlockRepeatConfig
 } from '../core/transcription/cleaners';
+import type { TranscriptionCleaningPreset } from './TranscriptionModelProfiles';
 
 /**
  * Hallucination pattern definitions by language
@@ -450,11 +454,11 @@ const COMMON_CONTAMINATION_PATTERNS: ContaminationPatterns = {
 };
 
 /**
- * Model cleaning configurations
+ * Semantic cleaning presets shared by model profiles.
  */
-export const MODEL_CLEANING_STRATEGIES: Record<string, ModelCleaningStrategy> = {
+export const CLEANING_PRESETS: Record<TranscriptionCleaningPreset, ModelCleaningStrategy> = {
 	// Whisper model configuration
-	'whisper-1': {
+	'whisper': {
 		modelId: 'whisper-1',
 		modelName: 'OpenAI Whisper',
 		pipelineType: 'whisper',
@@ -509,63 +513,8 @@ export const MODEL_CLEANING_STRATEGIES: Record<string, ModelCleaningStrategy> = 
 		}
 	},
 
-	// Whisper model with timestamp output formatting
-	'whisper-1-ts': {
-		modelId: 'whisper-1-ts',
-		modelName: 'OpenAI Whisper (timestamps)',
-		pipelineType: 'whisper',
-		enableDetailedLogging: false,
-		maxReductionRatio: 0.4,
-		stopOnCriticalIssue: false,
-		japaneseValidation: {
-			maxReductionRatio: 0.3,
-			minTextLength: 60,
-			maxIncompleteWords: 3,
-			maxMergedWords: 5,
-			expectedCharsPerSecond: 2.0,
-			enableAdvancedChecks: true
-		},
-		safetyThresholds: {
-			singleCleanerMaxReduction: 0.3,
-			singlePatternMaxReduction: 0.2,
-			emergencyFallbackThreshold: 0.7,
-			warningThreshold: 0.25,
-			maxPatternsBeforeWarning: 15,
-			repetitionPatternMaxReduction: 1.0,
-			phrasePatternMaxReduction: 0.2,
-			maxCleaningIterations: 3,
-			iterationReductionLimit: 0.999,
-			excessiveReductionWarning: 0.5,
-			highPatternCountWarning: 10,
-			significantChangeThreshold: 0.1
-		},
-		hallucinationPatterns: COMMON_HALLUCINATION_PATTERNS,
-		repetitionThresholds: {
-			...COMMON_REPETITION_THRESHOLDS,
-			baseThreshold: 35,
-			sentenceRepetition: 6
-		},
-		validationPatterns: COMMON_VALIDATION_PATTERNS,
-		validationThresholds: COMMON_VALIDATION_THRESHOLDS,
-		tailRepeat: {
-			enabled: true,
-			maxTailParagraphs: 12,
-			maxTailSentences: 40,
-			minRepeatCount: 3,
-			similarityThreshold: 0.9,
-			maxUnitParagraphs: 4,
-			maxUnitSentences: 6
-		},
-		pipelineFallback: {
-			enabled: true,
-			minAudioDurationSeconds: 60,
-			minExpectedContentRatio: 0.1,
-			minFinalTextLength: 80
-		}
-	},
-
 	// GPT-4o Mini Transcribe configuration
-	'gpt-4o-mini-transcribe': {
+	'recorded-economy': {
 		modelId: 'gpt-4o-mini-transcribe',
 		modelName: 'GPT-4o Mini Transcribe',
 		pipelineType: 'gpt4o',
@@ -648,7 +597,7 @@ export const MODEL_CLEANING_STRATEGIES: Record<string, ModelCleaningStrategy> = 
 	},
 
 	// GPT-4o Transcribe configuration (full model)
-	'gpt-4o-transcribe': {
+	'recorded-accurate': {
 		modelId: 'gpt-4o-transcribe',
 		modelName: 'GPT-4o Transcribe',
 		pipelineType: 'gpt4o',
@@ -731,39 +680,39 @@ export const MODEL_CLEANING_STRATEGIES: Record<string, ModelCleaningStrategy> = 
 /**
  * Debug configurations for development/troubleshooting
  */
-export const DEBUG_CLEANING_STRATEGIES: Record<string, ModelCleaningStrategy> = {
-	'gpt-4o-mini-transcribe-debug': {
-		...getBaseStrategy('gpt-4o-mini-transcribe'),
+export const DEBUG_CLEANING_PRESETS: Partial<Record<TranscriptionCleaningPreset, ModelCleaningStrategy>> = {
+	'recorded-economy': {
+		...getBaseStrategy('recorded-economy'),
 		enableDetailedLogging: true,
 		maxReductionRatio: 0.1, // Very conservative for debugging
 		promptContamination: {
-			...getBaseStrategy('gpt-4o-mini-transcribe').promptContamination,
+			...getBaseStrategy('recorded-economy').promptContamination,
 			aggressiveMatching: false // Conservative for debugging
 		},
 		gpt4oOptions: {
-			...getBaseStrategy('gpt-4o-mini-transcribe').gpt4oOptions,
+			...getBaseStrategy('recorded-economy').gpt4oOptions,
 			aggressivePromptCleaning: false, // Conservative for debugging
 			enableDetailedLogging: true
 		},
 		repetitionThresholds: {
-			...(getBaseStrategy('gpt-4o-mini-transcribe').repetitionThresholds ?? COMMON_REPETITION_THRESHOLDS),
-			lengthFactor: (getBaseStrategy('gpt-4o-mini-transcribe').repetitionThresholds?.lengthFactor ?? COMMON_REPETITION_THRESHOLDS.lengthFactor),
+			...(getBaseStrategy('recorded-economy').repetitionThresholds ?? COMMON_REPETITION_THRESHOLDS),
+			lengthFactor: (getBaseStrategy('recorded-economy').repetitionThresholds?.lengthFactor ?? COMMON_REPETITION_THRESHOLDS.lengthFactor),
 			// Ultra-conservative for debugging
 			baseThreshold: 50,
 			sentenceRepetition: 8
 		}
 	},
 
-	'whisper-1-debug': {
-		...getBaseStrategy('whisper-1'),
+	'whisper': {
+		...getBaseStrategy('whisper'),
 		enableDetailedLogging: true,
 		japaneseValidation: {
-			...getBaseStrategy('whisper-1').japaneseValidation,
+			...getBaseStrategy('whisper').japaneseValidation,
 			enableAdvancedChecks: true
 		},
 		repetitionThresholds: {
-			...(getBaseStrategy('whisper-1').repetitionThresholds ?? COMMON_REPETITION_THRESHOLDS),
-			lengthFactor: (getBaseStrategy('whisper-1').repetitionThresholds?.lengthFactor ?? COMMON_REPETITION_THRESHOLDS.lengthFactor),
+			...(getBaseStrategy('whisper').repetitionThresholds ?? COMMON_REPETITION_THRESHOLDS),
+			lengthFactor: (getBaseStrategy('whisper').repetitionThresholds?.lengthFactor ?? COMMON_REPETITION_THRESHOLDS.lengthFactor),
 			// More verbose for debugging
 			baseThreshold: 45,
 			sentenceRepetition: 8
@@ -771,58 +720,43 @@ export const DEBUG_CLEANING_STRATEGIES: Record<string, ModelCleaningStrategy> = 
 	}
 };
 
-function getBaseStrategy(id: string): ModelCleaningStrategy {
-	const strategy = MODEL_CLEANING_STRATEGIES[id];
-	if (strategy) {
-		return strategy;
-	}
-	// Fallback to default mini strategy; this should never happen for known IDs
-	const fallback = MODEL_CLEANING_STRATEGIES['gpt-4o-mini-transcribe'];
-	if (!fallback) {
-		throw new Error('Default cleaning strategy not found');
-	}
-	return fallback;
+function getBaseStrategy(preset: TranscriptionCleaningPreset): ModelCleaningStrategy {
+	return CLEANING_PRESETS[preset];
 }
 
 /**
  * Get cleaning strategy for a model
  */
 export function getModelCleaningStrategy(modelId: string, debug = false): ModelCleaningStrategy {
-	const logger = Logger.getLogger('ModelCleaningConfig');
-	// Check debug strategies first if debug mode is enabled
-	if (debug) {
-		const debugStrategy = DEBUG_CLEANING_STRATEGIES[`${modelId}-debug`];
-		if (debugStrategy) {
-			return debugStrategy;
-		}
-	}
+	const profile = getTranscriptionModelProfile(modelId);
+	const strategy = debug
+		? DEBUG_CLEANING_PRESETS[profile.cleaningPreset] ?? CLEANING_PRESETS[profile.cleaningPreset]
+		: CLEANING_PRESETS[profile.cleaningPreset];
 
-	// Get standard strategy
-	const strategy = MODEL_CLEANING_STRATEGIES[modelId];
-	if (!strategy) {
-		logger.warn(`No cleaning strategy found for model '${modelId}', using default GPT-4o mini strategy`);
-		const fallback = MODEL_CLEANING_STRATEGIES['gpt-4o-mini-transcribe'];
-		if (!fallback) {
-			throw new Error('Default cleaning strategy not found');
-		}
-		return fallback;
-	}
-
-	return strategy;
+	return {
+		...strategy,
+		modelId: profile.id,
+		modelName: profile.displayName
+	};
 }
 
 /**
  * Get all available model IDs with cleaning strategies
  */
 export function getAvailableModelIds(): string[] {
-	return Object.keys(MODEL_CLEANING_STRATEGIES);
+	return TRANSCRIPTION_MODEL_PROFILES.map(profile => profile.id);
 }
 
 /**
  * Check if a model has a cleaning strategy
  */
 export function hasCleaningStrategy(modelId: string): boolean {
-	return modelId in MODEL_CLEANING_STRATEGIES;
+	try {
+		getTranscriptionModelProfile(modelId);
+		return true;
+	} catch {
+		return false;
+	}
 }
 
 /**

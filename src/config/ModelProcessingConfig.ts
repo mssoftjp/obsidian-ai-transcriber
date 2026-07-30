@@ -21,11 +21,15 @@
 import { Logger } from '../utils/Logger';
 
 import { AUDIO_CONSTANTS } from './constants';
+import {
+	TRANSCRIPTION_MODEL_PROFILES,
+	getTranscriptionModelProfile
+} from './TranscriptionModelProfiles';
 
 /**
- * Configuration for a specific AI model's audio processing parameters
+ * Shared audio-processing parameters selected through a semantic preset.
  */
-export interface ModelConfig {
+export interface ModelProcessingPresetConfig {
 	/** Target chunk duration in seconds (VAD will adjust within ±variance range) */
 	chunkDurationSeconds: number;
 	/** Maximum file size in MB */
@@ -96,7 +100,12 @@ export interface ModelConfig {
 			matchSkipRatio?: number;
 		};
 	};
-	/** Pricing configuration */
+}
+
+/**
+ * Resolved processing configuration for a selected model.
+ */
+export interface ModelConfig extends ModelProcessingPresetConfig {
 	pricing: {
 		/** Cost per minute in USD */
 		costPerMinute: number;
@@ -107,10 +116,10 @@ export interface ModelConfig {
 
 export interface TranscriptionConfig {
 	models: {
-		whisper: ModelConfig;
-		whisperTs: ModelConfig;
-		gpt4o: ModelConfig;
-		gpt4oMini: ModelConfig;
+		'whisper-standard': ModelProcessingPresetConfig;
+		'whisper-timestamps': ModelProcessingPresetConfig;
+		'recorded-accurate': ModelProcessingPresetConfig;
+		'recorded-economy': ModelProcessingPresetConfig;
 	};
 
 	/** Default VAD settings */
@@ -135,7 +144,7 @@ export interface TranscriptionConfig {
  */
 export const DEFAULT_TRANSCRIPTION_CONFIG: TranscriptionConfig = {
 	models: {
-		whisper: {
+		'whisper-standard': {
 			chunkDurationSeconds: 25, // Target: 25 seconds (VAD adjusts within 20-30s)
 			maxFileSizeMB: 25, // OpenAI API file size limit: 25MB
 			maxDurationSeconds: Infinity, // Whisper has no duration limit (only file size limit)
@@ -164,14 +173,10 @@ export const DEFAULT_TRANSCRIPTION_CONFIG: TranscriptionConfig = {
 					duplicateSimilarityThreshold: 0.75, // Using text normalization for better similarity detection
 					useFuzzyMatching: true // Use fuzzy matching for duplicate detection
 				}
-			},
-			pricing: {
-				costPerMinute: 0.006, // $0.006 per minute for Whisper
-				currency: 'USD'
 			}
 		},
 
-		whisperTs: {
+		'whisper-timestamps': {
 			chunkDurationSeconds: 25, // Target: 25 seconds (VAD adjusts within 20-30s)
 			maxFileSizeMB: 25, // OpenAI API file size limit: 25MB
 			maxDurationSeconds: Infinity, // Whisper has no duration limit (only file size limit)
@@ -200,14 +205,10 @@ export const DEFAULT_TRANSCRIPTION_CONFIG: TranscriptionConfig = {
 					duplicateSimilarityThreshold: 0.75, // Using text normalization for better similarity detection
 					useFuzzyMatching: true // Use fuzzy matching for duplicate detection
 				}
-			},
-			pricing: {
-				costPerMinute: 0.006, // $0.006 per minute for Whisper
-				currency: 'USD'
 			}
 		},
 
-		gpt4o: {
+		'recorded-accurate': {
 			chunkDurationSeconds: 300, // Target: 5 minutes (VAD adjusts within 4-6 min)
 			maxFileSizeMB: 25, // GPT-4o limit is 25MB
 			maxDurationSeconds: 25 * 60, // 25 minutes - OpenAI transcription API limit
@@ -245,15 +246,11 @@ export const DEFAULT_TRANSCRIPTION_CONFIG: TranscriptionConfig = {
 					candidateStepSize: 10, // Finer scan to cover 40-150 char overlaps
 					similarityThreshold: 0.78 // Allow small differences in transcription across chunks
 				}
-			},
-			pricing: {
-				costPerMinute: 0.006, // $0.006 per minute for GPT-4o
-				currency: 'USD'
 			}
 			// Note: GPT-4o primarily uses contextWindowSize for continuity, but merging settings still apply for deduplication
 		},
 
-		gpt4oMini: {
+		'recorded-economy': {
 			chunkDurationSeconds: 240, // Target: 4 minutes (VAD adjusts within 3-5 min)
 			maxFileSizeMB: 25, // Same as GPT-4o (25MB limit)
 			maxDurationSeconds: 25 * 60, // 25 minutes - OpenAI transcription API limit
@@ -291,10 +288,6 @@ export const DEFAULT_TRANSCRIPTION_CONFIG: TranscriptionConfig = {
 					candidateStepSize: 10, // Finer scan to cover 40-150 char overlaps
 					similarityThreshold: 0.78 // Allow small differences in transcription across chunks
 				}
-			},
-			pricing: {
-				costPerMinute: 0.003, // $0.003 per minute for GPT-4o Mini
-				currency: 'USD'
 			}
 			// Note: GPT-4o Mini primarily uses contextWindowSize for continuity, but merging settings still apply for deduplication
 		}
@@ -315,16 +308,6 @@ export const DEFAULT_TRANSCRIPTION_CONFIG: TranscriptionConfig = {
 };
 
 const logger = Logger.getLogger('ModelProcessingConfig');
-
-/**
- * Model name to config key mapping
- */
-export const MODEL_CONFIG_MAP: Record<string, keyof TranscriptionConfig['models']> = {
-	'whisper-1': 'whisper',
-	'whisper-1-ts': 'whisperTs',
-	'gpt-4o-transcribe': 'gpt4o',
-	'gpt-4o-mini-transcribe': 'gpt4oMini'
-};
 
 /**
  * Configuration cache to prevent duplicate fetches
@@ -351,14 +334,8 @@ export function getModelConfig(modelName: string): ModelConfig & {
 		return cached;
 	}
 
-
-	const configKey = MODEL_CONFIG_MAP[modelName];
-	if (!configKey) {
-		const availableModels = Object.keys(MODEL_CONFIG_MAP).join(', ');
-		throw new Error(`[Config] Unknown model: "${modelName}". Available models: ${availableModels}`);
-	}
-
-	const baseConfig = DEFAULT_TRANSCRIPTION_CONFIG.models[configKey];
+	const profile = getTranscriptionModelProfile(modelName);
+	const baseConfig = DEFAULT_TRANSCRIPTION_CONFIG.models[profile.processingPreset];
 
 	// Calculate min/max chunk durations from variance
 	const minChunkDuration = baseConfig.chunkDurationSeconds - baseConfig.vadChunking.chunkDurationVariance;
@@ -381,6 +358,18 @@ export function getModelConfig(modelName: string): ModelConfig & {
 			...baseConfig.vadChunking,
 			minChunkDuration,
 			maxChunkDuration
+		},
+		merging: {
+			...baseConfig.merging,
+			...(baseConfig.merging.duplicateRemoval
+				? { duplicateRemoval: { ...baseConfig.merging.duplicateRemoval } }
+				: {}),
+			...(baseConfig.merging.overlapDetection
+				? { overlapDetection: { ...baseConfig.merging.overlapDetection } }
+				: {})
+		},
+		pricing: {
+			...profile.pricing
 		}
 	};
 
@@ -402,10 +391,22 @@ export function getTranscriptionConfig(overrides?: Partial<TranscriptionConfig>)
 	// Deep merge overrides with defaults
 	return {
 		models: {
-			whisper: { ...DEFAULT_TRANSCRIPTION_CONFIG.models.whisper, ...overrides.models?.whisper },
-			whisperTs: { ...DEFAULT_TRANSCRIPTION_CONFIG.models.whisperTs, ...overrides.models?.whisperTs },
-			gpt4o: { ...DEFAULT_TRANSCRIPTION_CONFIG.models.gpt4o, ...overrides.models?.gpt4o },
-			gpt4oMini: { ...DEFAULT_TRANSCRIPTION_CONFIG.models.gpt4oMini, ...overrides.models?.gpt4oMini }
+			'whisper-standard': {
+				...DEFAULT_TRANSCRIPTION_CONFIG.models['whisper-standard'],
+				...overrides.models?.['whisper-standard']
+			},
+			'whisper-timestamps': {
+				...DEFAULT_TRANSCRIPTION_CONFIG.models['whisper-timestamps'],
+				...overrides.models?.['whisper-timestamps']
+			},
+			'recorded-accurate': {
+				...DEFAULT_TRANSCRIPTION_CONFIG.models['recorded-accurate'],
+				...overrides.models?.['recorded-accurate']
+			},
+			'recorded-economy': {
+				...DEFAULT_TRANSCRIPTION_CONFIG.models['recorded-economy'],
+				...overrides.models?.['recorded-economy']
+			}
 		},
 		vad: { ...DEFAULT_TRANSCRIPTION_CONFIG.vad, ...overrides.vad },
 		audio: { ...DEFAULT_TRANSCRIPTION_CONFIG.audio, ...overrides.audio }
@@ -417,8 +418,8 @@ export function getTranscriptionConfig(overrides?: Partial<TranscriptionConfig>)
  */
 export function logAllModelConfigs(): void {
 	logger.info('All model configurations:');
-	Object.entries(MODEL_CONFIG_MAP).forEach(([modelName, configKey]) => {
-		logger.info(`  ${modelName}: ${configKey}`);
+	TRANSCRIPTION_MODEL_PROFILES.forEach((profile) => {
+		logger.info(`  ${profile.id}: ${profile.processingPreset}`);
 	});
 }
 

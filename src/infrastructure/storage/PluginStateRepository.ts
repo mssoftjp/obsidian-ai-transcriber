@@ -1,6 +1,7 @@
 
 import { DEFAULT_API_SETTINGS } from '../../ApiSettings';
 import { UI_CONSTANTS } from '../../config/constants';
+import { isTranscriptionModel } from '../../config/TranscriptionModelProfiles';
 
 import type { APITranscriptionSettings, LanguageDictionaries, UserDictionary, DictionaryEntry, ContextualCorrection } from '../../ApiSettings';
 import type { TranscriptionTask } from '../../ui/ProgressTracker';
@@ -84,10 +85,7 @@ function normalizeStoredSettings(data: Record<string, unknown>): StoredSettings 
 		return typeof value === 'boolean' ? value : Boolean(fallback);
 	};
 	const modelValue = data['model'];
-	const model = modelValue === 'whisper-1'
-		|| modelValue === 'whisper-1-ts'
-		|| modelValue === 'gpt-4o-transcribe'
-		|| modelValue === 'gpt-4o-mini-transcribe'
+	const model = isTranscriptionModel(modelValue)
 		? modelValue
 		: DEFAULT_SETTINGS_CORE.model;
 	const vadValue = data['vadMode'];

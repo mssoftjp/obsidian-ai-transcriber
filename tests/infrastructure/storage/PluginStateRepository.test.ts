@@ -35,6 +35,50 @@ function createTask(): TranscriptionTask {
 }
 
 describe('PluginStateRepository', () => {
+	it.each([
+		'gpt-transcribe',
+		'gpt-4o-transcribe',
+		'gpt-4o-mini-transcribe',
+		'whisper-1',
+		'whisper-1-ts'
+	] as const)('preserves the valid saved model %s', async (model) => {
+		const seedPlugin = createPlugin(null);
+		const seedRepository = new PluginStateRepository(seedPlugin);
+		const state = structuredClone(await seedRepository.initialize());
+		state.settings.data.model = model;
+		const plugin = createPlugin(state);
+		const repository = new PluginStateRepository(plugin);
+
+		await repository.initialize();
+
+		expect(repository.getSettings().model).toBe(model);
+		expect(plugin.saveData).not.toHaveBeenCalled();
+	});
+
+	it('uses GPT Transcribe for new, missing, and unknown model settings', async () => {
+		const newRepository = new PluginStateRepository(createPlugin(null));
+		await newRepository.initialize();
+		expect(newRepository.getSettings().model).toBe('gpt-transcribe');
+
+		for (const modelValue of [undefined, 'unsupported-model']) {
+			const seedPlugin = createPlugin(null);
+			const seedRepository = new PluginStateRepository(seedPlugin);
+			const state = structuredClone(await seedRepository.initialize()) as unknown as {
+				settings: { data: Record<string, unknown> };
+			};
+			if (modelValue === undefined) {
+				delete state.settings.data['model'];
+			} else {
+				state.settings.data['model'] = modelValue;
+			}
+			const repository = new PluginStateRepository(createPlugin(state));
+
+			await repository.initialize();
+
+			expect(repository.getSettings().model).toBe('gpt-transcribe');
+		}
+	});
+
 	it('recovers a partial segmented state without throwing', async () => {
 		const plugin = createPlugin({
 			meta: { version: 1, format: 'ai-transcriber-state' },
