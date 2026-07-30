@@ -15,9 +15,11 @@
     "test:long-form:generate": "bash scripts/generate-long-form-test-audio.sh",
     "test:long-form:verify": "node scripts/verify-long-form-transcript.mjs",
     "test:long-form:verifier": "node --test scripts/verify-long-form-transcript.test.mjs",
+    "test:community": "jest tests/community --runInBand",
     "lint": "eslint \"src/**/*.ts\" package.json --max-warnings=0",
     "lint:fix": "eslint \"src/**/*.ts\" package.json --fix",
     "typecheck:test": "tsc --project tsconfig.test.json --noEmit",
+    "verify:metadata": "node scripts/verify-community-metadata.mjs",
     "check": "npm run lint && npm run build && npm test -- --runInBand --coverage"
   },
   "keywords": [
