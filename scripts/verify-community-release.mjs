@@ -3,6 +3,7 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 const COMMUNITY_FILES = ['main.js', 'manifest.json', 'styles.css'];
+const SEMVER = /^\d+\.\d+\.\d+$/;
 
 function fail(category, message) {
   throw new Error(`[${category}] ${message}`);
@@ -12,6 +13,15 @@ export function verifyCommunityRelease(repositoryRoot = process.cwd()) {
   const root = path.resolve(repositoryRoot);
   const sourceManifestPath = path.join(root, 'manifest.json');
   const manifest = JSON.parse(readFileSync(sourceManifestPath, 'utf8'));
+  if (
+    manifest === null
+    || typeof manifest !== 'object'
+    || Array.isArray(manifest)
+    || typeof manifest.version !== 'string'
+    || !SEMVER.test(manifest.version)
+  ) {
+    fail('metadata', `Invalid manifest version: ${String(manifest?.version)}.`);
+  }
   const releaseDir = path.join(root, 'build', manifest.version, 'release');
 
   let entries;

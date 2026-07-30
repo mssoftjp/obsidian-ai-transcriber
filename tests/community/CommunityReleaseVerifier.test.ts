@@ -63,6 +63,16 @@ describe('Community release verifier', () => {
     expect(result.stderr).toContain('Cannot read release directory');
   });
 
+  it('rejects an invalid manifest version before resolving the release path', () => {
+    const fixture = createFixture();
+    writeFileSync(join(fixture.root, 'manifest.json'), '{"version":"../../outside"}\n');
+
+    const result = run(fixture.root);
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain('[metadata]');
+    expect(result.stderr).toContain('Invalid manifest version');
+  });
+
   it('rejects missing and extra release entries', () => {
     const missingFixture = createFixture();
     rmSync(join(missingFixture.releaseDir, 'styles.css'));

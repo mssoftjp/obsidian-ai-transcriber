@@ -186,27 +186,27 @@ export class GPT4oClient extends ApiClient {
 	/**
 	 * Parse an OpenAI file-transcription response
 	 */
-			private parseResponse(response: GPT4oResponse, chunk: AudioChunk): TranscriptionResult {
-				let text = response.text || '';
+	private parseResponse(response: GPT4oResponse, chunk: AudioChunk): TranscriptionResult {
+		let text = response.text || '';
 
-				const extraction = extractTranscriptFromTagWrapper(text);
-				text = extraction.extractedText;
+		const extraction = extractTranscriptFromTagWrapper(text);
+		text = extraction.extractedText;
 
 		const result = {
 			id: chunk.id,
-			text: text,
+			text,
 			startTime: chunk.startTime,
 			endTime: chunk.endTime,
 			success: true
 			// File-transcription models don't provide segments in basic JSON format
 		};
 
-			this.logger.debug('OpenAI transcription response parsed', {
-				chunkId: chunk.id,
-				textLength: result.text.length,
-				hasTranscriptTags: extraction.hadTranscriptTags,
-				transcriptTagMode: extraction.mode
-			});
+		this.logger.debug('OpenAI transcription response parsed', {
+			chunkId: chunk.id,
+			textLength: result.text.length,
+			hasTranscriptTags: extraction.hadTranscriptTags,
+			transcriptTagMode: extraction.mode
+		});
 
 		return result;
 	}
