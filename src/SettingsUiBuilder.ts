@@ -1,7 +1,7 @@
 import { Setting, Notice, Platform, ButtonComponent, FileSystemAdapter, TFile } from 'obsidian';
 
-import { MODEL_NAMES } from './config/constants';
 import { MODEL_OPTIONS, getModelOption } from './config/ModelOptions';
+import { getTranscriptionModelProfile } from './config/TranscriptionModelProfiles';
 import { t } from './i18n';
 import { SafeStorageService } from './infrastructure/storage/SafeStorageService';
 import { SecurityUtils } from './infrastructure/storage/SecurityUtils';
@@ -9,7 +9,7 @@ import { clearApiKeyInput } from './ui/ApiKeyInput';
 import { Logger } from './utils/Logger';
 import { PathUtils } from './utils/PathUtils';
 
-import type { APITranscriptionSettings, VADMode } from './ApiSettings';
+import type { APITranscriptionSettings, TranscriptionModel, VADMode } from './ApiSettings';
 import type { App } from 'obsidian';
 
 const VAD_MODE_ORDER: readonly VADMode[] = ['disabled', 'local'];
@@ -117,7 +117,7 @@ export class SettingsUIBuilder {
 			.setDesc(this.createModelDescription())
 			.addDropdown(dropdown => {
 				MODEL_OPTIONS.forEach(option => {
-					dropdown.addOption(option.value, this.getModelLabel(option.value));
+					dropdown.addOption(option.value, this.getModelLabel(option.model));
 				});
 				dropdown.setValue(settings.model);
 				dropdown.onChange(async (value) => {
@@ -318,19 +318,8 @@ export class SettingsUIBuilder {
 		return fragment;
 	}
 
-	private static getModelLabel(value: string): string {
-		switch (value) {
-		case 'whisper-1':
-			return t('settings.model.whisperNoTimestamp');
-		case 'whisper-1-ts':
-			return t('settings.model.whisperWithTimestamp');
-		case MODEL_NAMES.GPT4O:
-			return t('settings.model.gpt4oHigh');
-		case MODEL_NAMES.GPT4O_MINI:
-			return t('settings.model.gpt4oMiniCost');
-		default:
-			return value;
-		}
+	private static getModelLabel(model: TranscriptionModel): string {
+		return t(getTranscriptionModelProfile(model).ui.optionLabelKey);
 	}
 
 	/**

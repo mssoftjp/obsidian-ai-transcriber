@@ -1,4 +1,8 @@
-export type TranscriptionModel = 'whisper-1' | 'whisper-1-ts' | 'gpt-4o-transcribe' | 'gpt-4o-mini-transcribe';
+import { DEFAULT_TRANSCRIPTION_MODEL } from './config/TranscriptionModelProfiles';
+
+import type { TranscriptionModel } from './config/TranscriptionModelProfiles';
+
+export type { TranscriptionModel } from './config/TranscriptionModelProfiles';
 export type VADMode = 'local' | 'disabled';
 
 // Dictionary category types
@@ -64,7 +68,7 @@ export const DEFAULT_API_SETTINGS: APITranscriptionSettings = {
 	outputFormat: 'callout',
 
 	openaiApiKey: '',
-	model: 'gpt-4o-transcribe', // Default to high-accuracy model
+	model: DEFAULT_TRANSCRIPTION_MODEL,
 	vadMode: 'disabled',
 
 

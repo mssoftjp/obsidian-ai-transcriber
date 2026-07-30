@@ -3,6 +3,11 @@
  * Central export point for all OpenAI API configurations
  */
 
+import {
+	TRANSCRIPTION_MODEL_PROFILES,
+	getTranscriptionModelProfile
+} from '../TranscriptionModelProfiles';
+
 // Whisper API (Traditional transcription)
 export * from './WhisperConfig';
 
@@ -28,44 +33,25 @@ export interface OpenAIModel {
  * Get all available OpenAI models
  */
 export function getAvailableModels(): OpenAIModel[] {
-	return [
-		// Transcription models
-		{
-			id: 'whisper-1',
-			type: 'transcription',
-			displayName: 'Whisper v1',
-			endpoint: 'https://api.openai.com/v1/audio/transcriptions',
-			costPerMinute: 0.006
-		},
-		{
-			id: 'gpt-4o-transcribe',
-			type: 'transcription',
-			displayName: 'GPT-4o Transcribe',
-			endpoint: 'https://api.openai.com/v1/audio/transcriptions',
-			costPerMinute: 0.006
-		},
-		{
-			id: 'gpt-4o-mini-transcribe',
-			type: 'transcription',
-			displayName: 'GPT-4o Mini Transcribe',
-			endpoint: 'https://api.openai.com/v1/audio/transcriptions',
-			costPerMinute: 0.003
-		}
-	];
+	return TRANSCRIPTION_MODEL_PROFILES.map(profile => ({
+		id: profile.id,
+		type: 'transcription',
+		displayName: profile.displayName,
+		endpoint: 'https://api.openai.com/v1/audio/transcriptions',
+		costPerMinute: profile.pricing.costPerMinute
+	}));
 }
 
 /**
  * Determine which OpenAI configuration to use based on model ID
  */
 export function getOpenAIModelConfig(modelId: string) {
-	switch (modelId) {
-	case 'whisper-1':
+	const profile = getTranscriptionModelProfile(modelId);
+	switch (profile.workflow) {
+	case 'whisper':
 		return { type: 'whisper', module: 'whisper.config' };
-	case 'gpt-4o-transcribe':
-	case 'gpt-4o-mini-transcribe':
+	case 'openai-file':
 		return { type: 'gpt4o-transcribe', module: 'gpt4o-transcribe.config' };
-	default:
-		throw new Error(`Unknown model: ${modelId}`);
 	}
 }
 

@@ -93,16 +93,6 @@ export const API_ENDPOINTS = {
 } as const;
 
 /**
- * モデル名定数
- */
-export const MODEL_NAMES = {
-	WHISPER: 'whisper-1',
-	WHISPER_TS: 'whisper-1-ts',
-	GPT4O: 'gpt-4o-transcribe',
-	GPT4O_MINI: 'gpt-4o-mini-transcribe'
-} as const;
-
-/**
  * エラーメッセージ
  */
 export const ERROR_MESSAGES = {
