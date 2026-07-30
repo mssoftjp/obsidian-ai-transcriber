@@ -1,6 +1,6 @@
 # Long-form transcription regression test
 
-This test protects the highest-risk path: a long recording split into multiple local-VAD chunks, transcribed by a GPT-4o audio model, and merged without omissions or prompt contamination.
+This test protects the highest-risk path: a long recording split into multiple local-VAD chunks, transcribed by an OpenAI file-transcription model, and merged without omissions or prompt contamination.
 
 The committed assets contain synthetic text and local verification code only. Do not commit generated audio, API responses, plugin `data.json`, vault contents, or real user recordings.
 
@@ -18,7 +18,7 @@ The default output is `/private/tmp/ai-transcriber-gpt4o-long-form.wav`. It is a
 
 - Use a disposable test vault.
 - Install the locally built plugin and reload Obsidian.
-- Set the model to GPT-4o Transcribe. Repeat with GPT-4o Mini Transcribe when that model changes.
+- Start with GPT Transcribe. Repeat with GPT-4o Transcribe or GPT-4o Mini Transcribe when their routing or shared processing presets change.
 - Set language to Japanese.
 - Set voice activity detection to local.
 - Disable post-processing and dictionary correction so that this test isolates chunking and merging.
@@ -39,10 +39,15 @@ These settings minimize API data: only the generated audio chunks, the configure
 - [ ] The output does not contain continuation-prompt instructions or other internal prompt text.
 - [ ] No stale copy remains in the vault's `ai-transcriber-temp` folder.
 - [ ] Retrying the same file does not reuse text from the previous run.
+- [ ] The submitted `model` exactly matches the selected model and is never replaced by GPT-4o Mini.
+- [ ] GPT Transcribe with Japanese selected submits repeated `languages[]=ja` fields and no singular `language`.
+- [ ] GPT Transcribe with automatic language detection submits neither `language` nor `languages[]`.
+- [ ] GPT-4o Transcribe and GPT-4o Mini Transcribe continue to submit singular `language=ja` and no `languages[]`.
+- [ ] Requests do not add `reasoning_effort`, `keywords`, or `chunking_strategy`.
 
 ## Compressed chunk checks
 
-Run these checks for time-range, local-VAD, and client-chunked GPT-4o/Whisper paths. The plugin must not require ffmpeg at runtime.
+Run these checks for time-range, local-VAD, and client-chunked GPT Transcribe/GPT-4o/Whisper paths. The plugin must not require ffmpeg at runtime.
 
 - [ ] When `AudioEncoder.isConfigSupported()` accepts mono Opus at the processed sample rate, every generated upload uses a `.webm` filename and `audio/webm` MIME type.
 - [ ] Every WebM chunk is smaller than the corresponding 16-bit mono WAV estimate and remains below the provider file-size limit.
@@ -80,6 +85,6 @@ npm run lint
 npm run build
 ```
 
-The automated suite includes the audio-only WebM muxer, WebCodecs capability/failure fallback, generated-chunk metadata propagation, and GPT-4o/Whisper multipart filename and MIME checks. The platform checks above remain real-app acceptance tests because Jest does not ship a browser media codec implementation.
+The automated suite includes the audio-only WebM muxer, WebCodecs capability/failure fallback, generated-chunk metadata propagation, model routing, language-field dialects, and OpenAI multipart filename/MIME checks. The platform checks above remain real-app acceptance tests because Jest does not ship a browser media codec implementation.
 
 This synthetic case complements unit tests; it does not prove that every accent, codec, noisy recording, API response, or duration is defect-free. When a new long-form defect is found, first add a focused unit regression and then extend this checklist or fixture only when the end-to-end acceptance condition changed.

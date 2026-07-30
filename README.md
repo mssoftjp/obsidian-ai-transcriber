@@ -1,6 +1,6 @@
 # AI Transcriber
 
-A powerful speech-to-text transcription plugin for Obsidian that uses OpenAI's GPT-4o Transcribe / GPT-4o Mini Transcribe and Whisper APIs.
+A speech-to-text plugin for Obsidian that uses OpenAI transcription models, including GPT Transcribe, GPT-4o Transcribe, GPT-4o Mini Transcribe, and Whisper.
 
 ## Features
 
@@ -22,7 +22,7 @@ Supported extensions:
 
 Notes:
 - Video files are processed by extracting the audio track. Support depends on the file codec/DRM and your environment; if it fails, convert to an audio format (e.g., `m4a`, `wav`, `mp3`).
-- The external file picker currently supports up to **500MB** per file. Workflows that decode media in the Obsidian renderer (including time ranges, local VAD, and formats that cannot use direct upload) accept at most **128MiB** of encoded media and **2 hours** of decoded audio, with an additional memory-work budget. Eligible GPT-4o direct uploads bypass this local decode limit and remain subject to the provider/model limits. Split or convert files that exceed the applicable limit.
+- The external file picker currently supports up to **500MB** per file. Workflows that decode media in the Obsidian renderer (including time ranges, local VAD, and formats that cannot use direct upload) accept at most **128MiB** of encoded media and **2 hours** of decoded audio, with an additional memory-work budget. Eligible OpenAI file-transcription models can upload supported files directly, bypassing this local decode limit while remaining subject to provider/model limits. Split or convert files that exceed the applicable limit.
 
 ## Requirements
 
@@ -64,9 +64,12 @@ Notes:
 1. Open Obsidian Settings → AI Transcriber
 2. Enter your OpenAI API key
 3. Choose your preferred transcription model:
-   - **GPT-4o Transcribe** (`gpt-4o-transcribe`): Highest quality transcription (recommended)
-   - **GPT-4o Mini Transcribe** (`gpt-4o-mini-transcribe`): Fast and cost-effective
-   - **Whisper** (`whisper-1`): Traditional transcription model
+   - **GPT Transcribe** (`gpt-transcribe`): Default and recommended for recorded speech
+   - **GPT-4o Transcribe** (`gpt-4o-transcribe`): Existing high-accuracy option
+   - **GPT-4o Mini Transcribe** (`gpt-4o-mini-transcribe`): Lowest-cost GPT transcription option
+   - **Whisper** (`whisper-1` / `whisper-1-ts`): Use the timestamp mode when timestamps are required
+
+OpenAI does not provide a `gpt-transcribe-mini` model or a transcription `reasoning_effort` setting. Choose GPT-4o Mini Transcribe explicitly when lower cost is the priority. Existing valid saved model selections are preserved; GPT Transcribe is used for new settings and recovery from a missing or invalid model value.
 
 #### Optional: Local VAD (fvad.wasm)
 
@@ -92,7 +95,7 @@ Local VAD can reduce uploaded audio and may reduce transcription cost when recor
 
 ### API Settings
 - **API Key**: Your OpenAI API key (saved only when Electron safeStorage is available)
-- **Model Selection**: Choose between GPT-4o Transcribe (`gpt-4o-transcribe`), GPT-4o Mini Transcribe (`gpt-4o-mini-transcribe`), and Whisper (`whisper-1`)
+- **Model Selection**: Choose GPT Transcribe (`gpt-transcribe`), GPT-4o Transcribe (`gpt-4o-transcribe`), GPT-4o Mini Transcribe (`gpt-4o-mini-transcribe`), or Whisper (`whisper-1` / `whisper-1-ts`)
 - **Language**: Specify a language (settings serve as a baseline, but the API will detect as appropriate)
 
 ### Output Settings
@@ -130,7 +133,7 @@ Links to GitHub, OpenAI documentation, and Buy Me a Coffee are documentation or 
 ## Privacy and Security
 
 - New OpenAI API keys are saved only when Electron safeStorage is available. If OS encryption is unavailable, the plugin warns you and does not persist the new key. Legacy XOR-wrapped values remain readable for migration but are not used for new storage
-- Eligible GPT-4o files may be uploaded directly as an automatic transport optimization; time ranges, local VAD, large files, and unsupported direct-upload formats are processed locally before upload. Ordinary GPT-4o and GPT-4o Mini transcription requests do not request server-side chunking
+- Eligible GPT Transcribe and GPT-4o transcription files may be uploaded directly as an automatic transport optimization; time ranges, local VAD, large files, and unsupported direct-upload formats are processed locally before upload. Ordinary file-transcription requests do not request server-side chunking
 - Locally processed chunks use WebCodecs Opus in an audio-only WebM container when the current Obsidian runtime supports it, reducing uploaded bytes. If capability detection, encoding, or container creation fails, the plugin falls back to 16 kHz mono WAV before making the request
 - For a selected time range, only that processed range is encoded into upload chunks; the full original recording is not attached to the range request
 - No telemetry or usage data is collected by this plugin
@@ -155,7 +158,7 @@ Links to GitHub, OpenAI documentation, and Buy Me a Coffee are documentation or 
 **Poor transcription quality**
 - Ensure good audio quality (minimal background noise)
 - Speak clearly and at a moderate pace
-- Try using GPT-4o Transcribe model for better accuracy
+- Start with the default GPT Transcribe model for recorded speech
 
 ### Getting Help
 
@@ -203,7 +206,7 @@ Notable third-party components:
 
 # AI Transcriber
 
-OpenAIのGPT-4o Transcribe / GPT-4o Mini TranscribeとWhisper APIを使用したObsidian用の強力な音声認識テキスト変換プラグインです。
+GPT Transcribe、GPT-4o Transcribe、GPT-4o Mini Transcribe、Whisperなど、OpenAIの文字起こしモデルを使用するObsidian用の音声認識テキスト変換プラグインです。
 
 ## 機能
 
@@ -225,7 +228,7 @@ OpenAIのGPT-4o Transcribe / GPT-4o Mini TranscribeとWhisper APIを使用した
 
 補足:
 - 動画ファイルは音声トラックを抽出して処理します。コーデック/DRMや環境によっては失敗する場合があるため、その場合は音声形式（例: `m4a`, `wav`, `mp3`）に変換してお試しください。
-- Vault外から選択するファイルは現状 **最大500MB** までです。Obsidian のレンダラー内でメディアをデコードする処理（時間範囲指定、ローカルVAD、直接送信できない形式など）は、エンコード済みデータ **128MiB**、デコード後の音声 **2時間** を上限とし、別途メモリ使用量の上限も適用します。条件を満たす GPT-4o の直接送信はこのローカルデコード上限の対象外ですが、プロバイダーおよびモデル側の制限が適用されます。該当する上限を超える場合は、ファイルを分割または変換してください。
+- Vault外から選択するファイルは現状 **最大500MB** までです。Obsidian のレンダラー内でメディアをデコードする処理（時間範囲指定、ローカルVAD、直接送信できない形式など）は、エンコード済みデータ **128MiB**、デコード後の音声 **2時間** を上限とし、別途メモリ使用量の上限も適用します。条件を満たすOpenAIファイル文字起こしモデルの直接送信はこのローカルデコード上限の対象外ですが、プロバイダーおよびモデル側の制限が適用されます。該当する上限を超える場合は、ファイルを分割または変換してください。
 
 ## 必要条件
 
@@ -267,9 +270,12 @@ OpenAIのGPT-4o Transcribe / GPT-4o Mini TranscribeとWhisper APIを使用した
 1. Obsidian設定 → AI Transcriberを開く
 2. OpenAI APIキーを入力
 3. 希望の文字起こしモデルを選択:
-   - **GPT-4o Transcribe** (`gpt-4o-transcribe`): 最高品質の文字起こし（推奨）
-   - **GPT-4o Mini Transcribe** (`gpt-4o-mini-transcribe`): 高速でコスト効率が良い
-   - **Whisper** (`whisper-1`): 従来の文字起こしモデル
+   - **GPT Transcribe** (`gpt-transcribe`): 録音済み音声向けの推奨モデルで、新規設定の既定値
+   - **GPT-4o Transcribe** (`gpt-4o-transcribe`): 既存の高精度モデル
+   - **GPT-4o Mini Transcribe** (`gpt-4o-mini-transcribe`): GPT系で最も低コスト
+   - **Whisper** (`whisper-1` / `whisper-1-ts`): タイムスタンプが必要な場合はタイムスタンプありを選択
+
+OpenAIには `gpt-transcribe-mini` モデルや、文字起こしの `reasoning_effort` 設定はありません。コストを優先する場合はGPT-4o Mini Transcribeを明示的に選択してください。既存の有効な保存済みモデル選択は維持され、GPT Transcribeは新規設定、およびモデル値の欠落・不正時の復旧先に使用されます。
 
 #### ローカルVAD（任意 / fvad.wasm）
 
@@ -295,7 +301,7 @@ OpenAIのGPT-4o Transcribe / GPT-4o Mini TranscribeとWhisper APIを使用した
 
 ### API設定
 - **APIキー**: OpenAI APIキー（Electron safeStorageを利用できる場合にのみ保存）
-- **モデル選択**: GPT-4o Transcribe（`gpt-4o-transcribe`）、GPT-4o Mini Transcribe（`gpt-4o-mini-transcribe`）、Whisper（`whisper-1`）から選択
+- **モデル選択**: GPT Transcribe（`gpt-transcribe`）、GPT-4o Transcribe（`gpt-4o-transcribe`）、GPT-4o Mini Transcribe（`gpt-4o-mini-transcribe`）、Whisper（`whisper-1` / `whisper-1-ts`）から選択
 - **言語**: 言語を指定（設定を基本としつつもAPI側で適宜判別）
 
 ### 出力設定
@@ -333,7 +339,7 @@ GitHub、OpenAIドキュメント、Buy Me a Coffeeへのリンクは、ドキ�
 ## プライバシーとセキュリティ
 
 - 新しいOpenAI APIキーはElectron safeStorageを利用できる場合にのみ保存します。OS暗号化を利用できない場合は警告を表示し、新しいキーを永続化しません。旧XOR形式は移行のため読み取り互換性だけを維持します
-- 条件を満たすGPT-4o向けファイルは通信経路の最適化として自動的に直接送信する場合があります。時間範囲・ローカルVAD・大容量・直接送信非対応形式は送信前にローカル処理します。通常のGPT-4oおよびGPT-4o Mini文字起こしでは、サーバー側チャンク処理を要求しません
+- 条件を満たすGPT TranscribeおよびGPT-4o文字起こし向けファイルは、通信経路の最適化として自動的に直接送信する場合があります。時間範囲・ローカルVAD・大容量・直接送信非対応形式は送信前にローカル処理します。通常のファイル文字起こしでは、サーバー側チャンク処理を要求しません
 - このプラグインによるテレメトリーや使用データの収集はありません
 - 文字起こしされたテキストはローカルのvaultにのみ保存されます
 
@@ -356,7 +362,7 @@ GitHub、OpenAIドキュメント、Buy Me a Coffeeへのリンクは、ドキ�
 **文字起こし品質が悪い**
 - 良好な音質を確保（背景ノイズを最小限に）
 - はっきりと、適度なペースで話す
-- より高い精度のためGPT-4o Transcribeモデルを試す
+- 録音済み音声では、既定のGPT Transcribeモデルから試す
 
 ### ヘルプを得る
 

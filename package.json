@@ -1,7 +1,7 @@
 {
   "name": "obsidian-ai-transcriber",
   "version": "0.10.1",
-  "description": "Transcribe audio and video files with OpenAI GPT-4o and Whisper APIs",
+  "description": "Transcribe audio and video files with OpenAI transcription models",
   "main": "main.js",
   "packageManager": "npm@10.9.4",
   "scripts": {
@@ -22,6 +22,7 @@
   "keywords": [
     "obsidian",
     "plugin",
+    "gpt-transcribe",
     "whisper",
     "transcription",
     "speech-to-text",
