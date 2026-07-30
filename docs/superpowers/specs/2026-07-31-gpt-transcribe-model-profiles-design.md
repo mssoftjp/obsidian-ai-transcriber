@@ -2,14 +2,14 @@
 
 ## Status
 
-ユーザーレビュー待ちの設計案。本書の承認後に、テスト駆動で実装する。
+2026-07-31承認済み。テスト駆動で実装する。
 
 本書は実装・ローカル検証までを対象とし、バージョン更新、リリース、外部公開、`git push` は許可しない。
 
 ## 決定概要
 
 - 録音済みファイル向けの選択肢として `gpt-transcribe` を追加する。
-- 現在の既定値 `gpt-4o-transcribe` と既存の保存済み設定は変更しない。
+- 新規設定、モデル値が欠落した設定、不正なモデル値の復旧先では `gpt-transcribe` を既定にする。既存の有効な保存済みモデル選択は変更しない。
 - 選択可能なモデルのID、表示、料金、処理経路、APIの言語指定方式、処理 preset、クリーニング preset、タイムスタンプ、直接アップロード可否を、単一の読み取り専用プロファイル配列に集約する。
 - `gpt-transcribe` は既存の高精度側の処理・クリーニング preset を再利用し、根拠のない専用閾値は作らない。
 - `gpt-transcribe` では単数の `language` を送らず、既存の単一言語設定を1要素の `languages[]` に変換する。自動判定時は両方とも送らない。
@@ -30,6 +30,8 @@
 - 通常の応答は `text` と検出言語の `languages` を含む。確信を持って言語判定できない場合は空配列になる。
 - [Migration guide](https://developers.openai.com/cookbook/examples/migrating_from_whisper_to_gpt_transcribe) は、完了済みファイルには `gpt-transcribe`、継続的な低遅延音声には `gpt-live-transcribe` を使い分けている。
 - [Pricing](https://developers.openai.com/api/docs/pricing) の推定単価は、`gpt-transcribe` が `$0.0045/min`、`gpt-4o-transcribe` が `$0.006/min`、`gpt-4o-mini-transcribe` が `$0.003/min`、Whisperが `$0.006/min`。
+- `gpt-transcribe-mini` というモデル、および文字起こしAPIで計算量を調整する `reasoning_effort` パラメータは提供されていない。`temperature` は生成のランダム性であり、コスト／計算量tierではない。
+- GPT系文字起こしで低コストを優先する場合は `gpt-4o-mini-transcribe` を明示的に選ぶ。`gpt-transcribe` を低effort設定へ変形しない。
 - タイムスタンプ、字幕形式、英訳、話者分離が必要な場合は、それぞれの専用モデル／経路を使う。今回の一般的なファイル文字起こし経路には混ぜない。
 
 ## 現状監査で確認した問題
@@ -84,8 +86,7 @@
 
 ## Non-goals
 
-- 既定モデルを `gpt-transcribe` へ自動移行すること。
-- 保存済みの `gpt-4o-transcribe` を書き換えること。
+- 保存済みの有効なモデル選択を `gpt-transcribe` へ強制移行すること。
 - `gpt-live-transcribe`、Realtimeセッション、マイク入力を追加すること。
 - `stream=true` によるファイル文字起こしの部分応答を追加すること。
 - `keywords` をユーザー辞書から自動生成すること。
@@ -212,8 +213,8 @@ export type TranscriptionModel =
 
 | 設定ID | API model | 既定 | workflow | 言語field | processing preset | cleaning preset | 直接upload | timestamp | USD/min |
 |---|---|---:|---|---|---|---|---:|---:|---:|
-| `gpt-transcribe` | `gpt-transcribe` | No | `openai-file` | `languages` | `recorded-accurate` | `recorded-accurate` | Yes | No | 0.0045 |
-| `gpt-4o-transcribe` | `gpt-4o-transcribe` | Yes | `openai-file` | `language` | `recorded-accurate` | `recorded-accurate` | Yes | No | 0.006 |
+| `gpt-transcribe` | `gpt-transcribe` | Yes | `openai-file` | `languages` | `recorded-accurate` | `recorded-accurate` | Yes | No | 0.0045 |
+| `gpt-4o-transcribe` | `gpt-4o-transcribe` | No | `openai-file` | `language` | `recorded-accurate` | `recorded-accurate` | Yes | No | 0.006 |
 | `gpt-4o-mini-transcribe` | `gpt-4o-mini-transcribe` | No | `openai-file` | `language` | `recorded-economy` | `recorded-economy` | Yes | No | 0.003 |
 | `whisper-1` | `whisper-1` | No | `whisper` | `language` | `whisper-standard` | `whisper` | No | No | 0.006 |
 | `whisper-1-ts` | `whisper-1` | No | `whisper` | `language` | `whisper-timestamps` | `whisper` | No | Yes | 0.006 |
@@ -300,10 +301,11 @@ Controllerは文字列prefixや「4oでなければMini」という条件を持�
 
 ## 保存と後方互換性
 
-- `DEFAULT_API_SETTINGS.model` はプロファイルから導出した `gpt-4o-transcribe` のまま。
+- `DEFAULT_API_SETTINGS.model` はプロファイルから導出した `gpt-transcribe` に変更する。
 - 保存済みの4モデルは同じ文字列で読み書きする。
 - 新しい `gpt-transcribe` は有効な保存値として読み書きする。
 - 旧データの欠落値または未知文字列は、保存データ正規化時に既定モデルへ戻す。これは壊れた永続データからの復旧であり、実行時ルーティングのfallbackではない。
+- 既存の有効な保存済みモデル値は、現在の選択を維持して強制移行しない。
 - 新モデルを選んでも他の設定やユーザー辞書を書き換えない。
 - 設定スキーマのバージョン移行は不要。
 
@@ -319,7 +321,7 @@ Controllerは文字列prefixや「4oでなければMini」という条件を持�
 4. Whisper-1（タイムスタンプなし）
 5. Whisper-1（タイムスタンプあり）
 
-「推奨」は録音済み音声に関する現在の公式推奨を示す。既定値を自動変更する意味ではない。
+「推奨」は録音済み音声に関する現在の公式推奨を示し、新規設定の既定値でもある。既存の有効な保存済み選択を強制変更する意味ではない。
 
 ### 比較文
 
@@ -362,7 +364,7 @@ Controllerは文字列prefixや「4oでなければMini」という条件を持�
 
 - 5つのIDと順序が期待どおり。
 - IDが一意。
-- 既定プロファイルが正確に1つで `gpt-4o-transcribe`。
+- 既定プロファイルが正確に1つで `gpt-transcribe`。
 - 全モデルの料金が正で、通貨がUSD。
 - `gpt-transcribe` の価格、workflow、言語field、preset、capabilityが表どおり。
 - 全プロファイルのUIキーが4言語すべてで解決できる。
@@ -428,11 +430,12 @@ Controllerは文字列prefixや「4oでなければMini」という条件を持�
 - 明示言語は `languages[]`、自動判定は言語fieldなし。
 - 既存GPT-4o系は単数 `language` のまま。
 - 料金見積りはプロファイルの `$0.0045/min`。
-- 現在の既定モデルは `gpt-4o-transcribe` のまま。
+- 新規・欠損・不正な保存設定の既定モデルは `gpt-transcribe`。
+- 既存の有効な保存済みモデル選択は強制変更されない。
 - 既存4モデルの保存・経路・API request・料金・処理が回帰しない。
 - すべての選択可能モデルが処理preset、クリーニングpreset、UI翻訳、provider表示、料金を持つ。
 - 未知モデルは実行時にfail closed。
-- `keywords`、Realtime、streaming、既定値移行、リリース変更が差分に含まれない。
+- `keywords`、Realtime、streaming、既存保存値の強制移行、リリース変更が差分に含まれない。
 - `npm run lint`、`npm run build`、全Jest、生成物lintが成功する。
 
 ## 残る検証境界
