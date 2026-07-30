@@ -8,7 +8,7 @@
     "build": "tsc --noEmit && node esbuild-api.config.mjs production",
     "build:debug": "tsc --noEmit && node esbuild-api.config.mjs",
     "dev": "tsc --noEmit && node esbuild-api.config.mjs --watch",
-    "build:release": "npm run check",
+    "build:release": "npm run check:community",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
@@ -18,11 +18,14 @@
     "test:community": "jest tests/community --runInBand",
     "lint": "eslint \"src/**/*.ts\" package.json --max-warnings=0",
     "lint:fix": "eslint \"src/**/*.ts\" package.json --fix",
+    "lint:artifacts": "eslint \"build/**/*.js\" --max-warnings=0",
     "typecheck:test": "tsc --project tsconfig.test.json --noEmit",
+    "audit:production": "npm audit --omit=dev --audit-level=high",
     "verify:metadata": "node scripts/verify-community-metadata.mjs",
     "verify:release": "node scripts/verify-community-release.mjs",
     "verify:community": "npm run verify:metadata && npm run verify:release",
-    "check": "npm run lint && npm run build && npm test -- --runInBand --coverage"
+    "check": "npm run check:community",
+    "check:community": "npm run lint && npm run build && npm run verify:community && npm run lint:artifacts && npm run typecheck:test && npm test -- --runInBand --coverage"
   },
   "keywords": [
     "obsidian",
