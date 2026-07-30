@@ -2,129 +2,67 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Add deterministic local and CI gates that preserve AI Transcriber's current Obsidian Community Health Excellent / Review Passed status while shipping GPT Transcribe support.
+**Goal:** Preserve AI Transcriber's current Obsidian Community Health Excellent / Review Passed status by enforcing official lint, metadata/disclosure, release-artifact, CI, and production-dependency gates.
 
-**Architecture:** Keep the official `eslint-plugin-obsidianmd@0.4.1` as the source-policy authority, and add focused cross-file contract tests for metadata and disclosures that source lint cannot prove. Build into a dedicated three-file Community release boundary, verify it with a dependency-free Node.js CLI, and reuse the same deterministic gate from pull-request and tag workflows; keep the network-dependent production audit separate.
+**Architecture:** Keep `eslint-plugin-obsidianmd@0.4.1` authoritative for source policy. Add dependency-free metadata and release verifiers, test their observable CLI behavior against isolated temporary repositories, then compose them with build, type-check, Jest, and artifact lint in one deterministic command reused by CI and releases.
 
 **Tech Stack:** TypeScript 5.x, Jest 30 with ts-jest, ESLint 9, `eslint-plugin-obsidianmd@0.4.1`, Node.js 20/22/24, esbuild, GitHub Actions.
 
 ## Global Constraints
 
-- Preserve the current public Health Excellent / Review Passed baseline; do not claim exact equivalence with Obsidian's private scanner.
-- Keep `eslint-plugin-obsidianmd` pinned exactly to `0.4.1`.
-- Treat all official lint warnings as failures.
-- Add no runtime dependency and no unofficial Obsidian runtime test harness.
-- Send no paid OpenAI request, audio, API key, prompt, transcript, or vault content from tests or CI.
-- Preserve GPT Transcribe behavior, model defaults, persistence, API payloads, and all user-facing behavior.
-- Keep `isDesktopOnly: true`; Electron and desktop file access remain intentional.
+- Do not claim exact equivalence with Obsidian's private hosted scanner.
+- Keep `eslint-plugin-obsidianmd` pinned exactly to `0.4.1`; all warnings fail.
+- Add no runtime dependency or unofficial Obsidian runtime harness.
+- Send no paid OpenAI request or private data from tests or CI.
+- Preserve GPT Transcribe behavior, persistence, UI, and API payloads.
+- Keep `isDesktopOnly: true`.
 - The Community upload boundary contains exactly `main.js`, `manifest.json`, and `styles.css`.
-- Keep deterministic local checks usable without network access; run `npm audit` as a separate network-dependent gate.
+- Keep deterministic checks network-independent; audit production dependencies separately.
 - Do not use `npm audit fix --force`.
-- Do not publish a release, submit to Community Plugins, or push this branch.
-- Re-check `obsidian-developer-docs/en/Obsidian October plugin self-critique checklist.md` before completion.
-
----
+- Do not release, submit, or push.
 
 ## File map
 
-- `tests/community/CommunityToolingConfig.test.ts`: guards the official lint pin, warning policy, test TypeScript project, and composed quality commands.
-- `tests/community/CommunityMetadata.test.ts`: guards manifest, version, lockfile, funding, and README disclosure contracts.
-- `tests/community/CommunityReleaseVerifier.test.ts`: exercises the release verifier through its CLI using isolated temporary repositories.
-- `tests/community/CommunityWorkflowContracts.test.ts`: guards Node.js CI coverage, deterministic checks, production audit, and the verified release upload boundary.
-- `scripts/verify-community-release.mjs`: dependency-free CLI that verifies the exact Community release directory.
-- `eslint.config.mjs`: keeps production Obsidian rules strict and explicitly excludes non-shipping tests, coverage, docs, and tooling.
-- `tsconfig.test.json`: explicitly includes `src/**/*` and `tests/**/*` without inheriting the production test exclusion.
-- `package.json`: exposes focused and composed quality commands.
-- `package-lock.json`: records only safe, non-breaking advisory remediation.
-- `.github/workflows/quality.yml`: runs deterministic checks on Node.js 20, 22, and 24 and audits production dependencies once.
-- `.github/workflows/release.yml`: reuses the Community gate and uploads/attests only the verified release directory.
-- `CONTRIBUTING.md`: documents the deterministic Community check and separate network audit.
+- `scripts/verify-community-metadata.mjs`: cross-file manifest/version/disclosure verifier.
+- `scripts/verify-community-release.mjs`: exact three-file release verifier.
+- `tests/community/CommunityMetadataVerifier.test.ts`: metadata verifier CLI fixtures.
+- `tests/community/CommunityReleaseVerifier.test.ts`: release verifier CLI fixtures.
+- `eslint.config.mjs`: official source lint scopes and non-shipping ignores.
+- `tsconfig.test.json`: explicit source/test TypeScript project.
+- `package.json`: focused and composed quality commands.
+- `package-lock.json`: non-breaking advisory remediation only.
+- `.github/workflows/quality.yml`: Node.js 20/22/24 quality matrix and one audit job.
+- `.github/workflows/release.yml`: verified release upload/attestation.
+- `CONTRIBUTING.md`: contributor-facing gate instructions.
 
 ---
 
-### Task 1: Enforce official lint warnings and type-check the test project
+### Task 1: Make official lint and test type-check executable gates
 
 **Files:**
-- Create: `tests/community/CommunityToolingConfig.test.ts`
 - Modify: `eslint.config.mjs:84-92`
 - Modify: `tsconfig.test.json:1-12`
-- Modify: `package.json:7-20`
+- Modify: `package.json:7-22`
 
 **Interfaces:**
-- Consumes: `eslint-plugin-obsidianmd@0.4.1`, `tsconfig.json`, and the existing `src/**/*.ts` production project.
-- Produces: `npm run lint` with zero-warning enforcement and `npm run typecheck:test` for all source, tests, and mocks.
+- Produces: `npm run lint` with warnings forbidden and `npm run typecheck:test`.
 
-- [ ] **Step 1: Write the failing tooling-contract test**
-
-Create `tests/community/CommunityToolingConfig.test.ts`:
-
-```ts
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
-
-interface PackageJson {
-  scripts: Record<string, string | undefined>;
-  devDependencies: Record<string, string | undefined>;
-}
-
-interface TypeScriptConfig {
-  include?: string[];
-  exclude?: string[];
-}
-
-function readJson<T>(path: string): T {
-  return JSON.parse(readFileSync(join(process.cwd(), path), 'utf8')) as T;
-}
-
-function source(path: string): string {
-  return readFileSync(join(process.cwd(), path), 'utf8');
-}
-
-describe('Community tooling contracts', () => {
-  const packageJson = readJson<PackageJson>('package.json');
-  const testConfig = readJson<TypeScriptConfig>('tsconfig.test.json');
-
-  it('pins the official Obsidian ESLint plugin and rejects warnings', () => {
-    expect(packageJson.devDependencies['eslint-plugin-obsidianmd']).toBe('0.4.1');
-    expect(packageJson.scripts['lint']).toBe(
-      'eslint "src/**/*.ts" package.json --max-warnings=0'
-    );
-  });
-
-  it('keeps non-shipping files outside the Obsidian source-rule pass', () => {
-    const config = source('eslint.config.mjs');
-
-    expect(config).toContain("'tests/**'");
-    expect(config).toContain("'coverage/**'");
-    expect(config).toContain("'jest.config.js'");
-  });
-
-  it('type-checks tests in an explicit TypeScript project', () => {
-    expect(testConfig.include).toEqual(
-      expect.arrayContaining(['src/**/*', 'tests/**/*'])
-    );
-    expect(testConfig.exclude).toBeDefined();
-    expect(testConfig.exclude).not.toContain('tests/**/*');
-    expect(packageJson.scripts['typecheck:test']).toBe(
-      'tsc --project tsconfig.test.json --noEmit'
-    );
-  });
-});
-```
-
-- [ ] **Step 2: Run the test and verify RED**
+- [ ] **Step 1: Verify current configuration failures**
 
 Run:
 
 ```bash
-npm test -- --runTestsByPath tests/community/CommunityToolingConfig.test.ts --runInBand
+npx --no-install eslint . --max-warnings=0
+node --input-type=module -e "import ts from 'typescript'; const raw=ts.readConfigFile('tsconfig.test.json',ts.sys.readFile); const parsed=ts.parseJsonConfigFileContent(raw.config,ts.sys,process.cwd()); const included=parsed.fileNames.some((file)=>file.endsWith('tests/ApiSettingsTab.test.ts')); console.log('test-file-included='+included); process.exitCode=included?0:1;"
 ```
 
-Expected: FAIL because `lint` lacks `package.json` and `--max-warnings=0`, the ignore entries are absent, `tsconfig.test.json` has no explicit `exclude`, and `typecheck:test` is undefined.
+Expected: ESLint exits 2 while parsing tests without project information; the TypeScript probe prints `test-file-included=false` and exits 1.
 
-- [ ] **Step 3: Add the explicit lint and test-project configuration**
+Configuration files are the TDD exception for this task. Their observable behavior is exercised directly before and after the change; no source-text change-detector test is committed.
 
-In the global ignore block of `eslint.config.mjs`, use:
+- [ ] **Step 2: Add explicit scopes and scripts**
+
+Change the ignore block in `eslint.config.mjs` to:
 
 ```js
     ignores: [
@@ -138,7 +76,7 @@ In the global ignore block of `eslint.config.mjs`, use:
     ]
 ```
 
-In `tsconfig.test.json`, retain the existing compiler options and include list, then add:
+Add this top-level exclusion to `tsconfig.test.json`:
 
 ```json
   "exclude": [
@@ -150,7 +88,7 @@ In `tsconfig.test.json`, retain the existing compiler options and include list, 
   ]
 ```
 
-In `package.json`, replace the lint scripts and add the test type-check:
+Set these `package.json` scripts:
 
 ```json
     "lint": "eslint \"src/**/*.ts\" package.json --max-warnings=0",
@@ -158,185 +96,350 @@ In `package.json`, replace the lint scripts and add the test type-check:
     "typecheck:test": "tsc --project tsconfig.test.json --noEmit",
 ```
 
-- [ ] **Step 4: Run focused verification and verify GREEN**
+- [ ] **Step 3: Verify corrected behavior**
 
 Run:
 
 ```bash
-npm test -- --runTestsByPath tests/community/CommunityToolingConfig.test.ts --runInBand
 npm run lint
 npm run typecheck:test
+npx --no-install eslint . --max-warnings=0
 ```
 
-Expected: the focused suite passes, official lint reports zero errors and zero warnings, and TypeScript checks all 170 current source/test files with zero diagnostics.
+Expected: all commands exit 0 with no warnings; the test project checks the current 170 source/test files.
 
-- [ ] **Step 5: Commit the lint and type-check gate**
+- [ ] **Step 4: Commit**
 
 ```bash
-git add tests/community/CommunityToolingConfig.test.ts eslint.config.mjs tsconfig.test.json package.json
-git commit -m "test: enforce Community lint and test typing"
+git add eslint.config.mjs tsconfig.test.json package.json
+git commit -m "chore: enforce Community lint and test typing"
 ```
 
 ---
 
-### Task 2: Add Community metadata and disclosure contracts
+### Task 2: Add a tested Community metadata/disclosure verifier
 
 **Files:**
-- Create: `tests/community/CommunityMetadata.test.ts`
-- Modify: `package.json:7-23`
+- Create: `scripts/verify-community-metadata.mjs`
+- Create: `tests/community/CommunityMetadataVerifier.test.ts`
+- Modify: `package.json`
 
 **Interfaces:**
-- Consumes: `manifest.json`, `package.json`, `versions.json`, `README.md`, and `package-lock.json`.
-- Produces: `npm run test:community`, initially covering all suites under `tests/community/` and automatically including later Community suites.
+- Produces: `verifyCommunityMetadata(root?: string): { version: string }`.
+- CLI: `node scripts/verify-community-metadata.mjs [repository-root]`.
 
-- [ ] **Step 1: Write the failing metadata/disclosure suite**
+- [ ] **Step 1: Write failing CLI behavior tests**
 
-Create `tests/community/CommunityMetadata.test.ts`:
+Create `tests/community/CommunityMetadataVerifier.test.ts`:
 
 ```ts
-import { existsSync, readFileSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import {
+  mkdirSync,
+  mkdtempSync,
+  rmSync,
+  unlinkSync,
+  writeFileSync
+} from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-interface Manifest {
-  id: string;
-  name: string;
-  version: string;
-  minAppVersion: string;
-  description: string;
-  author: string;
-  authorUrl?: string;
-  fundingUrl?: string;
-  isDesktopOnly: boolean;
+interface Fixture {
+  root: string;
+  manifest: Record<string, unknown>;
 }
 
-interface PackageJson {
-  version: string;
-  scripts: Record<string, string | undefined>;
+const verifierPath = join(process.cwd(), 'scripts', 'verify-community-metadata.mjs');
+const roots: string[] = [];
+
+function writeJson(path: string, value: unknown): void {
+  writeFileSync(path, `${JSON.stringify(value, null, 2)}\n`);
 }
 
-type Versions = Record<string, string | undefined>;
-
-function readJson<T>(path: string): T {
-  return JSON.parse(readFileSync(join(process.cwd(), path), 'utf8')) as T;
+function writeReadme(root: string, override = ''): void {
+  const disclosures = [
+    'OpenAI API account with API key.',
+    'OpenAI API is a paid service.',
+    'The plugin uses api.openai.com.',
+    'Audio data is sent to OpenAI for transcription.',
+    'Files selected outside the vault are copied to a plugin-owned temporary folder.',
+    'API keys are saved only when Electron safeStorage is available.',
+    'No telemetry or usage data is collected.'
+  ].join('\n');
+  writeFileSync(join(root, 'README.md'), override || disclosures);
 }
 
-describe('Obsidian Community metadata contracts', () => {
-  const manifest = readJson<Manifest>('manifest.json');
-  const packageJson = readJson<PackageJson>('package.json');
-  const versions = readJson<Versions>('versions.json');
-  const readme = readFileSync(join(process.cwd(), 'README.md'), 'utf8');
+function createFixture(): Fixture {
+  const root = mkdtempSync(join(tmpdir(), 'ai-transcriber-metadata-'));
+  const manifest: Record<string, unknown> = {
+    id: 'ai-transcriber',
+    name: 'AI Transcriber',
+    version: '1.2.3',
+    minAppVersion: '1.8.7',
+    description: 'Transcribe audio and video files with OpenAI transcription models.',
+    author: 'Musashino Software',
+    fundingUrl: 'https://buymeacoffee.com/mssoft',
+    isDesktopOnly: true
+  };
 
-  it('keeps current version metadata aligned', () => {
-    expect(manifest.version).toMatch(/^\d+\.\d+\.\d+$/);
-    expect(packageJson.version).toBe(manifest.version);
-    expect(Object.prototype.hasOwnProperty.call(versions, manifest.version)).toBe(true);
-    expect(versions[manifest.version]).toBe(manifest.minAppVersion);
+  roots.push(root);
+  mkdirSync(root, { recursive: true });
+  writeJson(join(root, 'manifest.json'), manifest);
+  writeJson(join(root, 'package.json'), { version: '1.2.3' });
+  writeJson(join(root, 'versions.json'), { '1.2.3': '1.8.7' });
+  writeJson(join(root, 'package-lock.json'), { lockfileVersion: 3 });
+  writeReadme(root);
+  return { root, manifest };
+}
+
+function run(root: string) {
+  return spawnSync(process.execPath, [verifierPath, root], { encoding: 'utf8' });
+}
+
+afterEach(() => {
+  while (roots.length > 0) {
+    const root = roots.pop();
+    if (root) {
+      rmSync(root, { recursive: true, force: true });
+    }
+  }
+});
+
+describe('Community metadata verifier', () => {
+  it('accepts a compliant repository', () => {
+    const fixture = createFixture();
+    const result = run(fixture.root);
+
+    expect(result.status).toBe(0);
+    expect(result.stdout).toContain('Verified Community metadata 1.2.3');
+    expect(result.stderr).toBe('');
   });
 
-  it('keeps the manifest within Community submission requirements', () => {
-    expect(manifest.id).toBe('ai-transcriber');
-    expect(manifest.id).toMatch(/^[a-z0-9-]+$/);
-    expect(manifest.id).not.toContain('obsidian');
-    expect(manifest.name).toBe('AI Transcriber');
-    expect(manifest.author).toBe('Musashino Software');
-    expect(manifest.minAppVersion).toMatch(/^\d+\.\d+\.\d+$/);
-    expect(manifest.description.length).toBeLessThanOrEqual(250);
-    expect(manifest.description).toMatch(/^(Transcribe|Generate|Import|Sync|Open)\b/);
-    expect(manifest.description).not.toMatch(/^(This is|This plugin)\b/i);
-    expect(manifest.description).toMatch(/\.$/);
-    expect(manifest.isDesktopOnly).toBe(true);
+  it('rejects cross-file version mismatches', () => {
+    const fixture = createFixture();
+    writeJson(join(fixture.root, 'package.json'), { version: '1.2.4' });
+
+    const result = run(fixture.root);
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain('package.json version 1.2.4');
   });
 
-  it('uses fundingUrl only for a recognized support destination', () => {
-    expect(manifest.fundingUrl).toBeDefined();
+  it.each<[string, unknown, string]>([
+    ['id', 'obsidian-ai-transcriber', 'plugin id'],
+    ['description', 'This plugin transcribes audio', 'description'],
+    ['isDesktopOnly', false, 'isDesktopOnly']
+  ])('rejects invalid manifest %s', (field, value, expectedMessage) => {
+    const fixture = createFixture();
+    fixture.manifest[field] = value;
+    writeJson(join(fixture.root, 'manifest.json'), fixture.manifest);
 
-    const fundingUrl = new URL(manifest.fundingUrl ?? '');
-    expect(fundingUrl.protocol).toBe('https:');
-    expect(['buymeacoffee.com', 'github.com', 'ko-fi.com', 'patreon.com'])
-      .toContain(fundingUrl.hostname);
+    const result = run(fixture.root);
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain(expectedMessage);
   });
 
-  it.each([
-    [/OpenAI API account with API key/i, 'OpenAI account and API-key requirement'],
-    [/OpenAI API is a paid service/i, 'paid API use'],
-    [/api\.openai\.com/i, 'OpenAI network destination'],
-    [/Audio data is sent to OpenAI for transcription/i, 'audio transmission'],
-    [/Files selected outside the vault are copied/i, 'external-file handling'],
-    [/saved only when Electron safeStorage is available/i, 'local secret storage'],
-    [/No telemetry or usage data is collected/i, 'absence of telemetry']
-  ])('discloses %s', (pattern) => {
-    expect(readme).toMatch(pattern);
+  it('rejects a missing required disclosure', () => {
+    const fixture = createFixture();
+    writeReadme(fixture.root, 'OpenAI API account with API key.');
+
+    const result = run(fixture.root);
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain('[disclosure]');
+    expect(result.stderr).toContain('paid API use');
   });
 
-  it('keeps a committed npm lockfile and a focused Community test command', () => {
-    expect(existsSync(join(process.cwd(), 'package-lock.json'))).toBe(true);
-    expect(packageJson.scripts['test:community']).toBe(
-      'jest tests/community --runInBand'
-    );
+  it('rejects a non-support funding destination', () => {
+    const fixture = createFixture();
+    fixture.manifest['fundingUrl'] = 'https://example.com/product';
+    writeJson(join(fixture.root, 'manifest.json'), fixture.manifest);
+
+    const result = run(fixture.root);
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain('fundingUrl');
+  });
+
+  it('rejects a missing lockfile', () => {
+    const fixture = createFixture();
+    unlinkSync(join(fixture.root, 'package-lock.json'));
+
+    const result = run(fixture.root);
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain('package-lock.json');
   });
 });
 ```
 
-- [ ] **Step 2: Run the suite and verify RED**
+- [ ] **Step 2: Verify RED**
 
 Run:
 
 ```bash
-npm test -- --runTestsByPath tests/community/CommunityMetadata.test.ts --runInBand
+npm test -- --runTestsByPath tests/community/CommunityMetadataVerifier.test.ts --runInBand
 ```
 
-Expected: all current metadata/disclosure assertions pass, but the final assertion fails because `test:community` is undefined.
+Expected: FAIL because the verifier CLI does not exist.
 
-- [ ] **Step 3: Add the focused Community test command**
+- [ ] **Step 3: Implement minimal metadata validation**
 
-Add to `package.json` scripts:
+Create `scripts/verify-community-metadata.mjs`:
+
+```js
+import { existsSync, readFileSync } from 'node:fs';
+import path from 'node:path';
+import { pathToFileURL } from 'node:url';
+
+const SEMVER = /^\d+\.\d+\.\d+$/;
+const SUPPORT_HOSTS = new Set([
+  'buymeacoffee.com',
+  'github.com',
+  'ko-fi.com',
+  'patreon.com'
+]);
+const DISCLOSURES = [
+  ['OpenAI account and API-key requirement', /OpenAI API account with API key/i],
+  ['paid API use', /OpenAI API is a paid service/i],
+  ['OpenAI network destination', /api\.openai\.com/i],
+  ['audio transmission', /Audio data is sent to OpenAI for transcription/i],
+  ['external-file handling', /Files selected outside the vault are copied/i],
+  ['local secret storage', /saved only when Electron safeStorage is available/i],
+  ['absence of telemetry', /No telemetry or usage data is collected/i]
+];
+
+function fail(category, message) {
+  throw new Error(`[${category}] ${message}`);
+}
+
+function readJson(filePath) {
+  try {
+    return JSON.parse(readFileSync(filePath, 'utf8'));
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    fail('metadata', `Cannot read ${filePath}: ${message}`);
+  }
+}
+
+export function verifyCommunityMetadata(repositoryRoot = process.cwd()) {
+  const root = path.resolve(repositoryRoot);
+  const manifest = readJson(path.join(root, 'manifest.json'));
+  const packageJson = readJson(path.join(root, 'package.json'));
+  const versions = readJson(path.join(root, 'versions.json'));
+
+  if (!SEMVER.test(manifest.version ?? '')) {
+    fail('metadata', `Expected semantic manifest version; found ${String(manifest.version)}.`);
+  }
+  if (packageJson.version !== manifest.version) {
+    fail(
+      'metadata',
+      `package.json version ${String(packageJson.version)} does not match manifest ${manifest.version}.`
+    );
+  }
+  if (versions[manifest.version] !== manifest.minAppVersion) {
+    fail(
+      'metadata',
+      `versions.json[${manifest.version}] must equal minAppVersion ${String(manifest.minAppVersion)}.`
+    );
+  }
+  if (
+    manifest.id !== 'ai-transcriber'
+    || !/^[a-z0-9-]+$/.test(manifest.id)
+    || manifest.id.includes('obsidian')
+  ) {
+    fail('metadata', `Invalid plugin id: ${String(manifest.id)}.`);
+  }
+  if (
+    typeof manifest.description !== 'string'
+    || manifest.description.length > 250
+    || !/^(Transcribe|Generate|Import|Sync|Open)\b/.test(manifest.description)
+    || /^(This is|This plugin)\b/i.test(manifest.description)
+    || !manifest.description.endsWith('.')
+  ) {
+    fail('metadata', `Invalid Community description: ${String(manifest.description)}.`);
+  }
+  if (!SEMVER.test(manifest.minAppVersion ?? '')) {
+    fail('metadata', `Invalid minAppVersion: ${String(manifest.minAppVersion)}.`);
+  }
+  if (manifest.isDesktopOnly !== true) {
+    fail('metadata', 'isDesktopOnly must remain true for Electron and desktop file access.');
+  }
+
+  let fundingUrl;
+  try {
+    fundingUrl = new URL(manifest.fundingUrl);
+  } catch {
+    fail('metadata', `Invalid fundingUrl: ${String(manifest.fundingUrl)}.`);
+  }
+  if (fundingUrl.protocol !== 'https:' || !SUPPORT_HOSTS.has(fundingUrl.hostname)) {
+    fail('metadata', `fundingUrl is not a recognized support destination: ${fundingUrl.href}.`);
+  }
+
+  const lockfilePath = path.join(root, 'package-lock.json');
+  if (!existsSync(lockfilePath)) {
+    fail('metadata', `Missing committed lockfile: ${lockfilePath}.`);
+  }
+
+  const readmePath = path.join(root, 'README.md');
+  const readme = readFileSync(readmePath, 'utf8');
+  for (const [label, pattern] of DISCLOSURES) {
+    if (!pattern.test(readme)) {
+      fail('disclosure', `README is missing ${label}.`);
+    }
+  }
+
+  return { version: manifest.version };
+}
+
+const invokedPath = process.argv[1];
+if (invokedPath && import.meta.url === pathToFileURL(invokedPath).href) {
+  try {
+    const result = verifyCommunityMetadata(process.argv[2] ?? process.cwd());
+    process.stdout.write(`Verified Community metadata ${result.version}.\n`);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    process.stderr.write(`${message}\n`);
+    process.exitCode = 1;
+  }
+}
+```
+
+Add scripts:
 
 ```json
     "test:community": "jest tests/community --runInBand",
+    "verify:metadata": "node scripts/verify-community-metadata.mjs",
 ```
 
-- [ ] **Step 4: Run focused verification and verify GREEN**
+- [ ] **Step 4: Verify GREEN on fixtures and repository**
 
 Run:
 
 ```bash
 npm run test:community
+npm run verify:metadata
 ```
 
-Expected: `CommunityToolingConfig.test.ts` and `CommunityMetadata.test.ts` both pass without network access.
+Expected: all fixture cases pass and the repository reports version 0.10.1.
 
-- [ ] **Step 5: Commit the metadata contracts**
+- [ ] **Step 5: Commit**
 
 ```bash
-git add tests/community/CommunityMetadata.test.ts package.json
-git commit -m "test: guard Community metadata disclosures"
+git add scripts/verify-community-metadata.mjs tests/community/CommunityMetadataVerifier.test.ts package.json
+git commit -m "test: verify Community metadata disclosures"
 ```
 
 ---
 
-### Task 3: Verify the exact three-file Community release boundary
+### Task 3: Add a tested exact release verifier
 
 **Files:**
 - Create: `scripts/verify-community-release.mjs`
 - Create: `tests/community/CommunityReleaseVerifier.test.ts`
-- Modify: `tests/community/CommunityToolingConfig.test.ts`
-- Modify: `package.json:7-25`
+- Modify: `package.json`
 
 **Interfaces:**
-- Consumes: an optional repository root argument and `<root>/manifest.json`.
-- Produces: `verifyCommunityRelease(repositoryRoot: string): { version: string; releaseDir: string }` and CLI command `node scripts/verify-community-release.mjs [repository-root]`.
+- Produces: `verifyCommunityRelease(root?: string): { version: string; releaseDir: string }`.
+- CLI: `node scripts/verify-community-release.mjs [repository-root]`.
 
-- [ ] **Step 1: Extend the tooling contract before adding the verifier**
-
-Add this test to `tests/community/CommunityToolingConfig.test.ts`:
-
-```ts
-  it('exposes the deterministic Community release verifier', () => {
-    expect(packageJson.scripts['verify:community']).toBe(
-      'node scripts/verify-community-release.mjs'
-    );
-  });
-```
+- [ ] **Step 1: Write failing release behavior tests**
 
 Create `tests/community/CommunityReleaseVerifier.test.ts`:
 
@@ -357,40 +460,30 @@ interface Fixture {
   releaseDir: string;
 }
 
-const verifierPath = join(
-  process.cwd(),
-  'scripts',
-  'verify-community-release.mjs'
-);
-const fixtureRoots: string[] = [];
+const verifierPath = join(process.cwd(), 'scripts', 'verify-community-release.mjs');
+const roots: string[] = [];
 
 function createFixture(): Fixture {
-  const root = mkdtempSync(join(tmpdir(), 'ai-transcriber-community-'));
+  const root = mkdtempSync(join(tmpdir(), 'ai-transcriber-release-'));
   const releaseDir = join(root, 'build', '1.2.3', 'release');
   const manifest = '{"version":"1.2.3"}\n';
 
-  fixtureRoots.push(root);
+  roots.push(root);
   mkdirSync(releaseDir, { recursive: true });
   writeFileSync(join(root, 'manifest.json'), manifest);
   writeFileSync(join(releaseDir, 'manifest.json'), manifest);
   writeFileSync(join(releaseDir, 'main.js'), "'use strict';\n");
-  writeFileSync(
-    join(releaseDir, 'styles.css'),
-    '.ai-transcriber-test { display: block; }\n'
-  );
-
+  writeFileSync(join(releaseDir, 'styles.css'), '.ai-transcriber-test { display: block; }\n');
   return { root, releaseDir };
 }
 
-function runVerifier(root: string) {
-  return spawnSync(process.execPath, [verifierPath, root], {
-    encoding: 'utf8'
-  });
+function run(root: string) {
+  return spawnSync(process.execPath, [verifierPath, root], { encoding: 'utf8' });
 }
 
 afterEach(() => {
-  while (fixtureRoots.length > 0) {
-    const root = fixtureRoots.pop();
+  while (roots.length > 0) {
+    const root = roots.pop();
     if (root) {
       rmSync(root, { recursive: true, force: true });
     }
@@ -400,7 +493,7 @@ afterEach(() => {
 describe('Community release verifier', () => {
   it('accepts the exact three-file release', () => {
     const fixture = createFixture();
-    const result = runVerifier(fixture.root);
+    const result = run(fixture.root);
 
     expect(result.status).toBe(0);
     expect(result.stdout).toContain('Verified Community release 1.2.3');
@@ -411,7 +504,7 @@ describe('Community release verifier', () => {
     const fixture = createFixture();
     rmSync(fixture.releaseDir, { recursive: true });
 
-    const result = runVerifier(fixture.root);
+    const result = run(fixture.root);
     expect(result.status).toBe(1);
     expect(result.stderr).toContain('Cannot read release directory');
   });
@@ -419,15 +512,13 @@ describe('Community release verifier', () => {
   it('rejects missing and extra release entries', () => {
     const missingFixture = createFixture();
     rmSync(join(missingFixture.releaseDir, 'styles.css'));
-
-    const missing = runVerifier(missingFixture.root);
+    const missing = run(missingFixture.root);
     expect(missing.status).toBe(1);
     expect(missing.stderr).toContain('Expected exactly');
 
     const extraFixture = createFixture();
     writeFileSync(join(extraFixture.releaseDir, 'fvad.wasm'), 'unexpected');
-
-    const extra = runVerifier(extraFixture.root);
+    const extra = run(extraFixture.root);
     expect(extra.status).toBe(1);
     expect(extra.stderr).toContain('fvad.wasm');
   });
@@ -436,56 +527,49 @@ describe('Community release verifier', () => {
     const fixture = createFixture();
     writeFileSync(join(fixture.releaseDir, 'styles.css'), '');
 
-    const result = runVerifier(fixture.root);
+    const result = run(fixture.root);
     expect(result.status).toBe(1);
     expect(result.stderr).toContain('regular non-empty file');
   });
 
-  it('rejects a built manifest that differs from the repository manifest', () => {
+  it('rejects a mismatched built manifest', () => {
     const fixture = createFixture();
-    writeFileSync(
-      join(fixture.releaseDir, 'manifest.json'),
-      '{"version":"1.2.4"}\n'
-    );
+    writeFileSync(join(fixture.releaseDir, 'manifest.json'), '{"version":"1.2.4"}\n');
 
-    const result = runVerifier(fixture.root);
+    const result = run(fixture.root);
     expect(result.status).toBe(1);
     expect(result.stderr).toContain('does not match repository manifest');
   });
 
-  it('rejects a source-map reference in main.js', () => {
+  it('rejects a source-map reference', () => {
     const fixture = createFixture();
     const mainPath = join(fixture.releaseDir, 'main.js');
     const main = readFileSync(mainPath, 'utf8');
     writeFileSync(mainPath, `${main}//# sourceMappingURL=main.js.map\n`);
 
-    const result = runVerifier(fixture.root);
+    const result = run(fixture.root);
     expect(result.status).toBe(1);
     expect(result.stderr).toContain('sourceMappingURL');
   });
 });
 ```
 
-- [ ] **Step 2: Run focused tests and verify RED**
+- [ ] **Step 2: Verify RED**
 
 Run:
 
 ```bash
-npm run test:community
+npm test -- --runTestsByPath tests/community/CommunityReleaseVerifier.test.ts --runInBand
 ```
 
-Expected: FAIL because `verify:community` is undefined and the verifier CLI file does not exist; the release-verifier success test observes a non-zero process status.
+Expected: FAIL because the release verifier does not exist.
 
-- [ ] **Step 3: Implement the dependency-free verifier**
+- [ ] **Step 3: Implement release verification**
 
-Create `scripts/verify-community-release.mjs`:
+Create `scripts/verify-community-release.mjs` with:
 
 ```js
-import {
-  readFileSync,
-  readdirSync,
-  statSync
-} from 'node:fs';
+import { readFileSync, readdirSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 
@@ -495,32 +579,10 @@ function fail(category, message) {
   throw new Error(`[${category}] ${message}`);
 }
 
-function readManifest(manifestPath) {
-  let manifest;
-
-  try {
-    manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    fail('metadata', `Cannot read ${manifestPath}: ${message}`);
-  }
-
-  if (
-    typeof manifest !== 'object'
-    || manifest === null
-    || typeof manifest.version !== 'string'
-    || !/^\d+\.\d+\.\d+$/.test(manifest.version)
-  ) {
-    fail('metadata', `Expected a semantic version in ${manifestPath}.`);
-  }
-
-  return manifest;
-}
-
 export function verifyCommunityRelease(repositoryRoot = process.cwd()) {
   const root = path.resolve(repositoryRoot);
   const sourceManifestPath = path.join(root, 'manifest.json');
-  const manifest = readManifest(sourceManifestPath);
+  const manifest = JSON.parse(readFileSync(sourceManifestPath, 'utf8'));
   const releaseDir = path.join(root, 'build', manifest.version, 'release');
 
   let entries;
@@ -531,39 +593,30 @@ export function verifyCommunityRelease(repositoryRoot = process.cwd()) {
     fail('packaging', `Cannot read release directory ${releaseDir}: ${message}`);
   }
 
-  const observedNames = entries.map((entry) => entry.name).sort();
-  const expectedNames = [...COMMUNITY_FILES].sort();
-
-  if (JSON.stringify(observedNames) !== JSON.stringify(expectedNames)) {
+  const observed = entries.map((entry) => entry.name).sort();
+  const expected = [...COMMUNITY_FILES].sort();
+  if (JSON.stringify(observed) !== JSON.stringify(expected)) {
     fail(
       'packaging',
-      `Expected exactly ${expectedNames.join(', ')}; found ${observedNames.join(', ') || '(empty)'}.`
+      `Expected exactly ${expected.join(', ')}; found ${observed.join(', ') || '(empty)'}.`
     );
   }
 
-  for (const expectedName of expectedNames) {
-    const entry = entries.find((candidate) => candidate.name === expectedName);
-    const filePath = path.join(releaseDir, expectedName);
-
+  for (const name of expected) {
+    const entry = entries.find((candidate) => candidate.name === name);
+    const filePath = path.join(releaseDir, name);
     if (!entry?.isFile() || statSync(filePath).size === 0) {
       fail('packaging', `Expected regular non-empty file: ${filePath}.`);
     }
   }
 
-  const sourceManifest = readFileSync(sourceManifestPath);
   const builtManifestPath = path.join(releaseDir, 'manifest.json');
-  const builtManifest = readFileSync(builtManifestPath);
-
-  if (!sourceManifest.equals(builtManifest)) {
-    fail(
-      'metadata',
-      `Built manifest does not match repository manifest: ${builtManifestPath}.`
-    );
+  if (!readFileSync(sourceManifestPath).equals(readFileSync(builtManifestPath))) {
+    fail('metadata', `Built manifest does not match repository manifest: ${builtManifestPath}.`);
   }
 
   const mainPath = path.join(releaseDir, 'main.js');
-  const main = readFileSync(mainPath, 'utf8');
-  if (/[#@]\s*sourceMappingURL\s*=/.test(main)) {
+  if (/[#@]\s*sourceMappingURL\s*=/.test(readFileSync(mainPath, 'utf8'))) {
     fail('packaging', `main.js contains a sourceMappingURL reference: ${mainPath}.`);
   }
 
@@ -574,9 +627,7 @@ const invokedPath = process.argv[1];
 if (invokedPath && import.meta.url === pathToFileURL(invokedPath).href) {
   try {
     const result = verifyCommunityRelease(process.argv[2] ?? process.cwd());
-    process.stdout.write(
-      `Verified Community release ${result.version}: ${result.releaseDir}\n`
-    );
+    process.stdout.write(`Verified Community release ${result.version}: ${result.releaseDir}\n`);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     process.stderr.write(`${message}\n`);
@@ -585,13 +636,14 @@ if (invokedPath && import.meta.url === pathToFileURL(invokedPath).href) {
 }
 ```
 
-Add to `package.json` scripts:
+Add scripts:
 
 ```json
-    "verify:community": "node scripts/verify-community-release.mjs",
+    "verify:release": "node scripts/verify-community-release.mjs",
+    "verify:community": "npm run verify:metadata && npm run verify:release",
 ```
 
-- [ ] **Step 4: Run focused tests and the real production verifier**
+- [ ] **Step 4: Verify GREEN**
 
 Run:
 
@@ -601,69 +653,40 @@ npm run build
 npm run verify:community
 ```
 
-Expected: all Community suites pass; the production build succeeds; the verifier reports version 0.10.1 and the versioned `release/` directory.
+Expected: all fixture tests pass; real metadata and exact versioned release pass.
 
-- [ ] **Step 5: Commit the release verifier**
+- [ ] **Step 5: Commit**
 
 ```bash
-git add scripts/verify-community-release.mjs tests/community/CommunityReleaseVerifier.test.ts tests/community/CommunityToolingConfig.test.ts package.json
+git add scripts/verify-community-release.mjs tests/community/CommunityReleaseVerifier.test.ts package.json
 git commit -m "test: verify Community release artifacts"
 ```
 
 ---
 
-### Task 4: Compose one deterministic Community quality gate
+### Task 4: Compose the deterministic release gate
 
 **Files:**
-- Modify: `tests/community/CommunityToolingConfig.test.ts`
-- Modify: `package.json:7-30`
+- Modify: `package.json`
 
 **Interfaces:**
-- Consumes: `lint`, `build`, `verify:community`, `lint:artifacts`, `typecheck:test`, and Jest.
-- Produces: `check:community` as the deterministic release gate, `check` as its developer alias, `build:release` as its release alias, and separate `audit:production`.
+- Produces: `check:community`, `check`, `build:release`, `lint:artifacts`, and `audit:production`.
 
-- [ ] **Step 1: Add failing command-composition assertions**
-
-Append these tests to `tests/community/CommunityToolingConfig.test.ts`:
-
-```ts
-  it('lints generated JavaScript only after a build', () => {
-    expect(packageJson.scripts['lint:artifacts']).toBe(
-      'eslint "build/**/*.js" --max-warnings=0'
-    );
-  });
-
-  it('composes one deterministic Community gate', () => {
-    expect(packageJson.scripts['check:community']).toBe(
-      'npm run lint && npm run build && npm run verify:community && '
-      + 'npm run lint:artifacts && npm run typecheck:test && '
-      + 'npm test -- --runInBand --coverage'
-    );
-    expect(packageJson.scripts['check']).toBe('npm run check:community');
-    expect(packageJson.scripts['build:release']).toBe('npm run check:community');
-  });
-
-  it('keeps the production audit separate from deterministic checks', () => {
-    expect(packageJson.scripts['audit:production']).toBe(
-      'npm audit --omit=dev --audit-level=high'
-    );
-    expect(packageJson.scripts['check:community']).not.toContain('audit');
-  });
-```
-
-- [ ] **Step 2: Run the tooling suite and verify RED**
+- [ ] **Step 1: Verify missing command behavior**
 
 Run:
 
 ```bash
-npm test -- --runTestsByPath tests/community/CommunityToolingConfig.test.ts --runInBand
+npm run check:community
 ```
 
-Expected: FAIL because `lint:artifacts`, `check:community`, and `audit:production` are absent and the existing `check`/`build:release` commands do not match.
+Expected: npm exits non-zero because `check:community` is not defined.
 
-- [ ] **Step 3: Compose the package scripts**
+This package-script composition is a configuration TDD exception authorized by the user's instruction to self-review the plan and proceed. Its observable command behavior is verified before and after editing; no exact-source test is committed.
 
-Set the relevant `package.json` scripts to:
+- [ ] **Step 2: Add exact command composition**
+
+Set:
 
 ```json
     "build:release": "npm run check:community",
@@ -673,9 +696,7 @@ Set the relevant `package.json` scripts to:
     "check:community": "npm run lint && npm run build && npm run verify:community && npm run lint:artifacts && npm run typecheck:test && npm test -- --runInBand --coverage"
 ```
 
-Keep all focused test and long-form scripts unchanged.
-
-- [ ] **Step 4: Run the composed gate and verify GREEN**
+- [ ] **Step 3: Verify the composed behavior**
 
 Run:
 
@@ -683,85 +704,29 @@ Run:
 npm run check:community
 ```
 
-Expected: official source lint passes with zero warnings; build and exact release verification pass; generated JavaScript lint passes; test TypeScript passes; all Jest suites pass with coverage.
+Expected: official lint, build, metadata/release verification, generated JS lint, test type-check, and all Jest suites/coverage pass.
 
-- [ ] **Step 5: Commit the composed gate**
+- [ ] **Step 4: Commit**
 
 ```bash
-git add tests/community/CommunityToolingConfig.test.ts package.json
+git add package.json
 git commit -m "chore: compose Community quality gate"
 ```
 
 ---
 
-### Task 5: Run the gate on pushes, pull requests, and tag releases
+### Task 5: Reuse the gate in push/PR and release workflows
 
 **Files:**
-- Create: `tests/community/CommunityWorkflowContracts.test.ts`
 - Create: `.github/workflows/quality.yml`
-- Modify: `.github/workflows/release.yml:1-85`
+- Modify: `.github/workflows/release.yml`
 
 **Interfaces:**
-- Consumes: `npm run check:community`, `npm run audit:production`, and `build/<version>/release/*`.
-- Produces: Node.js 20/22/24 quality matrix, one production-audit job, and a tag release that uploads and attests only verified files.
+- Consumes: `check:community`, `audit:production`, and `build/<version>/release/*`.
 
-- [ ] **Step 1: Write failing workflow contracts**
+GitHub Actions YAML is a configuration TDD exception. The commands it invokes are exercised locally, and the YAML is compared with Obsidian's current official sample without adding a source-text change-detector test or a new parser dependency.
 
-Create `tests/community/CommunityWorkflowContracts.test.ts`:
-
-```ts
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
-
-function source(path: string): string {
-  return readFileSync(join(process.cwd(), path), 'utf8');
-}
-
-describe('Community workflow contracts', () => {
-  it('runs deterministic checks on the official sample Node.js matrix', () => {
-    const quality = source('.github/workflows/quality.yml');
-
-    expect(quality).toContain("branches: ['**']");
-    expect(quality).toContain('node-version: [20.x, 22.x, 24.x]');
-    expect(quality).toContain('uses: actions/checkout@v6');
-    expect(quality).toContain('uses: actions/setup-node@v6');
-    expect(quality).toContain('run: npm run check:community');
-  });
-
-  it('runs the production audit once outside the compatibility matrix', () => {
-    const quality = source('.github/workflows/quality.yml');
-    const auditCommands = quality.match(/run: npm run audit:production/g) ?? [];
-
-    expect(quality).toContain('production-audit:');
-    expect(auditCommands).toHaveLength(1);
-  });
-
-  it('reuses the gate and verified release directory for tags', () => {
-    const release = source('.github/workflows/release.yml');
-
-    expect(release).toContain('uses: actions/checkout@v6');
-    expect(release).toContain('uses: actions/setup-node@v6');
-    expect(release).toContain('run: npm run build:release');
-    expect(release).toContain('run: npm run audit:production');
-    expect(release).toContain('run: npm run verify:community');
-    expect(release).toContain('"build/${version}/release/"*');
-    expect(release).toContain('build/${{ steps.manifest.outputs.version }}/release/*');
-    expect(release).not.toContain('"build/${version}/main.js"');
-  });
-});
-```
-
-- [ ] **Step 2: Run the workflow suite and verify RED**
-
-Run:
-
-```bash
-npm test -- --runTestsByPath tests/community/CommunityWorkflowContracts.test.ts --runInBand
-```
-
-Expected: FAIL with `ENOENT` for `.github/workflows/quality.yml`.
-
-- [ ] **Step 3: Add the push and pull-request quality workflow**
+- [ ] **Step 1: Add the current official Node.js matrix**
 
 Create `.github/workflows/quality.yml`:
 
@@ -784,20 +749,16 @@ jobs:
       fail-fast: false
       matrix:
         node-version: [20.x, 22.x, 24.x]
-
     steps:
       - name: Check out repository
         uses: actions/checkout@v6
-
       - name: Set up Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v6
         with:
           node-version: ${{ matrix.node-version }}
           cache: npm
-
       - name: Install dependencies
         run: npm ci
-
       - name: Run Community quality gate
         env:
           OBSIDIAN_PLUGINS_DIR: ''
@@ -806,106 +767,60 @@ jobs:
 
   production-audit:
     runs-on: ubuntu-latest
-
     steps:
       - name: Check out repository
         uses: actions/checkout@v6
-
       - name: Set up Node.js
         uses: actions/setup-node@v6
         with:
           node-version: 24.x
           cache: npm
-
       - name: Install dependencies
         run: npm ci
-
       - name: Audit production dependencies
         run: npm run audit:production
 ```
 
-- [ ] **Step 4: Reuse the verified directory from the release workflow**
+- [ ] **Step 2: Update tag release boundaries**
 
 In `.github/workflows/release.yml`:
 
-- update `actions/checkout` and `actions/setup-node` to `@v6`;
-- set release Node.js to `24.x`;
-- add `run: npm run audit:production` after `build:release`;
-- replace the shell presence checks with `run: npm run verify:community`;
+- use `actions/checkout@v6`, `actions/setup-node@v6`, Node `24.x`;
+- retain tag/manifest equality validation;
+- run `npm run build:release`;
+- run `npm run audit:production`;
+- run `npm run verify:community`;
 - upload `"build/${version}/release/"*`;
-- replace `actions/attest-build-provenance@v2` with `actions/attest@v4`;
-- attest `build/${{ steps.manifest.outputs.version }}/release/*`.
+- attest `build/${{ steps.manifest.outputs.version }}/release/*` with `actions/attest@v4`.
 
-The resulting build/audit/verify/upload section must be:
-
-```yaml
-      - name: Build release artifacts
-        env:
-          OBSIDIAN_PLUGINS_DIR: ''
-          OBSIDIAN_DEPLOY_LOG: ''
-        run: npm run build:release
-
-      - name: Audit production dependencies
-        run: npm run audit:production
-
-      - name: Verify release artifacts
-        run: npm run verify:community
-
-      - name: Create or update GitHub release
-        env:
-          GH_TOKEN: ${{ github.token }}
-        shell: bash
-        run: |
-          version="${{ steps.manifest.outputs.version }}"
-          tag="${GITHUB_REF_NAME}"
-          previous_tag="$(git tag --sort=-v:refname | grep -v "^${tag}$" | head -n 1 || true)"
-          if [ -n "${previous_tag}" ]; then
-            notes="**Full Changelog**: https://github.com/${GITHUB_REPOSITORY}/compare/${previous_tag}...${tag}"
-          else
-            notes="**Full Changelog**: https://github.com/${GITHUB_REPOSITORY}/commits/${tag}"
-          fi
-          if ! gh release view "${tag}" >/dev/null 2>&1; then
-            gh release create "${tag}" --title "${tag}" --notes "${notes}"
-          fi
-          gh release upload "${tag}" "build/${version}/release/"* --clobber
-
-      - name: Attest release artifacts
-        uses: actions/attest@v4
-        with:
-          subject-path: build/${{ steps.manifest.outputs.version }}/release/*
-```
-
-- [ ] **Step 5: Run workflow and repository verification**
+- [ ] **Step 3: Validate workflow commands locally**
 
 Run:
 
 ```bash
-npm run test:community
 npm run check:community
+npm run audit:production
+git diff --check -- .github/workflows/quality.yml .github/workflows/release.yml
 ```
 
-Expected: all Community workflow contracts and the complete deterministic gate pass. No workflow is dispatched locally and no release is created.
+Expected: both commands and whitespace validation pass. Compare both workflows line-by-line with the official sample versions already cited in the design. Do not dispatch or publish them.
 
-- [ ] **Step 6: Commit the workflows**
+- [ ] **Step 4: Commit**
 
 ```bash
-git add tests/community/CommunityWorkflowContracts.test.ts .github/workflows/quality.yml .github/workflows/release.yml
+git add .github/workflows/quality.yml .github/workflows/release.yml
 git commit -m "ci: enforce Community quality gates"
 ```
 
 ---
 
-### Task 6: Remediate safe dependency advisories and document the gate
+### Task 6: Remediate safe advisories and document commands
 
 **Files:**
 - Modify: `package-lock.json`
-- Modify: `CONTRIBUTING.md:5-25`
+- Modify: `CONTRIBUTING.md`
 
-**Interfaces:**
-- Consumes: npm's advisory endpoint and the deterministic `check:community` command.
-- Produces: a production audit with zero high/critical findings, a best-effort clean development audit without forced upgrades, and contributor instructions for both checks.
-
-- [ ] **Step 1: Reproduce the audit boundary before modifying the lockfile**
+- [ ] **Step 1: Reproduce audit scope**
 
 Run:
 
@@ -914,9 +829,9 @@ npm audit --omit=dev --audit-level=high
 npm audit --audit-level=high
 ```
 
-Expected: the production-only command exits 0 with zero vulnerabilities; the full command exits 1 with the current `brace-expansion` and `fast-uri` high-severity development findings.
+Expected: production exits 0; full audit exits 1 for current development-only `brace-expansion` and `fast-uri` findings.
 
-- [ ] **Step 2: Apply only npm's non-breaking lockfile remediation**
+- [ ] **Step 2: Apply non-breaking lockfile remediation**
 
 Run:
 
@@ -924,42 +839,29 @@ Run:
 npm audit fix --package-lock-only --ignore-scripts
 git diff --exit-code -- package.json
 npm ci
-```
-
-Expected: npm updates only `package-lock.json`; `package.json` has no diff; `npm ci` installs the revised lock successfully. Do not run a forced audit fix.
-
-- [ ] **Step 3: Verify both dependency scopes**
-
-Run:
-
-```bash
 npm run audit:production
 npm audit --audit-level=high
 ```
 
-Expected: both commands exit 0. If the full development audit still fails because the fixed version is unavailable within declared non-breaking ranges, stop dependency remediation, do not use `--force`, and report the exact upstream-only finding while continuing to require a clean production audit.
+Expected: `package.json` stays unchanged and both audits pass. If the full audit remains blocked upstream, do not use `--force`; retain only a production-clean result and report the exact dev-only blocker.
 
-- [ ] **Step 4: Document deterministic and network-dependent checks**
+- [ ] **Step 3: Update contributor instructions**
 
-Replace the numbered development setup checks in `CONTRIBUTING.md` with:
+Document:
 
 ```markdown
 1. Install exact dependencies with `npm ci`.
-2. Run `npm run build` to type-check and build the plugin during development.
-3. Run `npm run test:community` while changing manifest, disclosures, packaging, or workflows.
-4. Run `npm run check:community` before opening a pull request. This deterministic gate runs official Obsidian lint, production and test type-checks, the production build, release-artifact verification, generated-artifact lint, and the complete Jest suite.
-5. Run `npm run audit:production` with network access before preparing a release.
+2. Run `npm run build` during development.
+3. Run `npm run test:community` while changing metadata, disclosures, packaging, or workflows.
+4. Run `npm run check:community` before a pull request.
+5. Run `npm run audit:production` with network access before a release.
+
+`npm run check:community` is intentionally network-independent. A network error during `npm run audit:production` is not a clean audit.
 ```
 
-Add this paragraph below the setup list:
+Keep existing privacy and `.env` guidance.
 
-```markdown
-`npm run check:community` is intentionally network-independent. A network error during `npm run audit:production` is not a clean audit and must be resolved before release.
-```
-
-Keep the existing `.env`, test-data, pull-request, and privacy guidance unchanged.
-
-- [ ] **Step 5: Run the complete gate after dependency remediation**
+- [ ] **Step 4: Verify and commit**
 
 Run:
 
@@ -968,100 +870,46 @@ npm run check:community
 npm run test:long-form:verifier
 ```
 
-Expected: all deterministic checks pass, including all existing and new tests; the dependency-free long-form verifier tests also pass.
-
-- [ ] **Step 6: Commit dependency and contributor updates**
-
-If `package-lock.json` changed and both audits pass:
+Then commit `package-lock.json` if changed plus `CONTRIBUTING.md`:
 
 ```bash
 git add package-lock.json CONTRIBUTING.md
 git commit -m "chore: refresh audited development dependencies"
 ```
 
-If npm made no lockfile change, commit only the documentation:
-
-```bash
-git add CONTRIBUTING.md
-git commit -m "docs: document Community release checks"
-```
-
 ---
 
-### Task 7: Full Obsidian policy and scope verification
+### Task 7: Final policy and scope verification
 
 **Files:**
-- Inspect: all files changed by Tasks 1-6
-- Inspect: `obsidian-developer-docs/en/Obsidian October plugin self-critique checklist.md`
-- Inspect: `docs/superpowers/specs/2026-07-31-obsidian-community-scorecard-gates-design.md`
+- Inspect all Task 1-6 changes and the canonical October checklist.
 
-**Interfaces:**
-- Consumes: the complete Community quality-gate implementation.
-- Produces: fresh completion evidence, a clean worktree, and no external publication.
-
-- [ ] **Step 1: Re-read the Obsidian checklist from the canonical checkout**
-
-Run:
+- [ ] **Step 1: Re-read policy checklist**
 
 ```bash
 sed -n '1,220p' /Users/hidetoshi/Documents/Projects/obsidian-ai-transcriber/public/obsidian-developer-docs/en/Obsidian\ October\ plugin\ self-critique\ checklist.md
 ```
 
-Expected: confirm no new default hotkey, global app access, inline style, Node/mobile mismatch, telemetry, undisclosed network use, unpinned lockfile, or release artifact was introduced.
-
-- [ ] **Step 2: Run final deterministic verification**
-
-Run:
+- [ ] **Step 2: Run final deterministic and audit verification**
 
 ```bash
 npm run check:community
 npm run test:long-form:verifier
+npm run audit:production
+npm audit --audit-level=high
 git diff --check main...HEAD
 ```
 
-Expected: every command exits 0; Jest reports no failed suites/tests; the release verifier reports the current manifest version; `git diff --check` produces no output.
-
-- [ ] **Step 3: Run final dependency verification**
-
-Run:
-
-```bash
-npm run audit:production
-npm audit --audit-level=high
-```
-
-Expected: production audit exits 0 with zero high/critical findings. The full audit also exits 0 after the safe lockfile update; if an upstream development-only blocker remains, report it separately and do not represent it as a shipped vulnerability.
-
-- [ ] **Step 4: Inspect scope and generated boundaries**
-
-Run:
+- [ ] **Step 3: Inspect exact scope**
 
 ```bash
 git status --short --branch
 git diff --stat main...HEAD
-git diff main...HEAD -- package.json package-lock.json eslint.config.mjs tsconfig.test.json tests/community scripts/verify-community-release.mjs .github/workflows CONTRIBUTING.md
 find build/0.10.1/release -maxdepth 1 -type f -print
 ```
 
-Confirm:
+Confirm exactly three release files, no runtime dependency addition, no GPT Transcribe behavior change during hardening, no private/generated data tracked, and no unrelated edit.
 
-- the release directory lists exactly `main.js`, `manifest.json`, and `styles.css`;
-- no root `main.js`, source map, `fvad.wasm`, `.env`, log, transcript, audio, or vault data is tracked;
-- no runtime dependency was added;
-- no GPT Transcribe request, model, storage, or UI behavior changed in this hardening phase;
-- no unrelated file is modified or staged.
+- [ ] **Step 4: Report without publishing**
 
-- [ ] **Step 5: Report completion without publishing**
-
-Report:
-
-- design and plan commits;
-- implementation commits and files;
-- official lint version and zero-warning result;
-- production/test TypeScript result;
-- final Jest suite/test counts;
-- exact release artifact list;
-- production and full audit results;
-- Node.js CI matrix;
-- current worktree status;
-- that no paid API request, release, submission, or push occurred.
+Report commits, test counts, lint/type-check results, audit results, three release files, Node.js CI matrix, clean worktree, and that no paid request, release, submission, or push occurred.
