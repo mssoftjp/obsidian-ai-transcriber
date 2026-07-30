@@ -181,6 +181,10 @@ export const TRANSCRIPTION_MODEL_PROFILES = [
 
 export type TranscriptionModel = (typeof TRANSCRIPTION_MODEL_PROFILES)[number]['id'];
 export type TranscriptionModelProfile = (typeof TRANSCRIPTION_MODEL_PROFILES)[number];
+export type OpenAIFileTranscriptionModel = Extract<
+	TranscriptionModelProfile,
+	{ workflow: 'openai-file' }
+>['id'];
 
 const profilesById = new Map<string, TranscriptionModelProfile>(
 	TRANSCRIPTION_MODEL_PROFILES.map(profile => [profile.id, profile])

@@ -1,15 +1,21 @@
 /**
  * OpenAI GPT-4o Transcribe API Configuration
- * Models: gpt-4o-transcribe, gpt-4o-mini-transcribe
+ * File-transcription models are declared in TranscriptionModelProfiles.
  *
- * Reference: https://platform.openai.com/docs/guides/speech-to-text
+ * Reference: https://developers.openai.com/api/docs/guides/speech-to-text
  */
 
 import { PROMPT_CONSTANTS } from '../constants';
+import {
+	DEFAULT_TRANSCRIPTION_MODEL,
+	getTranscriptionModelProfile
+} from '../TranscriptionModelProfiles';
+
+import type { OpenAIFileTranscriptionModel } from '../TranscriptionModelProfiles';
 
 export interface GPT4oTranscribeParams {
 	/** Model to use */
-	model: 'gpt-4o-transcribe' | 'gpt-4o-mini-transcribe';
+	model: OpenAIFileTranscriptionModel;
 
 	/** The audio file to transcribe */
 	file: File | Blob;
@@ -40,17 +46,6 @@ export interface GPT4oTranscribeParams {
 export interface GPT4oTranscribeConfig {
 	endpoint: string;
 
-	models: {
-		'gpt-4o-transcribe': {
-			costPerMinute: number;
-			displayName: string;
-		};
-		'gpt-4o-mini-transcribe': {
-			costPerMinute: number;
-			displayName: string;
-		};
-	};
-
 	limitations: {
 		maxFileSizeMB: number;
 		supportedFormats: string[];
@@ -75,17 +70,6 @@ export interface GPT4oTranscribeConfig {
 
 export const GPT4O_TRANSCRIBE_CONFIG: GPT4oTranscribeConfig = {
 	endpoint: 'https://api.openai.com/v1/audio/transcriptions',
-
-	models: {
-		'gpt-4o-transcribe': {
-			costPerMinute: 0.006,
-			displayName: 'GPT-4o Transcribe'
-		},
-		'gpt-4o-mini-transcribe': {
-			costPerMinute: 0.003,
-			displayName: 'GPT-4o Mini Transcribe'
-		}
-	},
 
 	limitations: {
 		maxFileSizeMB: 25, // Same as Whisper
@@ -123,15 +107,27 @@ export const GPT4O_TRANSCRIBE_CONFIG: GPT4oTranscribeConfig = {
 	}
 };
 
-export interface GPT4oTranscribeRequestPayload {
+interface GPT4oTranscribeRequestPayloadBase {
 	model: string;
 	response_format?: string;
 	temperature: number;
-	language?: string;
 	prompt?: string;
 	stream?: boolean;
 	include?: string[];
 }
+
+type TranscriptionLanguagePayload =
+	| {
+		language?: string;
+		languages?: never;
+	}
+	| {
+		language?: never;
+		languages?: string[];
+	};
+
+export type GPT4oTranscribeRequestPayload =
+	GPT4oTranscribeRequestPayloadBase & TranscriptionLanguagePayload;
 
 /**
  * Build GPT-4o Transcribe API request parameters
@@ -144,8 +140,14 @@ export function buildGPT4oTranscribeRequest(
 	if (!params.model) {
 		throw new Error('[GPT4oTranscribeConfig] Model parameter is required');
 	}
+	const profile = getTranscriptionModelProfile(params.model);
+	if (profile.workflow !== 'openai-file') {
+		throw new Error(
+			`[GPT4oTranscribeConfig] Model "${params.model}" does not use the OpenAI file transcription workflow`
+		);
+	}
 	const result: GPT4oTranscribeRequestPayload = {
-		model: params.model,
+		model: profile.apiModel,
 		temperature: config.defaults.temperature
 	};
 
@@ -155,9 +157,12 @@ export function buildGPT4oTranscribeRequest(
 		result.response_format = params.response_format;
 	}
 	// Always use the fixed temperature from config
-	// Always include language parameter if specified (not 'auto')
 	if (params.language && params.language !== 'auto') {
-		result.language = params.language;
+		if (profile.request.languageField === 'languages') {
+			result.languages = [params.language];
+		} else {
+			result.language = params.language;
+		}
 	}
 
 	// The API prompt is optional and supports continuation text directly. Keep
@@ -237,7 +242,14 @@ export function validateGPT4oTranscribeFile(
  */
 export function calculateGPT4oTranscribeCost(
 	durationMinutes: number,
-	model: 'gpt-4o-transcribe' | 'gpt-4o-mini-transcribe' = 'gpt-4o-transcribe'
+	model?: OpenAIFileTranscriptionModel
 ): number {
-	return durationMinutes * GPT4O_TRANSCRIBE_CONFIG.models[model].costPerMinute;
+	const selectedModel = model ?? DEFAULT_TRANSCRIPTION_MODEL;
+	const profile = getTranscriptionModelProfile(selectedModel);
+	if (profile.workflow !== 'openai-file') {
+		throw new Error(
+			`[GPT4oTranscribeConfig] Model "${selectedModel}" does not use the OpenAI file transcription workflow`
+		);
+	}
+	return durationMinutes * profile.pricing.costPerMinute;
 }

@@ -8,6 +8,7 @@ import {
 	buildGPT4oTranscribeRequest
 } from '../../../config/openai/GPT4oTranscribeConfig';
 import { DEFAULT_REQUEST_CONFIG } from '../../../config/openai/index';
+import { getTranscriptionModelProfile } from '../../../config/TranscriptionModelProfiles';
 import { Logger } from '../../../utils/Logger';
 import { ApiClient } from '../ApiClient';
 
@@ -17,6 +18,7 @@ import type {
 	GPT4oTranscribeParams,
 	GPT4oTranscribeRequestPayload
 } from '../../../config/openai/GPT4oTranscribeConfig';
+import type { OpenAIFileTranscriptionModel } from '../../../config/TranscriptionModelProfiles';
 import type { AudioChunk } from '../../../core/audio/AudioTypes';
 import type {
 	TranscriptionResult,
@@ -26,19 +28,20 @@ import type {
 
 interface GPT4oResponse {
 	text: string;
+	languages?: string[];
 	// GPT-4o doesn't provide detailed segment info in basic JSON format
 }
 
 export class GPT4oClient extends ApiClient {
-	private readonly supportedModels = Object.keys(GPT4O_TRANSCRIBE_CONFIG.models);
+	private readonly model: OpenAIFileTranscriptionModel;
 
-	// Model name mapping
-	private readonly modelMapping: Record<string, string> = {
-		'gpt-4o-transcribe': 'gpt-4o-transcribe',
-		'gpt-4o-mini-transcribe': 'gpt-4o-mini-transcribe'
-	};
-
-	constructor(apiKey: string, private model: string) {
+	constructor(apiKey: string, model: string) {
+		const profile = getTranscriptionModelProfile(model);
+		if (profile.workflow !== 'openai-file') {
+			throw new Error(
+				`[GPT4oClient] Model "${model}" does not use the OpenAI file transcription workflow`
+			);
+		}
 		const baseUrl = GPT4O_TRANSCRIBE_CONFIG.endpoint.split('/audio')[0] ?? GPT4O_TRANSCRIBE_CONFIG.endpoint;
 		super({
 			baseUrl, // Extract base URL
@@ -48,13 +51,7 @@ export class GPT4oClient extends ApiClient {
 			retryDelay: DEFAULT_REQUEST_CONFIG.retryDelayMs
 		});
 
-		// Map model name if needed
-		this.model = this.modelMapping[model] || model;
-
-		if (!this.supportedModels.includes(this.model)) {
-			throw new Error(`Unsupported GPT-4o model: ${model} (mapped to: ${this.model})`);
-		}
-
+		this.model = profile.id;
 		this.logger = Logger.getLogger('GPT4oClient');
 	}
 
@@ -101,7 +98,7 @@ export class GPT4oClient extends ApiClient {
 		formData.append('file', file);
 		const customPrompt = modelOptions?.gpt4o?.customPrompt;
 		const requestInput: Partial<GPT4oTranscribeParams> = {
-			model: this.model as 'gpt-4o-transcribe' | 'gpt-4o-mini-transcribe',
+			model: this.model,
 			response_format: 'json',
 			language: options.language === 'auto' ? 'auto' : options.language,
 			stream: false
@@ -114,17 +111,7 @@ export class GPT4oClient extends ApiClient {
 			requestInput.previousContext = previousContext;
 		}
 		const requestParams = buildGPT4oTranscribeRequest(requestInput, chunk.id === 0 && !previousContext);
-
-		const paramEntries = Object.entries(requestParams) as Array<
-			[keyof GPT4oTranscribeRequestPayload, GPT4oTranscribeRequestPayload[keyof GPT4oTranscribeRequestPayload]]
-		>;
-		paramEntries.forEach(([key, value]) => {
-			if (value === undefined) {
-				return;
-			}
-			const serialized = Array.isArray(value) ? value.join(',') : String(value);
-			formData.append(key, serialized);
-		});
+		this.appendRequestParams(formData, requestParams);
 
 		try {
 			const startTime = performance.now();
@@ -166,6 +153,32 @@ export class GPT4oClient extends ApiClient {
 				success: false,
 				error: error instanceof Error ? error.message : 'Unknown error'
 			};
+		}
+	}
+
+	private appendRequestParams(
+		formData: FormData,
+		params: GPT4oTranscribeRequestPayload
+	): void {
+		formData.append('model', params.model);
+		formData.append('temperature', String(params.temperature));
+		if (params.response_format !== undefined) {
+			formData.append('response_format', params.response_format);
+		}
+		if (params.language !== undefined) {
+			formData.append('language', params.language);
+		}
+		params.languages?.forEach((language) => {
+			formData.append('languages[]', language);
+		});
+		if (params.prompt !== undefined) {
+			formData.append('prompt', params.prompt);
+		}
+		if (params.stream !== undefined) {
+			formData.append('stream', String(params.stream));
+		}
+		if (params.include !== undefined) {
+			formData.append('include', params.include.join(','));
 		}
 	}
 
