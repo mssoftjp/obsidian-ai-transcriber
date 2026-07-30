@@ -37,7 +37,7 @@ import type { AudioChunk } from '../audio/AudioTypes';
 
 export abstract class TranscriptionService {
 	/**
-	 * Model identifier (whisper-1, gpt-4o-transcribe, gpt-4o-mini-transcribe)
+	 * Canonical transcription model profile identifier
 	 */
 	abstract readonly modelId: string;
 

@@ -64,7 +64,10 @@ const typescriptRules = {
   }],
   'import-x/no-duplicates': 'error',
   'import-x/no-mutable-exports': 'error',
-  'import-x/no-cycle': 'off'
+  'import-x/no-cycle': 'off',
+  'obsidianmd/ui/sentence-case-locale-module': ['warn', {
+    ignoreRegex: ['^GPT Transcribe(?:$| \\()']
+  }]
 };
 
 const artifactRules = {

@@ -8,7 +8,8 @@ import {
 } from '../../src/config/TranscriptionModelProfiles';
 import {
 	getAvailableModels,
-	getOpenAIModelConfig
+	getOpenAIModelConfig,
+	WHISPER_CONFIG
 } from '../../src/config/openai';
 
 describe('TranscriptionModelProfiles', () => {
@@ -82,5 +83,9 @@ describe('TranscriptionModelProfiles', () => {
 			type: 'whisper',
 			module: 'whisper.config'
 		});
+	});
+
+	it('keeps selectable-model pricing only in the canonical profiles', () => {
+		expect(WHISPER_CONFIG.limitations).not.toHaveProperty('costPerMinute');
 	});
 });

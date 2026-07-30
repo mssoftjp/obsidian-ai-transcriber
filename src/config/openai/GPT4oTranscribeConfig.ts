@@ -1,5 +1,5 @@
 /**
- * OpenAI GPT-4o Transcribe API Configuration
+ * OpenAI file-transcription API configuration
  * File-transcription models are declared in TranscriptionModelProfiles.
  *
  * Reference: https://developers.openai.com/api/docs/guides/speech-to-text
@@ -130,7 +130,7 @@ export type GPT4oTranscribeRequestPayload =
 	GPT4oTranscribeRequestPayloadBase & TranscriptionLanguagePayload;
 
 /**
- * Build GPT-4o Transcribe API request parameters
+ * Build OpenAI file-transcription API request parameters
  */
 export function buildGPT4oTranscribeRequest(
 	params: Partial<GPT4oTranscribeParams>,
@@ -201,7 +201,7 @@ export function buildGPT4oTranscribeRequest(
 }
 
 /**
- * Validate file for GPT-4o Transcribe API
+ * Validate a file for the OpenAI file-transcription API
  */
 export function validateGPT4oTranscribeFile(
 	file: File | { size: number; name: string },

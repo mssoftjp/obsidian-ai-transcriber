@@ -48,6 +48,16 @@ describe('APITranscriber job ownership', () => {
 		});
 	});
 
+	it('preserves sub-cent GPT Transcribe estimates instead of rounding them to zero', async () => {
+		const app = new App();
+		const transcriber = new APITranscriber(app, structuredClone(DEFAULT_API_SETTINGS));
+		const file = createFile('one-minute-estimate');
+
+		const estimate = await transcriber.estimateCost(file, 0, 60);
+
+		expect(estimate.cost).toBe(0.0045);
+	});
+
 	it('estimates cost from file metadata without reading the audio body', async () => {
 		const app = new App();
 		const readBinary = jest.fn().mockRejectedValue(new Error('audio body should not be read'));

@@ -331,9 +331,7 @@ export class SettingsUIBuilder {
 	static displayAdvancedSettings(_containerEl: HTMLElement, _settings: APITranscriptionSettings, _saveSettings: () => Promise<void>, _refreshDisplay?: () => void): void {
 		// Advanced settings heading removed as requested
 
-		// Chunk duration is now automatically determined by model:
-		// - GPT-4o & GPT-4o Mini: 300 seconds (5 minutes)
-		// - Whisper: 180 seconds (3 minutes)
+		// Chunk duration is derived from the selected profile's processing preset.
 
 		// Chunk info removed as requested (fixed configuration)
 	}

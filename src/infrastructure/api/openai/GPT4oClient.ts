@@ -1,6 +1,6 @@
 /**
- * OpenAI GPT-4o Audio API client implementation
- * Handles GPT-4o-specific API calls with context preservation
+ * OpenAI file-transcription API client implementation
+ * Handles profile-selected transcription models with context preservation
  */
 
 import {
@@ -29,7 +29,7 @@ import type {
 interface GPT4oResponse {
 	text: string;
 	languages?: string[];
-	// GPT-4o doesn't provide detailed segment info in basic JSON format
+	// File-transcription models don't provide detailed segments in basic JSON format.
 }
 
 export class GPT4oClient extends ApiClient {
@@ -56,7 +56,7 @@ export class GPT4oClient extends ApiClient {
 	}
 
 	/**
-	 * Transcribe audio chunk using GPT-4o API
+	 * Transcribe an audio chunk using the OpenAI file-transcription API
 	 */
 	async transcribe(
 		chunk: AudioChunk,
@@ -115,7 +115,7 @@ export class GPT4oClient extends ApiClient {
 
 		try {
 			const startTime = performance.now();
-			this.logger.debug('Sending request to GPT-4o API', {
+			this.logger.debug('Sending request to OpenAI transcription API', {
 				chunkId: chunk.id,
 				model: this.model,
 				hasCustomPrompt: Boolean(customPrompt)
@@ -129,7 +129,7 @@ export class GPT4oClient extends ApiClient {
 			);
 
 			const elapsedTime = performance.now() - startTime;
-			this.logger.debug('GPT-4o API response received', {
+			this.logger.debug('OpenAI transcription API response received', {
 				chunkId: chunk.id,
 				elapsedTime: `${elapsedTime.toFixed(2)}ms`
 			});
@@ -140,7 +140,7 @@ export class GPT4oClient extends ApiClient {
 			if (options.signal?.aborted) {
 				throw error;
 			}
-			this.logger.error('GPT-4o transcription failed', {
+			this.logger.error('OpenAI transcription failed', {
 				chunkId: chunk.id,
 				error: error instanceof Error ? error.message : 'Unknown error'
 			});
@@ -184,7 +184,7 @@ export class GPT4oClient extends ApiClient {
 
 
 	/**
-	 * Parse GPT-4o API response
+	 * Parse an OpenAI file-transcription response
 	 */
 			private parseResponse(response: GPT4oResponse, chunk: AudioChunk): TranscriptionResult {
 				let text = response.text || '';
@@ -198,10 +198,10 @@ export class GPT4oClient extends ApiClient {
 			startTime: chunk.startTime,
 			endTime: chunk.endTime,
 			success: true
-			// GPT-4o doesn't provide segments in basic JSON format
+			// File-transcription models don't provide segments in basic JSON format
 		};
 
-			this.logger.debug('GPT-4o response parsed', {
+			this.logger.debug('OpenAI transcription response parsed', {
 				chunkId: chunk.id,
 				textLength: result.text.length,
 				hasTranscriptTags: extraction.hadTranscriptTags,
@@ -219,7 +219,7 @@ export class GPT4oClient extends ApiClient {
 			await this.get('/models');
 			return true;
 		} catch (error) {
-			this.logger.error('GPT-4o API connection test failed', error);
+			this.logger.error('OpenAI transcription API connection test failed', error);
 			return false;
 		}
 	}
@@ -228,7 +228,7 @@ export class GPT4oClient extends ApiClient {
 	 * Get maximum file size in bytes
 	 */
 	static getMaxFileSize(): number {
-		// Use configured value (25MB for GPT-4o Transcribe)
+		// Use the shared file-transcription endpoint limit.
 		return GPT4O_TRANSCRIBE_CONFIG.limitations.maxFileSizeMB * 1024 * 1024;
 	}
 

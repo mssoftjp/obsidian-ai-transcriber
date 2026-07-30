@@ -186,9 +186,9 @@ const en: TranslationKeys = {
 	},
 
 	// Provider names
-	providers: {
-		openai: 'OpenAI',
-		gptTranscribe: 'GPT Transcribe',
+		providers: {
+			openai: 'OpenAI',
+			gptTranscribe: 'GPT Transcribe',
 		whisper: 'OpenAI whisper',
 		whisperTs: 'OpenAI whisper (with timestamps)',
 		gpt4o: 'GPT-4o transcribe',
@@ -423,7 +423,7 @@ const en: TranslationKeys = {
 			supportedFormats: 'Supported formats include audio (mp3, wav, m4a, flac, aac, ogg) and video (mp4, m4v, mov, avi, mkv, webm).',
 			networkRetry: 'Please check network connection and try again',
 			formatConversion: 'Please convert to wav or mp3 format and try again.',
-			sizeLimit: 'The advanced option supports 20 megabytes per 25 minutes, and the whisper option supports 20 megabytes.',
+			sizeLimit: 'OpenAI transcription uploads are limited to 25 megabytes per file. Larger media is processed in smaller chunks.',
 			debugModeEnable: 'Enable debug mode in settings to view detailed logs'
 		}
 	},

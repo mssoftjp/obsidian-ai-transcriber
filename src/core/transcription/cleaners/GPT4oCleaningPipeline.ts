@@ -4,6 +4,7 @@
  */
 
 import { getModelCleaningStrategy } from '../../../config/ModelCleaningConfig';
+import { DEFAULT_TRANSCRIPTION_MODEL } from '../../../config/TranscriptionModelProfiles';
 
 import { BaseHallucinationCleaner } from './BaseHallucinationCleaner';
 import { ConsecutiveBlockRepeatCleaner } from './ConsecutiveBlockRepeatCleaner';
@@ -37,7 +38,7 @@ export class GPT4oCleaningPipeline extends StandardCleaningPipeline {
 
 	constructor(dictionaryCorrector?: DictionaryCorrector, options: GPT4oPipelineOptions = {}) {
 		const {
-			modelId = 'gpt-4o-mini-transcribe', // Default fallback
+			modelId = DEFAULT_TRANSCRIPTION_MODEL,
 			aggressivePromptCleaning = false,
 			customPrompts = [],
 			enableDetailedLogging = false,

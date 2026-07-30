@@ -4,6 +4,7 @@
  */
 
 import { getModelConfig } from '../../config/ModelProcessingConfig';
+import { getTranscriptionModelProfile } from '../../config/TranscriptionModelProfiles';
 import { ConsecutiveBlockRepeatCleaner } from '../../core/transcription/cleaners';
 import { TranscriptionMerger } from '../../core/transcription/TranscriptionMerger';
 import { TranscriptionStrategy } from '../../core/transcription/TranscriptionStrategy';
@@ -147,7 +148,9 @@ export class WhisperTranscriptionStrategy extends TranscriptionStrategy {
 		}
 
 		let mergedText: string;
-		const isTimestampModel = this.transcriptionService.modelId === 'whisper-1-ts';
+		const isTimestampModel = getTranscriptionModelProfile(
+			this.transcriptionService.modelId
+		).capabilities.timestamps;
 		if (isTimestampModel) {
 			const timestampMergeResults = this.trimCoveredSegmentsForTimestampMerge(results);
 			mergedText = this.merger.mergeWithTimestampsFormatted(timestampMergeResults, {
@@ -244,7 +247,7 @@ export class WhisperTranscriptionStrategy extends TranscriptionStrategy {
 		responseFormat: string;
 		} {
 		// Get chunk duration from model configuration instead of hardcoding
-		const modelConfig = getModelConfig('whisper-1');
+		const modelConfig = getModelConfig(this.transcriptionService.modelId);
 
 		return {
 			chunkDuration: modelConfig.chunkDurationSeconds,

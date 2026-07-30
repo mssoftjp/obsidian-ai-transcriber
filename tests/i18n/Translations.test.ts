@@ -105,4 +105,11 @@ describe('transcription model translations', () => {
 			}
 		}
 	});
+
+	it('keeps size-limit recovery text model-neutral and current', () => {
+		for (const translation of Object.values(translations)) {
+			expect(translation.errors.notices.sizeLimit).toContain('25');
+			expect(translation.errors.notices.sizeLimit).not.toMatch(/GPT-4o|Whisper/i);
+		}
+	});
 });

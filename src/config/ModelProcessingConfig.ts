@@ -5,12 +5,12 @@
  * Based on OpenAI API limitations:
  * - All models: 25MB file size limit
  * - Whisper: Optimized for shorter chunks, supports timestamps and multiple output formats
- * - GPT-4o/mini: Supports longer audio (up to 25 min), json/text output only
+ * - File-transcription profiles: json/text output with local long-audio chunking
  *
  * Chunk sizes are optimized for:
  * - Whisper: Shorter chunks (25-30s) for better accuracy and timestamp precision
- * - GPT-4o: Longer chunks (5-6 min) for better context understanding
- * - GPT-4o-mini: Medium chunks (4-5 min) balancing accuracy and context
+ * - Recorded accurate preset: Longer chunks (4-6 min) for context
+ * - Recorded economy preset: Medium chunks (3-5 min) balancing cost and context
  *
  * This file contains:
  * - Model-specific processing settings (chunk duration, file size limits, etc.)
@@ -210,8 +210,8 @@ export const DEFAULT_TRANSCRIPTION_CONFIG: TranscriptionConfig = {
 
 		'recorded-accurate': {
 			chunkDurationSeconds: 300, // Target: 5 minutes (VAD adjusts within 4-6 min)
-			maxFileSizeMB: 25, // GPT-4o limit is 25MB
-			maxDurationSeconds: 25 * 60, // 25 minutes - OpenAI transcription API limit
+			maxFileSizeMB: 25, // OpenAI file-transcription upload limit
+			maxDurationSeconds: 25 * 60, // Conservative client-side chunking ceiling
 			maxConcurrentChunks: 1, // Sequential processing only
 			rateLimitDelayMs: 0, // No rate limiting for sequential processing
 			// contextWindowSize should cover the entire overlap duration
@@ -247,13 +247,13 @@ export const DEFAULT_TRANSCRIPTION_CONFIG: TranscriptionConfig = {
 					similarityThreshold: 0.78 // Allow small differences in transcription across chunks
 				}
 			}
-			// Note: GPT-4o primarily uses contextWindowSize for continuity, but merging settings still apply for deduplication
+			// Recorded accurate profiles use contextWindowSize for continuity; merging still handles deduplication.
 		},
 
 		'recorded-economy': {
 			chunkDurationSeconds: 240, // Target: 4 minutes (VAD adjusts within 3-5 min)
-			maxFileSizeMB: 25, // Same as GPT-4o (25MB limit)
-			maxDurationSeconds: 25 * 60, // 25 minutes - OpenAI transcription API limit
+			maxFileSizeMB: 25, // OpenAI file-transcription upload limit
+			maxDurationSeconds: 25 * 60, // Conservative client-side chunking ceiling
 			maxConcurrentChunks: 1, // Sequential processing only
 			rateLimitDelayMs: 0, // No rate limiting for sequential processing
 			// contextWindowSize should cover the entire overlap duration
@@ -289,7 +289,7 @@ export const DEFAULT_TRANSCRIPTION_CONFIG: TranscriptionConfig = {
 					similarityThreshold: 0.78 // Allow small differences in transcription across chunks
 				}
 			}
-			// Note: GPT-4o Mini primarily uses contextWindowSize for continuity, but merging settings still apply for deduplication
+			// Recorded economy profiles use contextWindowSize for continuity; merging still handles deduplication.
 		}
 	},
 

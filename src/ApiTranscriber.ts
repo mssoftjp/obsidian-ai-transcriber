@@ -304,11 +304,14 @@ export class APITranscriber {
 			const costPerMinute = modelConfig.pricing.costPerMinute;
 			const currency = modelConfig.pricing.currency;
 			const totalCost = estimatedMinutes * costPerMinute;
+			const roundedCost = totalCost >= 0.01
+				? Math.round(totalCost * 100) / 100
+				: Math.round(totalCost * 1_000_000) / 1_000_000;
 			const rateDisplay = this.formatCostRate(currency, costPerMinute);
 
 			// Return format that supports both old and new interface
 			return Promise.resolve({
-				cost: Math.round(totalCost * 100) / 100,
+				cost: roundedCost,
 				currency,
 				details: {
 					minutes: estimatedMinutes,

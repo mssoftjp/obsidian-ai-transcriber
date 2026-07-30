@@ -1,6 +1,6 @@
 /**
- * GPT-4o transcription service implementation
- * Bridges the core TranscriptionService interface with GPT-4o API client
+ * OpenAI file-transcription service implementation
+ * Bridges the core TranscriptionService interface with the compatibility client
  */
 
 import { getModelConfig } from '../../config/ModelProcessingConfig';
@@ -24,16 +24,13 @@ export class GPT4oTranscriptionService extends TranscriptionService {
 	readonly modelId: string;
 	readonly modelName: string;
 
-	readonly capabilities = {
-		supportsTimestamps: false, // Basic JSON format doesn't include timestamps
-		supportsWordLevel: false,
-		supportsLanguageDetection: true,
-		supportedLanguages: [
-			'ja', 'en', 'zh', 'ko', 'es', 'fr', 'de', 'it', 'pt', 'ru',
-			'ar', 'hi', 'th', 'vi', 'nl', 'pl', 'tr', 'he', 'id', 'sv'
-		],
-		maxFileSizeMB: 20,
-		maxDurationSeconds: 25 * 60 // 25 minutes
+	readonly capabilities: {
+		supportsTimestamps: boolean;
+		supportsWordLevel: boolean;
+		supportsLanguageDetection: boolean;
+		supportedLanguages: string[];
+		maxFileSizeMB: number;
+		maxDurationSeconds: number;
 	};
 
 	private client: GPT4oClient;
@@ -48,6 +45,18 @@ export class GPT4oTranscriptionService extends TranscriptionService {
 		}
 		this.modelId = profile.id;
 		this.modelName = profile.displayName;
+		const config = getModelConfig(profile.id);
+		this.capabilities = {
+			supportsTimestamps: profile.capabilities.timestamps,
+			supportsWordLevel: false,
+			supportsLanguageDetection: true,
+			supportedLanguages: [
+				'ja', 'en', 'zh', 'ko', 'es', 'fr', 'de', 'it', 'pt', 'ru',
+				'ar', 'hi', 'th', 'vi', 'nl', 'pl', 'tr', 'he', 'id', 'sv'
+			],
+			maxFileSizeMB: config.maxFileSizeMB,
+			maxDurationSeconds: config.maxDurationSeconds
+		};
 
 		// Dictionary corrector is now handled at the controller level
 		this.dictionaryCorrector = dictionaryCorrector;
@@ -106,7 +115,7 @@ export class GPT4oTranscriptionService extends TranscriptionService {
 
 		// Warning for multilingual content
 		if (request.options.language === 'auto') {
-			warnings.push('GPT-4o may transliterate non-native words to katakana in Japanese mode. Consider using Whisper for multilingual content.');
+			warnings.push(`${this.modelName} may transliterate non-native words to katakana in Japanese mode. Consider using Whisper for multilingual content.`);
 		}
 
 		// Estimate cost
@@ -129,14 +138,14 @@ export class GPT4oTranscriptionService extends TranscriptionService {
 		modelOptions?: ModelSpecificOptions
 	): Promise<TranscriptionResult> {
 		const startTime = performance.now();
-		this.logger.debug('Starting GPT-4o transcription', {
+		this.logger.debug('Starting OpenAI file transcription', {
 			chunkId: chunk.id,
 			chunkDuration: `${(chunk.endTime - chunk.startTime).toFixed(2)}s`,
 			language: options.language,
 			model: this.modelId
 		});
 
-		// GPT-4o specific options (mainly previousContext)
+		// File-transcription options (mainly previousContext)
 		const gpt4oOptions: ModelSpecificOptions = {
 			gpt4o: {
 				responseFormat: 'json',
@@ -148,7 +157,7 @@ export class GPT4oTranscriptionService extends TranscriptionService {
 			const result = await this.client.transcribe(chunk, options, gpt4oOptions);
 
 			const transcriptionTime = performance.now() - startTime;
-			this.logger.info('GPT-4o transcription completed', {
+			this.logger.info('OpenAI file transcription completed', {
 				chunkId: chunk.id,
 				transcriptionTime: `${transcriptionTime.toFixed(2)}ms`,
 				resultLength: result.text.length,
@@ -157,7 +166,7 @@ export class GPT4oTranscriptionService extends TranscriptionService {
 
 			return result;
 		} catch (error) {
-			this.logger.error('GPT-4o transcription failed', {
+			this.logger.error('OpenAI file transcription failed', {
 				chunkId: chunk.id,
 				model: this.modelId,
 				error
@@ -184,17 +193,17 @@ export class GPT4oTranscriptionService extends TranscriptionService {
 	 * Test API connection
 	 */
 	async testConnection(apiKey: string): Promise<boolean> {
-		this.logger.debug('Testing GPT-4o API connection', { model: this.modelId });
+		this.logger.debug('Testing OpenAI transcription API connection', { model: this.modelId });
 		try {
 			const testClient = new GPT4oClient(apiKey, this.modelId);
 			const result = await testClient.testConnection();
-			this.logger.info('GPT-4o connection test completed', {
+			this.logger.info('OpenAI transcription connection test completed', {
 				success: result,
 				model: this.modelId
 			});
 			return result;
 		} catch (error) {
-			this.logger.error('GPT-4o connection test failed', {
+			this.logger.error('OpenAI transcription connection test failed', {
 				model: this.modelId,
 				error
 			});
@@ -219,25 +228,18 @@ export class GPT4oTranscriptionService extends TranscriptionService {
 		const amount = minutes * perMinute;
 
 		return {
-			amount: Math.round(amount * 1000) / 1000, // Round to 3 decimal places
+			amount: Math.round(amount * 1_000_000) / 1_000_000,
 			currency,
 			perMinute
 		};
 	}
 
 	/**
-	 * Get optimal chunk duration for GPT-4o
+	 * Get the selected profile's optimal chunk duration
 	 */
 	getOptimalChunkDuration(): number {
 		const config = getModelConfig(this.modelId);
 		return config.chunkDurationSeconds;
-	}
-
-	/**
-	 * Check if this is the mini model
-	 */
-	isMiniModel(): boolean {
-		return this.modelId === 'gpt-4o-mini-transcribe';
 	}
 
 }

@@ -1,5 +1,5 @@
 /**
- * GPT-4o-specific transcription strategy
+ * OpenAI file-transcription strategy
  * Implements stable serial chunk processing with overlap-aware merging
  */
 
@@ -31,7 +31,7 @@ type ChunkErrorKind =
 	| 'unknown';
 
 export class GPT4oTranscriptionStrategy extends TranscriptionStrategy {
-	readonly strategyName = 'GPT-4o Wave Parallel Processing';
+	readonly strategyName = 'OpenAI File Transcription Wave Processing';
 	readonly processingMode = 'batch' as const;
 	readonly maxConcurrency = 1;
 
@@ -281,7 +281,7 @@ export class GPT4oTranscriptionStrategy extends TranscriptionStrategy {
 			}
 
 			if (attempt > 0) {
-				this.logger.warn('Retrying GPT-4o chunk transcription', { chunkId: chunk.id, attempt });
+				this.logger.warn('Retrying OpenAI file-transcription chunk', { chunkId: chunk.id, attempt });
 			}
 
 			const result = await this.processSingleChunk(chunk, options);
@@ -449,7 +449,7 @@ export class GPT4oTranscriptionStrategy extends TranscriptionStrategy {
 	}
 
 	/**
-	 * Get optimal settings for GPT-4o/GPT-4o Mini
+	 * Get optimal settings for the selected file-transcription profile
 	 */
 	getOptimalSettings(): {
 		chunkDuration: number;
@@ -469,10 +469,10 @@ export class GPT4oTranscriptionStrategy extends TranscriptionStrategy {
 	}
 
 	/**
-	 * Estimate processing time for GPT-4o
+	 * Estimate processing time for an OpenAI file-transcription model
 	 */
 	estimateProcessingTime(chunks: AudioChunk[]): number {
-		// GPT-4o is slower than Whisper, processes at ~5-10x realtime
+		// Keep the established conservative estimate for this shared workflow.
 		const totalDuration = chunks.reduce((sum, chunk) =>
 			sum + (chunk.endTime - chunk.startTime), 0
 		);

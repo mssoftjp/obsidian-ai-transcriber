@@ -456,7 +456,7 @@ export class TranscriptionController {
 		const apiKey = this.getApiKey();
 		const dictionaryCorrector = this.createDictionaryCorrector();
 		const profile = getTranscriptionModelProfile(this.settings.model);
-		if (profile.workflow !== 'openai-file' || !profile.capabilities.originalDirectUpload) {
+		if (!profile.capabilities.originalDirectUpload) {
 			throw new Error(
 				`[TranscriptionController] Model "${profile.id}" cannot use direct file transcription`
 			);

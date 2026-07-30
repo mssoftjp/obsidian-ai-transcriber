@@ -6,6 +6,7 @@
 import {
 	getModelCleaningStrategy
 } from '../../../config/ModelCleaningConfig';
+import { DEFAULT_TRANSCRIPTION_MODEL } from '../../../config/TranscriptionModelProfiles';
 import { Logger } from '../../../utils/Logger';
 
 import { PatternCompiler, GENERIC_XML_TAG } from './utils/PatternCompiler';
@@ -66,10 +67,12 @@ export class PromptContaminationCleaner implements TextCleaner {
 			removeXmlTags: true,
 			removeContextPatterns: true,
 			aggressiveMatching: false,
-			modelId: 'gpt-4o-mini-transcribe', // Default fallback
+			modelId: DEFAULT_TRANSCRIPTION_MODEL,
 			...config
 		};
-		this.strategy = strategy ?? getModelCleaningStrategy(this.config.modelId || 'gpt-4o-mini-transcribe');
+		this.strategy = strategy ?? getModelCleaningStrategy(
+			this.config.modelId ?? DEFAULT_TRANSCRIPTION_MODEL
+		);
 		this.logger = Logger.getLogger('PromptContaminationCleaner');
 
 		// Load contamination patterns from strategy or use defaults

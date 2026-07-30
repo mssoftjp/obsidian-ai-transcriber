@@ -3,13 +3,14 @@
  * Centralized access to all configuration types and functions
  *
  * File Structure:
+ * - TranscriptionModelProfiles.ts → Canonical transcription model metadata and routing
  * - openai/                   → OpenAI API configurations (modular)
- *   - whisper.config.ts       → Whisper API configuration
- *   - gpt4o-transcribe.config.ts → GPT-4o Transcribe API configuration
- *   - gpt4o-chat-audio.config.ts → GPT-4o Chat Audio API configuration
- *   - realtime-api.config.ts  → Realtime WebSocket API configuration
+ *   - WhisperConfig.ts        → Whisper API configuration
+ *   - GPT4oTranscribeConfig.ts → OpenAI file-transcription request configuration
+ *   - RealtimeApiConfig.ts    → Separate Realtime WebSocket configuration
  *   - index.ts                → OpenAI config index
- * - model-processing.config.ts → Audio processing parameters for different AI models
+ * - ModelProcessingConfig.ts  → Shared audio-processing presets
+ * - ModelCleaningConfig.ts    → Shared transcript-cleaning presets
  * - constants.ts              → Common constants
  * - config.ts (this file)     → Unified exports for all configuration modules
  *
@@ -18,6 +19,7 @@
  */
 
 export * from './ModelProcessingConfig';
+export * from './TranscriptionModelProfiles';
 export * from './constants';
 
 // Export all OpenAI configurations

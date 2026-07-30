@@ -256,7 +256,12 @@ export class APITranscriptionModal extends Modal {
 				}
 
 			// Calculate cost
-			const adjustedCost = Math.round(adjustedMinutes * pricePerMinute * 100) / 100;
+			const adjustedCost = Math.round(adjustedMinutes * pricePerMinute * 1_000_000) / 1_000_000;
+			const costPrecision = adjustedCost === 0 || adjustedCost >= 0.01
+				? 2
+				: adjustedCost >= 0.001
+					? 4
+					: 6;
 
 			// Build details string
 			const adjustedDetails = `${adjustedMinutes.toFixed(1)} minutes @ $${pricePerMinute}/min (${profile.displayName})`;
@@ -268,7 +273,7 @@ export class APITranscriptionModal extends Modal {
 			labelSpan.setText(t('modal.transcription.costEstimate') + ':');
 
 			const valueSpan = this.costEl.createSpan({ cls: 'cost-value' });
-			valueSpan.setText(`$${adjustedCost.toFixed(2)} USD`);
+			valueSpan.setText(`$${adjustedCost.toFixed(costPrecision)} USD`);
 
 			const detailsEl = this.costEl.createEl('small', { cls: 'cost-details' });
 			detailsEl.setText(adjustedDetails);

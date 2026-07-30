@@ -8,6 +8,7 @@ import {
 	getTranscriptionModelProfile
 } from './TranscriptionModelProfiles';
 
+import type { TranscriptionCleaningPreset } from './TranscriptionModelProfiles';
 import type {
 	PromptContaminationConfig,
 	JapaneseValidationConfig,
@@ -15,7 +16,6 @@ import type {
 	TailRepeatConfig,
 	ConsecutiveBlockRepeatConfig
 } from '../core/transcription/cleaners';
-import type { TranscriptionCleaningPreset } from './TranscriptionModelProfiles';
 
 /**
  * Hallucination pattern definitions by language
@@ -210,6 +210,8 @@ export interface ModelCleaningStrategy {
 	/** Pipeline-level fallback configuration (avoid catastrophic deletion) */
 	pipelineFallback?: PipelineFallbackConfig;
 }
+
+type ModelCleaningPresetStrategy = Omit<ModelCleaningStrategy, 'modelId' | 'modelName'>;
 
 /**
  * Pipeline-level fallback configuration
@@ -456,11 +458,9 @@ const COMMON_CONTAMINATION_PATTERNS: ContaminationPatterns = {
 /**
  * Semantic cleaning presets shared by model profiles.
  */
-export const CLEANING_PRESETS: Record<TranscriptionCleaningPreset, ModelCleaningStrategy> = {
-	// Whisper model configuration
+export const CLEANING_PRESETS: Record<TranscriptionCleaningPreset, ModelCleaningPresetStrategy> = {
+	// Whisper workflow preset
 	'whisper': {
-		modelId: 'whisper-1',
-		modelName: 'OpenAI Whisper',
 		pipelineType: 'whisper',
 		enableDetailedLogging: false,
 		maxReductionRatio: 0.4, // Conservative for Whisper
@@ -513,10 +513,8 @@ export const CLEANING_PRESETS: Record<TranscriptionCleaningPreset, ModelCleaning
 		}
 	},
 
-	// GPT-4o Mini Transcribe configuration
+	// Economy recorded-audio preset
 	'recorded-economy': {
-		modelId: 'gpt-4o-mini-transcribe',
-		modelName: 'GPT-4o Mini Transcribe',
 		pipelineType: 'gpt4o',
 		enableDetailedLogging: false,
 		maxReductionRatio: 0.3, // Conservative to preserve content
@@ -596,10 +594,8 @@ export const CLEANING_PRESETS: Record<TranscriptionCleaningPreset, ModelCleaning
 		}
 	},
 
-	// GPT-4o Transcribe configuration (full model)
+	// Accurate recorded-audio preset
 	'recorded-accurate': {
-		modelId: 'gpt-4o-transcribe',
-		modelName: 'GPT-4o Transcribe',
 		pipelineType: 'gpt4o',
 		enableDetailedLogging: false,
 		maxReductionRatio: 0.25, // Conservative to preserve content
@@ -680,7 +676,7 @@ export const CLEANING_PRESETS: Record<TranscriptionCleaningPreset, ModelCleaning
 /**
  * Debug configurations for development/troubleshooting
  */
-export const DEBUG_CLEANING_PRESETS: Partial<Record<TranscriptionCleaningPreset, ModelCleaningStrategy>> = {
+export const DEBUG_CLEANING_PRESETS: Partial<Record<TranscriptionCleaningPreset, ModelCleaningPresetStrategy>> = {
 	'recorded-economy': {
 		...getBaseStrategy('recorded-economy'),
 		enableDetailedLogging: true,
@@ -720,7 +716,7 @@ export const DEBUG_CLEANING_PRESETS: Partial<Record<TranscriptionCleaningPreset,
 	}
 };
 
-function getBaseStrategy(preset: TranscriptionCleaningPreset): ModelCleaningStrategy {
+function getBaseStrategy(preset: TranscriptionCleaningPreset): ModelCleaningPresetStrategy {
 	return CLEANING_PRESETS[preset];
 }
 

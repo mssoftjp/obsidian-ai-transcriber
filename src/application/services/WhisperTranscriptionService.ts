@@ -4,6 +4,7 @@
  */
 
 import { getModelConfig } from '../../config/ModelProcessingConfig';
+import { getTranscriptionModelProfile } from '../../config/TranscriptionModelProfiles';
 import { TranscriptionService } from '../../core/transcription/TranscriptionService';
 import { WhisperClient } from '../../infrastructure/api/openai/WhisperClient';
 import { Logger } from '../../utils/Logger';
@@ -21,7 +22,7 @@ import type {
 
 export class WhisperTranscriptionService extends TranscriptionService {
 	readonly modelId: string;
-	readonly modelName = 'OpenAI Whisper';
+	readonly modelName: string;
 
 	readonly capabilities: {
 		supportsTimestamps: boolean;
@@ -34,14 +35,21 @@ export class WhisperTranscriptionService extends TranscriptionService {
 
 	private client: WhisperClient;
 
-	constructor(apiKey: string, modelId: string = 'whisper-1', dictionaryCorrector?: DictionaryCorrector) {
+	constructor(apiKey: string, modelId: string, dictionaryCorrector?: DictionaryCorrector) {
 		super();
 
-		this.modelId = modelId;
+		const profile = getTranscriptionModelProfile(modelId);
+		if (profile.workflow !== 'whisper') {
+			throw new Error(
+				`[WhisperTranscriptionService] Model "${modelId}" does not use the Whisper workflow`
+			);
+		}
+		this.modelId = profile.id;
+		this.modelName = profile.displayName;
 
 		// Initialize capabilities based on model
 		const config = getModelConfig(this.modelId);
-		const includeTimestamps = this.modelId === 'whisper-1-ts';
+		const includeTimestamps = profile.capabilities.timestamps;
 		this.capabilities = {
 			supportsTimestamps: includeTimestamps,
 			supportsWordLevel: includeTimestamps,
@@ -133,7 +141,7 @@ export class WhisperTranscriptionService extends TranscriptionService {
 		});
 
 		// Determine if timestamps should be included based on model
-		const includeTimestamps = this.modelId === 'whisper-1-ts';
+		const includeTimestamps = this.capabilities.supportsTimestamps;
 
 		// Whisper-specific model options
 		const whisperOptions: ModelSpecificOptions = {
@@ -200,7 +208,7 @@ export class WhisperTranscriptionService extends TranscriptionService {
 		const amount = minutes * perMinute;
 
 		return {
-			amount: Math.round(amount * 1000) / 1000, // Round to 3 decimal places
+			amount: Math.round(amount * 1_000_000) / 1_000_000,
 			currency,
 			perMinute
 		};

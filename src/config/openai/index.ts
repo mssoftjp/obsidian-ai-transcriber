@@ -11,7 +11,7 @@ import {
 // Whisper API (Traditional transcription)
 export * from './WhisperConfig';
 
-// GPT-4o Transcribe API (New transcription models)
+// OpenAI file-transcription API
 export * from './GPT4oTranscribeConfig';
 
 // Realtime API (WebSocket streaming)

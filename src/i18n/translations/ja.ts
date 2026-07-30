@@ -423,7 +423,7 @@ const ja: TranslationKeys = {
 			supportedFormats: '対応形式: 音声(MP3, WAV, M4A, FLAC, AAC, OGG)、動画(MP4, M4V, MOV, AVI, MKV, WebM)',
 			networkRetry: 'ネットワーク接続を確認してから再度お試しください',
 			formatConversion: 'WAVやMP3形式に変換してから再度お試しください',
-			sizeLimit: 'GPT-4o: 20MB/25分、Whisper: 20MB',
+			sizeLimit: 'OpenAI文字起こしAPIへの1回の送信上限は25MBです。大きいメディアは小さいチャンクに分割して処理します。',
 			debugModeEnable: '設定画面でデバッグモードを有効にすると詳細ログが確認できます'
 		}
 	},

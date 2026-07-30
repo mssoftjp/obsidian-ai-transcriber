@@ -51,7 +51,6 @@ export interface WhisperConfig {
 		maxFileSizeMB: number;
 		supportedFormats: string[];
 		maxDurationMinutes: number;
-		costPerMinute: number;
 	};
 
 	defaults: {
@@ -74,8 +73,7 @@ export const WHISPER_CONFIG: WhisperConfig = {
 	limitations: {
 		maxFileSizeMB: 25, // OpenAI official limit
 		supportedFormats: ['mp3', 'mp4', 'mpeg', 'mpga', 'm4a', 'wav', 'webm'],
-		maxDurationMinutes: 30,
-		costPerMinute: 0.006
+		maxDurationMinutes: 30
 	},
 
 	defaults: {
