@@ -20,6 +20,8 @@
     "lint:fix": "eslint \"src/**/*.ts\" package.json --fix",
     "typecheck:test": "tsc --project tsconfig.test.json --noEmit",
     "verify:metadata": "node scripts/verify-community-metadata.mjs",
+    "verify:release": "node scripts/verify-community-release.mjs",
+    "verify:community": "npm run verify:metadata && npm run verify:release",
     "check": "npm run lint && npm run build && npm test -- --runInBand --coverage"
   },
   "keywords": [
