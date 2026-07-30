@@ -32,6 +32,22 @@ function createFile(name: string): TFile {
 }
 
 describe('APITranscriber job ownership', () => {
+	it('uses GPT Transcribe provider metadata and exact per-minute pricing by default', async () => {
+		const app = new App();
+		const transcriber = new APITranscriber(app, structuredClone(DEFAULT_API_SETTINGS));
+		const file = createFile('gpt-transcribe-estimate');
+		file.stat.size = 5 * 1024 * 1024;
+
+		const estimate = await transcriber.estimateCost(file);
+
+		expect(transcriber.isGPT4oModel()).toBe(true);
+		expect(transcriber.getProviderDisplayName()).toBe('providers.gptTranscribe');
+		expect(estimate.currency).toBe('USD');
+		expect(estimate.details).toMatchObject({
+			costPerMinute: 0.0045
+		});
+	});
+
 	it('estimates cost from file metadata without reading the audio body', async () => {
 		const app = new App();
 		const readBinary = jest.fn().mockRejectedValue(new Error('audio body should not be read'));

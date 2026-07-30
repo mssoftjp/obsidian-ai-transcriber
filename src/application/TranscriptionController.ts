@@ -5,6 +5,7 @@
 
 import { AUDIO_CONSTANTS, SUPPORTED_FORMATS } from '../config/constants';
 import { getModelConfig, getTranscriptionConfig, logAllModelConfigs } from '../config/ModelProcessingConfig';
+import { getTranscriptionModelProfile } from '../config/TranscriptionModelProfiles';
 import { AudioPipeline } from '../core/audio/AudioPipeline';
 import { assertEncodedMediaWithinBudget } from '../core/audio/MediaWorkBudget';
 import { DictionaryCorrector } from '../core/transcription/DictionaryCorrector';
@@ -365,9 +366,10 @@ export class TranscriptionController {
 	 * Get chunking configuration based on model
 	 */
 	private getChunkingConfig(): ChunkingConfig {
-		const model = this.settings.model as string; // Cast to string
+		const model = this.settings.model;
+		const profile = getTranscriptionModelProfile(model);
 		const modelConfig = getModelConfig(model);
-		const isWhisper = model.startsWith('whisper-1');
+		const isWhisper = profile.workflow === 'whisper';
 
 		const minMatchLength = modelConfig.merging.minMatchLength ?? 0;
 
@@ -413,44 +415,34 @@ export class TranscriptionController {
 		let service: TranscriptionService;
 		let strategy: TranscriptionStrategy;
 
-		const model = this.settings.model as string; // Cast to string
+		const profile = getTranscriptionModelProfile(this.settings.model);
 
-		if (model.startsWith('whisper-1')) {
-			this.logger.debug('Using Whisper transcription service', { model });
-			service = new WhisperTranscriptionService(apiKey, model, dictionaryCorrector);
+		if (profile.workflow === 'whisper') {
+			this.logger.debug('Using Whisper transcription service', { model: profile.id });
+			service = new WhisperTranscriptionService(apiKey, profile.id, dictionaryCorrector);
 			strategy = new WhisperTranscriptionStrategy(
 				service,
 				this.createProgressAdapter()
 			);
 		} else {
-			// GPT-4o or GPT-4o Mini
-			let gpt4oModel: string;
+			this.logger.debug('Using OpenAI file transcription service', { model: profile.id });
+			service = new GPT4oTranscriptionService(apiKey, profile.id, dictionaryCorrector);
+			strategy = new GPT4oTranscriptionStrategy(
+				service,
+				this.createProgressAdapter()
+			);
+		}
 
-			if (model === 'gpt-4o-transcribe') {
-				gpt4oModel = 'gpt-4o-transcribe';
-			} else {
-				gpt4oModel = 'gpt-4o-mini-transcribe';
-			}
+		if (this.settings.debugMode) {
+			service.enableCleaningDebugMode();
+		}
 
-					this.logger.debug('Using GPT-4o transcription service', { model: gpt4oModel });
-				service = new GPT4oTranscriptionService(apiKey, gpt4oModel, dictionaryCorrector);
-				strategy = new GPT4oTranscriptionStrategy(
-					service,
-					this.createProgressAdapter()
-				);
-			}
-
-			if (this.settings.debugMode) {
-				service.enableCleaningDebugMode();
-			}
-
-			// Create workflow
-				const pipeline = this.audioPipeline ?? this.createAudioPipeline();
-				this.audioPipeline = pipeline;
-				const workflow = new TranscriptionWorkflow(pipeline, strategy);
-				this.logger.debug('Workflow created successfully');
-					return { workflow, dictionaryCorrector };
-				}
+		const pipeline = this.audioPipeline ?? this.createAudioPipeline();
+		this.audioPipeline = pipeline;
+		const workflow = new TranscriptionWorkflow(pipeline, strategy);
+		this.logger.debug('Workflow created successfully');
+		return { workflow, dictionaryCorrector };
+	}
 
 	private async transcribeDirectFile(
 		audioFile: TFile,
@@ -463,9 +455,13 @@ export class TranscriptionController {
 
 		const apiKey = this.getApiKey();
 		const dictionaryCorrector = this.createDictionaryCorrector();
-		const model = this.settings.model === 'gpt-4o-transcribe'
-			? 'gpt-4o-transcribe'
-			: 'gpt-4o-mini-transcribe';
+		const profile = getTranscriptionModelProfile(this.settings.model);
+		if (profile.workflow !== 'openai-file' || !profile.capabilities.originalDirectUpload) {
+			throw new Error(
+				`[TranscriptionController] Model "${profile.id}" cannot use direct file transcription`
+			);
+		}
+		const model = profile.id;
 		const service = new GPT4oTranscriptionService(apiKey, model, dictionaryCorrector);
 		const mimeTypes = SUPPORTED_FORMATS.MIME_TYPES as Record<string, string>;
 		const mimeType = mimeTypes[audioFile.extension.toLowerCase()] ?? 'application/octet-stream';

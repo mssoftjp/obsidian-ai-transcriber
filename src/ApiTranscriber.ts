@@ -8,6 +8,7 @@ import { Notice } from 'obsidian';
 import { TranscriptionController } from './application/TranscriptionController';
 import { SUPPORTED_FORMATS } from './config/constants';
 import { getModelConfig } from './config/ModelProcessingConfig';
+import { getTranscriptionModelProfile } from './config/TranscriptionModelProfiles';
 import { TranscriptionBusyError } from './core/transcription/TranscriptionJob';
 import { t } from './i18n';
 import { Logger } from './utils/Logger';
@@ -253,27 +254,15 @@ export class APITranscriber {
 	 * Check if using GPT-4o model
 	 */
 	isGPT4oModel(): boolean {
-		return this.settings.model.startsWith('gpt-4o');
+		return getTranscriptionModelProfile(this.settings.model).workflow === 'openai-file';
 	}
 
 	/**
 	 * Get provider display name
 	 */
 	getProviderDisplayName(): string {
-		const model = this.settings.model as string; // Cast to string to avoid type errors
-		switch (model) {
-		case 'whisper-1':
-			return t('providers.whisper');
-		case 'whisper-1-ts':
-			return t('providers.whisperTs');
-		case 'gpt-4o-transcribe':
-			return t('providers.gpt4o');
-		case 'gpt-4o-mini-transcribe':
-			return t('providers.gpt4oMini');
-		default:
-			// Fallback to model name with proper formatting
-			return model.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-		}
+		const profile = getTranscriptionModelProfile(this.settings.model);
+		return t(profile.ui.providerKey);
 	}
 
 	/**
@@ -311,8 +300,7 @@ export class APITranscriber {
 				: sizeMB * 1.2; // Conservative estimate
 
 			// Cost per minute based on model configuration
-			const model = this.settings.model as string; // Cast to string to avoid type errors
-			const modelConfig = getModelConfig(model);
+			const modelConfig = getModelConfig(this.settings.model);
 			const costPerMinute = modelConfig.pricing.costPerMinute;
 			const currency = modelConfig.pricing.currency;
 			const totalCost = estimatedMinutes * costPerMinute;
@@ -370,8 +358,8 @@ export class APITranscriber {
 	}
 
 	private formatCostRate(currency: string, amount: number): string {
-		const precision = amount >= 0.01 ? 2 : 3;
-		const formatted = amount.toFixed(precision);
+		const precision = amount >= 0.01 ? 2 : amount >= 0.001 ? 4 : 6;
+		const formatted = amount.toFixed(precision).replace(/0+$/, '').replace(/\.$/, '');
 		if (currency === 'USD') {
 			return `$${formatted}`;
 		}

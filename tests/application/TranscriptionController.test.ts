@@ -43,7 +43,7 @@ describe('TranscriptionController direct upload plan', () => {
 
 		await expect(controller.transcribe(file)).resolves.toEqual({
 			text: '開発では、OpenAIのこーでっくすを使います。',
-			modelUsed: 'gpt-4o-transcribe'
+			modelUsed: 'gpt-transcribe'
 		});
 	});
 
@@ -76,7 +76,7 @@ describe('TranscriptionController direct upload plan', () => {
 
 		await expect(controller.transcribe(file)).resolves.toEqual({
 			text: 'direct result',
-			modelUsed: 'gpt-4o-transcribe'
+			modelUsed: 'gpt-transcribe'
 		});
 		expect(readBinary).toHaveBeenCalledTimes(1);
 		expect(directTranscription).toHaveBeenCalledWith(
@@ -85,6 +85,38 @@ describe('TranscriptionController direct upload plan', () => {
 			'audio/mpeg',
 			expect.objectContaining({ language: 'auto' })
 		);
+	});
+
+	it('keeps GPT Transcribe unchanged in the client-processing workflow', () => {
+		const app = new App();
+		const settings = structuredClone(DEFAULT_API_SETTINGS);
+		settings.openaiApiKey = `sk-${'a'.repeat(40)}`;
+		settings.model = 'gpt-transcribe';
+		const controller = new TranscriptionController(app, settings);
+
+		const { workflow } = (
+			controller as unknown as {
+				createWorkflow(): {
+					workflow: {
+						strategy: { getModelUsed(): string };
+					};
+				};
+			}
+		).createWorkflow();
+
+		expect(workflow.strategy.getModelUsed()).toBe('gpt-transcribe');
+	});
+
+	it('fails closed for an unknown runtime model instead of selecting Mini', () => {
+		const app = new App();
+		const settings = structuredClone(DEFAULT_API_SETTINGS);
+		settings.openaiApiKey = `sk-${'a'.repeat(40)}`;
+		settings.model = 'unknown-model' as typeof settings.model;
+		const controller = new TranscriptionController(app, settings);
+
+		expect(() => (
+			controller as unknown as { createWorkflow(): unknown }
+		).createWorkflow()).toThrow(/Unknown model/);
 	});
 
 	it('rejects an oversized client job before reading it into memory', async () => {

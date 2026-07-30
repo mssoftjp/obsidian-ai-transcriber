@@ -4,6 +4,7 @@
  */
 
 import { getModelConfig } from '../../config/ModelProcessingConfig';
+import { getTranscriptionModelProfile } from '../../config/TranscriptionModelProfiles';
 import { TranscriptionService } from '../../core/transcription/TranscriptionService';
 import { GPT4oClient } from '../../infrastructure/api/openai/GPT4oClient';
 import { Logger } from '../../utils/Logger';
@@ -39,13 +40,14 @@ export class GPT4oTranscriptionService extends TranscriptionService {
 
 	constructor(apiKey: string, model: string, dictionaryCorrector?: DictionaryCorrector) {
 		super();
-		this.modelId = model;
-		// Map model names for display
-		const modelNameMap: Record<string, string> = {
-			'gpt-4o-transcribe': 'GPT-4o Transcribe',
-			'gpt-4o-mini-transcribe': 'GPT-4o Mini Transcribe'
-		};
-		this.modelName = modelNameMap[model] || model;
+		const profile = getTranscriptionModelProfile(model);
+		if (profile.workflow !== 'openai-file') {
+			throw new Error(
+				`[GPT4oTranscriptionService] Model "${model}" does not use the OpenAI file transcription workflow`
+			);
+		}
+		this.modelId = profile.id;
+		this.modelName = profile.displayName;
 
 		// Dictionary corrector is now handled at the controller level
 		this.dictionaryCorrector = dictionaryCorrector;
@@ -82,7 +84,7 @@ export class GPT4oTranscriptionService extends TranscriptionService {
 				chunkSizeMB: chunkSizeMB.toFixed(1),
 				limit: this.capabilities.maxFileSizeMB
 			});
-			errors.push(`Chunk size ${chunkSizeMB.toFixed(1)}MB exceeds GPT-4o limit of ${this.capabilities.maxFileSizeMB}MB`);
+			errors.push(`Chunk size ${chunkSizeMB.toFixed(1)}MB exceeds ${this.modelName} limit of ${this.capabilities.maxFileSizeMB}MB`);
 		}
 
 		// Check duration
@@ -92,13 +94,13 @@ export class GPT4oTranscriptionService extends TranscriptionService {
 				duration,
 				limit: this.capabilities.maxDurationSeconds
 			});
-			errors.push(`Chunk duration ${duration}s exceeds GPT-4o limit of ${this.capabilities.maxDurationSeconds}s`);
+			errors.push(`Chunk duration ${duration}s exceeds ${this.modelName} limit of ${this.capabilities.maxDurationSeconds}s`);
 		}
 
 		// Check language support
 		if (request.options.language && request.options.language !== 'auto') {
 			if (!this.isLanguageSupported(request.options.language)) {
-				warnings.push(`Language '${request.options.language}' may have limited support in GPT-4o`);
+				warnings.push(`Language '${request.options.language}' may have limited support in ${this.modelName}`);
 			}
 		}
 

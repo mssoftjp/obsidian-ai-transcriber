@@ -33,6 +33,22 @@ const baseInput: JobPlanInput = {
 };
 
 describe('createTranscriptionJobPlan', () => {
+	it('uses direct upload for an eligible GPT Transcribe file', () => {
+		const createPlan = loadPlanner();
+		expect(createPlan).not.toBeNull();
+		if (!createPlan) {
+			return;
+		}
+
+		expect(createPlan({
+			...baseInput,
+			model: 'gpt-transcribe'
+		})).toEqual({
+			mode: 'direct',
+			concurrency: 1
+		});
+	});
+
 	it('uses direct upload without server chunking for an in-limit GPT-4o file without trimming', () => {
 		const createPlan = loadPlanner();
 		expect(createPlan).not.toBeNull();
@@ -63,5 +79,18 @@ describe('createTranscriptionJobPlan', () => {
 			mode: 'client',
 			concurrency: 1
 		});
+	});
+
+	it('fails closed for an unknown model', () => {
+		const createPlan = loadPlanner();
+		expect(createPlan).not.toBeNull();
+		if (!createPlan) {
+			return;
+		}
+
+		expect(() => createPlan({
+			...baseInput,
+			model: 'unknown-model'
+		})).toThrow(/Unknown model/);
 	});
 });
