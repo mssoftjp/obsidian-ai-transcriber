@@ -33,6 +33,12 @@ describe('APISettingsTab declarative settings', () => {
 		expect(definitions.every(definition => (
 			'aliases' in definition && Array.isArray(definition.aliases) && definition.aliases.length > 0
 		))).toBe(true);
+		const modelDefinition = definitions.find(definition => (
+			'name' in definition && definition.name === en.settings.model.name
+		));
+		expect(modelDefinition).toMatchObject({
+			aliases: expect.arrayContaining(['GPT Transcribe'])
+		});
 		expect(saveSettings).not.toHaveBeenCalled();
 	});
 });

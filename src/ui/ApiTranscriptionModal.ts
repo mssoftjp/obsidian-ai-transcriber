@@ -3,6 +3,7 @@ import { Modal, Notice, TFolder, Platform, Setting, getLanguage, ButtonComponent
 import { PostProcessingService } from '../application/services/PostProcessingService';
 import { FileTypeUtils } from '../config/constants';
 import { MODEL_OPTIONS, getModelOption } from '../config/ModelOptions';
+import { getTranscriptionModelProfile } from '../config/TranscriptionModelProfiles';
 import { createTranslationMetadata } from '../core/transcription/TranslationUtils';
 import { LoadingAnimation } from '../core/utils/LoadingAnimation';
 import { SimpleProgressCalculator } from '../core/utils/SimpleProgressCalculator';
@@ -130,23 +131,8 @@ export class APITranscriptionModal extends Modal {
 		// Model dropdown
 		const modelSelect = providerRow.createEl('select', { cls: 'model-select' });
 		MODEL_OPTIONS.forEach(opt => {
-			// Generate label from translation keys
-			let label: string = opt.value;
-			switch (opt.value) {
-			case 'whisper-1':
-				label = t('settings.model.whisperNoTimestamp');
-				break;
-			case 'whisper-1-ts':
-				label = t('settings.model.whisperWithTimestamp');
-				break;
-			case 'gpt-4o-transcribe':
-				label = t('settings.model.gpt4oHigh');
-				break;
-			case 'gpt-4o-mini-transcribe':
-				label = t('settings.model.gpt4oMiniCost');
-				break;
-			}
-			modelSelect.add(new Option(label, opt.value));
+			const profile = getTranscriptionModelProfile(opt.model);
+			modelSelect.add(new Option(t(profile.ui.optionLabelKey), opt.value));
 		});
 
 		// Set current value
@@ -241,6 +227,8 @@ export class APITranscriptionModal extends Modal {
 
 	private async displayCostEstimate() {
 		try {
+			const profile = getTranscriptionModelProfile(this.settings.model);
+			const pricePerMinute = profile.pricing.costPerMinute;
 			// If we have actual audio duration, use it for accurate estimation
 			let actualMinutes: number;
 			if (this.audioDuration > 0) {
@@ -253,12 +241,10 @@ export class APITranscriptionModal extends Modal {
 					actualMinutes = (estimate.details as { minutes: number }).minutes;
 				} else {
 					// Ultimate fallback based on cost
-					actualMinutes = estimate.cost / 0.006; // Assume whisper pricing
+					actualMinutes = estimate.cost / pricePerMinute;
 				}
 			}
 
-			// Get pricing based on model
-			const pricePerMinute = this.settings.model === 'gpt-4o-mini-transcribe' ? 0.003 : 0.006;
 			let adjustedMinutes = actualMinutes;
 
 				// Apply time range selection if enabled
@@ -273,10 +259,7 @@ export class APITranscriptionModal extends Modal {
 			const adjustedCost = Math.round(adjustedMinutes * pricePerMinute * 100) / 100;
 
 			// Build details string
-			let adjustedDetails = `${adjustedMinutes.toFixed(1)} minutes @ $${pricePerMinute}/min`;
-			if (this.settings.model.startsWith('gpt-4o')) {
-				adjustedDetails += ` (${this.settings.model === 'gpt-4o-transcribe' ? 'GPT-4o' : 'GPT-4o Mini'})`;
-			}
+			const adjustedDetails = `${adjustedMinutes.toFixed(1)} minutes @ $${pricePerMinute}/min (${profile.displayName})`;
 
 			// Clear and rebuild cost element
 			this.costEl.empty();
@@ -1598,19 +1581,8 @@ export class APITranscriptionModal extends Modal {
 	 * Get display name for a specific model
 	 */
 	private getModelDisplayName(model: string): string {
-		switch (model) {
-		case 'whisper-1':
-			return t('providers.whisper');
-		case 'whisper-1-ts':
-			return t('providers.whisperTs');
-		case 'gpt-4o-transcribe':
-			return t('providers.gpt4o');
-		case 'gpt-4o-mini-transcribe':
-			return t('providers.gpt4oMini');
-		default:
-			// Fallback to model name with proper formatting
-			return model.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-		}
+		const profile = getTranscriptionModelProfile(model);
+		return t(profile.ui.providerKey);
 	}
 
 	private formatUnknownError(error: unknown): string {

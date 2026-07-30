@@ -25,6 +25,9 @@ export interface TranslationKeys {
 			name: string;
 			desc: string;
 			comparison: string;
+			gptTranscribe: string;
+			gptTranscribeDesc: string;
+			gptTranscribeDefault: string;
 			whisper: string;
 			whisperDesc: string;
 			gpt4o: string;
@@ -183,6 +186,7 @@ export interface TranslationKeys {
 	// Provider display names
 	providers: {
 		openai: string;
+		gptTranscribe: string;
 		whisper: string;
 		whisperTs: string;
 		gpt4o: string;

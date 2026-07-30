@@ -1,7 +1,10 @@
 import { Setting, Notice, Platform, ButtonComponent, FileSystemAdapter, TFile } from 'obsidian';
 
 import { MODEL_OPTIONS, getModelOption } from './config/ModelOptions';
-import { getTranscriptionModelProfile } from './config/TranscriptionModelProfiles';
+import {
+	TRANSCRIPTION_MODEL_PROFILES,
+	getTranscriptionModelProfile
+} from './config/TranscriptionModelProfiles';
 import { t } from './i18n';
 import { SafeStorageService } from './infrastructure/storage/SafeStorageService';
 import { SecurityUtils } from './infrastructure/storage/SecurityUtils';
@@ -306,14 +309,14 @@ export class SettingsUIBuilder {
 			text: t('settings.model.comparison')
 		});
 		const list = comparison.createEl('ul');
-		list.createEl('li', {
-			text: `${t('settings.model.whisper')}: ${t('settings.model.whisperDesc')}`
-		});
-		list.createEl('li', {
-			text: `${t('settings.model.gpt4o')}: ${t('settings.model.gpt4oDesc')}`
-		});
-		list.createEl('li', {
-			text: `${t('settings.model.gpt4oMini')}: ${t('settings.model.gpt4oMiniDesc')}`
+		TRANSCRIPTION_MODEL_PROFILES.forEach((profile) => {
+			const modelComparison = profile.ui.comparison;
+			if (!modelComparison) {
+				return;
+			}
+			list.createEl('li', {
+				text: `${t(modelComparison.nameKey)}: ${t(modelComparison.descriptionKey)}`
+			});
 		});
 		return fragment;
 	}

@@ -56,7 +56,7 @@ describe('SettingsUIBuilder descriptions', () => {
 		setLocale('en');
 	});
 
-	it('renders model comparisons as three separate list items', () => {
+	it('renders profile-driven model comparisons as four separate list items', () => {
 		const fragment = new FakeElement('fragment');
 		globalThis.createFragment = () => fragment as unknown as DocumentFragment;
 
@@ -70,26 +70,28 @@ describe('SettingsUIBuilder descriptions', () => {
 		const list = comparison?.children.find(child => child.tagName === 'ul');
 
 		expect(comparison).toBeDefined();
-		expect(list?.children).toHaveLength(3);
+		expect(list?.children).toHaveLength(4);
 		expect(list?.children.every(child => child.tagName === 'li')).toBe(true);
 		expect(list?.children.map(child => child.textContent)).toEqual([
-			'Whisper-1: Optional timestamp output',
-			'GPT-4o transcribe: Highest accuracy',
-			'GPT-4o mini transcribe: Whisper upgrade: higher accuracy at low cost'
+			'GPT Transcribe: Recommended for recorded speech',
+			'GPT-4o transcribe: Existing high-accuracy model',
+			'GPT-4o mini transcribe: Lowest-cost GPT transcription option',
+			'Whisper-1: Use when timestamps are needed'
 		]);
 	});
 
 	it.each([
-		['ja', ['タイムスタンプ出力を選択可能', '最高精度', 'Whisperより高精度・低コスト']],
-		['zh', ['可选择时间戳输出', '最高精度', '比 Whisper 更高精度、成本更低']],
-		['ko', ['타임스탬프 출력 선택 가능', '최고 정확도', 'Whisper보다 높은 정확도·저비용']]
+		['ja', ['録音済み音声向けの推奨モデル', '既存の高精度モデル', 'GPT系で最も低コスト', 'タイムスタンプが必要な場合']],
+		['zh', ['录制语音的推荐模型', '现有的高精度模型', '成本最低的 GPT 转录选项', '需要时间戳时使用']],
+		['ko', ['녹음된 음성에 권장되는 모델', '기존 고정확도 모델', '가장 저렴한 GPT 전사 옵션', '타임스탬프가 필요할 때 사용']]
 	])('uses the approved model descriptions for %s', (locale, expected) => {
 		setLocale(locale);
 
 		expect([
-			t('settings.model.whisperDesc'),
+			t('settings.model.gptTranscribeDesc'),
 			t('settings.model.gpt4oDesc'),
-			t('settings.model.gpt4oMiniDesc')
+			t('settings.model.gpt4oMiniDesc'),
+			t('settings.model.whisperDesc')
 		]).toEqual(expected);
 	});
 

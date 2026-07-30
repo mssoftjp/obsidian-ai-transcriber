@@ -59,7 +59,7 @@ export class APISettingsTab extends PluginSettingTab {
 			{
 				name: t('settings.model.name'),
 				desc: t('settings.model.desc'),
-				aliases: ['Whisper', 'GPT-4o'],
+				aliases: ['GPT Transcribe', 'Whisper', 'GPT-4o'],
 				render: setting => SettingsUIBuilder.configureModelSetting(
 					setting,
 					this.plugin.settings,

@@ -9,6 +9,28 @@ export type TranscriptionCleaningPreset =
 	| 'recorded-accurate'
 	| 'recorded-economy'
 	| 'whisper';
+export type TranscriptionModelOptionLabelKey =
+	| 'settings.model.gptTranscribeDefault'
+	| 'settings.model.gpt4oHigh'
+	| 'settings.model.gpt4oMiniCost'
+	| 'settings.model.whisperNoTimestamp'
+	| 'settings.model.whisperWithTimestamp';
+export type TranscriptionModelProviderKey =
+	| 'providers.gptTranscribe'
+	| 'providers.gpt4o'
+	| 'providers.gpt4oMini'
+	| 'providers.whisper'
+	| 'providers.whisperTs';
+export type TranscriptionModelComparisonNameKey =
+	| 'settings.model.gptTranscribe'
+	| 'settings.model.gpt4o'
+	| 'settings.model.gpt4oMini'
+	| 'settings.model.whisper';
+export type TranscriptionModelComparisonDescriptionKey =
+	| 'settings.model.gptTranscribeDesc'
+	| 'settings.model.gpt4oDesc'
+	| 'settings.model.gpt4oMiniDesc'
+	| 'settings.model.whisperDesc';
 
 interface TranscriptionModelProfileDefinition {
 	id: string;
@@ -30,11 +52,11 @@ interface TranscriptionModelProfileDefinition {
 		timestamps: boolean;
 	};
 	ui: {
-		optionLabelKey: string;
-		providerKey: string;
+		optionLabelKey: TranscriptionModelOptionLabelKey;
+		providerKey: TranscriptionModelProviderKey;
 		comparison: {
-			nameKey: string;
-			descriptionKey: string;
+			nameKey: TranscriptionModelComparisonNameKey;
+			descriptionKey: TranscriptionModelComparisonDescriptionKey;
 		} | null;
 	};
 }
