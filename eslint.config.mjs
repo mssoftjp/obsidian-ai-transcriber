@@ -86,8 +86,11 @@ export default [
     ignores: [
       'node_modules/**',
       '*.config.mjs',
+      'jest.config.js',
       'scripts/**',
-      'docs/**'
+      'docs/**',
+      'tests/**',
+      'coverage/**'
     ]
   },
   js.configs.recommended,
