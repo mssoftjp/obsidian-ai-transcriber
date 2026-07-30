@@ -4,10 +4,13 @@ Thank you for helping improve AI Transcriber.
 
 ## Development setup
 
-1. Install dependencies with `npm install`.
-2. Run `npm run build` to type-check and build the plugin.
-3. Run `npm run lint` before opening a pull request.
-4. Run `npm test` when changing transcription, storage, VAD, or UI behavior.
+1. Install exact dependencies with `npm ci`.
+2. Run `npm run build` during development.
+3. Run `npm run test:community` while changing metadata, disclosures, packaging, or workflows.
+4. Run `npm run check:community` before a pull request.
+5. Run `npm run audit:production` with network access before a release.
+
+`npm run check:community` is intentionally network-independent. A network error during `npm run audit:production` is not a clean audit.
 
 If your local `.env` sets `OBSIDIAN_PLUGINS_DIR`, the build may also copy files into your Obsidian vault. For CI or validation-only builds, unset that variable or run with `OBSIDIAN_PLUGINS_DIR=`.
 
