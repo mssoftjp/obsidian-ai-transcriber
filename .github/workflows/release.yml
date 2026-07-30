@@ -16,14 +16,14 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
-          node-version: 20
+          node-version: 24.x
           cache: npm
 
       - name: Install dependencies
@@ -46,13 +46,11 @@ jobs:
           OBSIDIAN_DEPLOY_LOG: ''
         run: npm run build:release
 
-      - name: Verify release artifacts
-        shell: bash
-        run: |
-          version="${{ steps.manifest.outputs.version }}"
-          test -f "build/${version}/main.js"
-          test -f "build/${version}/manifest.json"
-          test -f "build/${version}/styles.css"
+      - name: Audit production dependencies
+        run: npm run audit:production
+
+      - name: Verify Community artifacts
+        run: npm run verify:community
 
       - name: Create or update GitHub release
         env:
@@ -71,15 +69,10 @@ jobs:
             gh release create "${tag}" --title "${tag}" --notes "${notes}"
           fi
           gh release upload "${tag}" \
-            "build/${version}/main.js" \
-            "build/${version}/manifest.json" \
-            "build/${version}/styles.css" \
+            "build/${version}/release/"* \
             --clobber
 
       - name: Attest release artifacts
-        uses: actions/attest-build-provenance@v2
+        uses: actions/attest@v4
         with:
-          subject-path: |
-            build/${{ steps.manifest.outputs.version }}/main.js
-            build/${{ steps.manifest.outputs.version }}/manifest.json
-            build/${{ steps.manifest.outputs.version }}/styles.css
+          subject-path: build/${{ steps.manifest.outputs.version }}/release/*
