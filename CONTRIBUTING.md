@@ -12,6 +12,17 @@ Thank you for helping improve AI Transcriber.
 
 `npm run check:community` is intentionally network-independent. A network error during `npm run audit:dependencies` is not a clean audit. Use `npm run audit:production` only when you need the narrower shipped-dependency view.
 
+## Hosted review preview
+
+The published Obsidian lint plugin is the local and CI policy gate, but it does not reproduce Obsidian's unpublished hosted analyzer. Before creating a version tag or GitHub release:
+
+1. Push the exact candidate commit to GitHub.
+2. Run an Obsidian Developer Dashboard preview scan for that branch, tag, or commit.
+3. Record the candidate commit and preview result in the pull request or release handoff.
+4. Treat every new warning as a release blocker until it is fixed or documented as an intentional disclosure.
+
+Do not use a previous release's scorecard as evidence for a new candidate. Obsidian documents the local lint and hosted preview options in [The future of Obsidian plugins](https://obsidian.md/blog/future-of-plugins/).
+
 `npm ci` applies the committed compatibility patch that lets the official
 `brace-expansion@5.0.9` implementation serve both modern and legacy lint/test
 callers, and installation fails if the patch cannot be applied. Do not remove
