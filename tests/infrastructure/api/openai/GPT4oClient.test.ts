@@ -5,7 +5,7 @@ describe('GPT4oClient direct file transcription', () => {
 		const client = new GPT4oClient('test-key', 'gpt-transcribe');
 		const post = jest.fn().mockResolvedValue({
 			text: '<TRANSCRIPT>こんにちは</TRANSCRIPT>',
-			languages: ['ja']
+			languages: [{ code: 'ja' }]
 		});
 		(client as unknown as { post: jest.Mock }).post = post;
 
@@ -27,10 +27,19 @@ describe('GPT4oClient direct file transcription', () => {
 
 	it('omits both language fields for GPT Transcribe auto-detection', async () => {
 		const client = new GPT4oClient('test-key', 'gpt-transcribe');
-		const post = jest.fn().mockResolvedValue({ text: 'hello', languages: ['en'] });
+		const post = jest.fn().mockResolvedValue({
+			text: 'hello',
+			languages: [{ code: 'en' }],
+			usage: {
+				type: 'tokens',
+				input_tokens: 1,
+				output_tokens: 1,
+				total_tokens: 2
+			}
+		});
 		(client as unknown as { post: jest.Mock }).post = post;
 
-		await client.transcribeFile(
+		const result = await client.transcribeFile(
 			new Uint8Array([1]).buffer,
 			'meeting.mp3',
 			'audio/mpeg',
@@ -40,6 +49,25 @@ describe('GPT4oClient direct file transcription', () => {
 		const formData = post.mock.calls[0]?.[1] as FormData;
 		expect(formData.getAll('languages[]')).toEqual([]);
 		expect(formData.get('language')).toBeNull();
+		expect(result.language).toBe('en');
+	});
+
+	it('does not collapse a multilingual detection into one cleaning language', async () => {
+		const client = new GPT4oClient('test-key', 'gpt-transcribe');
+		const post = jest.fn().mockResolvedValue({
+			text: '日本語 and English',
+			languages: [{ code: 'ja' }, { code: 'en' }]
+		});
+		(client as unknown as { post: jest.Mock }).post = post;
+
+		const result = await client.transcribeFile(
+			new Uint8Array([1]).buffer,
+			'mixed.wav',
+			'audio/wav',
+			{ language: 'auto', timestamps: false }
+		);
+
+		expect(result.language).toBeUndefined();
 	});
 
 	it('rejects Whisper and unknown models before a request can be sent', () => {
