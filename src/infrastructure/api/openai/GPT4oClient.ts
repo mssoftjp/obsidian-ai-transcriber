@@ -28,7 +28,7 @@ import type {
 
 interface GPT4oResponse {
 	text: string;
-	languages?: string[];
+	languages?: Array<{ code: string }>;
 	// File-transcription models don't provide detailed segments in basic JSON format.
 }
 
@@ -192,7 +192,7 @@ export class GPT4oClient extends ApiClient {
 		const extraction = extractTranscriptFromTagWrapper(text);
 		text = extraction.extractedText;
 
-		const result = {
+		const result: TranscriptionResult = {
 			id: chunk.id,
 			text,
 			startTime: chunk.startTime,
@@ -200,6 +200,12 @@ export class GPT4oClient extends ApiClient {
 			success: true
 			// File-transcription models don't provide segments in basic JSON format
 		};
+		const detectedLanguage = response.languages?.length === 1
+			? response.languages[0]?.code
+			: undefined;
+		if (detectedLanguage) {
+			result.language = detectedLanguage;
+		}
 
 		this.logger.debug('OpenAI transcription response parsed', {
 			chunkId: chunk.id,
