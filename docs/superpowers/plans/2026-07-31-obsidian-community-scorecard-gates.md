@@ -670,7 +670,7 @@ git commit -m "test: verify Community release artifacts"
 - Modify: `package.json`
 
 **Interfaces:**
-- Produces: `check:community`, `check`, `build:release`, `lint:artifacts`, and `audit:production`.
+- Produces: `check:community`, `check`, `build:release`, `lint:artifacts`, `audit:dependencies`, and `audit:production`.
 
 - [ ] **Step 1: Verify missing command behavior**
 
@@ -691,9 +691,10 @@ Set:
 ```json
     "build:release": "npm run check:community",
     "lint:artifacts": "eslint \"build/**/*.js\" --max-warnings=0",
+    "audit:dependencies": "npm audit --audit-level=high",
     "audit:production": "npm audit --omit=dev --audit-level=high",
     "check": "npm run check:community",
-    "check:community": "npm run lint && npm run build && npm run verify:community && npm run lint:artifacts && npm run typecheck:test && npm test -- --runInBand --coverage"
+    "check:community": "npm run lint && npm run build && npm run verify:community && npm run lint:artifacts && npm run typecheck:test && npm run test:dependency-compat && npm test -- --runInBand --coverage"
 ```
 
 - [ ] **Step 3: Verify the composed behavior**
@@ -722,7 +723,7 @@ git commit -m "chore: compose Community quality gate"
 - Modify: `.github/workflows/release.yml`
 
 **Interfaces:**
-- Consumes: `check:community`, `audit:production`, and `build/<version>/release/*`.
+- Consumes: `check:community`, `audit:dependencies`, and `build/<version>/release/*`.
 
 GitHub Actions YAML is a configuration TDD exception. The commands it invokes are exercised locally, and the YAML is compared with Obsidian's current official sample without adding a source-text change-detector test or a new parser dependency.
 
@@ -765,7 +766,7 @@ jobs:
           OBSIDIAN_DEPLOY_LOG: ''
         run: npm run check:community
 
-  production-audit:
+  dependency-audit:
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
@@ -777,8 +778,8 @@ jobs:
           cache: npm
       - name: Install dependencies
         run: npm ci
-      - name: Audit production dependencies
-        run: npm run audit:production
+      - name: Audit all dependencies
+        run: npm run audit:dependencies
 ```
 
 - [ ] **Step 2: Update tag release boundaries**
@@ -788,7 +789,7 @@ In `.github/workflows/release.yml`:
 - use `actions/checkout@v6`, `actions/setup-node@v6`, Node `24.x`;
 - retain tag/manifest equality validation;
 - run `npm run build:release`;
-- run `npm run audit:production`;
+- run `npm run audit:dependencies`;
 - run `npm run verify:community`;
 - upload `"build/${version}/release/"*`;
 - attest `build/${{ steps.manifest.outputs.version }}/release/*` with `actions/attest@v4`.
@@ -799,7 +800,7 @@ Run:
 
 ```bash
 npm run check:community
-npm run audit:production
+npm run audit:dependencies
 git diff --check -- .github/workflows/quality.yml .github/workflows/release.yml
 ```
 
@@ -829,7 +830,7 @@ npm audit --omit=dev --audit-level=high
 npm audit --audit-level=high
 ```
 
-Expected: production exits 0; full audit exits 1 for current development-only `brace-expansion` and `fast-uri` findings.
+Expected at the initial remediation stage: production exits 0; full audit identifies the remaining development-only findings. The later CVE-2026-14257 follow-up below supersedes accepting that remainder.
 
 - [ ] **Step 2: Apply non-breaking lockfile remediation**
 
@@ -843,7 +844,7 @@ npm run audit:production
 npm audit --audit-level=high
 ```
 
-Expected: `package.json` stays unchanged and both audits pass. If the full audit remains blocked upstream, do not use `--force`; retain only a production-clean result and report the exact dev-only blocker.
+Expected: `package.json` stays unchanged and both audits pass. If the full audit remains blocked upstream, do not use `--force`; preserve the exact blocker for the focused follow-up remediation below.
 
 - [ ] **Step 3: Update contributor instructions**
 
@@ -854,9 +855,9 @@ Document:
 2. Run `npm run build` during development.
 3. Run `npm run test:community` while changing metadata, disclosures, packaging, or workflows.
 4. Run `npm run check:community` before a pull request.
-5. Run `npm run audit:production` with network access before a release.
+5. Run `npm run audit:dependencies` with network access before a pull request or release.
 
-`npm run check:community` is intentionally network-independent. A network error during `npm run audit:production` is not a clean audit.
+`npm run check:community` is intentionally network-independent. A network error during `npm run audit:dependencies` is not a clean audit. Use `npm run audit:production` only for the narrower shipped-dependency view.
 ```
 
 Keep existing privacy and `.env` guidance.
@@ -895,8 +896,8 @@ sed -n '1,220p' /Users/hidetoshi/Documents/Projects/obsidian-ai-transcriber/publ
 ```bash
 npm run check:community
 npm run test:long-form:verifier
+npm run audit:dependencies
 npm run audit:production
-npm audit --audit-level=high
 git diff --check main...HEAD
 ```
 
@@ -913,3 +914,50 @@ Confirm exactly three release files, no runtime dependency addition, no GPT Tran
 - [ ] **Step 4: Report without publishing**
 
 Report commits, test counts, lint/type-check results, audit results, three release files, Node.js CI matrix, clean worktree, and that no paid request, release, submission, or push occurred.
+
+---
+
+### Task 8: Close CVE-2026-14257 across development dependencies
+
+**Files:**
+- Modify: `package.json`
+- Modify: `package-lock.json`
+- Create: `patches/brace-expansion+5.0.9.patch`
+- Create: `scripts/brace-expansion-compat.test.mjs`
+- Modify: `.github/workflows/quality.yml`
+- Modify: `.github/workflows/release.yml`
+- Modify: `CONTRIBUTING.md`
+
+- [ ] **Step 1: Reproduce and trace every affected path**
+
+Run the full audit and `npm ls brace-expansion --all`. Confirm that the advisory
+is CVE-2026-14257 and that official lint/Jest paths still require callable
+CommonJS exports through older `minimatch` versions.
+
+- [ ] **Step 2: Add a failing compatibility regression**
+
+Add `test:dependency-compat` covering a representative legacy expansion plus
+the patched `maxLength` boundary. Verify that it fails against unpatched
+`brace-expansion@5.0.9`.
+
+- [ ] **Step 3: Pin, patch, and reproduce from a clean install**
+
+Override every transitive path to official `brace-expansion@5.0.9`. Apply the
+minimal CommonJS compatibility patch with `patch-package`, keeping the upstream
+ESM implementation unchanged. Require Node `20 || >=22`, run `npm ci`, and
+confirm `npm ls brace-expansion --all` is valid and deduplicated.
+
+- [ ] **Step 4: Enforce and verify**
+
+Run:
+
+```bash
+npm run test:dependency-compat
+npm run check:community
+npm run audit:dependencies
+npm run audit:production
+git diff --check
+```
+
+Expected: all commands exit zero, the original audit no longer reproduces, and
+the official lint/Jest behavior remains intact.

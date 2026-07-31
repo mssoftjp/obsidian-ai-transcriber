@@ -46,8 +46,8 @@ jobs:
           OBSIDIAN_DEPLOY_LOG: ''
         run: npm run build:release
 
-      - name: Audit production dependencies
-        run: npm run audit:production
+      - name: Audit all dependencies
+        run: npm run audit:dependencies
 
       - name: Verify Community artifacts
         run: npm run verify:community

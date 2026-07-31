@@ -1,0 +1,17 @@
+diff --git a/node_modules/brace-expansion/dist/commonjs/index.js b/node_modules/brace-expansion/dist/commonjs/index.js
+index 869a6be..2a23ddb 100644
+--- a/node_modules/brace-expansion/dist/commonjs/index.js
++++ b/node_modules/brace-expansion/dist/commonjs/index.js
+@@ -286,4 +286,10 @@ function expand_(str, max, maxLength, isTop) {
+     }
+     return acc;
+ }
+-//# sourceMappingURL=index.js.map
+\ No newline at end of file
++// Preserve the callable CommonJS API required by minimatch <=9 while exposing
++// the named exports used by minimatch >=10.
++expand.expand = expand;
++expand.EXPANSION_MAX = exports.EXPANSION_MAX;
++expand.EXPANSION_MAX_LENGTH = exports.EXPANSION_MAX_LENGTH;
++module.exports = expand;
++//# sourceMappingURL=index.js.map
