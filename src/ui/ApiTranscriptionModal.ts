@@ -19,6 +19,7 @@ import { getDictionaryCorrectionDescriptionKey } from './DictionaryCorrectionDes
 import { DictionaryManagementModal } from './DictionaryManagementModal';
 import { FolderInputSuggest } from './FolderInputSuggest';
 import { PostProcessingModal } from './PostProcessingModal';
+import { shouldAutoAdvanceTimeInput } from './TimeInputNavigation';
 
 import type { ProgressTracker } from './ProgressTracker';
 import type { APITranscriptionSettings, ContextualCorrection } from '../ApiSettings';
@@ -1389,7 +1390,7 @@ export class APITranscriptionModal extends Modal {
 			}
 
 			// Auto-advance to next field when maxLength reached
-			if (value.length === maxLength && (e as InputEvent).inputType !== 'deleteContentBackward') {
+			if (shouldAutoAdvanceTimeInput(e, value.length, maxLength)) {
 				const nextInput = this.getNextTimeInput(target);
 				if (nextInput) {
 					nextInput.focus();
