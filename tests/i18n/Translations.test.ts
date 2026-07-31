@@ -71,25 +71,25 @@ describe('transcription model translations', () => {
 			]
 		}).toEqual({
 			en: [
-				'Recommended for recorded speech',
+				'Latest high-accuracy model (recommended)',
 				'Existing high-accuracy model',
 				'Lowest-cost GPT transcription option',
 				'Use when timestamps are needed'
 			],
 			ja: [
-				'録音済み音声向けの推奨モデル',
+				'最新の高精度モデル（推奨）',
 				'既存の高精度モデル',
 				'GPT系で最も低コスト',
 				'タイムスタンプが必要な場合'
 			],
 			zh: [
-				'录制语音的推荐模型',
+				'最新高精度模型（推荐）',
 				'现有的高精度模型',
 				'成本最低的 GPT 转录选项',
 				'需要时间戳时使用'
 			],
 			ko: [
-				'녹음된 음성에 권장되는 모델',
+				'최신 고정확도 모델(권장)',
 				'기존 고정확도 모델',
 				'가장 저렴한 GPT 전사 옵션',
 				'타임스탬프가 필요할 때 사용'
