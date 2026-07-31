@@ -1,7 +1,7 @@
 {
   "id": "ai-transcriber",
   "name": "AI Transcriber",
-  "version": "0.10.1",
+  "version": "0.11.0",
   "minAppVersion": "1.8.7",
   "description": "Transcribe audio and video files with OpenAI transcription models.",
   "author": "Musashino Software",

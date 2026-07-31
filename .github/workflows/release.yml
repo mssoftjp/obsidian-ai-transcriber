@@ -59,14 +59,15 @@ jobs:
         run: |
           version="${{ steps.manifest.outputs.version }}"
           tag="${GITHUB_REF_NAME}"
-          previous_tag="$(git tag --sort=-v:refname | grep -v "^${tag}$" | head -n 1 || true)"
-          if [ -n "${previous_tag}" ]; then
-            notes="**Full Changelog**: https://github.com/${GITHUB_REPOSITORY}/compare/${previous_tag}...${tag}"
-          else
-            notes="**Full Changelog**: https://github.com/${GITHUB_REPOSITORY}/commits/${tag}"
+          notes_file="docs/releases/${version}.md"
+          if [ ! -s "${notes_file}" ]; then
+            echo "Release notes are missing or empty: ${notes_file}" >&2
+            exit 1
           fi
           if ! gh release view "${tag}" >/dev/null 2>&1; then
-            gh release create "${tag}" --title "${tag}" --notes "${notes}"
+            gh release create "${tag}" --title "${tag}" --notes-file "${notes_file}" --verify-tag
+          else
+            gh release edit "${tag}" --title "${tag}" --notes-file "${notes_file}"
           fi
           gh release upload "${tag}" \
             "build/${version}/release/"* \
