@@ -46,28 +46,26 @@
     "node": "20 || >=22"
   },
   "devDependencies": {
-    "@eslint/js": "^9.30.1",
+    "@eslint/js": "9.39.4",
     "@microsoft/eslint-plugin-sdl": "^1.1.0",
     "@types/jest": "^30.0.0",
     "@types/node": "^20.19.43",
-    "@typescript-eslint/eslint-plugin": "^8.46.0",
-    "@typescript-eslint/parser": "^8.46.0",
     "brace-expansion": "5.0.9",
     "esbuild": "0.28.1",
-    "eslint": "^9.12.0",
+    "eslint": "9.39.4",
     "eslint-plugin-depend": "^1.3.1",
     "eslint-plugin-import-x": "^4.13.0",
     "eslint-plugin-json-schema-validator": "^5.1.0",
     "eslint-plugin-obsidianmd": "0.4.1",
     "eslint-plugin-security": "^2.1.1",
-    "globals": "^14.0.0",
+    "globals": "17.6.0",
     "jest": "^30.0.2",
     "obsidian": "1.13.0",
     "patch-package": "8.0.1",
     "ts-jest": "^29.4.0",
     "tslib": "2.4.0",
-    "typescript": "^5.6.3",
-    "typescript-eslint": "^8.46.0"
+    "typescript": "5.9.3",
+    "typescript-eslint": "8.59.1"
   },
   "overrides": {
     "brace-expansion": "$brace-expansion"

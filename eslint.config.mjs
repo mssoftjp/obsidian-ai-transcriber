@@ -1,9 +1,9 @@
 import js from '@eslint/js';
-import tsParser from '@typescript-eslint/parser';
-import tsPlugin from '@typescript-eslint/eslint-plugin';
+import { defineConfig, globalIgnores } from 'eslint/config';
+import importXPlugin from 'eslint-plugin-import-x';
 import obsidianmd from 'eslint-plugin-obsidianmd';
 import globals from 'globals';
-import importXPlugin from 'eslint-plugin-import-x';
+import tseslint from 'typescript-eslint';
 
 const typescriptRules = {
   '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
@@ -72,7 +72,7 @@ const typescriptRules = {
 
 const artifactRules = {
   // Disable plugin rules on build artifacts (generated JS; no typed linting).
-  ...Object.fromEntries(Object.keys(tsPlugin.rules).map((ruleName) => [`@typescript-eslint/${ruleName}`, 'off'])),
+  ...Object.fromEntries(Object.keys(tseslint.plugin.rules).map((ruleName) => [`@typescript-eslint/${ruleName}`, 'off'])),
   ...Object.fromEntries(Object.keys(obsidianmd.rules).map((ruleName) => [`obsidianmd/${ruleName}`, 'off']))
 };
 
@@ -81,26 +81,24 @@ const webCodecsGlobals = {
   AudioEncoder: 'readonly'
 };
 
-export default [
-  {
-    ignores: [
-      'node_modules/**',
-      '*.config.mjs',
-      'jest.config.js',
-      'scripts/**',
-      'docs/**',
-      'tests/**',
-      'coverage/**'
-    ]
-  },
+export default defineConfig(
+  globalIgnores([
+    'node_modules/**',
+    '*.config.mjs',
+    'jest.config.js',
+    'scripts/**',
+    'docs/**',
+    'tests/**',
+    'coverage/**'
+  ]),
   js.configs.recommended,
-  ...flattenConfigs([...obsidianmd.configs.recommendedWithLocalesEn]),
+  ...obsidianmd.configs.recommendedWithLocalesEn,
   {
     files: ['src/**/*.ts'],
     languageOptions: {
-      parser: tsParser,
+      parser: tseslint.parser,
       parserOptions: {
-        project: './tsconfig.json',
+        projectService: true,
         tsconfigRootDir: import.meta.dirname ?? process.cwd(),
         sourceType: 'module',
         ecmaVersion: 2022
@@ -113,7 +111,7 @@ export default [
       }
     },
     plugins: {
-      '@typescript-eslint': tsPlugin,
+      '@typescript-eslint': tseslint.plugin,
       'import-x': importXPlugin
     },
     rules: typescriptRules
@@ -140,27 +138,4 @@ export default [
       'no-useless-escape': 'off'
     }
   }
-];
-
-function flattenConfigs(configs) {
-  return configs.flatMap((config) => expandConfig(config));
-}
-
-function expandConfig(config) {
-  if (Array.isArray(config)) {
-    return config.flatMap((item) => expandConfig(item));
-  }
-
-  if (!config || typeof config !== 'object') {
-    return [];
-  }
-
-  if (!('extends' in config) || !config.extends) {
-    return [config];
-  }
-
-  const { extends: extendList, ...rest } = config;
-  const normalized = Array.isArray(extendList) ? extendList : [extendList];
-  const inherited = normalized.flatMap((item) => expandConfig(item));
-  return [...inherited, rest];
-}
+);
