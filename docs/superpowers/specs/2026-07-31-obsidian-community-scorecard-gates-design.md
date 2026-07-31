@@ -15,7 +15,7 @@ The implementation should reproduce the public and official checks that can be r
 - `tsconfig.test.json` intends to include tests but inherits the production config's test exclusion. A read-only TypeScript program check with the exclusion corrected included 170 files and produced zero diagnostics.
 - Jest currently passes 51 suites and 247 tests.
 - Tag releases run the existing `check` script, but ordinary pushes and pull requests have no quality workflow.
-- The production dependency audit currently reports zero vulnerabilities. The full development tree reports two high-severity findings with non-breaking fixes advertised by npm.
+- At design time, the production dependency audit reported zero vulnerabilities while the development tree still contained high-severity transitive findings. The completed gate must require a clean full dependency audit, not only a production-only audit.
 
 ## Scope
 
@@ -26,8 +26,8 @@ The work covers:
 - Community metadata and disclosure contract tests;
 - deterministic verification of Community release artifacts;
 - push and pull-request CI on the Node.js versions used by Obsidian's current sample plugin;
-- production dependency auditing before release;
-- safe, non-breaking lockfile remediation of current development-only advisories;
+- full dependency auditing before pull requests and releases;
+- a patched `brace-expansion` implementation with compatibility coverage for the older `minimatch` APIs still used by the official lint and Jest toolchains;
 - reuse of the same deterministic gate by the release workflow.
 
 ## Non-goals
@@ -116,9 +116,12 @@ test:community        focused metadata/release verifier Jest suites
 verify:metadata       repository metadata/disclosure verifier
 verify:release        post-build release-directory verifier
 verify:community      metadata plus release verification
+test:dependency-compat
+                      patched brace expansion plus legacy API verification
+audit:dependencies    npm audit --audit-level=high
 audit:production      npm audit --omit=dev --audit-level=high
 check                 lint, production build, artifact verification/lint,
-                      test type-check, and full Jest coverage
+                      test type-check, dependency compatibility, and full Jest coverage
 check:community       deterministic local check plus focused Community tests
 ```
 
@@ -148,11 +151,15 @@ No workflow pushes source changes or rewrites the lockfile.
 
 Do not add a runtime package for validation. Use Node.js, Jest, TypeScript, ESLint, and the already-installed official Obsidian ESLint plugin.
 
-Attempt the current npm advisory remediation using the normal non-breaking lockfile update path. Accept it only if:
+Prefer normal non-breaking lockfile updates. When an upstream tool still
+requires the pre-5 CommonJS API, a development-only compatibility patch is
+acceptable only if:
 
-- `package.json` ranges do not require broad or breaking changes;
-- the production audit remains clean;
-- the full audit no longer reports the two current high-severity findings, or any remaining finding is documented as an upstream development-only blocker;
+- every dependency path resolves the official patched implementation;
+- the compatibility change is limited to the removed callable export shape;
+- a clean `npm ci` reapplies the patch deterministically;
+- full and production-only audits remain clean;
+- both legacy and modern API behavior have focused regression coverage;
 - all quality gates pass afterward.
 
 Do not use `npm audit fix --force`.
@@ -191,8 +198,8 @@ No test sends audio, API keys, prompts, or transcript content to OpenAI.
 - Community metadata and README disclosure contracts pass.
 - A production build produces an exact, verified three-file Community release directory.
 - Generated JavaScript lint passes.
-- Production `npm audit` reports zero high or critical vulnerabilities.
-- Development advisory remediation is non-breaking, or any upstream-only remainder is explicitly reported.
+- Full and production-only `npm audit` report zero vulnerabilities.
+- Every supported lint and test path resolves `brace-expansion@5.0.9`, while legacy callable and modern named APIs remain covered.
 - Quality CI covers Node.js 20, 22, and 24.
 - The tag release workflow reuses the same Community gate and uploads only verified files.
 - `git diff --check` passes and the worktree contains no unrelated edits.

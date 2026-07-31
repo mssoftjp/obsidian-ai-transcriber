@@ -9,23 +9,26 @@
     "build:debug": "tsc --noEmit && node esbuild-api.config.mjs",
     "dev": "tsc --noEmit && node esbuild-api.config.mjs --watch",
     "build:release": "npm run check:community",
+    "postinstall": "patch-package --error-on-fail",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
     "test:long-form:generate": "bash scripts/generate-long-form-test-audio.sh",
     "test:long-form:verify": "node scripts/verify-long-form-transcript.mjs",
     "test:long-form:verifier": "node --test scripts/verify-long-form-transcript.test.mjs",
+    "test:dependency-compat": "node --test scripts/brace-expansion-compat.test.mjs",
     "test:community": "jest tests/community --runInBand",
     "lint": "eslint \"src/**/*.ts\" package.json --max-warnings=0",
     "lint:fix": "eslint \"src/**/*.ts\" package.json --fix",
     "lint:artifacts": "eslint \"build/**/*.js\" --max-warnings=0",
     "typecheck:test": "tsc --project tsconfig.test.json --noEmit",
+    "audit:dependencies": "npm audit --audit-level=high",
     "audit:production": "npm audit --omit=dev --audit-level=high",
     "verify:metadata": "node scripts/verify-community-metadata.mjs",
     "verify:release": "node scripts/verify-community-release.mjs",
     "verify:community": "npm run verify:metadata && npm run verify:release",
     "check": "npm run check:community",
-    "check:community": "npm run lint && npm run build && npm run verify:community && npm run lint:artifacts && npm run typecheck:test && npm test -- --runInBand --coverage"
+    "check:community": "npm run lint && npm run build && npm run verify:community && npm run lint:artifacts && npm run typecheck:test && npm run test:dependency-compat && npm test -- --runInBand --coverage"
   },
   "keywords": [
     "obsidian",
@@ -39,15 +42,16 @@
   "author": "Musashino Software",
   "license": "MIT",
   "engines": {
-    "node": ">=18"
+    "node": "20 || >=22"
   },
   "devDependencies": {
     "@eslint/js": "^9.30.1",
     "@microsoft/eslint-plugin-sdl": "^1.1.0",
     "@types/jest": "^30.0.0",
-    "@types/node": "^20.12.12",
+    "@types/node": "^20.19.43",
     "@typescript-eslint/eslint-plugin": "^8.46.0",
     "@typescript-eslint/parser": "^8.46.0",
+    "brace-expansion": "5.0.9",
     "esbuild": "0.28.1",
     "eslint": "^9.12.0",
     "eslint-plugin-depend": "^1.3.1",
@@ -58,10 +62,14 @@
     "globals": "^14.0.0",
     "jest": "^30.0.2",
     "obsidian": "1.13.0",
+    "patch-package": "8.0.1",
     "ts-jest": "^29.4.0",
     "tslib": "2.4.0",
     "typescript": "^5.6.3",
     "typescript-eslint": "^8.46.0"
+  },
+  "overrides": {
+    "brace-expansion": "$brace-expansion"
   },
   "dependencies": {
     "@echogarden/fvad-wasm": "^0.2.0"

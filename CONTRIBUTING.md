@@ -8,9 +8,16 @@ Thank you for helping improve AI Transcriber.
 2. Run `npm run build` during development.
 3. Run `npm run test:community` while changing metadata, disclosures, packaging, or workflows.
 4. Run `npm run check:community` before a pull request.
-5. Run `npm run audit:production` with network access before a release.
+5. Run `npm run audit:dependencies` with network access before a pull request or release.
 
-`npm run check:community` is intentionally network-independent. A network error during `npm run audit:production` is not a clean audit.
+`npm run check:community` is intentionally network-independent. A network error during `npm run audit:dependencies` is not a clean audit. Use `npm run audit:production` only when you need the narrower shipped-dependency view.
+
+`npm ci` applies the committed compatibility patch that lets the official
+`brace-expansion@5.0.9` implementation serve both modern and legacy lint/test
+callers, and installation fails if the patch cannot be applied. Do not remove
+the override, patch, or `test:dependency-compat`
+independently; remove them together only after `npm ls brace-expansion --all`
+shows that every supported tool accepts the patched API directly.
 
 If your local `.env` sets `OBSIDIAN_PLUGINS_DIR`, the build may also copy files into your Obsidian vault. For CI or validation-only builds, unset that variable or run with `OBSIDIAN_PLUGINS_DIR=`.
 
