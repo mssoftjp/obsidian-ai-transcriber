@@ -147,10 +147,10 @@ Use the current published versions verified against the official sample, keep `e
 
 ```bash
 npm uninstall --save-dev @typescript-eslint/eslint-plugin @typescript-eslint/parser
-npm install --save-dev --save-exact @eslint/js@9.39.4 eslint@9.39.4 globals@17.6.0 typescript-eslint@8.59.1 obsidian@1.13.1 typescript@5.9.3 eslint-plugin-obsidianmd@0.4.1
+npm install --save-dev --save-exact @eslint/js@9.39.4 eslint@9.39.4 globals@17.6.0 typescript-eslint@8.59.1 obsidian@1.13.0 typescript@5.9.3 eslint-plugin-obsidianmd@0.4.1
 ```
 
-If any named version is no longer the current published official-compatible version at execution time, stop and update this plan/spec before continuing; do not silently substitute a version.
+The root Obsidian API package deliberately remains `1.13.0`: `1.13.1` fails this repository's strict `skipLibCheck: false` build because its `HistoryHandler` implementers omit the required `onHistoryBack` declaration. Do not weaken TypeScript library checking to adopt it. If any scanner package version is unavailable, stop and update this plan/spec before continuing; do not silently substitute a version.
 
 - [ ] **Step 3: Migrate flat-config composition**
 
@@ -185,7 +185,7 @@ npm run build
 npm run lint:artifacts
 ```
 
-Expected: the direct parser/plugin entries are absent at the root, the aggregate package is 8.59.1, the official Obsidian plugin is 0.4.1, and every gate exits 0 with no warnings.
+Expected: the direct parser/plugin entries are absent at the root, the aggregate package is 8.59.1, the official Obsidian plugin is 0.4.1, the root Obsidian API package is the strict-build-compatible 1.13.0, and every gate exits 0 with no warnings.
 
 - [ ] **Step 5: Prove a clean install uses the committed graph**
 

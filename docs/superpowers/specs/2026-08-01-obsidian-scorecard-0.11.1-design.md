@@ -73,6 +73,8 @@ Use ESLint's supported flat-config helpers:
 
 Remove direct `@typescript-eslint/parser` and `@typescript-eslint/eslint-plugin` dependencies after migrating the config to the aggregate package. Pin the scanner-facing packages to the verified versions used for this change so local `npm ci` and CI load the same analyzer stack. Keep `eslint-plugin-obsidianmd` pinned exactly to `0.4.1`.
 
+Keep the root Obsidian API type package at `1.13.0`. A verification probe with `1.13.1` fails the repository's required `skipLibCheck: false` build because that release declares `Menu`, `Modal`, and `PopoverSuggest` as `HistoryHandler` implementations without declaring `onHistoryBack`. Weakening library type checking would hide an upstream contract error and is not required for ESLint alignment; the analyzer packages remain on the current official-compatible versions.
+
 The generated JavaScript override remains separate: it disables TypeScript and Obsidian source-only rules while keeping applicable base JavaScript checks. `npm run lint` and `npm run lint:artifacts` retain `--max-warnings=0`.
 
 No source-text test will assert the exact ESLint configuration. The gate is its executable behavior: clean installation, source lint, build, and generated-artifact lint must all exit zero.
