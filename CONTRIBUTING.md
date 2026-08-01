@@ -12,6 +12,8 @@ Thank you for helping improve AI Transcriber.
 
 `npm run check:community` is intentionally network-independent. A network error during `npm run audit:dependencies` is not a clean audit. Use `npm run audit:production` only when you need the narrower shipped-dependency view.
 
+`npm run check:community` is the canonical local and CI scan. It loads the pinned `eslint-plugin-obsidianmd@0.4.1`, runs source lint, the strict build, metadata and release verification, generated-artifact lint through `npm run lint:artifacts`, test type-checking, compatibility and deployment tests, and the full coverage suite. `npm run build:release` invokes this same gate. The Community release bundle contains exactly `main.js`, `manifest.json`, and `styles.css`; do not include `fvad.wasm`.
+
 ## Hosted review preview
 
 The published Obsidian lint plugin is the local and CI policy gate, but it does not reproduce Obsidian's unpublished hosted analyzer. Before creating a version tag or GitHub release:

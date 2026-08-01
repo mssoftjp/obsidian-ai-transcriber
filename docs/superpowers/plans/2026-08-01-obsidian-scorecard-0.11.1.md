@@ -1,5 +1,7 @@
 # Obsidian Community Scorecard 0.11.1 Implementation Plan
 
+> **Status:** Historical plan. The implementation was completed and integrated into `main` as `b3c2da2` on 2026-08-01; unchecked boxes below preserve the original execution plan and do not represent current pending work.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Resolve the 0.11.0 hosted review warning, align the executable lint stack with Obsidian's current official sample, preserve intentional vault media discovery, and prepare a verified 0.11.1 branch for push.
