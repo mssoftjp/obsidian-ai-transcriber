@@ -9,14 +9,54 @@ const SUPPORT_HOSTS = new Set([
   'ko-fi.com',
   'patreon.com'
 ]);
-const DISCLOSURES = [
+const REQUIRED_README_STATEMENTS = [
   ['OpenAI account and API-key requirement', /OpenAI API account with API key/i],
   ['paid API use', /OpenAI API is a paid service/i],
   ['OpenAI network destination', /api\.openai\.com/i],
   ['audio transmission', /Audio data is sent to OpenAI for transcription/i],
   ['external-file handling', /Files selected outside the vault are copied/i],
   ['local secret storage', /saved only when Electron safeStorage is available/i],
-  ['absence of telemetry', /No telemetry or usage data is collected/i]
+  ['absence of telemetry', /No telemetry or usage data is collected/i],
+  [
+    'English plugin-data persistence',
+    /Plugin data stores settings, dictionaries, and up to 50 transcription-history items/i
+  ],
+  [
+    'English local WebCodecs fallback',
+    /Locally processed chunks use WebCodecs Opus[\s\S]*16 kHz mono WAV/i
+  ],
+  [
+    'English selected-range upload',
+    /For a selected time range, only that processed range is encoded into upload chunks/i
+  ],
+  [
+    'Japanese plugin-data persistence',
+    /プラグインデータには、設定、辞書、最大50件の文字起こし履歴を保存します/
+  ],
+  [
+    'Japanese WebCodecs fallback',
+    /ローカル処理したチャンクでは[\s\S]*WebCodecs Opus[\s\S]*16 kHzモノラルWAV/
+  ],
+  [
+    'Japanese selected-range upload',
+    /時間範囲を選択した場合、その処理範囲だけをアップロード用チャンクへエンコード/
+  ]
+];
+const FORBIDDEN_README_STATEMENTS = [
+  [
+    'English no-persistence claim',
+    /No data is stored permanently by the plugin beyond the transcribed text/i
+  ],
+  [
+    'Japanese no-persistence claim',
+    /プラグインによって文字起こしされたテキスト以外のデータは永続的に保存されません/
+  ],
+  ['English recording workflow', /"Recording failed" error/i],
+  ['Japanese recording workflow', /「録音に失敗しました」エラー/],
+  ['English microphone permission', /microphone permissions/i],
+  ['Japanese microphone permission', /マイクの権限/],
+  ['English audio-format setting', /different audio format in settings/i],
+  ['Japanese audio-format setting', /設定で別の音声形式を試す/]
 ];
 
 function fail(category, message) {
@@ -117,9 +157,14 @@ export function verifyCommunityMetadata(repositoryRoot = process.cwd()) {
 
   const readmePath = path.join(root, 'README.md');
   const readme = readReadme(readmePath);
-  for (const [label, pattern] of DISCLOSURES) {
+  for (const [label, pattern] of REQUIRED_README_STATEMENTS) {
     if (!pattern.test(readme)) {
       fail('disclosure', `README is missing ${label}.`);
+    }
+  }
+  for (const [label, pattern] of FORBIDDEN_README_STATEMENTS) {
+    if (pattern.test(readme)) {
+      fail('disclosure', `README contains obsolete ${label}.`);
     }
   }
 
