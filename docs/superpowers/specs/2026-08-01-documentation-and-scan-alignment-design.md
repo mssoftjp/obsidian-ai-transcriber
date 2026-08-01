@@ -58,7 +58,7 @@ Remove the recording-failure, microphone-permission, and configurable-audio-form
 
 ### 2. Contributor and release guidance
 
-Update `AGENTS.md` and applicable contributor/release documents to describe the current repository:
+Keep the ignored local `AGENTS.md` operational instructions current, and update tracked contributor/release documents to describe the current repository. CI-verifiable contracts live in tracked `CONTRIBUTING.md`; the deterministic verifier must not depend on ignored local configuration.
 
 - this checkout is the package root; it does not contain another package-level `public/` directory;
 - TypeScript source follows the existing tab-indented style;

@@ -163,7 +163,7 @@ export function verifyCommunityMetadata(repositoryRoot = process.cwd()) {
     fail('tooling', 'package.json must define the canonical lint:artifacts script.');
   }
 
-  const agents = readText(path.join(root, 'AGENTS.md'), 'tooling');
+  const contributing = readText(path.join(root, 'CONTRIBUTING.md'), 'tooling');
   const contributorRequirements = [
     ['pinned lint package', `eslint-plugin-obsidianmd@${lintPluginVersion}`],
     ['canonical artifact lint command', 'npm run lint:artifacts'],
@@ -173,12 +173,11 @@ export function verifyCommunityMetadata(repositoryRoot = process.cwd()) {
     ]
   ];
   for (const [label, requiredText] of contributorRequirements) {
-    if (!agents.includes(requiredText)) {
-      fail('tooling', `AGENTS.md is missing ${label}.`);
+    if (!contributing.includes(requiredText)) {
+      fail('tooling', `CONTRIBUTING.md is missing ${label}.`);
     }
   }
 
-  const contributing = readText(path.join(root, 'CONTRIBUTING.md'), 'tooling');
   if (!contributing.includes('npm run check:community')) {
     fail('tooling', 'CONTRIBUTING.md must name npm run check:community as the canonical gate.');
   }

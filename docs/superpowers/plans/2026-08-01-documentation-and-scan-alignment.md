@@ -27,8 +27,8 @@
 - `scripts/verify-community-metadata.mjs`: one deterministic verifier for metadata, bilingual README invariants, contributor guidance, and release-note alignment.
 - `tests/community/CommunityMetadataVerifier.test.ts`: isolated temporary-repository fixtures and regression tests for every new invariant.
 - `README.md`: corrected English and Japanese persistence, local-processing, selected-range, and troubleshooting text outside both screenshot sections.
-- `AGENTS.md`: current repository layout, tab indentation, lint package, canonical artifact scan, and exact release bundle instructions.
-- `CONTRIBUTING.md`: canonical local/CI gate contents and exact release-bundle boundary.
+- `AGENTS.md`: ignored local instructions updated in place for the current checkout, but never used as a CI verifier input or staged for commit.
+- `CONTRIBUTING.md`: tracked source of truth for canonical local/CI gate contents, lint pinning, and the exact release-bundle boundary.
 - `docs/releases/0.11.1.md`: complete 0.11.1 review and documentation-hardening summary.
 - `docs/superpowers/plans/2026-08-01-obsidian-scorecard-0.11.1.md`: concise historical-status note for the completed earlier plan.
 - `.github/workflows/quality.yml`: inspected, but no change expected because it already invokes `npm run check:community` on Node 20/22/24.
@@ -315,7 +315,7 @@ git commit -m "docs: align privacy disclosures with implementation"
 - Modify: `scripts/verify-community-metadata.mjs`
 
 **Interfaces:**
-- Consumes: `package.json`, `AGENTS.md`, `CONTRIBUTING.md`, and `docs/releases/<manifest.version>.md`.
+- Consumes: tracked `package.json`, `CONTRIBUTING.md`, and `docs/releases/<manifest.version>.md`; ignored `AGENTS.md` is deliberately excluded.
 - Produces: `[tooling]` failures for lint/scan-contract drift and `[release]` failures for missing or mismatched release notes.
 - Preserves: all Task 1 README checks and existing metadata checks.
 
@@ -335,12 +335,12 @@ const packageJson: Record<string, unknown> = {
 };
 
 writeJson(join(root, 'package.json'), packageJson);
-writeFileSync(join(root, 'AGENTS.md'), [
+writeFileSync(join(root, 'CONTRIBUTING.md'), [
+  'Run `npm run check:community` locally and in CI.',
   'Pin `eslint-plugin-obsidianmd@0.4.1` in local and CI scans.',
   'Run `npm run lint:artifacts` after the build.',
   'The Community release bundle contains exactly `main.js`, `manifest.json`, and `styles.css`; do not include `fvad.wasm`.'
 ].join('\n'));
-writeFileSync(join(root, 'CONTRIBUTING.md'), 'Run `npm run check:community` locally and in CI.');
 mkdirSync(join(root, 'docs', 'releases'), { recursive: true });
 writeFileSync(join(root, 'docs', 'releases', '1.2.3.md'), '# AI Transcriber 1.2.3\n');
 ```
@@ -349,7 +349,20 @@ Return `{ root, manifest, packageJson }`.
 
 - [ ] **Step 2: Write focused failing tooling-contract tests**
 
-Add these cases:
+First encode the tracked-file boundary:
+
+```ts
+it('accepts tracked contributor guidance without an ignored AGENTS.md', () => {
+  const fixture = createFixture();
+  expect(existsSync(join(fixture.root, 'AGENTS.md'))).toBe(false);
+
+  const result = run(fixture.root);
+  expect(result.status).toBe(0);
+  expect(result.stderr).toBe('');
+});
+```
+
+Then add these cases:
 
 ```ts
 it('rejects an unpinned Obsidian lint dependency', () => {
@@ -370,9 +383,9 @@ it.each<[string, string]>([
   ['exact Community release bundle', 'contains exactly `main.js`, `manifest.json`, and `styles.css`; do not include `fvad.wasm`']
 ])('rejects missing %s guidance', (label, requiredText) => {
   const fixture = createFixture();
-  const agentsPath = join(fixture.root, 'AGENTS.md');
-  const guidance = readFileSync(agentsPath, 'utf8').replace(requiredText, '');
-  writeFileSync(agentsPath, guidance);
+  const contributingPath = join(fixture.root, 'CONTRIBUTING.md');
+  const guidance = readFileSync(contributingPath, 'utf8').replace(requiredText, '');
+  writeFileSync(contributingPath, guidance);
 
   const result = run(fixture.root);
   expect(result.status).toBe(1);
@@ -438,19 +451,18 @@ if (typeof packageJson.scripts?.['lint:artifacts'] !== 'string') {
   fail('tooling', 'package.json must define the canonical lint:artifacts script.');
 }
 
-const agents = readText(path.join(root, 'AGENTS.md'), 'tooling');
+const contributing = readText(path.join(root, 'CONTRIBUTING.md'), 'tooling');
 const contributorRequirements = [
   ['pinned lint package', `eslint-plugin-obsidianmd@${lintPluginVersion}`],
   ['canonical artifact lint command', 'npm run lint:artifacts'],
   ['exact Community release bundle', 'contains exactly `main.js`, `manifest.json`, and `styles.css`; do not include `fvad.wasm`']
 ];
 for (const [label, requiredText] of contributorRequirements) {
-  if (!agents.includes(requiredText)) {
-    fail('tooling', `AGENTS.md is missing ${label}.`);
+  if (!contributing.includes(requiredText)) {
+    fail('tooling', `CONTRIBUTING.md is missing ${label}.`);
   }
 }
 
-const contributing = readText(path.join(root, 'CONTRIBUTING.md'), 'tooling');
 if (!contributing.includes('npm run check:community')) {
   fail('tooling', 'CONTRIBUTING.md must name npm run check:community as the canonical gate.');
 }
@@ -489,7 +501,7 @@ git commit -m "test: enforce review configuration contracts"
 ### Task 4: Align contributor and 0.11.1 documentation
 
 **Files:**
-- Modify: `AGENTS.md:3-81`
+- Modify locally only: `AGENTS.md:3-81` (ignored by Git; do not stage)
 - Modify: `CONTRIBUTING.md:5-33`
 - Modify: `docs/releases/0.11.1.md:3-8`
 - Modify: `docs/superpowers/plans/2026-08-01-obsidian-scorecard-0.11.1.md:1-12`
