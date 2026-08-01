@@ -1,5 +1,6 @@
 import { spawnSync } from 'node:child_process';
 import {
+  existsSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
@@ -80,15 +81,12 @@ function createFixture(): Fixture {
   writeJson(join(root, 'versions.json'), { '1.2.3': '1.8.7' });
   writeJson(join(root, 'package-lock.json'), { lockfileVersion: 3 });
   writeReadme(root);
-  writeFileSync(join(root, 'AGENTS.md'), [
+  writeFileSync(join(root, 'CONTRIBUTING.md'), [
+    'Run `npm run check:community` locally and in CI.',
     'Pin `eslint-plugin-obsidianmd@0.4.1` in local and CI scans.',
     'Run `npm run lint:artifacts` after the build.',
     'The Community release bundle contains exactly `main.js`, `manifest.json`, and `styles.css`; do not include `fvad.wasm`.'
   ].join('\n'));
-  writeFileSync(
-    join(root, 'CONTRIBUTING.md'),
-    'Run `npm run check:community` locally and in CI.'
-  );
   mkdirSync(join(root, 'docs', 'releases'), { recursive: true });
   writeFileSync(
     join(root, 'docs', 'releases', '1.2.3.md'),
@@ -117,6 +115,15 @@ describe('Community metadata verifier', () => {
 
     expect(result.status).toBe(0);
     expect(result.stdout).toContain('Verified Community metadata 1.2.3');
+    expect(result.stderr).toBe('');
+  });
+
+  it('accepts tracked contributor guidance without an ignored AGENTS.md', () => {
+    const fixture = createFixture();
+    expect(existsSync(join(fixture.root, 'AGENTS.md'))).toBe(false);
+
+    const result = run(fixture.root);
+    expect(result.status).toBe(0);
     expect(result.stderr).toBe('');
   });
 
@@ -244,9 +251,9 @@ describe('Community metadata verifier', () => {
     ]
   ])('rejects missing %s guidance', (label, requiredText) => {
     const fixture = createFixture();
-    const agentsPath = join(fixture.root, 'AGENTS.md');
-    const guidance = readFileSync(agentsPath, 'utf8').replace(requiredText, '');
-    writeFileSync(agentsPath, guidance);
+    const contributingPath = join(fixture.root, 'CONTRIBUTING.md');
+    const guidance = readFileSync(contributingPath, 'utf8').replace(requiredText, '');
+    writeFileSync(contributingPath, guidance);
 
     const result = run(fixture.root);
     expect(result.status).toBe(1);
