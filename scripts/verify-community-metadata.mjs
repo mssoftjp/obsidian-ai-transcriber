@@ -79,12 +79,12 @@ function readJson(filePath) {
   }
 }
 
-function readReadme(filePath) {
+function readText(filePath, category) {
   try {
     return readFileSync(filePath, 'utf8');
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    fail('disclosure', `Cannot read ${filePath}: ${message}`);
+    fail(category, `Cannot read ${filePath}: ${message}`);
   }
 }
 
@@ -155,8 +155,36 @@ export function verifyCommunityMetadata(repositoryRoot = process.cwd()) {
     fail('metadata', `Missing committed lockfile: ${lockfilePath}.`);
   }
 
+  const lintPluginVersion = packageJson.devDependencies?.['eslint-plugin-obsidianmd'];
+  if (typeof lintPluginVersion !== 'string' || !SEMVER.test(lintPluginVersion)) {
+    fail('tooling', 'eslint-plugin-obsidianmd must be pinned to an exact semantic version.');
+  }
+  if (typeof packageJson.scripts?.['lint:artifacts'] !== 'string') {
+    fail('tooling', 'package.json must define the canonical lint:artifacts script.');
+  }
+
+  const agents = readText(path.join(root, 'AGENTS.md'), 'tooling');
+  const contributorRequirements = [
+    ['pinned lint package', `eslint-plugin-obsidianmd@${lintPluginVersion}`],
+    ['canonical artifact lint command', 'npm run lint:artifacts'],
+    [
+      'exact Community release bundle',
+      'contains exactly `main.js`, `manifest.json`, and `styles.css`; do not include `fvad.wasm`'
+    ]
+  ];
+  for (const [label, requiredText] of contributorRequirements) {
+    if (!agents.includes(requiredText)) {
+      fail('tooling', `AGENTS.md is missing ${label}.`);
+    }
+  }
+
+  const contributing = readText(path.join(root, 'CONTRIBUTING.md'), 'tooling');
+  if (!contributing.includes('npm run check:community')) {
+    fail('tooling', 'CONTRIBUTING.md must name npm run check:community as the canonical gate.');
+  }
+
   const readmePath = path.join(root, 'README.md');
-  const readme = readReadme(readmePath);
+  const readme = readText(readmePath, 'disclosure');
   for (const [label, pattern] of REQUIRED_README_STATEMENTS) {
     if (!pattern.test(readme)) {
       fail('disclosure', `README is missing ${label}.`);
@@ -166,6 +194,13 @@ export function verifyCommunityMetadata(repositoryRoot = process.cwd()) {
     if (pattern.test(readme)) {
       fail('disclosure', `README contains obsolete ${label}.`);
     }
+  }
+
+  const releaseNotesPath = path.join(root, 'docs', 'releases', `${manifestVersion}.md`);
+  const releaseNotes = readText(releaseNotesPath, 'release');
+  const expectedHeading = `# AI Transcriber ${manifestVersion}`;
+  if (!releaseNotes.split(/\r?\n/, 1).includes(expectedHeading)) {
+    fail('release', `${releaseNotesPath} must start with ${expectedHeading}.`);
   }
 
   return { version: manifestVersion };

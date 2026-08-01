@@ -2,6 +2,7 @@ import { spawnSync } from 'node:child_process';
 import {
   mkdirSync,
   mkdtempSync,
+  readFileSync,
   rmSync,
   unlinkSync,
   writeFileSync
@@ -12,6 +13,13 @@ import { join } from 'node:path';
 interface Fixture {
   root: string;
   manifest: Record<string, unknown>;
+  packageJson: FixturePackageJson;
+}
+
+interface FixturePackageJson {
+  version: string;
+  scripts: Record<string, string>;
+  devDependencies: Record<string, string>;
 }
 
 const verifierPath = join(process.cwd(), 'scripts', 'verify-community-metadata.mjs');
@@ -55,15 +63,38 @@ function createFixture(): Fixture {
     fundingUrl: 'https://buymeacoffee.com/mssoft',
     isDesktopOnly: true
   };
+  const packageJson: FixturePackageJson = {
+    version: '1.2.3',
+    scripts: {
+      'lint:artifacts': 'eslint "build/**/*.js" --max-warnings=0'
+    },
+    devDependencies: {
+      'eslint-plugin-obsidianmd': '0.4.1'
+    }
+  };
 
   roots.push(root);
   mkdirSync(root, { recursive: true });
   writeJson(join(root, 'manifest.json'), manifest);
-  writeJson(join(root, 'package.json'), { version: '1.2.3' });
+  writeJson(join(root, 'package.json'), packageJson);
   writeJson(join(root, 'versions.json'), { '1.2.3': '1.8.7' });
   writeJson(join(root, 'package-lock.json'), { lockfileVersion: 3 });
   writeReadme(root);
-  return { root, manifest };
+  writeFileSync(join(root, 'AGENTS.md'), [
+    'Pin `eslint-plugin-obsidianmd@0.4.1` in local and CI scans.',
+    'Run `npm run lint:artifacts` after the build.',
+    'The Community release bundle contains exactly `main.js`, `manifest.json`, and `styles.css`; do not include `fvad.wasm`.'
+  ].join('\n'));
+  writeFileSync(
+    join(root, 'CONTRIBUTING.md'),
+    'Run `npm run check:community` locally and in CI.'
+  );
+  mkdirSync(join(root, 'docs', 'releases'), { recursive: true });
+  writeFileSync(
+    join(root, 'docs', 'releases', '1.2.3.md'),
+    '# AI Transcriber 1.2.3\n'
+  );
+  return { root, manifest, packageJson };
 }
 
 function run(root: string) {
@@ -191,5 +222,48 @@ describe('Community metadata verifier', () => {
     const result = run(fixture.root);
     expect(result.status).toBe(1);
     expect(result.stderr).toContain('package-lock.json');
+  });
+
+  it('rejects an unpinned Obsidian lint dependency', () => {
+    const fixture = createFixture();
+    fixture.packageJson.devDependencies['eslint-plugin-obsidianmd'] = '^0.4.1';
+    writeJson(join(fixture.root, 'package.json'), fixture.packageJson);
+
+    const result = run(fixture.root);
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain('[tooling]');
+    expect(result.stderr).toContain('eslint-plugin-obsidianmd');
+  });
+
+  it.each<[string, string]>([
+    ['pinned lint package', 'eslint-plugin-obsidianmd@0.4.1'],
+    ['canonical artifact lint command', 'npm run lint:artifacts'],
+    [
+      'exact Community release bundle',
+      'contains exactly `main.js`, `manifest.json`, and `styles.css`; do not include `fvad.wasm`'
+    ]
+  ])('rejects missing %s guidance', (label, requiredText) => {
+    const fixture = createFixture();
+    const agentsPath = join(fixture.root, 'AGENTS.md');
+    const guidance = readFileSync(agentsPath, 'utf8').replace(requiredText, '');
+    writeFileSync(agentsPath, guidance);
+
+    const result = run(fixture.root);
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain('[tooling]');
+    expect(result.stderr).toContain(label);
+  });
+
+  it('rejects release notes for a different version', () => {
+    const fixture = createFixture();
+    writeFileSync(
+      join(fixture.root, 'docs', 'releases', '1.2.3.md'),
+      '# AI Transcriber 1.2.2\n'
+    );
+
+    const result = run(fixture.root);
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain('[release]');
+    expect(result.stderr).toContain('1.2.3');
   });
 });
