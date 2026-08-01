@@ -49,7 +49,7 @@ The privacy text will distinguish the following facts:
 - audio is sent to the user-selected transcription provider only when required for transcription;
 - local preprocessing may use WebCodecs and a WAV fallback;
 - when a time range is selected, only that selected segment is uploaded;
-- plugin data persists settings, dictionaries, resumable task state, and a bounded history containing operational metadata and a short transcript preview;
+- plugin data persists settings, dictionaries, and a bounded history containing operational metadata and a short transcript preview;
 - completed full transcription content is written to the selected vault output rather than retained as an additional full copy in plugin data.
 
 The Japanese section will carry the same operational meaning as the English section. The wording need not be sentence-for-sentence identical, but both languages must disclose the same storage, preprocessing, and upload boundaries.
