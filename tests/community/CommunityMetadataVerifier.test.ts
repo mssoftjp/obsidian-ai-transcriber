@@ -21,17 +21,26 @@ function writeJson(path: string, value: unknown): void {
   writeFileSync(path, `${JSON.stringify(value, null, 2)}\n`);
 }
 
-function writeReadme(root: string, override = ''): void {
-  const disclosures = [
+function compliantReadme(): string {
+  return [
     'OpenAI API account with API key.',
     'OpenAI API is a paid service.',
     'The plugin uses api.openai.com.',
     'Audio data is sent to OpenAI for transcription.',
     'Files selected outside the vault are copied to a plugin-owned temporary folder.',
     'API keys are saved only when Electron safeStorage is available.',
-    'No telemetry or usage data is collected.'
+    'No telemetry or usage data is collected.',
+    'Plugin data stores settings, dictionaries, and up to 50 transcription-history items.',
+    'Locally processed chunks use WebCodecs Opus with a 16 kHz mono WAV fallback.',
+    'For a selected time range, only that processed range is encoded into upload chunks.',
+    'プラグインデータには、設定、辞書、最大50件の文字起こし履歴を保存します。',
+    'ローカル処理したチャンクではWebCodecs Opusを使用し、失敗時は16 kHzモノラルWAVへフォールバックします。',
+    '時間範囲を選択した場合、その処理範囲だけをアップロード用チャンクへエンコードします。'
   ].join('\n');
-  writeFileSync(join(root, 'README.md'), override || disclosures);
+}
+
+function writeReadme(root: string, override = compliantReadme()): void {
+  writeFileSync(join(root, 'README.md'), override);
 }
 
 function createFixture(): Fixture {
@@ -111,6 +120,58 @@ describe('Community metadata verifier', () => {
     expect(result.status).toBe(1);
     expect(result.stderr).toContain('[disclosure]');
     expect(result.stderr).toContain('paid API use');
+  });
+
+  it.each<[string, string]>([
+    [
+      'English plugin-data persistence',
+      'Plugin data stores settings, dictionaries, and up to 50 transcription-history items.'
+    ],
+    [
+      'Japanese plugin-data persistence',
+      'プラグインデータには、設定、辞書、最大50件の文字起こし履歴を保存します。'
+    ],
+    [
+      'Japanese WebCodecs fallback',
+      'ローカル処理したチャンクではWebCodecs Opusを使用し、失敗時は16 kHzモノラルWAVへフォールバックします。'
+    ],
+    [
+      'Japanese selected-range upload',
+      '時間範囲を選択した場合、その処理範囲だけをアップロード用チャンクへエンコードします。'
+    ]
+  ])('rejects a missing %s disclosure', (label, sentence) => {
+    const fixture = createFixture();
+    writeReadme(fixture.root, compliantReadme().replace(sentence, ''));
+
+    const result = run(fixture.root);
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain('[disclosure]');
+    expect(result.stderr).toContain(label);
+  });
+
+  it.each<[string, string]>([
+    [
+      'English no-persistence claim',
+      'No data is stored permanently by the plugin beyond the transcribed text'
+    ],
+    [
+      'Japanese no-persistence claim',
+      'プラグインによって文字起こしされたテキスト以外のデータは永続的に保存されません'
+    ],
+    ['English recording workflow', '"Recording failed" error'],
+    ['Japanese recording workflow', '「録音に失敗しました」エラー'],
+    ['English microphone permission', 'Ensure your computer has microphone permissions'],
+    ['Japanese microphone permission', 'PCにマイクの権限があることを確認'],
+    ['English audio-format setting', 'Try using a different audio format in settings'],
+    ['Japanese audio-format setting', '設定で別の音声形式を試す']
+  ])('rejects obsolete %s guidance', (label, staleText) => {
+    const fixture = createFixture();
+    writeReadme(fixture.root, `${compliantReadme()}\n${staleText}`);
+
+    const result = run(fixture.root);
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain('[disclosure]');
+    expect(result.stderr).toContain(label);
   });
 
   it('rejects a non-support funding destination', () => {
