@@ -118,7 +118,7 @@ This plugin requires an internet connection and communicates with the following 
   - Definite dictionary corrections use no API and have no additional charge
   - When both features are enabled, only relevant contextual dictionary entries are sent with the existing AI post-processing request; AI post-processing charges apply
   - API key is sent with each request for authentication
-  - No data is stored permanently by the plugin beyond the transcribed text
+  - Plugin data stores settings, dictionaries, and up to 50 transcription-history items. History can include input/output file names and paths, status, timestamps, progress, provider, estimated cost, error details, and a transcript preview of up to 50 characters. Completed full transcripts are not retained as another copy in plugin data
 
 Links to GitHub, OpenAI documentation, and Buy Me a Coffee are documentation or support links. They are not contacted by the plugin during transcription unless you open those links yourself.
 
@@ -137,7 +137,7 @@ Links to GitHub, OpenAI documentation, and Buy Me a Coffee are documentation or 
 - Locally processed chunks use WebCodecs Opus in an audio-only WebM container when the current Obsidian runtime supports it, reducing uploaded bytes. If capability detection, encoding, or container creation fails, the plugin falls back to 16 kHz mono WAV before making the request
 - For a selected time range, only that processed range is encoded into upload chunks; the full original recording is not attached to the range request
 - No telemetry or usage data is collected by this plugin
-- Transcribed text is saved only to your local vault
+- Completed transcription notes are saved to your local vault. Plugin data retains only the bounded history fields described above, including the short preview
 
 ## Troubleshooting
 
@@ -146,10 +146,6 @@ Links to GitHub, OpenAI documentation, and Buy Me a Coffee are documentation or 
 **"Invalid API Key" error**
 - Verify your API key is correct and active
 - Check if you have sufficient credits in your OpenAI account
-
-**"Recording failed" error**
-- Ensure your computer has microphone permissions
-- Try using a different audio format in settings
 
 **Transcription is cut off or incomplete**
 - Large audio files may hit token limits
@@ -324,7 +320,7 @@ OpenAIには `gpt-transcribe-mini` モデルや、文字起こしの `reasoning_
   - 固定補正はAPIを使わないため、追加料金はかかりません
   - 両方を有効にした場合、関連する文脈補正だけを既存のAI後処理リクエストに含めます。AI後処理の料金がかかります
   - APIキーは認証のため各リクエストと共に送信されます
-  - プラグインによって文字起こしされたテキスト以外のデータは永続的に保存されません
+  - プラグインデータには、設定、辞書、最大50件の文字起こし履歴を保存します。履歴には入出力ファイル名とパス、状態、日時、進捗、プロバイダー、推定料金、エラー詳細、最大50文字の文字起こしプレビューが含まれる場合があります。完了した文字起こし全文を別のコピーとしてプラグインデータに保持することはありません
 
 GitHub、OpenAIドキュメント、Buy Me a Coffeeへのリンクは、ドキュメントまたはサポート用リンクです。ユーザーがリンクを開かない限り、文字起こし処理中にプラグインがそれらへ通信することはありません。
 
@@ -340,8 +336,10 @@ GitHub、OpenAIドキュメント、Buy Me a Coffeeへのリンクは、ドキ�
 
 - 新しいOpenAI APIキーはElectron safeStorageを利用できる場合にのみ保存します。OS暗号化を利用できない場合は警告を表示し、新しいキーを永続化しません。旧XOR形式は移行のため読み取り互換性だけを維持します
 - 条件を満たすGPT TranscribeおよびGPT-4o文字起こし向けファイルは、通信経路の最適化として自動的に直接送信する場合があります。時間範囲・ローカルVAD・大容量・直接送信非対応形式は送信前にローカル処理します。通常のファイル文字起こしでは、サーバー側チャンク処理を要求しません
+- ローカル処理したチャンクでは、現在のObsidianランタイムが対応している場合、音声専用WebMコンテナのWebCodecs Opusを使用します。機能検出、エンコード、コンテナ作成に失敗した場合は、APIリクエスト前に16 kHzモノラルWAVへフォールバックします
+- 時間範囲を選択した場合、その処理範囲だけをアップロード用チャンクへエンコードし、元ファイル全体を範囲指定リクエストへ添付することはありません
 - このプラグインによるテレメトリーや使用データの収集はありません
-- 文字起こしされたテキストはローカルのvaultにのみ保存されます
+- 完了した文字起こしノートはローカルのVaultに保存します。プラグインデータに保持するのは、上記の件数制限付き履歴項目（短いプレビューを含む）だけです
 
 ## トラブルシューティング
 
@@ -350,10 +348,6 @@ GitHub、OpenAIドキュメント、Buy Me a Coffeeへのリンクは、ドキ�
 **「無効なAPIキー」エラー**
 - APIキーが正しく、アクティブであることを確認
 - OpenAIアカウントに十分なクレジットがあるか確認
-
-**「録音に失敗しました」エラー**
-- PCにマイクの権限があることを確認
-- 設定で別の音声形式を試す
 
 **文字起こしが途切れるまたは不完全**
 - 大きな音声ファイルはトークン制限に達する可能性があります
