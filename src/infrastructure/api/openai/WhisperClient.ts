@@ -49,7 +49,8 @@ export class WhisperClient extends ApiClient {
 			baseUrl, // Extract base URL
 			apiKey,
 			timeout: 60000, // 60 seconds for Whisper
-			maxRetries: 0,
+			maxRetries: 2,
+			retryMode: 'rate-limit-only',
 			retryDelay: DEFAULT_REQUEST_CONFIG.retryDelayMs
 		});
 

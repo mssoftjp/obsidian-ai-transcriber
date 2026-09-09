@@ -46,3 +46,20 @@ jobs:
         run: npm ci
       - name: Audit all dependencies
         run: npm run audit:dependencies
+
+  media-regression:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24.x
+          cache: npm
+      - run: npm ci
+      - name: Install media test runtime
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+          npx playwright install --with-deps chromium
+      - name: Verify real media duration and range controls
+        run: npm run test:media

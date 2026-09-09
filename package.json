@@ -1,6 +1,6 @@
 {
   "name": "obsidian-ai-transcriber",
-  "version": "0.11.3",
+  "version": "0.11.4",
   "description": "Transcribe audio and video files with OpenAI transcription models",
   "main": "main.js",
   "packageManager": "npm@10.9.4",
@@ -29,7 +29,8 @@
     "verify:release": "node scripts/verify-community-release.mjs",
     "verify:community": "npm run verify:metadata && npm run verify:release",
     "check": "npm run check:community",
-    "check:community": "npm run lint && npm run build && npm run verify:community && npm run lint:artifacts && npm run typecheck:test && npm run test:dependency-compat && npm run test:local-deploy && npm test -- --runInBand --coverage"
+    "check:community": "npm run lint && npm run build && npm run verify:community && npm run lint:artifacts && npm run typecheck:test && npm run test:dependency-compat && npm run test:local-deploy && npm test -- --runInBand --coverage",
+    "test:media": "playwright test"
   },
   "keywords": [
     "obsidian",
@@ -48,6 +49,7 @@
   "devDependencies": {
     "@eslint/js": "9.39.4",
     "@microsoft/eslint-plugin-sdl": "^1.1.0",
+    "@playwright/test": "1.63.0",
     "@types/jest": "^30.0.0",
     "@types/node": "^20.19.43",
     "brace-expansion": "5.0.9",

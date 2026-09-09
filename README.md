@@ -126,7 +126,7 @@ Links to GitHub, OpenAI documentation, and Buy Me a Coffee are documentation or 
 ## Local data and permissions
 
 - **Vault file lists**: The plugin uses the public Obsidian Vault API to list files only when the picker or history recovery needs them, then filters the result to supported transcription formats.
-- **Vault writes**: The plugin creates a new transcription note with its complete body in the output folder you choose. Files selected outside the vault are copied into the plugin-owned `ai-transcriber-temp` folder, removed when processing or cancellation ends, and recovered for cleanup after an interrupted session on the next startup. The plugin may also place `fvad.wasm` in its plugin folder when you explicitly choose a local VAD file.
+- **Vault writes**: The plugin creates a new transcription note with its complete body in the output folder you choose. Files selected outside the vault are copied into the plugin-owned `ai-transcriber-temp` folder (or an owned `ai-transcriber-temp-managed` / numbered alternative when that path is occupied), removed when processing or cancellation ends, and recovered for cleanup after an interrupted session on the next startup. The plugin may also place `fvad.wasm` in its plugin folder when you explicitly choose a local VAD file.
 - **Manual recovery display**: If creating a transcription note fails, the plugin shows the complete generated Markdown in a visible recovery window so you can restore it manually.
 - **Local VAD WASM**: `fvad.wasm` is an optional WebRTC VAD module from `@echogarden/fvad-wasm`. It is used only for local voice activity detection when configured.
 - **Base64 encoding**: Base64 is used for API-key storage wrappers and realtime audio encoding. It is not used to hide network endpoints or telemetry.
@@ -330,7 +330,7 @@ GitHub、OpenAIドキュメント、Buy Me a Coffeeへのリンクは、ドキ�
 ## ローカルデータと権限
 
 - **Vaultファイル一覧**: 音声/動画ファイルの選択や文字起こし履歴の復旧が必要なときだけ、公開されているObsidian Vault APIでファイル一覧を取得し、文字起こし対応形式に絞り込みます。
-- **Vaultへの書き込み**: 選択した出力フォルダに、完全な本文を含む新しい文字起こしノートを一度で作成します。Vault外から選択したファイルはプラグイン所有の `ai-transcriber-temp` フォルダへ一時コピーし、処理完了時またはキャンセル時に削除します。中断による残存ファイルは次回起動時に清掃します。また、ユーザーがローカルVADファイルを明示的に選択した場合は `fvad.wasm` をプラグインフォルダへ配置することがあります。
+- **Vaultへの書き込み**: 選択した出力フォルダに、完全な本文を含む新しい文字起こしノートを一度で作成します。Vault外から選択したファイルはプラグイン所有の `ai-transcriber-temp` フォルダ（既存データがある場合は所有権を明示した `ai-transcriber-temp-managed` または連番の代替フォルダ）へ一時コピーし、処理完了時またはキャンセル時に削除します。中断による残存ファイルは次回起動時に清掃します。また、ユーザーがローカルVADファイルを明示的に選択した場合は `fvad.wasm` をプラグインフォルダへ配置することがあります。
 - **手動復旧表示**: 文字起こしノートの作成に失敗した場合、生成済みの完全なMarkdownを復旧用ウィンドウに表示し、手動で復元できるようにします。
 - **ローカルVAD WASM**: `fvad.wasm` は `@echogarden/fvad-wasm` 由来の任意のWebRTC VADモジュールです。ローカル音声区間検出を設定した場合にのみ使用します。
 - **Base64エンコード**: Base64はAPIキー保存用ラッパーとリアルタイム音声エンコードに使用します。通信先やテレメトリーを隠す目的では使用していません。
@@ -403,3 +403,9 @@ GitHub、OpenAIドキュメント、Buy Me a Coffeeへのリンクは、ドキ�
 - **TypeScript** - 型安全なJavaScript
 - **esbuild** - 高速JavaScriptバンドラー
 - **Jest** - テスティングフレームワーク
+
+### Transcription rate-limit recovery / 文字起こしのレート制限対応
+
+Temporary HTTP 429 errors are retried at most twice, with at most 60 seconds of automatic waiting per call. Server `Retry-After` delays also apply to following chunks. Quota/billing errors, local timeouts, network errors and HTTP 408/5xx are not automatically resubmitted; a failed chunk may leave a partial transcript.
+
+一時的な HTTP 429 エラーは最大2回、1回の呼び出しにつき合計60秒以内の待機で再試行します。サーバーの `Retry-After` は後続チャンクにも適用します。残高・利用枠不足、ローカルタイムアウト、通信障害、HTTP 408/5xx は自動再送しないため、一部の文字起こしが未完了になる場合があります。
