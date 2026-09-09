@@ -17,10 +17,11 @@ A speech-to-text plugin for Obsidian that uses OpenAI transcription models, incl
 ## Supported file formats
 
 Supported extensions:
-- **Audio**: `mp3`, `m4a`, `wav`, `flac`, `ogg`, `aac`
+- **Audio**: `mp3`, `m4a`, `wav`, `flac`, `ogg`, `aac`, `wma`
 - **Video**: `mp4`, `m4v`, `mov`, `avi`, `mkv`, `webm`
 
 Notes:
+- WMA support is limited to unencrypted WMA Standard (`wmav1`/`wmav2`) in an ASF container. WMA Pro, WMA Lossless, WMA Voice, and DRM-protected files are not supported.
 - Video files are processed by extracting the audio track. Support depends on the file codec/DRM and your environment; if it fails, convert to an audio format (e.g., `m4a`, `wav`, `mp3`).
 - The external file picker currently supports up to **500MB** per file. Workflows that decode media in the Obsidian renderer (including time ranges, local VAD, and formats that cannot use direct upload) accept at most **128MiB** of encoded media and **2 hours** of decoded audio, with an additional memory-work budget. Eligible OpenAI file-transcription models can upload supported files directly, bypassing this local decode limit while remaining subject to provider/model limits. Split or convert files that exceed the applicable limit.
 
@@ -180,6 +181,7 @@ This plugin includes third-party software with their own licenses. See [THIRD-PA
 
 Notable third-party components:
 - **WebRTC VAD (@echogarden/fvad-wasm)**: Used for voice activity detection
+- **libav.js / FFmpeg**: A narrowly configured local decoder for WMA Standard audio
 
 ## Acknowledgments
 
@@ -219,10 +221,11 @@ GPT Transcribe、GPT-4o Transcribe、GPT-4o Mini Transcribe、Whisperなど、Op
 ## 対応ファイル形式
 
 対応している拡張子:
-- **音声**: `mp3`, `m4a`, `wav`, `flac`, `ogg`, `aac`
+- **音声**: `mp3`, `m4a`, `wav`, `flac`, `ogg`, `aac`, `wma`
 - **動画**: `mp4`, `m4v`, `mov`, `avi`, `mkv`, `webm`
 
 補足:
+- WMAは、ASFコンテナ内の暗号化されていないWMA Standard（`wmav1`/`wmav2`）のみ対応します。WMA Pro、WMA Lossless、WMA Voice、DRM保護ファイルには対応していません。
 - 動画ファイルは音声トラックを抽出して処理します。コーデック/DRMや環境によっては失敗する場合があるため、その場合は音声形式（例: `m4a`, `wav`, `mp3`）に変換してお試しください。
 - Vault外から選択するファイルは現状 **最大500MB** までです。Obsidian のレンダラー内でメディアをデコードする処理（時間範囲指定、ローカルVAD、直接送信できない形式など）は、エンコード済みデータ **128MiB**、デコード後の音声 **2時間** を上限とし、別途メモリ使用量の上限も適用します。条件を満たすOpenAIファイル文字起こしモデルの直接送信はこのローカルデコード上限の対象外ですが、プロバイダーおよびモデル側の制限が適用されます。該当する上限を超える場合は、ファイルを分割または変換してください。
 
@@ -382,6 +385,7 @@ GitHub、OpenAIドキュメント、Buy Me a Coffeeへのリンクは、ドキ�
 
 主なサードパーティコンポーネント：
 - **WebRTC VAD (@echogarden/fvad-wasm)**: - 音声区間検出に使用
+- **libav.js / FFmpeg**: WMA Standard音声のローカルデコードに限定構成して使用
 
 ## 謝辞
 

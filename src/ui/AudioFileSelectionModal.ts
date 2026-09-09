@@ -96,7 +96,7 @@ export class AudioFileSelectionModal extends Modal {
 		contentEl.empty();
 
 		// Title
-		contentEl.createEl('h2', { text: t('modal.audioFileSelection.title') });
+		this.setTitle(t('modal.audioFileSelection.title'));
 
 		// Search and sort controls
 		const controlsDiv = contentEl.createDiv({ cls: 'audio-file-selection-controls' });

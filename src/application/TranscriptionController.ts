@@ -3,13 +3,16 @@
  * Entry point for the refactored transcription system
  */
 
+import { Notice } from 'obsidian';
+
 import { AUDIO_CONSTANTS, SUPPORTED_FORMATS } from '../config/constants';
 import { getModelConfig, getTranscriptionConfig, logAllModelConfigs } from '../config/ModelProcessingConfig';
 import { getTranscriptionModelProfile } from '../config/TranscriptionModelProfiles';
 import { AudioPipeline } from '../core/audio/AudioPipeline';
+import { AudioDecodingError } from '../core/audio/AudioPreparationError';
 import { assertEncodedMediaWithinBudget } from '../core/audio/MediaWorkBudget';
 import { DictionaryCorrector } from '../core/transcription/DictionaryCorrector';
-import { createTranscriptionJobPlan } from '../core/transcription/TranscriptionJobPlan';
+import { canFallBackToOriginalDirectUpload, createTranscriptionJobPlan } from '../core/transcription/TranscriptionJobPlan';
 import { isAbortError } from '../core/utils/CooperativeTask';
 import { SimpleProgressCalculator } from '../core/utils/SimpleProgressCalculator';
 import { t } from '../i18n';
@@ -83,14 +86,15 @@ export class TranscriptionController {
 		const timings: Record<string, number> = {};
 
 		try {
-			const jobPlan = createTranscriptionJobPlan({
+			const planInput = {
 				model: this.settings.model,
 				vadMode: this.getVadMode(),
 				fileSizeBytes: audioFile.stat.size,
 				extension: audioFile.extension,
 				...(startTime !== undefined ? { startTime } : {}),
 				...(endTime !== undefined ? { endTime } : {})
-			});
+			};
+			let jobPlan = createTranscriptionJobPlan(planInput);
 			if (jobPlan.mode === 'client') {
 				assertEncodedMediaWithinBudget(audioFile.stat.size);
 			}
@@ -101,6 +105,17 @@ export class TranscriptionController {
 			// Load audio file
 			const loadStart = performance.now();
 			let audioBuffer = await this.app.vault.readBinary(audioFile);
+			if (audioBuffer.byteLength === 0) {
+				throw new AudioDecodingError('The selected audio file is empty.');
+			}
+			const actualPlanInput = {
+				...planInput,
+				fileSizeBytes: audioBuffer.byteLength
+			};
+			jobPlan = createTranscriptionJobPlan(actualPlanInput);
+			if (jobPlan.mode === 'client') {
+				assertEncodedMediaWithinBudget(audioBuffer.byteLength);
+			}
 			timings['fileLoad'] = performance.now() - loadStart;
 			this.logger.debug('Audio file loaded', {
 				size: `${(audioBuffer.byteLength / 1024 / 1024).toFixed(2)}MB`,
@@ -114,6 +129,7 @@ export class TranscriptionController {
 					abortSignal
 				);
 			}
+			const canUseOriginalFallback = canFallBackToOriginalDirectUpload(actualPlanInput);
 
 			// Initialize components
 			await this.initialize();
@@ -147,17 +163,37 @@ export class TranscriptionController {
 					}
 				} catch (error) {
 					this.logger.error('VAD preprocessing failed', error);
+					if (error instanceof AudioDecodingError && canUseOriginalFallback) {
+						this.logger.warn('Local decoding failed; using the eligible original-file upload path', {
+							file: audioFile.name,
+							code: error.code
+						});
+						new Notice(t('notices.vadUnavailable'), 5000);
+						await this.cleanup();
+						return await this.transcribeDirectFile(audioFile, audioBuffer, abortSignal);
+					}
 					throw error;
 				}
 			} else {
 				// VAD not available, use original audio
 			}
 
+			if (!vadApplied && this.noVADFallback && canUseOriginalFallback) {
+				this.logger.info('Local VAD is unavailable; switching to the eligible original-file upload path');
+				await this.cleanup();
+				return await this.transcribeDirectFile(audioFile, audioBuffer, abortSignal);
+			}
+
 			// Prepare workflow options
 			// If VAD was applied, don't apply time range again (already applied in VAD)
 			const effectiveStartTime = vadApplied ? undefined : startTime;
 			const effectiveEndTime = vadApplied ? undefined : endTime;
-			const options = this.prepareWorkflowOptions(effectiveStartTime, effectiveEndTime, abortSignal);
+			const options = this.prepareWorkflowOptions(
+				effectiveStartTime,
+				effectiveEndTime,
+				abortSignal,
+				vadApplied ? `${audioFile.basename}.wav` : undefined
+			);
 
 			// Create workflow
 			const { workflow, dictionaryCorrector } = this.createWorkflow();
@@ -461,6 +497,14 @@ export class TranscriptionController {
 				`[TranscriptionController] Model "${profile.id}" cannot use direct file transcription`
 			);
 		}
+		if (!canFallBackToOriginalDirectUpload({
+			model: profile.id,
+			vadMode: 'disabled',
+			fileSizeBytes: audioBuffer.byteLength,
+			extension: audioFile.extension
+		})) {
+			throw new Error('The original file is not eligible for direct transcription upload.');
+		}
 		const model = profile.id;
 		const service = new GPT4oTranscriptionService(apiKey, model, dictionaryCorrector);
 		const mimeTypes = SUPPORTED_FORMATS.MIME_TYPES as Record<string, string>;
@@ -470,9 +514,10 @@ export class TranscriptionController {
 			timestamps: false,
 			...(abortSignal ? { signal: abortSignal } : {})
 		};
+		const uploadFileName = `upload.${audioFile.extension.toLowerCase()}`;
 		const result = await service.transcribeFile(
 			audioBuffer,
-			audioFile.name,
+			uploadFileName,
 			mimeType,
 			options
 		);
@@ -560,7 +605,8 @@ export class TranscriptionController {
 					};
 				corrector.addDictionary(multiDict);
 			}
-		} else if (currentLanguage === 'ja' || currentLanguage === 'en' || currentLanguage === 'zh') {
+		} else if (currentLanguage === 'ja' || currentLanguage === 'en'
+			|| currentLanguage === 'zh' || currentLanguage === 'ko') {
 			// For specific language, use only that language's dictionary
 				const userDictionary = this.settings.userDictionaries[currentLanguage];
 				const entries = this.convertDictionaryToEntries(userDictionary);
@@ -697,7 +743,8 @@ export class TranscriptionController {
 		private prepareWorkflowOptions(
 			startTime?: number,
 			endTime?: number,
-			abortSignal?: AbortSignal
+			abortSignal?: AbortSignal,
+			processedFileName?: string
 			): WorkflowOptions {
 				const options: WorkflowOptions = {
 					language: this.settings.language
@@ -711,6 +758,10 @@ export class TranscriptionController {
 			}
 				if (abortSignal) {
 					options.signal = abortSignal;
+				}
+				if (processedFileName) {
+					options.sourceFileName = processedFileName;
+					options.sourceExtension = 'wav';
 				}
 				return options;
 			}
@@ -739,29 +790,21 @@ export class TranscriptionController {
 	 */
 	private async cleanup(): Promise<void> {
 		// Clean up VAD preprocessor
-		if (this.vadPreprocessor) {
-			await this.vadPreprocessor.cleanup();
-			this.vadPreprocessor = null;
+		const vadPreprocessor = this.vadPreprocessor;
+		this.vadPreprocessor = null;
+		if (vadPreprocessor) {
+			try {
+				await vadPreprocessor.cleanup();
+			} catch (error) {
+				this.logger.error('Error cleaning up VAD preprocessor', error);
+			}
 		}
 
 		// Clean up audio pipeline (which includes WebAudioEngine and VADChunkingService)
-		if (this.audioPipeline) {
-			try {
-				// AudioPipeline should cleanup its audio processor (WebAudioEngine)
-				const audioProcessor = (this.audioPipeline as unknown as { audioProcessor?: { cleanup?: () => Promise<void> } }).audioProcessor;
-				if (audioProcessor && typeof audioProcessor.cleanup === 'function') {
-					await audioProcessor.cleanup();
-				}
-
-				// Clean up chunking service (VADChunkingService)
-				const chunkingService = (this.audioPipeline as unknown as { chunkingService?: { cleanup?: () => Promise<void> } }).chunkingService;
-				if (chunkingService && typeof chunkingService.cleanup === 'function') {
-					await chunkingService.cleanup();
-				}
-			} catch (error) {
-				this.logger.error('Error cleaning up audio pipeline', error);
-			}
-			this.audioPipeline = null;
+		const audioPipeline = this.audioPipeline;
+		this.audioPipeline = null;
+		if (audioPipeline) {
+			await audioPipeline.dispose();
 		}
 	}
 

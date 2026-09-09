@@ -19,15 +19,21 @@ export interface TranscriptionJobPlan {
 	concurrency: 1;
 }
 
-export function createTranscriptionJobPlan(input: TranscriptionJobPlanInput): TranscriptionJobPlan {
+export function canFallBackToOriginalDirectUpload(
+	input: TranscriptionJobPlanInput
+): boolean {
 	const profile = getTranscriptionModelProfile(input.model);
 	const hasTimeRange = input.startTime !== undefined || input.endTime !== undefined;
-	const extension = input.extension.toLowerCase();
-	const canUploadDirectly = profile.capabilities.originalDirectUpload
-		&& input.vadMode === 'disabled'
+	return profile.capabilities.originalDirectUpload
 		&& !hasTimeRange
+		&& input.fileSizeBytes > 0
 		&& input.fileSizeBytes <= DIRECT_UPLOAD_LIMIT_BYTES
-		&& DIRECT_UPLOAD_EXTENSIONS.has(extension);
+		&& DIRECT_UPLOAD_EXTENSIONS.has(input.extension.toLowerCase());
+}
+
+export function createTranscriptionJobPlan(input: TranscriptionJobPlanInput): TranscriptionJobPlan {
+	const canUploadDirectly = input.vadMode === 'disabled'
+		&& canFallBackToOriginalDirectUpload(input);
 
 	return {
 		mode: canUploadDirectly ? 'direct' : 'client',

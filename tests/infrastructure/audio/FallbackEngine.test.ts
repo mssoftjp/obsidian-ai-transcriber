@@ -37,6 +37,25 @@ describe('FallbackEngine WAV validation', () => {
 		expect(decoded.length).toBe(4);
 		expect(decoded.getChannelData(0)).toHaveLength(4);
 	});
+
+	it('finds PCM data after an intervening RIFF chunk', async () => {
+		const source = createWav(4);
+		const withJunk = new ArrayBuffer(source.byteLength + 10);
+		const output = new Uint8Array(withJunk);
+		output.set(new Uint8Array(source, 0, 36), 0);
+		const view = new DataView(withJunk);
+		writeTag(view, 36, 'JUNK');
+		view.setUint32(40, 1, true);
+		output[44] = 0xff;
+		writeTag(view, 46, 'data');
+		view.setUint32(50, 8, true);
+		output.set(new Uint8Array(source, 44), 54);
+		view.setUint32(4, withJunk.byteLength - 8, true);
+		const engine = new FallbackEngine(config);
+
+		await expect(engine.validate(createInput(withJunk))).resolves.toMatchObject({ isValid: true });
+		await expect(engine.decode(createInput(withJunk))).resolves.toMatchObject({ length: 4 });
+	});
 });
 
 function createInput(data: ArrayBuffer): AudioInput {

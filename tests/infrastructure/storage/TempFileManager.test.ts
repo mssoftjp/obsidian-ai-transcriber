@@ -184,48 +184,25 @@ describe('TempFileManager', () => {
 		expect(trashFile).not.toHaveBeenCalled();
 	});
 
-	it('migrates the exact legacy session shape before startup cleanup', async () => {
+	it('does not adopt or delete an unmarked legacy-looking directory', async () => {
 		const legacyId = 'mrg23hpziwae46cjsy';
 		const legacyPath = `${TEMP_DIR}/${legacyId}`;
 		const audio = createTestFile(`${legacyPath}/audio.wav`, 'audio', 'wav');
 		const legacySession = createTestFolder(legacyPath, legacyId, [audio]);
 		const root = createTestFolder(TEMP_DIR, TEMP_DIR, [legacySession]);
-		const createdRootMarker = createTestFile(ROOT_MARKER_PATH, 'AI_TRANSCRIBER_TEMP_FOLDER', 'md');
-		const createdSessionMarker = createTestFile(
-			`${legacyPath}/AI_TRANSCRIBER_TEMP_SESSION.md`,
-			'AI_TRANSCRIBER_TEMP_SESSION',
-			'md'
-		);
-		let migrated = false;
-		const create = jest.fn(async (path: string) => {
-			migrated = true;
-			return path === ROOT_MARKER_PATH ? createdRootMarker : createdSessionMarker;
-		});
+		const create = jest.fn();
 		app.vault.create = create;
 		jest.spyOn(app.vault, 'getAbstractFileByPath').mockImplementation((path) => {
 			if (path === TEMP_DIR) {
 				return root;
-			}
-			if (migrated && path === ROOT_MARKER_PATH) {
-				return createdRootMarker;
-			}
-			if (migrated && path === `${legacyPath}/AI_TRANSCRIBER_TEMP_SESSION.md`) {
-				return createdSessionMarker;
-			}
-			if (path === legacyPath) {
-				return legacySession;
 			}
 			return null;
 		});
 
 		await manager.cleanup();
 
-		expect(create).toHaveBeenCalledWith(ROOT_MARKER_PATH, expect.any(String));
-		expect(create).toHaveBeenCalledWith(
-			`${legacyPath}/AI_TRANSCRIBER_TEMP_SESSION.md`,
-			expect.any(String)
-		);
-		expect(trashFile).toHaveBeenCalledWith(legacySession);
+		expect(create).not.toHaveBeenCalled();
+		expect(trashFile).not.toHaveBeenCalled();
 	});
 
 	it('does not adopt or delete a legacy-looking directory containing unknown data', async () => {

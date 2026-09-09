@@ -21,6 +21,10 @@ export interface WorkflowOptions {
 	endTime?: number;
 	language?: string;
 	signal?: AbortSignal;
+	/** Format of audioBuffer when preprocessing changed the original representation. */
+	sourceExtension?: string;
+	/** Filename matching audioBuffer's representation. */
+	sourceFileName?: string;
 }
 
 export interface WorkflowResult {
@@ -114,7 +118,7 @@ export class TranscriptionWorkflow {
 
 			// Step 1: Prepare audio input
 			this.logger.debug('Step 1: Preparing audio input');
-			const audioInput = this.createAudioInput(file, audioBuffer);
+			const audioInput = this.createAudioInput(file, audioBuffer, options);
 
 			// Step 2: Process audio through pipeline
 			this.logger.debug('Step 2: Processing audio through pipeline');
@@ -203,11 +207,15 @@ export class TranscriptionWorkflow {
 	/**
 	 * Create audio input from file
 	 */
-	private createAudioInput(file: TFile, audioBuffer: ArrayBuffer): AudioInput {
+	private createAudioInput(
+		file: TFile,
+		audioBuffer: ArrayBuffer,
+		options: WorkflowOptions
+	): AudioInput {
 		return {
 			data: audioBuffer,
-			fileName: file.name,
-			extension: file.extension,
+			fileName: options.sourceFileName ?? file.name,
+			extension: options.sourceExtension ?? file.extension,
 			size: audioBuffer.byteLength
 		};
 	}

@@ -36,12 +36,9 @@ export class TempFileManager {
 
 		if (existingItem instanceof TFolder) {
 			if (!(await this.hasOwnershipMarker())) {
-				const migrated = await this.migrateLegacyDirectory(existingItem);
-				if (!migrated) {
-					throw new Error(
-						`${TempFileManager.TEMP_DIR} already exists but is not owned by AI Transcriber`
-					);
-				}
+				throw new Error(
+					`${TempFileManager.TEMP_DIR} already exists but is not owned by AI Transcriber`
+				);
 			}
 			this.logger.trace('Temporary directory already exists');
 			return existingItem;
@@ -262,9 +259,6 @@ export class TempFileManager {
 				}
 			} else {
 				const folder = this.app.vault.getAbstractFileByPath(TempFileManager.TEMP_DIR);
-				if (folder instanceof TFolder && !(await this.hasOwnershipMarker())) {
-					await this.migrateLegacyDirectory(folder);
-				}
 				if (folder instanceof TFolder && await this.hasOwnershipMarker()) {
 					const sessionFolders = folder.children
 						.filter((child): child is TFolder => child instanceof TFolder)
@@ -344,29 +338,6 @@ export class TempFileManager {
 			&& this.containsOnlyRootMarker(folder)) {
 			await this.app.fileManager.trashFile(folder);
 		}
-	}
-
-	private async migrateLegacyDirectory(folder: TFolder): Promise<boolean> {
-		const legacyFolders = folder.children.filter((child): child is TFolder => child instanceof TFolder);
-		if (legacyFolders.length === 0 || legacyFolders.length !== folder.children.length) {
-			return false;
-		}
-		const isLegacyShape = legacyFolders.every((sessionFolder) =>
-			this.isLegacySessionFolder(sessionFolder)
-		);
-		if (!isLegacyShape) {
-			return false;
-		}
-
-		await this.app.vault.create(TempFileManager.OWNERSHIP_MARKER, TempFileManager.MARKER_CONTENT);
-		for (const sessionFolder of legacyFolders) {
-			await this.app.vault.create(
-				`${sessionFolder.path}/${TempFileManager.SESSION_MARKER_NAME}`,
-				TempFileManager.MARKER_CONTENT
-			);
-		}
-		this.logger.info('Migrated legacy temporary sessions');
-		return true;
 	}
 
 	private isLegacySessionFolder(sessionFolder: TFolder): boolean {

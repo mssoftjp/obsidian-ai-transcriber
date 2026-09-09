@@ -47,7 +47,7 @@ export class DictionaryManagementModal extends Modal {
 		// The CSS already has the proper sizing rules
 
 		// Header
-		contentEl.createEl('h2', { text: t('settings.dictionary.title') });
+		this.setTitle(t('settings.dictionary.title'));
 
 		// Tab container with buttons
 		const tabBarContainer = contentEl.createDiv({ cls: 'dictionary-tab-bar' });

@@ -19,7 +19,8 @@ module.exports = {
     '!src/api-main.ts', // UI components
   ],
   moduleNameMapper: {
-    '^obsidian$': '<rootDir>/tests/__mocks__/obsidian.ts'
+    '^obsidian$': '<rootDir>/tests/__mocks__/obsidian.ts',
+    '^.+\\.(?:bin|txt)$': '<rootDir>/tests/__mocks__/embeddedAsset.ts'
   },
   testPathIgnorePatterns: [
     '/node_modules/',

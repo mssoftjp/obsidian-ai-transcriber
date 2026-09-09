@@ -1,5 +1,7 @@
-import { assertDecodedMediaWithinBudget, assertEncodedMediaWithinBudget } from '../../core/audio/MediaWorkBudget';
+import { AudioDecodingError } from '../../core/audio/AudioPreparationError';
+import { assertDecodedMediaWithinBudget, assertEncodedMediaWithinBudget, MediaWorkBudgetError } from '../../core/audio/MediaWorkBudget';
 import { COOPERATIVE_BATCH_SIZE, isAbortError, throwIfAborted, yieldToEventLoop } from '../../core/utils/CooperativeTask';
+import { decodeWmaStandard } from '../../infrastructure/audio/WmaDecoder';
 
 export interface AudioDecodeOptions {
 	signal?: AbortSignal;
@@ -38,6 +40,9 @@ export class AudioConverter {
 			try {
 				throwIfAborted(signal);
 				assertEncodedMediaWithinBudget(audioBuffer.byteLength);
+				if (fileExtension.toLowerCase() === 'wma') {
+					return await this.decodeWma(audioBuffer, options);
+				}
 				// AudioContextを初期化（遅延初期化）
 				const audioContext = this.audioContext ?? new AudioContext();
 				this.audioContext = audioContext;
@@ -78,11 +83,53 @@ export class AudioConverter {
 			if (isAbortError(error, signal)) {
 				throw error;
 			}
+			if (error instanceof MediaWorkBudgetError || error instanceof AudioDecodingError) {
+				throw error;
+			}
 			const errorMessage = this.formatUnknownError(error);
-			throw new Error(
-				`Failed to decode audio file (${fileExtension}): ${errorMessage}`
+			throw new AudioDecodingError(
+				`Failed to decode audio file (${fileExtension}): ${errorMessage}`,
+				error
 			);
 		}
+	}
+
+	private async decodeWma(
+		audioBuffer: ArrayBuffer,
+		options: AudioDecodeOptions
+	): Promise<DecodedAudioData> {
+		const decoded = await decodeWmaStandard(audioBuffer, options.signal);
+		const rangeStart = Math.max(0, Math.min(options.rangeStart ?? 0, decoded.duration));
+		const rangeEnd = Math.max(
+			rangeStart,
+			Math.min(options.rangeEnd ?? decoded.duration, decoded.duration)
+		);
+		if (rangeEnd <= rangeStart) {
+			throw new Error('Selected audio time range is empty');
+		}
+		const rangeApplied = rangeStart > 0 || rangeEnd < decoded.duration;
+		const startFrame = Math.floor(rangeStart * decoded.sampleRate);
+		const endFrame = Math.min(decoded.pcmData.length, Math.ceil(rangeEnd * decoded.sampleRate));
+		const targetSampleRate = options.targetSampleRate ?? decoded.sampleRate;
+		assertDecodedMediaWithinBudget(
+			audioBuffer.byteLength,
+			{
+				length: decoded.pcmData.length,
+				sampleRate: decoded.sampleRate,
+				duration: decoded.duration,
+				numberOfChannels: decoded.channels
+			},
+			targetSampleRate,
+			rangeApplied ? { workingDurationSeconds: rangeEnd - rangeStart } : {}
+		);
+		const selected = decoded.pcmData.subarray(startFrame, endFrame);
+		const audioData = await this.resample(
+			selected,
+			decoded.sampleRate,
+			targetSampleRate,
+			options.signal
+		);
+		return { audioData, sampleRate: targetSampleRate, rangeApplied, rangeStart, rangeEnd };
 	}
 
 	/**
@@ -259,13 +306,15 @@ export class AudioConverter {
 	/**
    * クリーンアップ
    */
-	cleanup(): void {
+	async cleanup(): Promise<void> {
 		if (this.audioContext) {
-			const closePromise = this.audioContext.close();
-			closePromise.catch((error) => {
-				console.warn('Failed to close AudioContext in AudioConverter', error);
-			});
+			const audioContext = this.audioContext;
 			this.audioContext = null;
+			try {
+				await audioContext.close();
+			} catch (error) {
+				console.warn('Failed to close AudioContext in AudioConverter', error);
+			}
 		}
 	}
 

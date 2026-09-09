@@ -152,6 +152,23 @@ export class AudioPipeline {
 	}
 
 	/**
+	 * Dispose processor and chunker independently. Cleanup failures are logged so
+	 * they cannot mask a completed transcription or the original job failure.
+	 */
+	async dispose(): Promise<void> {
+		const results = await Promise.allSettled([
+			this.audioProcessor.cleanup(),
+			this.chunkingService.cleanup()
+		]);
+		const labels = ['audio processor', 'chunking service'] as const;
+		results.forEach((result, index) => {
+			if (result.status === 'rejected') {
+				this.logger.error(`Failed to clean up ${labels[index] ?? 'audio resource'}`, result.reason);
+			}
+		});
+	}
+
+	/**
 	 * Get pipeline statistics
 	 */
 	getStatistics(

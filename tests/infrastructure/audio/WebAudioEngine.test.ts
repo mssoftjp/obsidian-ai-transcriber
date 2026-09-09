@@ -74,6 +74,27 @@ describe('WebAudioEngine media budget', () => {
 		expect(result.duration).toBe(3);
 		expect(result.pcmData).toEqual(samples.slice(32, 80));
 	});
+
+	it('mixes every source channel instead of dropping channels above stereo', async () => {
+		const channels = [
+			new Float32Array([0, 0]),
+			new Float32Array([0, 0]),
+			new Float32Array([0.9, -0.9])
+		];
+		const audioBuffer = {
+			length: 2,
+			sampleRate: 16_000,
+			duration: 2 / 16_000,
+			numberOfChannels: channels.length,
+			getChannelData: (channel: number) => channels[channel]
+		} as unknown as AudioBuffer;
+		const engine = new WebAudioEngine(config);
+
+		const result = await engine.convertToTargetFormat(audioBuffer);
+
+		expect(result.pcmData[0]).toBeCloseTo(0.3);
+		expect(result.pcmData[1]).toBeCloseTo(-0.3);
+	});
 });
 
 function createInput(): AudioInput {

@@ -23,7 +23,7 @@ export const AUDIO_CONSTANTS = {
 export const SUPPORTED_FORMATS = {
 	/** サポートする音声ファイル拡張子 */
 	AUDIO_EXTENSIONS: [
-		'mp3', 'm4a', 'wav', 'flac', 'ogg', 'aac'
+		'mp3', 'm4a', 'wav', 'flac', 'ogg', 'aac', 'wma'
 	] as string[],
 
 	/** サポートする動画ファイル拡張子 */
@@ -33,7 +33,7 @@ export const SUPPORTED_FORMATS = {
 
 	/** 全てのサポートされる拡張子（後方互換性のため） */
 	EXTENSIONS: [
-		'mp3', 'm4a', 'wav', 'flac', 'ogg', 'aac',
+		'mp3', 'm4a', 'wav', 'flac', 'ogg', 'aac', 'wma',
 		'mp4', 'm4v', 'mov', 'avi', 'mkv', 'webm'
 	] as string[],
 
@@ -47,6 +47,7 @@ export const SUPPORTED_FORMATS = {
 		'flac': 'audio/flac',
 		'aac': 'audio/aac',
 		'ogg': 'audio/ogg',
+		'wma': 'audio/x-ms-wma',
 		'webm': 'video/webm',
 		'mov': 'video/quicktime',
 		'avi': 'video/x-msvideo',

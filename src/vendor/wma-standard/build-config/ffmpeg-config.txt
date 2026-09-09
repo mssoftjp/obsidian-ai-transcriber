@@ -1,0 +1,6 @@
+--enable-protocol=data --enable-protocol=file
+--enable-swresample --enable-filter=aresample
+--enable-filter=aformat
+--enable-demuxer=asf
+--enable-decoder=wmav1
+--enable-decoder=wmav2

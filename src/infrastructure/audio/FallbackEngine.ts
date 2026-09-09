@@ -18,6 +18,7 @@ interface WavMetadata {
 	sampleRate: number;
 	bitsPerSample: 8 | 16;
 	channels: number;
+	dataOffset: number;
 	dataSize: number;
 	samplesPerChannel: number;
 	duration: number;
@@ -91,7 +92,7 @@ export class FallbackEngine extends AudioProcessor {
 	 */
 	decode(input: AudioInput): Promise<AudioBuffer> {
 		const metadata = this.readWavMetadata(input.data);
-		const { sampleRate, channels, bitsPerSample, samplesPerChannel, duration } = metadata;
+		const { sampleRate, channels, bitsPerSample, samplesPerChannel, duration, dataOffset } = metadata;
 		const view = new DataView(input.data);
 		const bytesPerSample = bitsPerSample / 8;
 
@@ -104,10 +105,8 @@ export class FallbackEngine extends AudioProcessor {
 			getChannelData: (channel: number) => {
 				// Extract channel data from interleaved WAV data
 				const channelData = new Float32Array(samplesPerChannel);
-				const dataStart = 44; // WAV header size
-
 				for (let i = 0; i < samplesPerChannel; i++) {
-					const sampleOffset = dataStart + (i * channels + channel) * bytesPerSample;
+					const sampleOffset = dataOffset + (i * channels + channel) * bytesPerSample;
 
 					if (bitsPerSample === 16) {
 						const sample = view.getInt16(sampleOffset, true) / 32768;
@@ -207,29 +206,60 @@ export class FallbackEngine extends AudioProcessor {
 		if (data.byteLength < 44) {
 			throw new Error('WAV header is truncated');
 		}
-		const view = new DataView(data, 0, 44);
+		const view = new DataView(data);
 		const readTag = (offset: number) => String.fromCharCode(
 			view.getUint8(offset),
 			view.getUint8(offset + 1),
 			view.getUint8(offset + 2),
 			view.getUint8(offset + 3)
 		);
-		if (readTag(0) !== 'RIFF' || readTag(8) !== 'WAVE' || readTag(12) !== 'fmt ' || readTag(36) !== 'data') {
+		if (readTag(0) !== 'RIFF' || readTag(8) !== 'WAVE') {
 			throw new Error('Invalid WAV file format');
 		}
-		const audioFormat = view.getUint16(20, true);
-		const channels = view.getUint16(22, true);
-		const sampleRate = view.getUint32(24, true);
-		const bits = view.getUint16(34, true);
-		const dataSize = view.getUint32(40, true);
+		const riffEnd = view.getUint32(4, true) + 8;
+		if (!Number.isSafeInteger(riffEnd) || riffEnd > data.byteLength) {
+			throw new Error('WAV RIFF chunk exceeds the file size');
+		}
+
+		let audioFormat: number | undefined;
+		let channels: number | undefined;
+		let sampleRate: number | undefined;
+		let bits: number | undefined;
+		let dataOffset: number | undefined;
+		let dataSize: number | undefined;
+		let offset = 12;
+		while (offset + 8 <= riffEnd) {
+			const chunkId = readTag(offset);
+			const chunkSize = view.getUint32(offset + 4, true);
+			const chunkDataOffset = offset + 8;
+			const chunkEnd = chunkDataOffset + chunkSize;
+			if (!Number.isSafeInteger(chunkEnd) || chunkEnd > riffEnd) {
+				throw new Error(`WAV ${chunkId} chunk exceeds the file size`);
+			}
+			if (chunkId === 'fmt ') {
+				if (chunkSize < 16) {
+					throw new Error('WAV fmt chunk is truncated');
+				}
+				audioFormat = view.getUint16(chunkDataOffset, true);
+				channels = view.getUint16(chunkDataOffset + 2, true);
+				sampleRate = view.getUint32(chunkDataOffset + 4, true);
+				bits = view.getUint16(chunkDataOffset + 14, true);
+			} else if (chunkId === 'data' && dataOffset === undefined) {
+				dataOffset = chunkDataOffset;
+				dataSize = chunkSize;
+			}
+			offset = chunkEnd + (chunkSize % 2);
+		}
+
+		if (audioFormat === undefined || channels === undefined || sampleRate === undefined
+			|| bits === undefined || dataOffset === undefined || dataSize === undefined) {
+			throw new Error('WAV fmt or data chunk is missing');
+		}
 		if (audioFormat !== 1 || (bits !== 8 && bits !== 16)) {
 			throw new Error('Fallback processor supports only 8-bit or 16-bit PCM WAV');
 		}
 		if (channels < 1 || channels > 2 || sampleRate < 8_000 || sampleRate > 192_000) {
 			throw new Error('WAV channel count or sample rate is invalid');
-		}
-		if (dataSize > data.byteLength - 44) {
-			throw new Error('WAV data chunk exceeds the file size');
 		}
 		const bitsPerSample = bits;
 		const bytesPerFrame = channels * (bitsPerSample / 8);
@@ -241,6 +271,7 @@ export class FallbackEngine extends AudioProcessor {
 			sampleRate,
 			bitsPerSample,
 			channels,
+			dataOffset,
 			dataSize,
 			samplesPerChannel,
 			duration: samplesPerChannel / sampleRate

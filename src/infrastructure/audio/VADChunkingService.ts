@@ -158,7 +158,7 @@ export class VADChunkingService extends ChunkingService {
 	/**
 	 * Cleanup VAD resources
 	 */
-	async cleanup(): Promise<void> {
+	override async cleanup(): Promise<void> {
 		if (this.vadProcessor) {
 			await this.vadProcessor.cleanup();
 			this.vadProcessor = null;

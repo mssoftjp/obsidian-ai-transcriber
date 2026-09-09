@@ -50,6 +50,22 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 Copyright (c) Obsidian
 
+## libav.js and FFmpeg (WMA Standard decoder)
+
+The plugin embeds a single-threaded WebAssembly build used only to demux ASF,
+decode `wmav1`/`wmav2`, downmix, and resample audio. It does not include WMA
+Pro, WMA Lossless, WMA Voice, encoders, video codecs, or network protocols.
+
+- libav.js 6.10.9 source commit: https://github.com/Yahweasel/libav.js/tree/c80e885c3461f7bb7ea565c9631b34243ae0dbf1
+- FFmpeg 9.0 source: https://ffmpeg.org/releases/ffmpeg-9.0.tar.xz
+- libav.js license: LGPL-compatible compilation; per-file notices are retained in the generated worker
+- FFmpeg license for this configuration: GNU Lesser General Public License, version 2.1 or later
+- Local build recipe, configuration, source hashes, and binary hashes: `src/vendor/wma-standard/README.md`
+
+The generated worker contains the complete applicable license notices and
+LGPL 2.1 text. The corresponding sources and the local configuration change
+needed to reproduce the binaries are linked and documented above.
+
 ## Development Dependencies
 
 The following are used only during development and are not included in the distributed plugin:

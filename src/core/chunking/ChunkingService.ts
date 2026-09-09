@@ -156,6 +156,11 @@ export abstract class ChunkingService {
 		signal?: AbortSignal
 	): Promise<AudioChunk[]>;
 
+	/** Release resources owned by this chunking service. */
+	cleanup(): Promise<void> {
+		return Promise.resolve();
+	}
+
 	/**
 	 * Estimate file size in MB from processed audio
 	 */
