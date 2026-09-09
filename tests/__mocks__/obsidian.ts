@@ -126,6 +126,12 @@ export class Vault {
 		return this.files.get(path) || null;
 	}
 
+	getRoot(): TFolder {
+		const root = new TFolder();
+		root.children = Array.from(this.files.values()).filter(file => !file.path.includes('/'));
+		return root;
+	}
+
 	getFiles(): TFile[] {
 		return Array.from(this.files.values()).filter(file => file instanceof TFile) as TFile[];
 	}

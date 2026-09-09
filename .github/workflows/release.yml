@@ -52,6 +52,15 @@ jobs:
       - name: Verify Community artifacts
         run: npm run verify:community
 
+      - name: Install media test runtime
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+          npx playwright install --with-deps chromium
+
+      - name: Verify real media duration and range controls
+        run: npm run test:media
+
       - name: Create or update GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
