@@ -66,6 +66,11 @@ The generated worker contains the complete applicable license notices and
 LGPL 2.1 text. The corresponding sources and the local configuration change
 needed to reproduce the binaries are linked and documented above.
 
+The WMA JavaScript runtime is compiled for Web Workers only. The upstream
+Node.js filesystem and crypto branches are omitted at compile time. The version
+line in its generated header is normalized; copyright and license notices are
+retained in full.
+
 ## Development Dependencies
 
 The following are used only during development and are not included in the distributed plugin:

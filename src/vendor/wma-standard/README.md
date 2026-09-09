@@ -7,6 +7,8 @@ These generated files form the local, single-threaded WMA Standard decoder:
 
 Only ASF demuxing, `wmav1`/`wmav2` decoding, audio filters, downmixing, and
 16 kHz resampling are enabled. The runtime rejects any other WMA codec.
+The runtime is compiled with `-sENVIRONMENT=worker`: Node.js filesystem and
+crypto support are not generated. It can only run in a Web Worker.
 
 ## Source and toolchain
 
@@ -34,10 +36,19 @@ and is byte-for-byte equivalent to the Git commit above after extraction.
 5. Copy the generated `.wasm.js` file (which includes libav.js's worker wrapper)
    to `wma-standard.worker.txt`, and copy the generated `.wasm.wasm` file to
    `wma-standard.wasm.bin`.
+6. Normalize the second line of the worker header to
+   ` * libav.js 6.10.9.0 (worker-only)`; keep the rest of the license header
+   intact. This makes the header independent of `git describe` (which is
+   unavailable when building from the equivalent source archive).
+
+When rebuilding after changing the link flags, remove the generated `.wasm.js`
+target before running `make`; upstream does not track the link-flags file as a
+target dependency. `build-config/link-flags.txt` must retain
+`-sENVIRONMENT=worker`. Do not import a default multi-environment build.
 
 Expected generated artifact hashes:
 
-- worker: `9cd59199cfa5e41426c99f230c16e47dbfa2cb9168b11dd9777ab7b549ff8213`
+- worker: `fd3625f40131278f9c97521f2c016ecf195ebec86cbe43c6b69864ccced4af5a`
 - wasm: `97c4ede4124184e0bca04da6f1e74e9952f0643f64dd9ab71edf5f714eb2bd39`
 
 The generated worker begins with the applicable copyright notices and the
