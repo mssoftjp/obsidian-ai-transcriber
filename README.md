@@ -23,6 +23,7 @@ Supported extensions:
 Notes:
 - WMA support is limited to unencrypted WMA Standard (`wmav1`/`wmav2`) in an ASF container. WMA Pro, WMA Lossless, WMA Voice, and DRM-protected files are not supported.
 - Video files are processed by extracting the audio track. Support depends on the file codec/DRM and your environment; if it fails, convert to an audio format (e.g., `m4a`, `wav`, `mp3`).
+- AVI is accepted by the picker, but common AVI codec combinations may not decode in Chromium/Obsidian. Convert an AVI that fails to `m4a`, `wav`, or `mp3`.
 - The external file picker currently supports up to **500MB** per file. Workflows that decode media in the Obsidian renderer (including time ranges, local VAD, and formats that cannot use direct upload) accept at most **128MiB** of encoded media and **2 hours** of decoded audio, with an additional memory-work budget. Eligible OpenAI file-transcription models can upload supported files directly, bypassing this local decode limit while remaining subject to provider/model limits. Split or convert files that exceed the applicable limit.
 
 ## Requirements
@@ -227,6 +228,7 @@ GPT Transcribe、GPT-4o Transcribe、GPT-4o Mini Transcribe、Whisperなど、Op
 補足:
 - WMAは、ASFコンテナ内の暗号化されていないWMA Standard（`wmav1`/`wmav2`）のみ対応します。WMA Pro、WMA Lossless、WMA Voice、DRM保護ファイルには対応していません。
 - 動画ファイルは音声トラックを抽出して処理します。コーデック/DRMや環境によっては失敗する場合があるため、その場合は音声形式（例: `m4a`, `wav`, `mp3`）に変換してお試しください。
+- AVIはファイル選択の対象ですが、一般的なAVIのコーデック構成でもChromium/Obsidianでデコードできない場合があります。失敗するAVIは`m4a`、`wav`、`mp3`へ変換してください。
 - Vault外から選択するファイルは現状 **最大500MB** までです。Obsidian のレンダラー内でメディアをデコードする処理（時間範囲指定、ローカルVAD、直接送信できない形式など）は、エンコード済みデータ **128MiB**、デコード後の音声 **2時間** を上限とし、別途メモリ使用量の上限も適用します。条件を満たすOpenAIファイル文字起こしモデルの直接送信はこのローカルデコード上限の対象外ですが、プロバイダーおよびモデル側の制限が適用されます。該当する上限を超える場合は、ファイルを分割または変換してください。
 
 ## 必要条件
