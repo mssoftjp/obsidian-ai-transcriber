@@ -4,12 +4,13 @@ import { PostProcessingService } from '../application/services/PostProcessingSer
 import { FileTypeUtils } from '../config/constants';
 import { MODEL_OPTIONS, getModelOption } from '../config/ModelOptions';
 import { getTranscriptionModelProfile } from '../config/TranscriptionModelProfiles';
-import { assertDecodedMediaWithinBudget, assertEncodedMediaWithinBudget } from '../core/audio/MediaWorkBudget';
+import { assertDecodedMediaWithinBudget, assertEncodedMediaWithinBudget, CLIENT_MEDIA_BUDGET } from '../core/audio/MediaWorkBudget';
 import { createTranslationMetadata } from '../core/transcription/TranslationUtils';
 import { LoadingAnimation } from '../core/utils/LoadingAnimation';
 import { SimpleProgressCalculator } from '../core/utils/SimpleProgressCalculator';
 import { ErrorHandler } from '../ErrorHandler';
 import { t } from '../i18n';
+import { readMediaDuration } from '../infrastructure/audio/MediaDuration';
 import { TempFileManager } from '../infrastructure/storage/TempFileManager';
 import { TranscriptionNoteWriter } from '../infrastructure/storage/TranscriptionNoteWriter';
 import { Logger } from '../utils/Logger';
@@ -64,6 +65,7 @@ export class APITranscriptionModal extends Modal {
 	private metaInfoBtn: HTMLButtonElement | null = null;
 	private modalAudioContext: AudioContext | null = null;
 	private timeRangeLoadGeneration = 0;
+	private metadataAbortController: AbortController | null = null;
 	private metaInfo: TranscriptionMetaInfo | null = null;
 	private saveSettings: (() => Promise<void>) | null = null;
 	private progressListenerUnsubscribe: (() => void) | null = null;
@@ -1197,9 +1199,30 @@ export class APITranscriptionModal extends Modal {
 		const headerEl = this.timeRangeEl.createDiv();
 		headerEl.createEl('h4', { text: t('audioRange.title') });
 
-		// Try to get audio duration and show waveform
+		// Duration is independent of the optional, memory-bounded waveform preview.
+		const controller = new AbortController();
+		this.metadataAbortController?.abort();
+		this.metadataAbortController = controller;
 		try {
-			if (this.audioFile.stat.size > WAVEFORM_PREVIEW_MAX_ENCODED_BYTES) {
+			const duration = await readMediaDuration(this.app.vault.getResourcePath(this.audioFile), controller.signal);
+			if (!this.isTimeRangeLoadCurrent(loadGeneration)) {
+				return;
+			}
+			this.audioDuration = duration;
+		} catch (error) {
+			this.logger.debug('Media metadata unavailable; trying bounded audio preview', error);
+		} finally {
+			if (this.metadataAbortController === controller) {
+				this.metadataAbortController = null;
+			}
+		}
+		if (!this.isTimeRangeLoadCurrent(loadGeneration)) {
+			return;
+		}
+
+		try {
+			if (this.audioFile.stat.size > WAVEFORM_PREVIEW_MAX_ENCODED_BYTES
+				|| this.audioDuration > CLIENT_MEDIA_BUDGET.maxDurationSeconds) {
 				throw new Error('Audio is too large for the modal waveform preview');
 			}
 			this.logger.trace('Reading audio file for waveform', { audioFile: this.audioFile.name });
@@ -1220,15 +1243,9 @@ export class APITranscriptionModal extends Modal {
 				if (!this.isTimeRangeLoadCurrent(loadGeneration)) {
 					return;
 				}
-				this.audioDuration = decodedAudio.duration;
-
-				headerEl.createEl('p', {
-					text: `${t('audioRange.audioDuration')}: ${this.formatTime(this.audioDuration)}`,
-					cls: 'audio-duration'
-				});
-
-				// Update cost estimate with actual audio duration
-				void this.displayCostEstimate();
+				if (!this.audioDuration) {
+					this.audioDuration = decodedAudio.duration;
+				}
 
 				// Add waveform selector
 				const waveformContainer = this.timeRangeEl.createDiv({
@@ -1290,15 +1307,19 @@ export class APITranscriptionModal extends Modal {
 			if (!this.isTimeRangeLoadCurrent(loadGeneration)) {
 				return;
 			}
-			this.logger.warn('Could not determine audio duration', error);
-			headerEl.createEl('p', {
-				text: t('modal.transcription.duration', { duration: 'Unknown' }),
-				cls: 'audio-duration'
-			});
+			this.logger.debug('Waveform preview unavailable', error);
 		}
 		if (!this.isTimeRangeLoadCurrent(loadGeneration)) {
 			return;
 		}
+
+		headerEl.createEl('p', {
+			text: this.audioDuration > 0
+				? `${t('audioRange.audioDuration')}: ${this.formatTime(this.audioDuration)}`
+				: t('modal.transcription.duration', { duration: 'Unknown' }),
+			cls: 'audio-duration'
+		});
+		void this.displayCostEstimate();
 
 		// Enable checkbox
 		const checkboxContainer = this.timeRangeEl.createDiv({ cls: 'ait-time-range-checkbox-container' });
@@ -1669,6 +1690,8 @@ export class APITranscriptionModal extends Modal {
 
 	override onClose() {
 		this.timeRangeLoadGeneration++;
+		this.metadataAbortController?.abort();
+		this.metadataAbortController = null;
 		const { contentEl } = this;
 		contentEl.empty();
 

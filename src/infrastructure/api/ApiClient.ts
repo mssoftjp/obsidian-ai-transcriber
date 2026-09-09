@@ -39,6 +39,7 @@ export interface ApiConfig {
 	baseUrl: string;
 	apiKey: string;
 	maxRetries?: number;
+	retryMode?: 'transient' | 'rate-limit-only';
 	retryDelay?: number;
 	timeout?: number;
 }
@@ -63,6 +64,9 @@ interface ApiErrorResponseBody {
 
 export abstract class ApiClient {
 	protected config: Required<ApiConfig>;
+	private nextRequestAt = 0;
+	private rateLimitError?: ApiError;
+	private readonly maxAutomaticWait = 60000;
 	private readonly defaultMaxRetries = 3;
 	private readonly defaultRetryDelay = 1000; // 1 second
 	private readonly defaultTimeout = 90000; // 90 seconds
@@ -71,6 +75,7 @@ export abstract class ApiClient {
 	constructor(config: ApiConfig) {
 		this.config = {
 			maxRetries: this.defaultMaxRetries,
+			retryMode: 'transient',
 			retryDelay: this.defaultRetryDelay,
 			timeout: this.defaultTimeout,
 			...config
@@ -156,7 +161,8 @@ export abstract class ApiClient {
 	private async executeWithRetry<T>(
 		url: string,
 		options: RequestInit,
-		retryCount = 0
+		retryCount = 0,
+		waitedMs = 0
 		): Promise<T> {
 			try {
 				// Handle different body types for requestUrl
@@ -233,6 +239,16 @@ export abstract class ApiClient {
 				throw new RequestCancelledError();
 			}
 
+			// Recheck after each wait: another in-flight chunk can extend cooldown.
+			while (this.config.retryMode === 'rate-limit-only' && this.nextRequestAt > Date.now()) {
+				const cooldown = this.nextRequestAt - Date.now();
+				if (cooldown > this.maxAutomaticWait - waitedMs && this.rateLimitError) {
+					throw this.rateLimitError;
+				}
+				await this.delay(cooldown, options.signal ?? undefined);
+				waitedMs += cooldown;
+			}
+
 			const response = await this.requestWithBoundary(
 				requestParams,
 				options.signal ?? undefined
@@ -242,12 +258,17 @@ export abstract class ApiClient {
 			if (response.status < 200 || response.status >= 300) {
 				const error = this.parseError(response);
 
-				// Check if retryable
-				if (this.isRetryable(response.status) && retryCount < this.config.maxRetries) {
-					await this.delay(
-						this.config.retryDelay * Math.pow(2, retryCount),
-						options.signal ?? undefined
-					);
+				if (this.config.retryMode === 'rate-limit-only') {
+					if (this.isTemporaryRateLimit(error)) {
+						const delay = this.rateLimitDelay(response, retryCount);
+						this.nextRequestAt = Math.max(this.nextRequestAt, Date.now() + delay);
+						this.rateLimitError = this.createApiError(error);
+						if (retryCount < this.config.maxRetries && delay <= this.maxAutomaticWait - waitedMs) {
+							return this.executeWithRetry<T>(url, options, retryCount + 1, waitedMs);
+						}
+					}
+				} else if (this.isRetryable(response.status) && retryCount < this.config.maxRetries) {
+					await this.delay(this.config.retryDelay * Math.pow(2, retryCount), options.signal ?? undefined);
 					return this.executeWithRetry<T>(url, options, retryCount + 1);
 				}
 
@@ -303,6 +324,32 @@ export abstract class ApiClient {
 				message: fallbackMessage
 			};
 		}
+	}
+
+	private isTemporaryRateLimit(error: ApiErrorData): boolean {
+		if (error.status !== 429) {
+			return false;
+		}
+		const details = error.details as { type?: unknown } | undefined;
+		const code = error.code;
+		const type = details?.type;
+		// Quota, billing and unknown explicit error codes require user action.
+		if (code && code !== 'rate_limit_exceeded') {
+			return false;
+		}
+		return type === undefined || type === null || type === 'rate_limit_exceeded'
+			|| type === 'requests' || type === 'tokens';
+	}
+
+	private rateLimitDelay(response: RequestUrlResponse, retryCount: number): number {
+		const value = Object.entries(response.headers).find(([key]) => key.toLowerCase() === 'retry-after')?.[1];
+		const fallback = this.config.retryDelay * Math.pow(2, retryCount) + Math.random() * 250;
+		if (!value?.trim()) {
+			return fallback;
+		}
+		const seconds = Number(value);
+		const delay = Number.isFinite(seconds) && seconds >= 0 ? seconds * 1000 : Date.parse(value) - Date.now();
+		return Number.isFinite(delay) ? Math.max(fallback, delay) : fallback;
 	}
 
 	/**

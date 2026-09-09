@@ -47,7 +47,8 @@ export class GPT4oClient extends ApiClient {
 			baseUrl, // Extract base URL
 			apiKey,
 			timeout: DEFAULT_REQUEST_CONFIG.timeout,
-			maxRetries: 0,
+			maxRetries: 2,
+			retryMode: 'rate-limit-only',
 			retryDelay: DEFAULT_REQUEST_CONFIG.retryDelayMs
 		});
 
