@@ -18,17 +18,7 @@ import type { TranscriptionResult, TranscriptionOptions, TranscriptionProgress }
 interface AdaptiveWaveState {
 	concurrencyLimit: number;
 	inFlightGroups: number;
-	rateLimitHits: number;
-	cooldownUntilMs: number;
 }
-
-type ChunkErrorKind =
-	| 'rate_limit'
-	| 'timeout'
-	| 'indeterminate_timeout'
-	| 'server'
-	| 'cancelled'
-	| 'unknown';
 
 export class GPT4oTranscriptionStrategy extends TranscriptionStrategy {
 	readonly strategyName = 'OpenAI File Transcription Wave Processing';
@@ -37,12 +27,9 @@ export class GPT4oTranscriptionStrategy extends TranscriptionStrategy {
 
 	private static readonly WAVE_MIN_GROUP_SIZE = 3;
 	private static readonly WAVE_MAX_GROUP_SIZE = 5;
-	private static readonly CHUNK_MAX_RETRY = 1;
-	private static readonly RATE_LIMIT_BACKOFF_BASE_MS = 2000;
-	private static readonly RATE_LIMIT_BACKOFF_MAX_MS = 15000;
-
 	private merger: TranscriptionMerger;
 	private workflowLanguage: string = 'auto';
+	private readonly dispatchedChunkIds = new Set<number>();
 
 	constructor(
 		transcriptionService: TranscriptionService,
@@ -66,6 +53,7 @@ export class GPT4oTranscriptionStrategy extends TranscriptionStrategy {
 		options: TranscriptionOptions
 	): Promise<TranscriptionResult[]> {
 		this.workflowLanguage = options.language;
+		this.dispatchedChunkIds.clear();
 
 		if (chunks.length === 0) {
 			return [];
@@ -90,9 +78,7 @@ export class GPT4oTranscriptionStrategy extends TranscriptionStrategy {
 		const initialConcurrency = planWaveConcurrency(totalDurationSeconds, totalGroups, this.maxConcurrency);
 		const adaptiveState: AdaptiveWaveState = {
 			concurrencyLimit: initialConcurrency,
-			inFlightGroups: 0,
-			rateLimitHits: 0,
-			cooldownUntilMs: 0
+			inFlightGroups: 0
 		};
 
 		const runWorker = async (): Promise<void> => {
@@ -132,17 +118,6 @@ export class GPT4oTranscriptionStrategy extends TranscriptionStrategy {
 				return false;
 			}
 
-			const now = Date.now();
-			if (state.cooldownUntilMs > now) {
-				const waitMs = state.cooldownUntilMs - now;
-				try {
-					await this.delay(waitMs);
-				} catch {
-					return false;
-				}
-				continue;
-			}
-
 			if (state.inFlightGroups < state.concurrencyLimit) {
 				state.inFlightGroups++;
 				return true;
@@ -158,28 +133,6 @@ export class GPT4oTranscriptionStrategy extends TranscriptionStrategy {
 
 	private releaseGroupSlot(state: AdaptiveWaveState): void {
 		state.inFlightGroups = Math.max(0, state.inFlightGroups - 1);
-	}
-
-	private onRateLimitHit(state: AdaptiveWaveState): void {
-		state.rateLimitHits++;
-		const prevLimit = state.concurrencyLimit;
-		state.concurrencyLimit = Math.max(1, state.concurrencyLimit - 1);
-
-		const backoff = Math.min(
-			GPT4oTranscriptionStrategy.RATE_LIMIT_BACKOFF_MAX_MS,
-			GPT4oTranscriptionStrategy.RATE_LIMIT_BACKOFF_BASE_MS * Math.pow(2, state.rateLimitHits - 1)
-		);
-		state.cooldownUntilMs = Math.max(state.cooldownUntilMs, Date.now() + backoff);
-
-		if (state.concurrencyLimit !== prevLimit) {
-			this.logger.warn('Rate limit detected; reducing wave concurrency', {
-				previous: prevLimit,
-				next: state.concurrencyLimit,
-				cooldownMs: backoff
-			});
-		} else {
-			this.logger.warn('Rate limit detected; applying cooldown', { cooldownMs: backoff });
-		}
 	}
 
 	private getTotalDurationSeconds(chunks: AudioChunk[]): number {
@@ -218,7 +171,7 @@ export class GPT4oTranscriptionStrategy extends TranscriptionStrategy {
 		startTime: number,
 		results: TranscriptionResult[],
 		progressState: { completedChunks: number },
-		adaptiveState: AdaptiveWaveState
+		_adaptiveState: AdaptiveWaveState
 	): Promise<void> {
 		for (let i = 0; i < group.length; i++) {
 			if (this.abortSignal?.aborted) {
@@ -250,7 +203,7 @@ export class GPT4oTranscriptionStrategy extends TranscriptionStrategy {
 
 			// The audio overlap supplies boundary context. Sending the preceding
 			// transcript as a prompt can cause the model to echo it into this chunk.
-			const result = await this.transcribeChunkWithSingleRetry(chunk, options, adaptiveState);
+			const result = await this.transcribeChunkOnce(chunk, options);
 			results.push(result);
 
 			progressState.completedChunks++;
@@ -258,109 +211,24 @@ export class GPT4oTranscriptionStrategy extends TranscriptionStrategy {
 		}
 	}
 
-	private async transcribeChunkWithSingleRetry(
+	private async transcribeChunkOnce(
 		chunk: AudioChunk,
-		options: TranscriptionOptions,
-		adaptiveState: AdaptiveWaveState
+		options: TranscriptionOptions
 	): Promise<TranscriptionResult> {
-		let attempt = 0;
-		let lastResult: TranscriptionResult | null = null;
-
-		while (attempt <= GPT4oTranscriptionStrategy.CHUNK_MAX_RETRY) {
-			if (this.abortSignal?.aborted) {
-				break;
-			}
-
-			const now = Date.now();
-			if (adaptiveState.cooldownUntilMs > now) {
-				try {
-					await this.delay(adaptiveState.cooldownUntilMs - now);
-				} catch {
-					break;
-				}
-			}
-
-			if (attempt > 0) {
-				this.logger.warn('Retrying OpenAI file-transcription chunk', { chunkId: chunk.id, attempt });
-			}
-
-			const result = await this.processSingleChunk(chunk, options);
-			lastResult = result;
-
-			if (result.success) {
-				return result;
-			}
-
-			const errorKind = this.classifyChunkError(result.error);
-			if (errorKind === 'cancelled') {
-				return result;
-			}
-
-			const shouldRetry = attempt < GPT4oTranscriptionStrategy.CHUNK_MAX_RETRY &&
-				(errorKind === 'rate_limit' || errorKind === 'timeout' || errorKind === 'server');
-			if (!shouldRetry) {
-				return result;
-			}
-
-			if (errorKind === 'rate_limit') {
-				this.onRateLimitHit(adaptiveState);
-			}
-
-			const waitMs = this.getRetryBackoffMs(errorKind, adaptiveState);
-			if (waitMs > 0) {
-				try {
-					await this.delay(waitMs);
-				} catch {
-					return result;
-				}
-			}
-
-			attempt++;
+		if (this.dispatchedChunkIds.has(chunk.id)) {
+			const error = `Duplicate transcription dispatch blocked for chunk ${chunk.id}`;
+			this.logger.error(error);
+			return {
+				id: chunk.id,
+				text: '',
+				startTime: chunk.startTime,
+				endTime: chunk.endTime,
+				success: false,
+				error
+			};
 		}
-
-		return lastResult ?? {
-			id: chunk.id,
-			text: '',
-			startTime: chunk.startTime,
-			endTime: chunk.endTime,
-			success: false,
-			error: t('errors.general')
-		};
-	}
-
-	private classifyChunkError(errorMessage: string | undefined): ChunkErrorKind {
-		if (!errorMessage) {
-			return 'unknown';
-		}
-		const lower = errorMessage.toLowerCase();
-		if (lower.includes('cancelled') || lower.includes('aborted') || lower.includes('request cancelled')) {
-			return 'cancelled';
-		}
-		if (lower.includes('api error 429') || /\b429\b/.test(lower) || lower.includes('rate limit')) {
-			return 'rate_limit';
-		}
-		if (lower.includes('api request exceeded the local')) {
-			return 'indeterminate_timeout';
-		}
-		if (lower.includes('api error 408') || lower.includes('timeout') || lower.includes('timed out')) {
-			return 'timeout';
-		}
-		if (/\bapi error 5\d\d\b/.test(lower)) {
-			return 'server';
-		}
-		return 'unknown';
-	}
-
-	private getRetryBackoffMs(
-		errorKind: ChunkErrorKind,
-		adaptiveState: AdaptiveWaveState
-	): number {
-		if (errorKind === 'rate_limit') {
-			const now = Date.now();
-			return Math.max(0, adaptiveState.cooldownUntilMs - now);
-		}
-		// For single retry, rely on ApiClient's internal backoff; keep additional wait minimal.
-		return 0;
+		this.dispatchedChunkIds.add(chunk.id);
+		return await this.processSingleChunk(chunk, options);
 	}
 
 	private reportWaveProgress(

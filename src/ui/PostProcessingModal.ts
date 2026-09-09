@@ -44,7 +44,7 @@ export class PostProcessingModal extends Modal {
 
 		// Header
 		const isPreTranscription = !this.transcription || this.transcription.length === 0;
-		contentEl.createEl('h2', { text: isPreTranscription ? t('modal.postProcessing.titlePre') : t('modal.postProcessing.titlePost') });
+		this.setTitle(isPreTranscription ? t('modal.postProcessing.titlePre') : t('modal.postProcessing.titlePost'));
 
 		// Description - use only metaInfoDescription
 		contentEl.createEl('p', {

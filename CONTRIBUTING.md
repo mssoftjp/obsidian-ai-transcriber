@@ -44,7 +44,7 @@ If your local `.env` sets `OBSIDIAN_PLUGINS_DIR`, the build may also copy files 
 
 ## Tests
 
-The local test suite uses synthetic data only. Do not add real audio transcripts, user notes, API keys, or private vault paths to tests or fixtures.
+Tests in `tests/` and `test/` are published with the source and run in CI. The test suite uses synthetic data only. Do not add real audio transcripts, user notes, API keys, or private vault paths to tests or fixtures.
 
 ## Security and privacy
 

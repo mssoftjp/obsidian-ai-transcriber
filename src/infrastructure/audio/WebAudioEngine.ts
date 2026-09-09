@@ -4,10 +4,14 @@
  */
 
 import { SUPPORTED_FORMATS, APP_LIMITS, FileTypeUtils } from '../../config/constants';
+import { AudioDecodingError } from '../../core/audio/AudioPreparationError';
 import { AudioProcessor } from '../../core/audio/AudioProcessor';
 import { assertDecodedMediaWithinBudget, assertEncodedMediaWithinBudget, MediaWorkBudgetError } from '../../core/audio/MediaWorkBudget';
 import { ResourceManager } from '../../core/resources/ResourceManager';
+import { isAbortError, throwIfAborted } from '../../core/utils/CooperativeTask';
 import { t } from '../../i18n';
+
+import { decodeWmaStandard } from './WmaDecoder';
 
 import type {
 	AudioInput,
@@ -96,6 +100,7 @@ export class WebAudioEngine extends AudioProcessor {
 	 * Decode audio file using Web Audio API
 	 */
 	async decode(input: AudioInput, options: AudioProcessingOptions = {}): Promise<AudioBuffer> {
+		throwIfAborted(options.signal);
 		assertEncodedMediaWithinBudget(input.data.byteLength);
 		await this.initializeContext();
 		if (!this.audioContext) {
@@ -103,9 +108,30 @@ export class WebAudioEngine extends AudioProcessor {
 		}
 
 		try {
+			if (input.extension.toLowerCase() === 'wma') {
+				const decoded = await decodeWmaStandard(input.data, options.signal);
+				throwIfAborted(options.signal);
+				const audioBuffer = this.audioContext.createBuffer(
+					decoded.channels,
+					decoded.pcmData.length,
+					decoded.sampleRate
+				);
+				const channelData = new Float32Array(decoded.pcmData.length);
+				channelData.set(decoded.pcmData);
+				audioBuffer.copyToChannel(channelData, 0);
+				const range = this.resolveRange(audioBuffer.duration, options);
+				assertDecodedMediaWithinBudget(
+					input.data.byteLength,
+					audioBuffer,
+					this.config.targetSampleRate,
+					range.applied ? { workingDurationSeconds: range.end - range.start } : {}
+				);
+				return audioBuffer;
+			}
 			// Clone the buffer as decodeAudioData consumes it
 			const bufferCopy = input.data.slice(0);
 			const audioBuffer = await this.audioContext.decodeAudioData(bufferCopy);
+			throwIfAborted(options.signal);
 			const range = this.resolveRange(audioBuffer.duration, options);
 			assertDecodedMediaWithinBudget(
 				input.data.byteLength,
@@ -127,7 +153,9 @@ export class WebAudioEngine extends AudioProcessor {
 			return audioBuffer;
 		} catch (error) {
 			this.logger.error('Failed to decode audio', error);
-			if (error instanceof MediaWorkBudgetError) {
+			if (isAbortError(error, options.signal)
+				|| error instanceof MediaWorkBudgetError
+				|| error instanceof AudioDecodingError) {
 				throw error;
 			}
 
@@ -144,7 +172,10 @@ export class WebAudioEngine extends AudioProcessor {
 				}
 			}
 
-			throw new Error('Audio decoding failed. The file may be corrupted or in an unsupported format.');
+			throw new AudioDecodingError(
+				'Audio decoding failed. The file may be corrupted or in an unsupported format.',
+				error
+			);
 		}
 	}
 
@@ -162,10 +193,7 @@ export class WebAudioEngine extends AudioProcessor {
 
 		// Get mono channel
 		const monoData = audioBuffer.numberOfChannels > 1
-			? this.mixToMono(
-				audioBuffer.getChannelData(0).subarray(startFrame, endFrame),
-				audioBuffer.getChannelData(1).subarray(startFrame, endFrame)
-			)
+			? this.mixAllChannelsToMono(audioBuffer, startFrame, endFrame)
 			: audioBuffer.getChannelData(0).subarray(startFrame, endFrame);
 
 		// Resample if needed
@@ -182,6 +210,22 @@ export class WebAudioEngine extends AudioProcessor {
 			duration: processedData.length / targetSampleRate,
 			channels: 1
 		});
+	}
+
+	private mixAllChannelsToMono(
+		audioBuffer: AudioBuffer,
+		startFrame: number,
+		endFrame: number
+	): Float32Array {
+		const output = new Float32Array(endFrame - startFrame);
+		for (let channel = 0; channel < audioBuffer.numberOfChannels; channel++) {
+			const channelData = audioBuffer.getChannelData(channel);
+			for (let index = startFrame; index < endFrame; index++) {
+				output[index - startFrame] = (output[index - startFrame] ?? 0)
+					+ (channelData[index] ?? 0) / audioBuffer.numberOfChannels;
+			}
+		}
+		return output;
 	}
 
 	private resolveRange(
@@ -211,7 +255,7 @@ export class WebAudioEngine extends AudioProcessor {
 	/**
 	 * Cleanup resources
 	 */
-	async cleanup(): Promise<void> {
+	override async cleanup(): Promise<void> {
 		// Use ResourceManager to close AudioContext
 		await this.resourceManager.closeAudioContext(this.resourceId);
 		this.audioContext = null;

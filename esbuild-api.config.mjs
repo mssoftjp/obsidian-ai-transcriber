@@ -114,6 +114,10 @@ const buildOptions = {
 	...builtinModules],
 	format: 'cjs',
 	target: 'es2020',
+	loader: {
+		'.txt': 'text',
+		'.bin': 'base64'
+	},
 	logLevel: "error",
 	sourcemap: isProduction ? false : 'inline',
 	treeShaking: true,

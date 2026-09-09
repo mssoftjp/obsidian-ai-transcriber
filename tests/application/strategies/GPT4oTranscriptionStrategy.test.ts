@@ -92,7 +92,7 @@ describe('GPT4oTranscriptionStrategy', () => {
     expect(results[0]?.success).toBe(false);
   });
 
-  it('retries once after an explicit HTTP 408 response without duplicating the result', async () => {
+  it('does not automatically resend after an explicit HTTP 408 response', async () => {
     const transcribe = jest.fn(async (chunk: AudioChunk): Promise<TranscriptionResult> => {
       if (transcribe.mock.calls.length === 1) {
         return {
@@ -115,10 +115,12 @@ describe('GPT4oTranscriptionStrategy', () => {
     const results = await new GPT4oTranscriptionStrategy(service)
       .processChunks([chunk], { language: 'ja' });
 
-    expect(transcribe).toHaveBeenCalledTimes(2);
-    expect(results).toEqual([
-      createResult(chunk.id, '再試行後の結果です。', chunk.startTime, chunk.endTime)
-    ]);
+    expect(transcribe).toHaveBeenCalledTimes(1);
+    expect(results).toEqual([expect.objectContaining({
+      id: chunk.id,
+      success: false,
+      error: 'API Error 408: Request timeout'
+    })]);
   });
 
   it('passes requested language to cleanText when language is explicit', async () => {

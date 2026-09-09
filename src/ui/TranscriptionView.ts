@@ -1,4 +1,4 @@
-import { ItemView, TFile, Notice, Modal, ButtonComponent, getLanguage } from 'obsidian';
+import { ItemView, TFile, Notice, Modal, ButtonComponent, Setting, getLanguage } from 'obsidian';
 
 import { LoadingAnimation } from '../core/utils/LoadingAnimation';
 import { t } from '../i18n';
@@ -58,7 +58,7 @@ export class TranscriptionView extends ItemView {
 		contentEl.addClass('ai-transcriber-view');
 
 		// Add a title
-		contentEl.createEl('h2', { text: t('ribbon.tooltip') });
+		new Setting(contentEl).setName(t('ribbon.tooltip')).setHeading();
 
 		// Create main sections
 		this.buildProgressSection();
@@ -568,7 +568,7 @@ class ConfirmModal extends Modal {
 
 		this.modalEl.addClass('ai-transcriber-modal');
 
-		contentEl.createEl('h2', { text: this.title });
+		this.setTitle(this.title);
 		contentEl.createEl('p', { text: this.message });
 
 		const buttonContainer = contentEl.createDiv({ cls: 'modal-button-container ai-transcriber-modal-buttons' });
@@ -609,7 +609,7 @@ class FileSelectionModal extends Modal {
 
 		this.modalEl.addClass('ai-transcriber-modal');
 
-		contentEl.createEl('h2', { text: t('common.selectFile') });
+		this.setTitle(t('common.selectFile'));
 		contentEl.createEl('p', { text: t('common.multipleFilesFound') });
 
 		const fileList = contentEl.createDiv({ cls: 'file-selection-list' });

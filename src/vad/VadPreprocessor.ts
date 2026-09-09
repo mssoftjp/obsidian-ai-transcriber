@@ -2,6 +2,8 @@ import { Notice } from 'obsidian';
 
 import { AUDIO_CONSTANTS } from '../config/constants';
 import { getTranscriptionConfig } from '../config/ModelProcessingConfig';
+import { AudioDecodingError } from '../core/audio/AudioPreparationError';
+import { MediaWorkBudgetError } from '../core/audio/MediaWorkBudget';
 import { isAbortError } from '../core/utils/CooperativeTask';
 import { t } from '../i18n';
 import { Logger } from '../utils/Logger';
@@ -250,6 +252,9 @@ export class VADPreprocessor {
 			if (isAbortError(error, options.signal)) {
 				throw error;
 			}
+			if (error instanceof MediaWorkBudgetError || error instanceof AudioDecodingError) {
+				throw error;
+			}
 			this.logger.error('Error processing file with VAD', error);
 
 			// VADが有効化されているのにエラーが発生した場合は、エラーを再スロー
@@ -280,15 +285,20 @@ export class VADPreprocessor {
    * クリーンアップ
    */
 	async cleanup(): Promise<void> {
-		if (this.processor) {
-			await this.processor.cleanup();
-			this.processor = null;
+		const processor = this.processor;
+		this.processor = null;
+		if (processor) {
+			try {
+				await processor.cleanup();
+			} catch (error) {
+				this.logger.warn('Failed to clean up VAD processor', error);
+			}
 		}
 		this.initialized = false;
 		this.fallbackMode = 'none';
 
 		// AudioConverterのクリーンアップ
-		this.audioConverter.cleanup();
+		await this.audioConverter.cleanup();
 	}
 
 	/**

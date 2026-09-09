@@ -6,6 +6,10 @@ import { GPT4oTranscriptionService } from '../../src/application/services/GPT4oT
 import { CLIENT_MEDIA_BUDGET } from '../../src/core/audio/MediaWorkBudget';
 
 describe('TranscriptionController direct upload plan', () => {
+	beforeEach(() => {
+		jest.restoreAllMocks();
+	});
+
 	it('applies only fixed corrections before optional AI post-processing', async () => {
 		const audioBody = new Uint8Array([1, 2, 3, 4]).buffer;
 		const app = new App();
@@ -81,7 +85,7 @@ describe('TranscriptionController direct upload plan', () => {
 		expect(readBinary).toHaveBeenCalledTimes(1);
 		expect(directTranscription).toHaveBeenCalledWith(
 			audioBody,
-			'meeting.mp3',
+			'upload.mp3',
 			'audio/mpeg',
 			expect.objectContaining({ language: 'auto' })
 		);

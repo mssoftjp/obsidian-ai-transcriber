@@ -420,7 +420,7 @@ const ko: TranslationKeys = {
 		notices: {
 			settingsCheck: '설정에서 API 키를 확인해주세요',
 			settingsConnectionTest: '설정에서 "연결 테스트" 버튼을 시도해주세요',
-			supportedFormats: '지원 형식: 오디오 (MP3, WAV, M4A, FLAC, AAC, OGG), 비디오 (MP4, M4V, MOV, AVI, MKV, WebM)',
+			supportedFormats: '지원 형식: 오디오 (MP3, WAV, M4A, FLAC, AAC, OGG, WMA Standard), 비디오 (MP4, M4V, MOV, AVI, MKV, WebM)',
 			networkRetry: '네트워크 연결을 확인하고 다시 시도해주세요',
 			formatConversion: 'WAV 또는 MP3 형식으로 변환한 후 다시 시도해주세요',
 			sizeLimit: 'OpenAI 전사 API의 업로드 한도는 파일당 25MB입니다. 더 큰 미디어는 작은 청크로 나누어 처리합니다.',

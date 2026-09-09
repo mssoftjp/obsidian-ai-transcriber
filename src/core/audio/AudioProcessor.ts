@@ -45,6 +45,11 @@ export abstract class AudioProcessor {
 	 */
 	abstract preprocess(audio: ProcessedAudio): Promise<ProcessedAudio>;
 
+	/** Release resources owned by this processor. */
+	cleanup(): Promise<void> {
+		return Promise.resolve();
+	}
+
 	/**
 	 * Main processing pipeline
 	 */

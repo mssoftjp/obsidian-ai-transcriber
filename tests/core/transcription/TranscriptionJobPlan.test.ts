@@ -13,13 +13,24 @@ interface JobPlan {
 }
 
 type CreateJobPlan = (input: JobPlanInput) => JobPlan;
+type CanFallBackToOriginalDirectUpload = (input: JobPlanInput) => boolean;
 
-function loadPlanner(): CreateJobPlan | null {
+function loadPlanner(): {
+	createPlan: CreateJobPlan;
+	canFallBack: CanFallBackToOriginalDirectUpload;
+} | null {
 	try {
 		const module = jest.requireActual('../../../src/core/transcription/TranscriptionJobPlan') as {
 			createTranscriptionJobPlan?: CreateJobPlan;
+			canFallBackToOriginalDirectUpload?: CanFallBackToOriginalDirectUpload;
 		};
-		return module.createTranscriptionJobPlan ?? null;
+		if (!module.createTranscriptionJobPlan || !module.canFallBackToOriginalDirectUpload) {
+			return null;
+		}
+		return {
+			createPlan: module.createTranscriptionJobPlan,
+			canFallBack: module.canFallBackToOriginalDirectUpload
+		};
 	} catch {
 		return null;
 	}
@@ -34,13 +45,13 @@ const baseInput: JobPlanInput = {
 
 describe('createTranscriptionJobPlan', () => {
 	it('uses direct upload for an eligible GPT Transcribe file', () => {
-		const createPlan = loadPlanner();
-		expect(createPlan).not.toBeNull();
-		if (!createPlan) {
+		const planner = loadPlanner();
+		expect(planner).not.toBeNull();
+		if (!planner) {
 			return;
 		}
 
-		expect(createPlan({
+		expect(planner.createPlan({
 			...baseInput,
 			model: 'gpt-transcribe'
 		})).toEqual({
@@ -50,13 +61,13 @@ describe('createTranscriptionJobPlan', () => {
 	});
 
 	it('uses direct upload without server chunking for an in-limit GPT-4o file without trimming', () => {
-		const createPlan = loadPlanner();
-		expect(createPlan).not.toBeNull();
-		if (!createPlan) {
+		const planner = loadPlanner();
+		expect(planner).not.toBeNull();
+		if (!planner) {
 			return;
 		}
 
-		expect(createPlan(baseInput)).toEqual({
+		expect(planner.createPlan(baseInput)).toEqual({
 			mode: 'direct',
 			concurrency: 1
 		});
@@ -69,28 +80,62 @@ describe('createTranscriptionJobPlan', () => {
 		{ ...baseInput, model: 'whisper-1' },
 		{ ...baseInput, extension: 'flac' }
 	])('uses client processing without server chunking when direct upload is not safe', (input) => {
-		const createPlan = loadPlanner();
-		expect(createPlan).not.toBeNull();
-		if (!createPlan) {
+		const planner = loadPlanner();
+		expect(planner).not.toBeNull();
+		if (!planner) {
 			return;
 		}
 
-		expect(createPlan(input)).toEqual({
+		expect(planner.createPlan(input)).toEqual({
 			mode: 'client',
 			concurrency: 1
 		});
 	});
 
 	it('fails closed for an unknown model', () => {
-		const createPlan = loadPlanner();
-		expect(createPlan).not.toBeNull();
-		if (!createPlan) {
+		const planner = loadPlanner();
+		expect(planner).not.toBeNull();
+		if (!planner) {
 			return;
 		}
 
-		expect(() => createPlan({
+		expect(() => planner.createPlan({
 			...baseInput,
 			model: 'unknown-model'
 		})).toThrow(/Unknown model/);
+	});
+
+	it('keeps WMA on the client path because OpenAI does not accept it directly', () => {
+		const planner = loadPlanner();
+		expect(planner).not.toBeNull();
+		if (!planner) {
+			return;
+		}
+
+		expect(planner.createPlan({ ...baseInput, extension: 'wma' })).toEqual({
+			mode: 'client',
+			concurrency: 1
+		});
+		expect(planner.canFallBack({ ...baseInput, extension: 'wma' })).toBe(false);
+	});
+
+	it('permits a pre-request M4A fallback that skips failed local preprocessing', () => {
+		const planner = loadPlanner();
+		expect(planner).not.toBeNull();
+		if (!planner) {
+			return;
+		}
+
+		expect(planner.canFallBack({
+			...baseInput,
+			extension: 'm4a',
+			vadMode: 'local'
+		})).toBe(true);
+		expect(planner.canFallBack({
+			...baseInput,
+			extension: 'm4a',
+			vadMode: 'local',
+			startTime: 10
+		})).toBe(false);
 	});
 });

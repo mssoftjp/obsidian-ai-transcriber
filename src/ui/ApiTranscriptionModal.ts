@@ -4,6 +4,7 @@ import { PostProcessingService } from '../application/services/PostProcessingSer
 import { FileTypeUtils } from '../config/constants';
 import { MODEL_OPTIONS, getModelOption } from '../config/ModelOptions';
 import { getTranscriptionModelProfile } from '../config/TranscriptionModelProfiles';
+import { assertDecodedMediaWithinBudget, assertEncodedMediaWithinBudget } from '../core/audio/MediaWorkBudget';
 import { createTranslationMetadata } from '../core/transcription/TranslationUtils';
 import { LoadingAnimation } from '../core/utils/LoadingAnimation';
 import { SimpleProgressCalculator } from '../core/utils/SimpleProgressCalculator';
@@ -33,6 +34,8 @@ interface CompletedTranscription {
 	isPartialResult: boolean;
 }
 
+const WAVEFORM_PREVIEW_MAX_ENCODED_BYTES = 16 * 1024 * 1024;
+
 export class APITranscriptionModal extends Modal {
 	private parentComponent: Component;
 	private transcriber: APITranscriber;
@@ -60,6 +63,7 @@ export class APITranscriptionModal extends Modal {
 	private transcribeBtn?: ButtonComponent;
 	private metaInfoBtn: HTMLButtonElement | null = null;
 	private modalAudioContext: AudioContext | null = null;
+	private timeRangeLoadGeneration = 0;
 	private metaInfo: TranscriptionMetaInfo | null = null;
 	private saveSettings: (() => Promise<void>) | null = null;
 	private progressListenerUnsubscribe: (() => void) | null = null;
@@ -117,7 +121,7 @@ export class APITranscriptionModal extends Modal {
 			this.logger.debug('Progress listener registered');
 		}
 
-		contentEl.createEl('h2', { text: t('modal.transcription.title') });
+		this.setTitle(t('modal.transcription.title'));
 
 		// Provider info with model selection
 		const providerInfo = contentEl.createDiv({ cls: 'transcription-provider-info' });
@@ -1189,93 +1193,111 @@ export class APITranscriptionModal extends Modal {
 	}
 
 
-	private async createTimeRangeControls() {
+	private async createTimeRangeControls(loadGeneration: number) {
 		const headerEl = this.timeRangeEl.createDiv();
 		headerEl.createEl('h4', { text: t('audioRange.title') });
 
 		// Try to get audio duration and show waveform
 		try {
-				this.logger.trace('Reading audio file for waveform', { audioFile: this.audioFile.name });
-				const audioBuffer = await this.app.vault.readBinary(this.audioFile);
-				const modalAudioContext = new AudioContext();
-				this.modalAudioContext = modalAudioContext;
+			if (this.audioFile.stat.size > WAVEFORM_PREVIEW_MAX_ENCODED_BYTES) {
+				throw new Error('Audio is too large for the modal waveform preview');
+			}
+			this.logger.trace('Reading audio file for waveform', { audioFile: this.audioFile.name });
+			const audioBuffer = await this.app.vault.readBinary(this.audioFile);
+			if (!this.isTimeRangeLoadCurrent(loadGeneration)) {
+				return;
+			}
+			assertEncodedMediaWithinBudget(audioBuffer.byteLength);
+			const modalAudioContext = new AudioContext();
+			this.modalAudioContext = modalAudioContext;
+			try {
 				const decodedAudio = await modalAudioContext.decodeAudioData(audioBuffer.slice(0));
+				assertDecodedMediaWithinBudget(
+					audioBuffer.byteLength,
+					decodedAudio,
+					decodedAudio.sampleRate
+				);
+				if (!this.isTimeRangeLoadCurrent(loadGeneration)) {
+					return;
+				}
 				this.audioDuration = decodedAudio.duration;
 
-			headerEl.createEl('p', {
-				text: `${t('audioRange.audioDuration')}: ${this.formatTime(this.audioDuration)}`,
-				cls: 'audio-duration'
-			});
+				headerEl.createEl('p', {
+					text: `${t('audioRange.audioDuration')}: ${this.formatTime(this.audioDuration)}`,
+					cls: 'audio-duration'
+				});
 
-			// Update cost estimate with actual audio duration
-			void this.displayCostEstimate();
-
-			// Add waveform selector
-			const waveformContainer = this.timeRangeEl.createDiv({
-				cls: 'waveform-container'
-			});
-
-			// Calculate appropriate width based on modal container
-			const modalWidth = this.contentEl.offsetWidth || 600;
-			const waveformWidth = Math.min(modalWidth - 40, 560); // Leave some padding
-
-			this.waveformSelector = new AudioWaveformSelector(waveformContainer, waveformWidth, 100);
-			this.waveformSelector.loadAudio(decodedAudio);
-
-			// Set up range change callback
-			this.waveformSelector.setOnRangeChange((start, end) => {
-				// Update individual time fields
-				const startHours = Math.floor(start / 3600);
-				const startMins = Math.floor((start % 3600) / 60);
-				const startSecs = Math.floor(start % 60);
-
-				const endHours = Math.floor(end / 3600);
-				const endMins = Math.floor((end % 3600) / 60);
-				const endSecs = Math.floor(end % 60);
-
-				this.startHourInput.value = startHours.toString();
-				this.startMinInput.value = startMins.toString();
-				this.startSecInput.value = startSecs.toString();
-
-				this.endHourInput.value = endHours.toString();
-				this.endMinInput.value = endMins.toString();
-				this.endSecInput.value = endSecs.toString();
-
-				// Update hidden inputs
-				this.startTimeInput.value = this.formatTime(start);
-				this.endTimeInput.value = this.formatTime(end);
-
-				this.enableTimeRange = true;
-				const checkbox = this.timeRangeEl.querySelector<HTMLInputElement>('.ait-enable-time-range');
-				if (checkbox) {
-					checkbox.checked = true;
-				}
-				this.updateTimeRangeControls();
+				// Update cost estimate with actual audio duration
 				void this.displayCostEstimate();
-			});
 
-				// Close audio context after successful load
-				if (modalAudioContext.state !== 'closed') {
-					await modalAudioContext.close();
+				// Add waveform selector
+				const waveformContainer = this.timeRangeEl.createDiv({
+					cls: 'waveform-container'
+				});
+
+				// Calculate appropriate width based on modal container
+				const modalWidth = this.contentEl.offsetWidth || 600;
+				const waveformWidth = Math.min(modalWidth - 40, 560); // Leave some padding
+
+				this.waveformSelector = new AudioWaveformSelector(waveformContainer, waveformWidth, 100);
+				this.waveformSelector.loadAudio(decodedAudio);
+
+				// Set up range change callback
+				this.waveformSelector.setOnRangeChange((start, end) => {
+					// Update individual time fields
+					const startHours = Math.floor(start / 3600);
+					const startMins = Math.floor((start % 3600) / 60);
+					const startSecs = Math.floor(start % 60);
+
+					const endHours = Math.floor(end / 3600);
+					const endMins = Math.floor((end % 3600) / 60);
+					const endSecs = Math.floor(end % 60);
+
+					this.startHourInput.value = startHours.toString();
+					this.startMinInput.value = startMins.toString();
+					this.startSecInput.value = startSecs.toString();
+
+					this.endHourInput.value = endHours.toString();
+					this.endMinInput.value = endMins.toString();
+					this.endSecInput.value = endSecs.toString();
+
+					// Update hidden inputs
+					this.startTimeInput.value = this.formatTime(start);
+					this.endTimeInput.value = this.formatTime(end);
+
+					this.enableTimeRange = true;
+					const checkbox = this.timeRangeEl.querySelector<HTMLInputElement>('.ait-enable-time-range');
+					if (checkbox) {
+						checkbox.checked = true;
+					}
+					this.updateTimeRangeControls();
+					void this.displayCostEstimate();
+				});
+			} finally {
+				try {
+					if (modalAudioContext.state !== 'closed') {
+						await modalAudioContext.close();
+					}
+				} catch (closeError) {
+					this.logger.warn('Failed to close waveform AudioContext', closeError);
+				} finally {
+					if (this.modalAudioContext === modalAudioContext) {
+						this.modalAudioContext = null;
+					}
 				}
-				this.modalAudioContext = null;
-			} catch (error) {
+			}
+		} catch (error) {
+			if (!this.isTimeRangeLoadCurrent(loadGeneration)) {
+				return;
+			}
 			this.logger.warn('Could not determine audio duration', error);
 			headerEl.createEl('p', {
 				text: t('modal.transcription.duration', { duration: 'Unknown' }),
 				cls: 'audio-duration'
 			});
-
-			// Always clean up audio context on error
-			if (this.modalAudioContext && this.modalAudioContext.state !== 'closed') {
-				try {
-					await this.modalAudioContext.close();
-				} catch (closeError) {
-					this.logger.error('Failed to close AudioContext', closeError);
-				} finally {
-					this.modalAudioContext = null;
-				}
-			}
+		}
+		if (!this.isTimeRangeLoadCurrent(loadGeneration)) {
+			return;
 		}
 
 		// Enable checkbox
@@ -1626,8 +1648,12 @@ export class APITranscriptionModal extends Modal {
 	}
 
 	private async loadTimeRangeControls(loadingEl: HTMLElement) {
+		const loadGeneration = ++this.timeRangeLoadGeneration;
 		try {
-			await this.createTimeRangeControls();
+			await this.createTimeRangeControls(loadGeneration);
+			if (!this.isTimeRangeLoadCurrent(loadGeneration)) {
+				return;
+			}
 			loadingEl.remove();
 			this.timeRangeEl.classList.remove('ait-min-height-280');
 			this.timeRangeEl.classList.add('ait-min-height-auto'); // Remove min-height after loaded
@@ -1637,7 +1663,12 @@ export class APITranscriptionModal extends Modal {
 		}
 	}
 
+	private isTimeRangeLoadCurrent(loadGeneration: number): boolean {
+		return loadGeneration === this.timeRangeLoadGeneration;
+	}
+
 	override onClose() {
+		this.timeRangeLoadGeneration++;
 		const { contentEl } = this;
 		contentEl.empty();
 
@@ -1691,7 +1722,7 @@ class TranscriptionRecoveryModal extends Modal {
 		this.modalEl.addClass('ai-transcriber-modal');
 		contentEl.addClass('transcription-meta-modal');
 
-		contentEl.createEl('h2', { text: t('modal.transcription.manualRecoveryTitle') });
+		this.setTitle(t('modal.transcription.manualRecoveryTitle'));
 		contentEl.createEl('p', {
 			text: t('modal.transcription.manualRecoveryDescription'),
 			cls: 'setting-item-description'
