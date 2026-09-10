@@ -11,23 +11,38 @@ export default async function setup() {
   ffmpeg(['-i', `${dir}/short.mp4`, '-c', 'copy', `${dir}/short.mov`]);
   ffmpeg(['-i', `${dir}/short.mp4`, '-c:v', 'libvpx-vp9', '-c:a', 'libopus', `${dir}/short.webm`]);
   ffmpeg(['-i', `${dir}/short.mp4`, '-c', 'copy', `${dir}/short.mkv`]);
+  copyFileSync(`${dir}/short.mp4`, `${dir}/short.m4v`);
+  ffmpeg(['-i', `${dir}/short.mp4`, '-c:v', 'mpeg4', '-c:a', 'libmp3lame', `${dir}/short.avi`]);
+  for (const [extension, codec] of [
+    ['mp3', 'libmp3lame'],
+    ['m4a', 'aac'],
+    ['wav', 'pcm_s16le'],
+    ['flac', 'flac'],
+    ['ogg', 'libopus'],
+    ['aac', 'aac']
+  ]) {
+    ffmpeg(['-f', 'lavfi', '-i', 'sine=frequency=440:sample_rate=44100', '-t', '3', '-c:a', codec, `${dir}/short.${extension}`]);
+  }
   // An ISO BMFF free box makes a valid large video without committing a large fixture.
-  for (const name of ['large.mp4', 'large.mov']) {
+  for (const name of ['large.mp4', 'large.mov', 'over-128mb.mp4']) {
+    const padding = (name === 'over-128mb.mp4' ? 129 : 17) * 1024 * 1024;
     copyFileSync(`${dir}/short.mp4`, `${dir}/${name}`);
     const fd = openSync(`${dir}/${name}`, 'a');
     const box = Buffer.alloc(8);
-    box.writeUInt32BE(17 * 1024 * 1024); box.write('free', 4);
+    box.writeUInt32BE(padding); box.write('free', 4);
     writeSync(fd, box);
     closeSync(fd);
     const extend = openSync(`${dir}/${name}`, 'r+');
     // Keep the free box length exact.
     const { size } = statSync(`${dir}/${name}`);
-    ftruncateSync(extend, size + 17 * 1024 * 1024 - 8);
+    ftruncateSync(extend, size + padding - 8);
     closeSync(extend);
   }
   for (const [name, duration] of [['thirteen-minutes.mp4', 780], ['over-two-hours.mp4', 7203]]) {
     ffmpeg(['-f', 'lavfi', '-i', 'color=c=blue:s=16x16:r=1', '-t', String(duration), '-c:v', 'libx264', '-pix_fmt', 'yuv420p', `${dir}/${name}`]);
   }
+  ffmpeg(['-f', 'lavfi', '-i', 'sine=frequency=440:sample_rate=44100', '-t', '3362', '-ac', '2', '-c:a', 'aac', '-b:a', '96k', `${dir}/fifty-six-minutes.m4a`]);
+  ffmpeg(['-f', 'lavfi', '-i', 'sine=frequency=440:sample_rate=8000', '-t', '7203', '-c:a', 'aac', '-b:a', '24k', `${dir}/long-audio.m4a`]);
   for (const codec of ['wmav1', 'wmav2']) {
     ffmpeg(['-f', 'lavfi', '-i', 'sine=frequency=440:sample_rate=44100', '-t', '3', '-ac', '2', '-c:a', codec, `${dir}/${codec}.wma`]);
   }
