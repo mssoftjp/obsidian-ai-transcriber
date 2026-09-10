@@ -1,5 +1,7 @@
 import { TFile } from 'obsidian';
 
+import { SUPPORTED_FORMATS } from '../../src/config/constants';
+
 import type { Vault } from 'obsidian';
 
 type CollectAudioFiles = (vault: Vault) => TFile[];
@@ -27,20 +29,21 @@ function createFile(name: string, extension: string): TFile {
 }
 
 describe('collectAudioFiles', () => {
-	it('lists supported audio files through Vault.getFiles', () => {
+	it('lists every supported 0.11.1 format plus WMA through Vault.getFiles', () => {
 		const collectAudioFiles = loadCollector();
 		expect(collectAudioFiles).not.toBeNull();
 		if (!collectAudioFiles) {
 			return;
 		}
-		const audio = createFile('recording', 'MP3');
-		const video = createFile('meeting', 'mp4');
+		const supported = SUPPORTED_FORMATS.EXTENSIONS.map((extension, index) => (
+			createFile(`media-${index}`, index % 2 === 0 ? extension.toUpperCase() : extension)
+		));
 		const markdown = createFile('notes', 'md');
 		const vault = {
-			getFiles: jest.fn().mockReturnValue([audio, video, markdown])
+			getFiles: jest.fn().mockReturnValue([...supported, markdown])
 		} as unknown as Vault;
 
-		expect(collectAudioFiles(vault)).toEqual([audio, video]);
+		expect(collectAudioFiles(vault)).toEqual(supported);
 		expect(vault.getFiles).toHaveBeenCalledTimes(1);
 	});
 });

@@ -4,7 +4,6 @@ import { PostProcessingService } from '../application/services/PostProcessingSer
 import { FileTypeUtils } from '../config/constants';
 import { MODEL_OPTIONS, getModelOption } from '../config/ModelOptions';
 import { getTranscriptionModelProfile } from '../config/TranscriptionModelProfiles';
-import { assertDecodedMediaWithinBudget, assertEncodedMediaWithinBudget, CLIENT_MEDIA_BUDGET } from '../core/audio/MediaWorkBudget';
 import { createTranslationMetadata } from '../core/transcription/TranslationUtils';
 import { LoadingAnimation } from '../core/utils/LoadingAnimation';
 import { SimpleProgressCalculator } from '../core/utils/SimpleProgressCalculator';
@@ -35,7 +34,8 @@ interface CompletedTranscription {
 	isPartialResult: boolean;
 }
 
-const WAVEFORM_PREVIEW_MAX_ENCODED_BYTES = 16 * 1024 * 1024;
+// The preview needs an amplitude envelope, not playback-quality PCM.
+const WAVEFORM_PREVIEW_SAMPLE_RATE = 8000;
 
 export class APITranscriptionModal extends Modal {
 	private parentComponent: Component;
@@ -1199,7 +1199,7 @@ export class APITranscriptionModal extends Modal {
 		const headerEl = this.timeRangeEl.createDiv();
 		headerEl.createEl('h4', { text: t('audioRange.title') });
 
-		// Duration is independent of the optional, memory-bounded waveform preview.
+		// Metadata remains available even when waveform decoding fails.
 		const controller = new AbortController();
 		this.metadataAbortController?.abort();
 		this.metadataAbortController = controller;
@@ -1210,7 +1210,7 @@ export class APITranscriptionModal extends Modal {
 			}
 			this.audioDuration = duration;
 		} catch (error) {
-			this.logger.debug('Media metadata unavailable; trying bounded audio preview', error);
+			this.logger.debug('Media metadata unavailable; trying audio preview', error);
 		} finally {
 			if (this.metadataAbortController === controller) {
 				this.metadataAbortController = null;
@@ -1221,25 +1221,15 @@ export class APITranscriptionModal extends Modal {
 		}
 
 		try {
-			if (this.audioFile.stat.size > WAVEFORM_PREVIEW_MAX_ENCODED_BYTES
-				|| this.audioDuration > CLIENT_MEDIA_BUDGET.maxDurationSeconds) {
-				throw new Error('Audio is too large for the modal waveform preview');
-			}
 			this.logger.trace('Reading audio file for waveform', { audioFile: this.audioFile.name });
 			const audioBuffer = await this.app.vault.readBinary(this.audioFile);
 			if (!this.isTimeRangeLoadCurrent(loadGeneration)) {
 				return;
 			}
-			assertEncodedMediaWithinBudget(audioBuffer.byteLength);
-			const modalAudioContext = new AudioContext();
+			const modalAudioContext = new AudioContext({ sampleRate: WAVEFORM_PREVIEW_SAMPLE_RATE });
 			this.modalAudioContext = modalAudioContext;
 			try {
-				const decodedAudio = await modalAudioContext.decodeAudioData(audioBuffer.slice(0));
-				assertDecodedMediaWithinBudget(
-					audioBuffer.byteLength,
-					decodedAudio,
-					decodedAudio.sampleRate
-				);
+				const decodedAudio = await modalAudioContext.decodeAudioData(audioBuffer);
 				if (!this.isTimeRangeLoadCurrent(loadGeneration)) {
 					return;
 				}

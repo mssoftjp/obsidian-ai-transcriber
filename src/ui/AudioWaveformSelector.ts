@@ -5,7 +5,7 @@
 export class AudioWaveformSelector {
 	private canvas: HTMLCanvasElement;
 	private ctx: CanvasRenderingContext2D;
-	private audioBuffer: AudioBuffer | null = null;
+	private duration = 0;
 	private waveformData: { min: number; max: number }[] | null = null;
 	private animationFrameId: number | null = null;
 	private startTime = 0;
@@ -32,9 +32,9 @@ export class AudioWaveformSelector {
 	 * Load audio buffer and draw waveform
 	 */
 	loadAudio(audioBuffer: AudioBuffer): void {
-		this.audioBuffer = audioBuffer;
+		this.duration = audioBuffer.duration;
 		this.endTime = audioBuffer.duration;
-		this.precomputeWaveform();
+		this.precomputeWaveform(audioBuffer);
 		this.requestDraw();
 	}
 
@@ -56,12 +56,12 @@ export class AudioWaveformSelector {
 	 * Set time range programmatically
 	 */
 	setTimeRange(start: number, end: number) {
-		if (!this.audioBuffer) {
+		if (!this.duration) {
 			return;
 		}
 
-		this.startTime = Math.max(0, Math.min(start, this.audioBuffer.duration));
-		this.endTime = Math.max(this.startTime, Math.min(end, this.audioBuffer.duration));
+		this.startTime = Math.max(0, Math.min(start, this.duration));
+		this.endTime = Math.max(this.startTime, Math.min(end, this.duration));
 		this.requestDraw();
 
 		if (this.onRangeChange) {
@@ -73,7 +73,7 @@ export class AudioWaveformSelector {
          * Draw waveform and selection
          */
 	private drawInternal() {
-		if (!this.audioBuffer) {
+		if (!this.duration) {
 			return;
 		}
 
@@ -114,7 +114,7 @@ export class AudioWaveformSelector {
 	 * Draw audio waveform
 	 */
 	private drawWaveform() {
-		if (!this.audioBuffer || !this.waveformData) {
+		if (!this.duration || !this.waveformData) {
 			return;
 		}
 
@@ -147,13 +147,13 @@ export class AudioWaveformSelector {
 		ctx.globalAlpha = 1.0;
 	}
 
-	private precomputeWaveform() {
-		if (!this.audioBuffer) {
+	private precomputeWaveform(audioBuffer: AudioBuffer) {
+		if (!this.duration) {
 			return;
 		}
 
 		const { width } = this.canvas;
-		const data = this.audioBuffer.getChannelData(0);
+		const data = audioBuffer.getChannelData(0);
 		const step = Math.ceil(data.length / width);
 
 		this.waveformData = new Array<{ min: number; max: number }>(width);
@@ -183,13 +183,13 @@ export class AudioWaveformSelector {
 	 * Draw selection area
 	 */
 	private drawSelection() {
-		if (!this.audioBuffer) {
+		if (!this.duration) {
 			return;
 		}
 
 		const { width, height } = this.canvas;
 		const ctx = this.ctx;
-		const duration = this.audioBuffer.duration;
+		const duration = this.duration;
 
 		const startX = (this.startTime / duration) * width;
 		const endX = (this.endTime / duration) * width;
@@ -215,13 +215,13 @@ export class AudioWaveformSelector {
 	 * Draw draggable handles
 	 */
 	private drawHandles() {
-		if (!this.audioBuffer) {
+		if (!this.duration) {
 			return;
 		}
 
 		const { width, height } = this.canvas;
 		const ctx = this.ctx;
-		const duration = this.audioBuffer.duration;
+		const duration = this.duration;
 
 		const startX = (this.startTime / duration) * width;
 		const endX = (this.endTime / duration) * width;
@@ -265,14 +265,14 @@ export class AudioWaveformSelector {
 	}
 
 	private handleMouseDown = (e: MouseEvent): void => {
-		if (!this.audioBuffer) {
+		if (!this.duration) {
 			return;
 		}
 
 		const rect = this.canvas.getBoundingClientRect();
 		const scaleX = this.canvas.width / rect.width; // Handle canvas scaling
 		const x = (e.clientX - rect.left) * scaleX;
-		const duration = this.audioBuffer.duration;
+		const duration = this.duration;
 		const width = this.canvas.width;
 
 		const startX = (this.startTime / duration) * width;
@@ -296,14 +296,14 @@ export class AudioWaveformSelector {
 	};
 
 	private handleMouseMove = (e: MouseEvent): void => {
-		if (!this.audioBuffer) {
+		if (!this.duration) {
 			return;
 		}
 
 		const rect = this.canvas.getBoundingClientRect();
 		const scaleX = this.canvas.width / rect.width; // Handle canvas scaling
 		const x = (e.clientX - rect.left) * scaleX;
-		const duration = this.audioBuffer.duration;
+		const duration = this.duration;
 		const width = this.canvas.width;
 		const time = Math.max(0, Math.min((x / width) * duration, duration));
 
